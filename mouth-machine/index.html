@@ -92,7 +92,9 @@ main{display:flex;flex-direction:column;gap:16px;padding-block:16px 48px}
 .beats span{width:14px;height:14px;border-radius:50%;background:#323843}
 .beats span.on{background:var(--lcd-ink)}
 .beats span.on.one{background:var(--rec)}
-.reclabel{font-family:var(--f-mono);font-size:13px}
+.reclabel{font-family:var(--f-mono);font-size:15px;font-weight:700}
+.beats span{width:18px!important;height:18px!important}
+.recording-hide{}
 .prog{height:4px;border-radius:2px;background:#323843;overflow:hidden}
 .prog div{height:100%;width:0;background:var(--rec)}
 .meter{height:4px;border-radius:2px;background:#323843;overflow:hidden}
@@ -174,6 +176,11 @@ details summary{cursor:pointer;font-weight:600}
     <div class="card-head"><h2 id="addh">Add a part</h2><span class="small" id="stepInfo"></span></div>
     <div class="pads" id="pads"></div>
     <p class="hint" id="instHint"></p>
+    <div class="recstatus" id="recStatus" hidden>
+      <div class="row"><div class="beats" id="beats"><span></span><span></span><span></span><span></span></div><span class="reclabel" id="recLabel">Get ready</span></div>
+      <div class="prog"><div id="recProg"></div></div>
+      <div class="meter" aria-hidden="true"><div id="meter"></div></div>
+    </div>
     <div class="recrow">
       <button id="recBtn" class="rec-btn"><span class="dot"></span><span id="recTxt">Record</span></button>
       <button id="importBtn" class="btn big">Import a recording</button>
@@ -183,11 +190,6 @@ details summary{cursor:pointer;font-weight:600}
     <div class="note calnote" id="calNote" hidden><p><b>First time recording here?</b> Calibrate once (about 10 seconds of clapping) so your hits land on the right steps. Bluetooth headphones like AirPods add a big delay, so calibrate with the headphones you’ll use.</p><button class="btn" id="calNow">Calibrate</button></div>
     <label class="chk" id="playAlongRow"><input type="checkbox" id="playAlong"> <span>Play the other parts while I record (wear headphones so the mic doesn’t hear them)</span></label>
     <label class="chk" id="detectRow"><input type="checkbox" id="detectTempo" checked> <span>Set the tempo and loop length from this recording (first part only)</span></label>
-    <div class="recstatus" id="recStatus" hidden>
-      <div class="row"><div class="beats" id="beats"><span></span><span></span><span></span><span></span></div><span class="reclabel" id="recLabel">Get ready</span></div>
-      <div class="prog"><div id="recProg"></div></div>
-      <div class="meter" aria-hidden="true"><div id="meter"></div></div>
-    </div>
   </section>
 
   <div class="banner" id="exBanner" hidden>
@@ -696,7 +698,8 @@ async function startRecord(calib=false){
   capturing=true; setRecUI(true);
 }
 function cancelRecord(){ capturing=false; recState=null; stopAll(); setRecUI(false); toast('Recording cancelled'); }
-function setRecUI(on){ $('recStatus').hidden=!on; $('recBtn').classList.toggle('live',on); $('recTxt').textContent=on?'Stop':'Record'; $('importBtn').disabled=on; $('calBtn').disabled=on; }
+function setRecUI(on){ ['instHint','calNote','playAlongRow','detectRow','micNote'].forEach(id=>{ const el=$(id); if(!el) return; if(on){ el.dataset.wasHidden=el.hidden?'1':''; el.hidden=true; } else if(el.dataset.wasHidden!==undefined){ el.hidden=el.dataset.wasHidden==='1'; delete el.dataset.wasHidden; } });
+  if(on) requestAnimationFrame(()=>{ try{ $('recStatus').scrollIntoView({block:'center',behavior:'smooth'}); }catch(e){} }); $('recStatus').hidden=!on; $('recBtn').classList.toggle('live',on); $('recTxt').textContent=on?'Stop':'Record'; $('importBtn').disabled=on; $('calBtn').disabled=on; }
 function assemble(chunks, a, b, sr){
   const n=Math.max(1,Math.round((b-a)*sr)), out=new Float32Array(n);
   for(const ch of chunks){ const s=Math.round((ch.t-a)*sr); for(let i=0;i<ch.d.length;i++){ const k=s+i; if(k>=0&&k<n) out[k]=ch.d[i]; } }
