@@ -117,6 +117,7 @@ main{display:flex;flex-direction:column;gap:16px;padding-block:16px 48px}
 .sel{height:34px;border-radius:9px;border:1px solid var(--line);background:var(--pad);padding:0 8px;font-size:14px;max-width:100%}
 .ibtn{height:34px;min-width:34px;padding:0 8px;border-radius:9px;border:1px solid var(--line);background:var(--pad);font-weight:700;font-size:13px;display:inline-flex;align-items:center;justify-content:center;gap:6px}
 .ibtn[aria-pressed="true"].m{background:#8a909b;color:#fff;border-color:#8a909b}
+.ibtn.sld[aria-pressed="true"]{background:var(--c);color:#fff;border-color:var(--c)}
 .ibtn.chd[aria-pressed="true"]{background:var(--c);color:#fff;border-color:var(--c)}
 .ibtn[aria-pressed="true"].s{background:var(--lcd-ink);color:#1a1a1a;border-color:var(--lcd-ink)}
 .ibtn.del{color:var(--rec)}
@@ -540,7 +541,11 @@ function trackNotes(x, sr, onsets, sens){
   if(a0>=0) segs.push([a0,last]);
   // 2. inside each stretch, find the steady pitches you settle on. A slide or scoop belongs to the note it
   //    slides INTO, and a short fall-off at the end belongs to the note before it, so neither becomes its own note.
-  for(const [a,b] of segs){
+  // a soft start ("mmm" fades in) is heard as voiced a little late: move each stretch's start back to where the sound began
+  for(const sg of segs){ const pk=Math.max(...frames.slice(sg[0],sg[1]+1).map(f=>f.db)); let i=sg[0], lim=Math.max(0,sg[0]-10);
+    const prevEnd=segs.indexOf(sg)>0?segs[segs.indexOf(sg)-1][1]:-1;
+    while(i-1>lim && i-1>prevEnd && frames[i-1].db>pk-22 && frames[i-1].db>gate-6) i--; sg.push(i); }
+  for(const [a,b,a0s] of segs){
     if((b-a+1)*hopS<0.07) continue;
     const lab=[]; let cur=null;
     for(let i=a;i<=b;i++){ const m=sm[i]; if(!isNaN(m)){ if(cur===null||Math.abs(m-cur)>0.65) cur=Math.round(m); } lab.push(cur); }
@@ -552,9 +557,12 @@ function trackNotes(x, sr, onsets, sens){
     const merged=[]; for(const r of pl){ const m=merged[merged.length-1]; if(m&&m.l===r.l) m.e=r.e; else merged.push({...r}); } pl=merged;
     const dbMax=(i0,i1)=>{ let m=-200; for(let i=i0;i<=i1;i++) m=Math.max(m,frames[i].db); return m; };
     const pitchIn=(i0,i1)=>median(sm.slice(i0,i1+1).filter(v=>!isNaN(v)));
-    if(!pl.length){ notes.push({t0:frames[a].t-hopS/2, t1:frames[b].t+hopS/2, p:pitchIn(a,b), db:dbMax(a,b)}); continue; }
-    pl.forEach((r,k)=>{ const i0=k===0?a:pl[k-1].e+1, i1=k===pl.length-1?b:r.e;
-      notes.push({t0:frames[i0].t-hopS/2, t1:frames[i1].t+hopS/2, p:pitchIn(r.s+Math.floor((r.e-r.s)/2),r.e), db:dbMax(i0,i1)}); });
+    if(!pl.length){ notes.push({t0:frames[a0s].t-hopS/2, t1:frames[b].t+hopS/2, p:pitchIn(a,b), db:dbMax(a,b)}); continue; }
+    // where one held note hands over to the next: the moment the slide passes halfway between them
+    const cut=pl.map((r,k)=>{ if(k===0) return a0s; const A=pl[k-1], mid=(A.l+r.l)/2, up=r.l>A.l;
+      for(let i=A.s;i<=r.s;i++){ const m=sm[i]; if(!isNaN(m) && (up? m>=mid : m<=mid) && i>A.s+2) return i; } return A.e+1; });
+    pl.forEach((r,k)=>{ const i0=cut[k], i1=k===pl.length-1?b:cut[k+1]-1;
+      notes.push({t0:frames[i0].t-hopS/2, t1:frames[i1].t+hopS/2, p:pitchIn(r.s+Math.floor((r.e-r.s)/2),r.e), db:dbMax(i0,i1), g:k>0?1:0}); });
   }
   const maxDb=notes.reduce((m,n)=>Math.max(m,n.db),-200);
   notes.forEach(n=>n.v=clamp(0.45+0.55*(n.db-(maxDb-20))/20,0.45,1));
@@ -608,7 +616,7 @@ function quantizeTrack(tr){
   } else {
     let ns=[];
     for(const nt of an.notes){ const r=raw(nt.t0); if(r<-0.5*q) continue; const s=Math.max(0,Math.round(r/q)*q); if(s>=n) continue;
-      const e=Math.round(raw(nt.t1)/q+0.3)*q; ns.push({s,l:clamp(e-s,q,n-s),p:+nt.p.toFixed(2),v:+nt.v.toFixed(2)}); }
+      const e=Math.round(raw(nt.t1)/q+0.3)*q; ns.push({s,l:clamp(e-s,q,n-s),p:+nt.p.toFixed(2),v:+nt.v.toFixed(2),...(nt.g?{g:1}:{})}); }
     ns.sort((a,b)=>a.s-b.s||b.l-a.l);
     const out=[]; for(const nt of ns){ const last=out[out.length-1]; if(last&&last.s===nt.s) continue; if(last&&last.s+last.l>nt.s) last.l=nt.s-last.s; out.push(nt); }
     tr.notes=out;
@@ -640,6 +648,7 @@ const pitchOf=n=>n.x?Math.round(n.p):snap(n.p);
    so in A minor an A plays A minor, a C plays C major, a B plays B diminished. Pentatonic and blues keys use their
    parent 7-note scale; notes outside the key (or "any note") get a major triad. */
 const PARENT={major:'major','pent-major':'major',minor:'minor','pent-minor':'minor',blues:'minor',dorian:'dorian'};
+const slidesOn=tr=>tr.slides ?? true;
 const chordsOn=tr=>tr.chords ?? (tr.inst==='keys'||tr.inst==='pad');
 function triad(root){
   const K=currentKey(); if(K.none) return [root,root+4,root+7];
@@ -763,7 +772,7 @@ function drumHit(c,out,drumId,t,v,style,T){
     n.connect(f); f.connect(g); g.connect(out); n.start(t); n.stop(t+0.4);
   }
 }
-function voice(c,out,sound,t,dur,m,v,T){
+function voice(c,out,sound,t,dur,m,v,T,fromM=null){
   const f=mtof(m), g=c.createGain(); g.connect(out); const oscs=[];
   const osc=(type,freq,det=0,dest=g,gain=1)=>{ const o=c.createOscillator(); o.type=type; o.frequency.value=freq; o.detune.value=det; if(gain!==1){ const gg=c.createGain(); gg.gain.value=gain; o.connect(gg); gg.connect(dest);} else o.connect(dest); oscs.push(o); return o; };
   const lp=(fr,q=0.7)=>{ const b=c.createBiquadFilter(); b.type='lowpass'; b.frequency.value=fr; b.Q.value=q; b.connect(g); return b; };
@@ -773,15 +782,18 @@ function voice(c,out,sound,t,dur,m,v,T){
     case 'Sub': osc('sine',f); osc('triangle',f,0,g,0.22); end=env(0.006,0.25,0.85,0.08,0.62*v); break;
     case 'Reese': { const b=lp(220+T*1900,2.2); osc('sawtooth',f,-9,b); osc('sawtooth',f,9,b); osc('sine',f,0,g,0.5); end=env(0.01,0.3,0.85,0.1,0.32*v); break; }
     case 'Pluck': { const b=lp(200,5); b.frequency.setValueAtTime(700+T*5200,t); b.frequency.setTargetAtTime(160,t,0.07); osc('sawtooth',f,0,b); osc('sine',f,0,g,0.4); end=env(0.003,0.3,0.3,0.1,0.5*v); break; }
-    case 'Saw': { const b=lp(1100+T*6000,1); osc('sawtooth',f,-7,b); osc('sawtooth',f,7,b); const l=c.createOscillator(), lg=c.createGain(); l.frequency.value=5.4; lg.gain.setValueAtTime(0,t); lg.gain.linearRampToValueAtTime(9,t+0.35); l.connect(lg); oscs.forEach(o=>lg.connect(o.detune)); oscs.push(l); end=env(0.012,0.25,0.75,0.12,0.22*v); break; }
+    case 'Saw': { const b=lp(1100+T*6000,1); osc('sawtooth',f,-7,b); osc('sawtooth',f,7,b); const l=c.createOscillator(), lg=c.createGain(); l.frequency.value=5.4; lg.gain.setValueAtTime(0,t); lg.gain.linearRampToValueAtTime(9,t+0.35); l.connect(lg); oscs.forEach(o=>lg.connect(o.detune)); l._lfo=1; oscs.push(l); end=env(0.012,0.25,0.75,0.12,0.22*v); break; }
     case 'Square': { const b=lp(800+T*5000,1); osc('square',f,0,b); osc('square',f*2,4,b,0.18); end=env(0.005,0.18,0.6,0.1,0.2*v); break; }
     case 'Bell': { const car=osc('sine',f); const mod=c.createOscillator(), mg=c.createGain(); mod.frequency.value=f*3.5; mg.gain.setValueAtTime(f*(1.5+T*4),t); mg.gain.setTargetAtTime(0,t,0.35); mod.connect(mg); mg.connect(car.frequency); oscs.push(mod); osc('sine',f*2,0,g,0.15); end=env(0.002,1.5,0,0.6,0.32*v); break; }
     case 'E-piano': { const car=osc('sine',f); const mod=c.createOscillator(), mg=c.createGain(); mod.frequency.value=f; mg.gain.setValueAtTime(f*(0.6+T*2.2),t); mg.gain.setTargetAtTime(f*0.15,t,0.15); mod.connect(mg); mg.connect(car.frequency); oscs.push(mod); osc('sine',f*4.01,0,g,0.05); end=env(0.003,1.2,0.35,0.25,0.34*v); break; }
     case 'Organ': { const b=lp(1500+T*6000,0.7); [1,2,3,4,6].forEach((h,i)=>osc('sine',f*h,0,b,[1,0.7,0.4,0.25,0.12][i])); end=env(0.008,0.1,1,0.06,0.13*v); break; }
     case 'Warm pad': { const b=lp(450+T*2600,0.8); [-11,0,11].forEach(d=>osc('sawtooth',f,d,b)); osc('sine',f/2,0,g,0.3); end=env(0.32,0.6,0.85,0.7,0.13*v); break; }
-    case 'Strings': { const b=lp(1300+T*3500,0.7); [-7,7].forEach(d=>osc('sawtooth',f,d,b)); const l=c.createOscillator(), lg=c.createGain(); l.frequency.value=5; lg.gain.value=7; l.connect(lg); oscs.forEach(o=>lg.connect(o.detune)); oscs.push(l); end=env(0.16,0.3,0.9,0.45,0.15*v); break; }
+    case 'Strings': { const b=lp(1300+T*3500,0.7); [-7,7].forEach(d=>osc('sawtooth',f,d,b)); const l=c.createOscillator(), lg=c.createGain(); l.frequency.value=5; lg.gain.value=7; l.connect(lg); oscs.forEach(o=>lg.connect(o.detune)); l._lfo=1; oscs.push(l); end=env(0.16,0.3,0.9,0.45,0.15*v); break; }
     default: osc('triangle',f); end=env(0.005,0.2,0.7,0.1,0.3*v);
   }
+  if(fromM!==null && fromM!==m){ // portamento: every pitched oscillator starts at the previous note and slides here
+    const ratio=Math.pow(2,(fromM-m)/12), gt=Math.min(0.09,Math.max(0.03,dur*0.35));
+    oscs.forEach(o=>{ if(o._lfo) return; const f0=o.frequency.value; o.frequency.setValueAtTime(f0*ratio,t); o.frequency.exponentialRampToValueAtTime(f0,t+gt); }); }
   oscs.forEach(o=>{ o.start(t); o.stop(end); });
 }
 function stepTime(s){ const sd=stepDur(); return (s + (s%2===1 ? (S.swing/100)*0.5 : 0))*sd; }
@@ -790,7 +802,8 @@ async function renderStem(tr){
   let out=oc.createGain(); out.connect(oc.destination);
   const d=INST[tr.inst];
   if(d.kind!=='pitched' && tr.sound==='Lo-fi'){ const lp=oc.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=3600; const sh=oc.createWaveShaper(); sh.curve=driveCurve(0.5); out.disconnect(); out.connect(sh); sh.connect(lp); lp.connect(oc.destination); }
-  if(d.kind==='pitched'){ for(const nt of tr.notes){ const ts=stepTime(nt.s), dur=Math.max(0.05,nt.l*stepDur()-0.012); const ps=notePitches(tr,nt); ps.forEach(pp=>voice(oc,out,tr.sound,ts+0.002,dur,pp+12*tr.oct,nt.v*(ps.length>1?0.62:1),T)); } }
+  if(d.kind==='pitched'){ for(const nt of tr.notes){ const ts=stepTime(nt.s), dur=Math.max(0.05,nt.l*stepDur()-0.012); const ps=notePitches(tr,nt); const pv=slidesOn(tr)&&nt.g ? tr.notes.find(o=>o!==nt && o.s+o.l===nt.s) : null; const pps=pv?notePitches(tr,pv):null;
+    ps.forEach((pp,j)=>voice(oc,out,tr.sound,ts+0.002,dur,pp+12*tr.oct,nt.v*(ps.length>1?0.62:1),T, pps?pps[Math.min(j,pps.length-1)]+12*tr.oct:null)); } }
   else { for(const h of tr.hits) drumHit(oc,out,h.d,stepTime(h.s)+0.002,h.v,tr.sound,T); }
   const r=await oc.startRendering();
   const b=ctx.createBuffer(2,n,sr);
@@ -1165,10 +1178,12 @@ function renderTracks(){
       <div class="knobs"></div>
       <div class="tfoot">
         <span class="grp">Move <button class="ibtn nl" aria-label="Move one step earlier">◀</button><button class="ibtn nr" aria-label="Move one step later">▶</button></span>
+        ${pitched?`<button class="ibtn sld" aria-pressed="${slidesOn(tr)}" title="Slide between notes where you slid">Slides ${slidesOn(tr)?'on':'off'}</button>`:''}
         ${pitched?`<button class="ibtn chd" aria-pressed="${chordsOn(tr)}" title="Play each note as a chord from the key">Chords ${chordsOn(tr)?'on':'off'}</button>`:''}
         ${pitched?`<span class="grp">Octave <button class="ibtn od" aria-label="Octave down">−</button><b class="ov">${tr.oct>0?'+':''}${tr.oct}</b><button class="ibtn ou" aria-label="Octave up">+</button></span>`:''}
         ${tr._raw?'<button class="ibtn orig">▶ '+((tr.takeN||1)>1?'Last take':'Your take')+'</button>':''}
         ${!pitched&&(tr.takeN||1)>1?'<button class="ibtn undo">Undo last take</button>':''}
+        ${tr._raw?'<button class="ibtn savetake" title="Download your raw recording">Save take</button>':''}
         <span class="grp tip">${pitched?'Press and drag to draw a note; drag a note’s end to resize it or its middle to move it; tap a note to remove it.':'Tap the grid to add or remove hits.'}${tr._an?' Small ticks on top show exactly when you made each sound.':''}</span>
       </div>`;
     box.appendChild(el);
@@ -1190,6 +1205,8 @@ function renderTracks(){
       el.querySelector('.od').onclick=()=>so(-1); el.querySelector('.ou').onclick=()=>so(1); }
     const ob=el.querySelector('.orig'); if(ob) ob.onclick=()=>playOriginal(tr,ob);
     const cb2=el.querySelector('.chd'); if(cb2) cb2.onclick=()=>{ tr.chords=!chordsOn(tr); cb2.setAttribute('aria-pressed',tr.chords); cb2.textContent='Chords '+(tr.chords?'on':'off'); tr._dirty=true; save(); drawGrid(tr); scheduleRender(); };
+    const sb2=el.querySelector('.sld'); if(sb2) sb2.onclick=()=>{ tr.slides=!slidesOn(tr); sb2.setAttribute('aria-pressed',tr.slides); sb2.textContent='Slides '+(tr.slides?'on':'off'); tr._dirty=true; save(); scheduleRender(); };
+    const st2=el.querySelector('.savetake'); if(st2) st2.onclick=()=>saveTake(tr);
     const ub=el.querySelector('.undo'); if(ub) ub.onclick=()=>undoTake(tr);
     const cv=el.querySelector('canvas');
     if(pitched){ cv.style.touchAction='pan-y'; cv.addEventListener('pointerdown',e=>noteDown(tr,e)); cv.addEventListener('pointermove',e=>noteMove(tr,e)); cv.addEventListener('pointerup',e=>noteUp(tr,e)); cv.addEventListener('pointercancel',e=>noteUp(tr,e,true)); }
@@ -1435,6 +1452,12 @@ async function exportZip(){
     await offerFile(fname, blob);
   } catch(e){ toast('Export failed: '+(e&&e.message||e)); }
   finally{ btn.disabled=false; btn.textContent='Download song (.zip)'; }
+}
+async function saveTake(tr){
+  const {x,sr}=tr._raw, b=ctx.createBuffer(1,x.length,sr); b.copyToChannel(x,0);
+  const nm=`mouth-machine-take-${INST[tr.inst].label.toLowerCase().replace(/\s+/g,'-')}-${S.bpm}bpm`;
+  const info=JSON.stringify({inst:tr.inst,bpm:S.bpm,bars:S.bars,quant:S.quant,latMs:S.latAuto?'auto':S.latMs,calibrated:!!S.calibrated,align:tr._an&&tr._an.align,live:tr._an&&tr._an.live,notes:tr.notes,hits:tr.hits,ua:navigator.userAgent},null,1);
+  await offerFile(nm+'.zip', zip([{name:nm+'.wav',data:wavBytes(b)},{name:nm+'.json',data:new TextEncoder().encode(info)}]));
 }
 async function offerFile(filename, blob){
   let dl=null; try{ if(window.claude&&window.claude.use) dl=await window.claude.use('downloads'); }catch(e){}
