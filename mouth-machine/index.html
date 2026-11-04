@@ -189,6 +189,7 @@ details summary{cursor:pointer;font-weight:600}
     <p class="note" id="micNote" hidden></p>
     <div class="note calnote" id="calNote" hidden><p><b>First time recording here?</b> Calibrate once (about 10 seconds of clapping) so your hits land on the right steps. Bluetooth headphones like AirPods add a big delay, so calibrate with the headphones you’ll use.</p><button class="btn" id="calNow">Calibrate</button></div>
     <label class="chk" id="playAlongRow"><input type="checkbox" id="playAlong"> <span>Play the other parts while I record (wear headphones so the mic doesn’t hear them)</span></label>
+    <label class="chk" id="mergeRow" hidden><input type="checkbox" id="mergeDrums"> <span>Layer this take onto my existing Drums part (turn off to make a separate part)</span></label>
     <label class="chk" id="detectRow"><input type="checkbox" id="detectTempo" checked> <span>Set the tempo and loop length from this recording (first part only)</span></label>
   </section>
 
@@ -276,7 +277,7 @@ function mkTrack(inst, o={}){
 }
 function S0sens(){ return (typeof S!=='undefined' && S) ? S.sens : 55; }
 function defaultState(){
-  return {v:1,bpm:94,bars:2,swing:14,key:'auto',scale:'auto',quant:16,metro:false,playAlong:false,ec:false,calibrated:false,latAuto:true,latMs:80,sens:55,loops:4,
+  return {v:1,bpm:94,bars:2,swing:14,key:'auto',scale:'auto',quant:16,metro:false,playAlong:false,ec:false,calibrated:false,mergeDrums:true,latAuto:true,latMs:80,sens:55,loops:4,
     master:{vol:80,rev:45,drive:20,punch:50}, inst:'kit', nextId:10, tracks:null};
 }
 let S = defaultState();
@@ -467,14 +468,21 @@ function detectTempo(times, w){
   return Math.round(best);
 }
 /* turn a take's timings into grid steps for the current tempo */
+function takeHits(tk){
+  const an=tk.an, n=steps(), sd=stepDur(), q=S.quant==8?2:1, kind=INST[tk.inst].kind, out=[];
+  for(const o of an.onsets){ const r=(o.t-an.align)/sd; if(r<-0.5*q) continue; const s=Math.max(0,Math.round(r/q)*q); if(s>=n) continue;
+    out.push({s, d:kind==='drums'?o.cls:INST[tk.inst].drum, v:+o.v.toFixed(2), k:tk.id}); }
+  return out;
+}
 function quantizeTrack(tr){
   const an=tr._an; if(!an) return;
   const n=steps(), sd=stepDur(), q=S.quant==8?2:1, kind=INST[tr.inst].kind;
   const raw=t=>(t-an.align)/sd;
   if(kind!=='pitched'){
-    const map=new Map();
-    for(const o of an.onsets){ const r=raw(o.t); if(r<-0.5*q) continue; let s=Math.max(0,Math.round(r/q)*q); if(s>=n) continue;
-      const d=kind==='drums'?o.cls:INST[tr.inst].drum; const k=s+d; if(!map.has(k)||map.get(k).v<o.v) map.set(k,{s,d,v:+o.v.toFixed(2)}); }
+    const takes = tr._takes || [{id:tr.takeN||1, inst:tr.inst, an}];
+    let hits=tr.hits||[];
+    for(const tk of takes){ hits=hits.filter(h=>h.k!==tk.id).concat(takeHits(tk)); }
+    const map=new Map(); for(const h of hits){ const key=h.s+h.d; if(!map.has(key)||map.get(key).v<h.v) map.set(key,h); }
     tr.hits=[...map.values()].sort((a,b)=>a.s-b.s);
   } else {
     let ns=[];
@@ -667,7 +675,7 @@ function updatePlayBtn(){ const f=$('fab'); if(f){ f.setAttribute('aria-label',p
   b.innerHTML = playing ? '<svg viewBox="0 0 20 20" fill="currentColor"><rect x="4" y="4" width="12" height="12" rx="1.5"/></svg>' : '<svg viewBox="0 0 20 20" fill="currentColor"><path d="M5 3l12 7-12 7z"/></svg>'; }
 
 /* ============================== mic + recording ============================== */
-let mic=null, capturing=false, recState=null;
+let mic=null, capturing=false, recState=null, guessFix=null;
 function micAllowedByPage(){
   if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || !window.isSecureContext) return false;
   try{ const pp=document.permissionsPolicy||document.featurePolicy; if(pp&&pp.allowsFeature) return pp.allowsFeature('microphone'); }catch(e){}
@@ -721,7 +729,7 @@ async function startRecord(calib=false){
   capturing=true; setRecUI(true);
 }
 function cancelRecord(){ capturing=false; recState=null; stopAll(); setRecUI(false); toast('Recording cancelled'); }
-function setRecUI(on){ ['instHint','calNote','playAlongRow','detectRow','micNote'].forEach(id=>{ const el=$(id); if(!el) return; if(on){ el.dataset.wasHidden=el.hidden?'1':''; el.hidden=true; } else if(el.dataset.wasHidden!==undefined){ el.hidden=el.dataset.wasHidden==='1'; delete el.dataset.wasHidden; } });
+function setRecUI(on){ ['instHint','calNote','playAlongRow','detectRow','micNote','mergeRow'].forEach(id=>{ const el=$(id); if(!el) return; if(on){ el.dataset.wasHidden=el.hidden?'1':''; el.hidden=true; } else if(el.dataset.wasHidden!==undefined){ el.hidden=el.dataset.wasHidden==='1'; delete el.dataset.wasHidden; } });
   if(on) requestAnimationFrame(()=>{ try{ $('recStatus').scrollIntoView({block:'center',behavior:'smooth'}); }catch(e){} }); $('recStatus').hidden=!on; $('recBtn').classList.toggle('live',on); $('recTxt').textContent=on?'Stop':'Record'; $('importBtn').disabled=on; $('calBtn').disabled=on; }
 function assemble(chunks, a, b, sr){
   const n=Math.max(1,Math.round((b-a)*sr)), out=new Float32Array(n);
@@ -790,12 +798,31 @@ async function addTake(x, sr, inst, opt){
       if(bpm){ S.bpm=bpm; const span=(Math.max(...times)-an.align)/stepDur(); S.bars=[1,2,4,8].find(b=>b*16>=span+1)||8; msg=` Tempo set to ${bpm} BPM, ${S.bars} bar${S.bars>1?'s':''}.`; syncTransport(); }
     }
     if(opt.live){ const cb=removeClickBleed(an.onsets, an.align); if(cb.removed){ an.onsets=cb.ons; an.bleed=cb.removed; if(kind!=='pitched'&&an.onsets[0]) first=an.onsets[0].t; } }
-    an.align=fitAlign(takeTimes(an,inst), an.align); if(!opt.live) an.align=Math.min(an.align, first+0.02);
-    if(opt.live && S.latAuto && !S.calibrated){
-      // not calibrated yet: if the first sound lands 1–3 steps after the downbeat, it was most likely meant for beat one
+    if(userTracks().length===0) guessFix=null;   // starting over: re-learn the mic delay
+    const unCal = opt.live && S.latAuto && !S.calibrated;
+    an.align=fitAlign(takeTimes(an,inst), an.align + (unCal && guessFix!=null ? guessFix : 0)); if(!opt.live) an.align=Math.min(an.align, first+0.02);
+    if(unCal && guessFix==null){
+      // not calibrated yet: if the first sound lands 1–3 steps after the downbeat, it was most likely meant for beat one.
+      // Later takes reuse the same correction (the delay doesn't change), so a layer that starts on the off-beat stays there.
       const k=Math.round((first-an.align)/stepDur()); if(k>=1 && k<=3){ an.align+=k*stepDur(); an.guessed=k; }
+      guessFix = an.align-an.base;
     }
-    tr._an=an; tr._raw={x,sr};
+    const isDrum = kind!=='pitched';
+    const target = isDrum && S.mergeDrums ? [...userTracks()].reverse().find(t=>INST[t.inst].kind!=='pitched') : null;
+    if(target){
+      const id=(target.takeN||1)+1; target.takeN=id;
+      if(!target._takes) target._takes = target._an ? [{id:id-1, inst:target.inst, an:target._an, raw:target._raw}] : [];
+      target._takes.push({id, inst, an, raw:{x,sr}}); target._an=an; target._raw={x,sr};
+      if(target.inst!=='kit' && target.inst!==inst) target.inst='kit';
+      quantizeTrack(target);
+      const added=target.hits.filter(h=>h.k===id); const c={}; added.forEach(h=>c[h.d]=(c[h.d]||0)+1);
+      save(); renderTracks();
+      toast(`Layered ${added.length} hits onto ${INST[target.inst].label} (${Object.entries(c).map(([d,n])=>n+' '+d).join(', ')||'none'}). Take ${id}; tap Undo last take to remove it.`+(an.bleed?` Ignored ${an.bleed} metronome clicks.`:''));
+      target._dirty=true; await renderDirty();
+      if(!playing){ playing=true; updatePlayBtn(); startAll(ctx.currentTime+0.08); }
+      return;
+    }
+    tr._an=an; tr._raw={x,sr}; tr.takeN=1; tr._takes=[{id:1,inst,an,raw:{x,sr}}];
     if(userTracks().length===0){ S.tracks.filter(t=>t.ex).forEach(disposeTrack); S.tracks=[]; }
     quantizeTrack(tr);
     const count = kind==='pitched'? tr.notes.length : tr.hits.length;
@@ -809,12 +836,20 @@ async function addTake(x, sr, inst, opt){
   } finally { busy(); }
 }
 function reanalyze(tr){
-  if(!tr._raw) return;
-  const an=analyzeTake(tr._raw.x,tr._raw.sr,tr.inst,tr.sens,tr._an.notchUsed??true);
-  if(tr._an.live){ const cb=removeClickBleed(an.onsets, tr._an.base); an.onsets=cb.ons; }
-  const kind=INST[tr.inst].kind; const first= kind==='pitched'?(an.notes[0]&&an.notes[0].t0):(an.onsets[0]&&an.onsets[0].t);
-  an.base = tr._an.live ? tr._an.base : (first!=null?Math.max(0,first-0.004):tr._an.base); an.align=fitAlign(takeTimes(an,tr.inst), an.base)+(tr._an.nudged||0); an.nudged=tr._an.nudged||0;
-  an.live=tr._an.live; tr._an=an; quantizeTrack(tr); tr._dirty=true; if(kind==='pitched') keyChanged(); save(); redrawTrack(tr); scheduleRender();
+  if(!tr._raw || !tr._an) return;
+  const tk = tr._takes && tr._takes[tr._takes.length-1], tinst = tk ? tk.inst : tr.inst, old = tr._an;
+  const an=analyzeTake(tr._raw.x,tr._raw.sr,tinst,tr.sens,old.notchUsed??true);
+  if(old.live){ const cb=removeClickBleed(an.onsets, old.base); an.onsets=cb.ons; }
+  an.base=old.base; an.live=old.live; an.notchUsed=old.notchUsed;
+  an.align=fitAlign(takeTimes(an,tinst), old.align);
+  if(tk) tk.an=an; tr._an=an;
+  const kind=INST[tr.inst].kind; quantizeTrack(tr); tr._dirty=true; if(kind==='pitched') keyChanged(); save(); redrawTrack(tr); scheduleRender();
+}
+function undoTake(tr){
+  const id=tr.takeN||1; if(id<2) return;
+  tr.hits=tr.hits.filter(h=>h.k!==id); tr.takeN=id-1;
+  if(tr._takes){ tr._takes=tr._takes.filter(t=>t.id!==id); const last=tr._takes[tr._takes.length-1]; tr._an=last?last.an:null; tr._raw=last?last.raw:null; }
+  tr._dirty=true; save(); renderTracks(); scheduleRender(); toast('Removed take '+id);
 }
 function disposeTrack(tr){ if(tr._src){ try{tr._src.stop();}catch(e){} } if(tr._g){ try{tr._g.disconnect(); tr._p.disconnect(); tr._snd.disconnect();}catch(e){} } }
 async function importFile(file){
@@ -836,8 +871,9 @@ function buildPads(){
   const p=$('pads'); p.innerHTML='';
   Object.entries(INST).forEach(([k,d])=>{ const b=document.createElement('button'); b.className='pad'; b.style.setProperty('--c',d.color); b.setAttribute('aria-pressed',S.inst===k);
     b.innerHTML=`<i></i><b>${d.label}</b><small>${d.say}</small>`; b.onclick=()=>{ S.inst=k; save(); buildPads(); }; p.appendChild(b); });
-  $('instHint').textContent=INST[S.inst].hint;
+  $('instHint').textContent=INST[S.inst].hint; updateMergeRow();
 }
+function updateMergeRow(){ const r=$('mergeRow'); if(!r||recState) return; r.hidden=!(INST[S.inst].kind!=='pitched' && userTracks().some(t=>INST[t.inst].kind!=='pitched')); }
 function knob(parent,{id,label,min,max,val,fmt,oninput,color,step=1}){
   const w=document.createElement('div'); w.className='knob'; if(color) w.style.setProperty('--c',color);
   w.innerHTML=`<label for="${id}">${label}<span></span></label><input type="range" id="${id}" min="${min}" max="${max}" step="${step}" value="${val}">`;
@@ -848,7 +884,7 @@ const pct=v=>v+'%';
 function renderTracks(){
   const box=$('tracks'); box.innerHTML='';
   $('exBanner').hidden=!S.tracks.some(t=>t.ex);
-  $('detectRow').hidden=userTracks().length>0;
+  $('detectRow').hidden=userTracks().length>0; updateMergeRow();
   if(!S.tracks.length){ box.innerHTML='<div class="empty">No parts yet. Pick an instrument above and record or import your first take.</div>'; return; }
   const counts={};
   S.tracks.forEach(tr=>{
@@ -866,7 +902,8 @@ function renderTracks(){
       <div class="tfoot">
         <span class="grp">Move <button class="ibtn nl" aria-label="Move one step earlier">◀</button><button class="ibtn nr" aria-label="Move one step later">▶</button></span>
         ${pitched?`<span class="grp">Octave <button class="ibtn od" aria-label="Octave down">−</button><b class="ov">${tr.oct>0?'+':''}${tr.oct}</b><button class="ibtn ou" aria-label="Octave up">+</button></span>`:''}
-        ${tr._raw?'<button class="ibtn orig">▶ Your take</button>':''}
+        ${tr._raw?'<button class="ibtn orig">▶ '+((tr.takeN||1)>1?'Last take':'Your take')+'</button>':''}
+        ${!pitched&&(tr.takeN||1)>1?'<button class="ibtn undo">Undo last take</button>':''}
         <span class="grp tip">${pitched?'Tap a note to remove it, or an empty cell to add one.':'Tap the grid to add or remove hits.'}${tr._an?' Small ticks on top show exactly when you made each sound.':''}</span>
       </div>`;
     box.appendChild(el);
@@ -887,13 +924,14 @@ function renderTracks(){
     if(pitched){ const ov=el.querySelector('.ov'); const so=dv=>{ tr.oct=clamp(tr.oct+dv,-3,3); ov.textContent=(tr.oct>0?'+':'')+tr.oct; tr._dirty=true; save(); scheduleRender(); };
       el.querySelector('.od').onclick=()=>so(-1); el.querySelector('.ou').onclick=()=>so(1); }
     const ob=el.querySelector('.orig'); if(ob) ob.onclick=()=>playOriginal(tr,ob);
+    const ub=el.querySelector('.undo'); if(ub) ub.onclick=()=>undoTake(tr);
     const cv=el.querySelector('canvas'); cv.addEventListener('pointerdown',e=>gridTap(tr,e));
     tr._cv=cv; tr._ph=el.querySelector('.ph');
     drawGrid(tr);
   });
 }
 function redrawTrack(tr){ if(tr._cv) drawGrid(tr); }
-function nudge(tr,dv){ const n=steps(); if(tr._an){ tr._an.align-=dv*stepDur(); tr._an.nudged=(tr._an.nudged||0)-dv*stepDur(); } if(tr.hits) tr.hits.forEach(h=>h.s=((h.s+dv)%n+n)%n); if(tr.notes){ tr.notes.forEach(x=>x.s=((x.s+dv)%n+n)%n); tr.notes.sort((a,b)=>a.s-b.s); } tr._dirty=true; save(); redrawTrack(tr); scheduleRender(); }
+function nudge(tr,dv){ const n=steps(); new Set([...(tr._takes||[]).map(t=>t.an), tr._an].filter(Boolean)).forEach(a=>a.align-=dv*stepDur()); if(tr.hits) tr.hits.forEach(h=>h.s=((h.s+dv)%n+n)%n); if(tr.notes){ tr.notes.forEach(x=>x.s=((x.s+dv)%n+n)%n); tr.notes.sort((a,b)=>a.s-b.s); } tr._dirty=true; save(); redrawTrack(tr); scheduleRender(); }
 let origSrc=null;
 function playOriginal(tr,btn){ ensureCtx(); if(origSrc){ try{origSrc.stop();}catch(e){} origSrc=null; btn.textContent='▶ Your take'; return; }
   const {x,sr}=tr._raw; const b=ctx.createBuffer(1,x.length,sr); b.copyToChannel(x,0); const s=ctx.createBufferSource(); s.buffer=b; s.connect(ctx.destination); s.start();
@@ -939,7 +977,8 @@ function drawGrid(tr){
 }
 function rawTicks(tr,g,X,Y,cw,lineH,n,sPL,gut,lines,gapH){
   const an=tr._an; if(!an) return; const sd=stepDur(); g.fillStyle=cssVar('--ink'); g.globalAlpha=0.55;
-  for(const t of takeTimes(an,tr.inst)){ const r=(t-an.align)/sd; if(r<-0.5||r>=n-0.5) continue; const rc=r<0?0:r; const L=Math.min(lines-1,Math.floor((rc+0.5)/sPL)); const x=gut+(r-L*sPL+0.5)*cw; g.fillRect(x-0.75,L*(lineH+gapH),1.5,4); }
+  const sets = tr._takes ? tr._takes.map(tk=>takeTimes(tk.an,tk.inst)) : [takeTimes(an,tr.inst)];
+  for(const t of sets.flat()){ const r=(t-an.align)/sd; if(r<-0.5||r>=n-0.5) continue; const rc=r<0?0:r; const L=Math.min(lines-1,Math.floor((rc+0.5)/sPL)); const x=gut+(r-L*sPL+0.5)*cw; g.fillRect(x-0.75,L*(lineH+gapH),1.5,4); }
   g.globalAlpha=1;
 }
 function rr(g,x,y,w,h,r){ g.beginPath(); g.moveTo(x+r,y); g.arcTo(x+w,y,x+w,y+h,r); g.arcTo(x+w,y+h,x,y+h,r); g.arcTo(x,y+h,x,y,r); g.arcTo(x,y,x+w,y,r); g.closePath(); }
@@ -983,6 +1022,7 @@ function init(){
   $('recBtn').onclick=()=>startRecord(false);
   $('importBtn').onclick=()=>$('fileIn').click();
   $('fileIn').onchange=e=>{ const f=e.target.files[0]; e.target.value=''; if(f) importFile(f); };
+  $('mergeDrums').checked=S.mergeDrums; $('mergeDrums').onchange=e=>{ S.mergeDrums=e.target.checked; save(); };
   $('playAlong').checked=S.playAlong; $('playAlong').onchange=e=>{ S.playAlong=e.target.checked; save(); };
   $('clearEx').onclick=()=>{ S.tracks.filter(t=>t.ex).forEach(disposeTrack); S.tracks=S.tracks.filter(t=>!t.ex); keyChanged(); save(); renderTracks(); };
   const showCal=()=>{ $('calNote').hidden=!( !S.calibrated && !$('recBtn').hidden ); }; showCal(); window._showCal=showCal;
