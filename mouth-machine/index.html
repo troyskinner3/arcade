@@ -254,10 +254,10 @@ const INST = {
   snare:{label:'Snare', kind:'drum', drum:'snare', color:'#f0a238', say:'ch · K · Pf', sounds:DRUM_SOUNDS, hint:'Just the snare. ch, K, Pf or psh all work.'},
   hat:  {label:'Hi-hat', kind:'drum', drum:'hat', color:'#22b0a0', say:'ts · tk', sounds:DRUM_SOUNDS, hint:'Just the hi-hats. Say ts, tk or tss.'},
   clap: {label:'Clap', kind:'drum', drum:'clap', color:'#e2689f', say:'k · clap', sounds:DRUM_SOUNDS, hint:'Claps. Say k, clap, or snap your fingers. Any short, sharp sound works.'},
-  bass: {label:'Bass', kind:'pitched', oct:-1, color:'#7b6cf6', say:'hum low', sounds:['Sub','Reese','Pluck'], hint:'Hum the bass line. It plays an octave lower than you hum.'},
-  lead: {label:'Lead', kind:'pitched', oct:0, color:'#3a8dde', say:'hum · whistle', sounds:['Saw','Square','Bell'], hint:'Hum, sing “doo”, or whistle a melody. Separate notes with a little breath or a new syllable.'},
-  keys: {label:'Keys', kind:'pitched', oct:0, color:'#8fbf3a', say:'hum', sounds:['E-piano','Organ'], hint:'Hum a riff. It plays on electric piano or organ.'},
-  pad:  {label:'Pad', kind:'pitched', oct:0, color:'#b77ce8', say:'hum long', sounds:['Warm pad','Strings'], hint:'Hum long, slow notes. They play as a soft pad.'},
+  bass: {label:'Bass', kind:'pitched', oct:-1, color:'#7b6cf6', say:'sing low', sounds:['Sub','Reese','Pluck'], hint:'Sing or hum the bass line. It plays an octave lower than you sing.'},
+  lead: {label:'Lead', kind:'pitched', oct:0, color:'#3a8dde', say:'sing · whistle', sounds:['Saw','Square','Bell'], hint:'Sing (“ahh”, “ooo”, “doo”), hum, or whistle a melody. Slides between notes are fine.'},
+  keys: {label:'Keys', kind:'pitched', oct:0, color:'#8fbf3a', say:'hum', sounds:['E-piano','Organ'], hint:'Sing or hum a riff. Each note becomes a chord on electric piano or organ.'},
+  pad:  {label:'Pad', kind:'pitched', oct:0, color:'#b77ce8', say:'sing long', sounds:['Warm pad','Strings'], hint:'Sing or hum long, slow notes. Each becomes a chord on a soft pad.'},
 };
 /* Every sound a drum-kit slot can play (all synthesized, plus "my own noise", which plays back your taught recording). */
 const SOUNDS = {
@@ -522,7 +522,7 @@ function trackNotes(x, sr, onsets, sens){
   // whistling? use the whistle tracker instead of the hum tracker
   const wf=whistleFrames(x,sr), hv=frames.filter(f=>f.conf<0.2).length, wvF=wf.filter(f=>f.conf<0.2), wv=wvF.length;
   let whistled=false;
-  if(wv>=8 && wv>hv*0.7 && median(wvF.map(f=>f.hz))>650){ frames.length=0; frames.push(...wf); whistled=true; }
+  if(wv>=8 && wv>hv*0.7 && median(wvF.map(f=>f.hz))>950){ frames.length=0; frames.push(...wf); whistled=true; }
   if(!frames.length) return [];
   const dbs=frames.map(f=>f.db), floor=percentile(dbs,0.15), top=percentile(dbs,0.99);
   const gate=floor+Math.max(8,(top-floor)*(0.42-0.25*sN)), cth=0.2+0.12*sN;
@@ -530,20 +530,32 @@ function trackNotes(x, sr, onsets, sens){
   const sm=frames.map((f,i)=>{ if(!voiced[i]) return NaN; const w=[]; for(let j=i-2;j<=i+2;j++) if(j>=0&&j<frames.length&&voiced[j]) w.push(frames[j].m); return median(w); });
   const onF=onsets.filter(o=>o.rise>6).map(o=>o.t);
   const nearOnset=(t)=>onF.some(ot=>Math.abs(ot-t)<0.012);
-  const notes=[]; let cur=null, unv=0, dev=0, devStart=-1, lastV=-1;
-  const hopS=hop/R;
-  const close=(endI)=>{ if(!cur) return; const dur=(endI-cur.i0+1)*hopS; if(dur>=0.07 && cur.ps.length) notes.push({t0:frames[cur.i0].t-hopS/2, t1:frames[endI].t+hopS/2, p:median(cur.ps), db:cur.e}); cur=null; };
+  const notes=[], hopS=0.01;
+  // 1. voiced stretches, broken by a breath (>=30 ms unvoiced) or a fresh attack (a new syllable)
+  const segs=[]; let a0=-1, unv=0, last=-1;
   for(let i=0;i<frames.length;i++){
-    if(!voiced[i]){ if(cur){ unv++; if(unv>=3){ close(lastV); unv=0; } } continue; }
-    unv=0; const m=sm[i], t=frames[i].t;
-    if(!cur){ cur={i0:i,ps:[m],e:frames[i].db}; dev=0; lastV=i; continue; }
-    const ref=median(cur.ps.slice(-8));
-    const isOn = nearOnset(t) && (i-cur.i0)*hopS>0.08;
-    if(Math.abs(m-ref)>0.8){ if(dev===0) devStart=i; dev++; } else dev=0;
-    if(isOn || dev>=4){ const at=isOn?i:devStart; close(at-1); cur={i0:at, ps:isOn?[m]:sm.slice(devStart,i+1).filter(v=>!isNaN(v)), e:frames[i].db}; dev=0; lastV=i; continue; }
-    if(dev===0) cur.ps.push(m); cur.e=Math.max(cur.e,frames[i].db); lastV=i;
+    if(voiced[i]){ if(a0<0) a0=i; else if(nearOnset(frames[i].t) && (i-a0)*hopS>0.08){ segs.push([a0,last]); a0=i; } last=i; unv=0; }
+    else if(a0>=0){ unv++; if(unv>=3){ segs.push([a0,last]); a0=-1; unv=0; } }
   }
-  if(cur) close(lastV);
+  if(a0>=0) segs.push([a0,last]);
+  // 2. inside each stretch, find the steady pitches you settle on. A slide or scoop belongs to the note it
+  //    slides INTO, and a short fall-off at the end belongs to the note before it, so neither becomes its own note.
+  for(const [a,b] of segs){
+    if((b-a+1)*hopS<0.07) continue;
+    const lab=[]; let cur=null;
+    for(let i=a;i<=b;i++){ const m=sm[i]; if(!isNaN(m)){ if(cur===null||Math.abs(m-cur)>0.65) cur=Math.round(m); } lab.push(cur); }
+    const runs=[]; lab.forEach((l,j)=>{ const r=runs[runs.length-1]; if(r&&r.l===l) r.e=a+j; else runs.push({l,s:a+j,e:a+j}); });
+    // held = long enough AND not drifting (a slide moves steadily; vibrato wobbles around one pitch)
+    const drift=r=>{ const v=sm.slice(r.s,r.e+1).filter(x=>!isNaN(x)); if(v.length<6) return 99; const k=Math.max(2,Math.floor(v.length/4));
+      const h=v.slice(0,k).reduce((p,c)=>p+c,0)/k, t=v.slice(-k).reduce((p,c)=>p+c,0)/k; return Math.abs(t-h)/((v.length-k)*hopS); };
+    let pl=runs.filter(r=>r.l!==null && (r.e-r.s+1)*hopS>=0.08 && ((r.e-r.s+1)*hopS>=0.25 || drift(r)<4));
+    const merged=[]; for(const r of pl){ const m=merged[merged.length-1]; if(m&&m.l===r.l) m.e=r.e; else merged.push({...r}); } pl=merged;
+    const dbMax=(i0,i1)=>{ let m=-200; for(let i=i0;i<=i1;i++) m=Math.max(m,frames[i].db); return m; };
+    const pitchIn=(i0,i1)=>median(sm.slice(i0,i1+1).filter(v=>!isNaN(v)));
+    if(!pl.length){ notes.push({t0:frames[a].t-hopS/2, t1:frames[b].t+hopS/2, p:pitchIn(a,b), db:dbMax(a,b)}); continue; }
+    pl.forEach((r,k)=>{ const i0=k===0?a:pl[k-1].e+1, i1=k===pl.length-1?b:r.e;
+      notes.push({t0:frames[i0].t-hopS/2, t1:frames[i1].t+hopS/2, p:pitchIn(r.s+Math.floor((r.e-r.s)/2),r.e), db:dbMax(i0,i1)}); });
+  }
   const maxDb=notes.reduce((m,n)=>Math.max(m,n.db),-200);
   notes.forEach(n=>n.v=clamp(0.45+0.55*(n.db-(maxDb-20))/20,0.45,1));
   notes.whistled=whistled;
