@@ -720,6 +720,22 @@ function finishCalib(x,sr,pre){
   S.latAuto=false; S.calibrated=true; S.latMs=clamp(Math.round(md*1000),-50,600); save(); syncSettings(); if(window._showCal) window._showCal();
   toast('Mic delay set to '+S.latMs+' ms from '+dev.length+' claps');
 }
+/* Metronome bleed: when the click plays through the speaker, the mic hears it with machine-exact timing on every beat.
+   Find the phase where many onsets sit within a few ms of a perfect beat comb, and drop those (they're quieter than your hits). */
+function removeClickBleed(ons, pre){
+  if(ons.length<4) return {ons, removed:0};
+  const beat=60/S.bpm; let best=null;
+  for(const o of ons){ const ph=(((o.t-pre)%beat)+beat)%beat;
+    const m=ons.filter(q=>{ const d=(((q.t-pre-ph)%beat)+beat*1.5)%beat-beat/2; return Math.abs(d)<0.006; });
+    if(!best||m.length>best.length) best=m; }
+  const beats=Math.round(loopLen()/beat);
+  if(!best || best.length<Math.max(4,beats*0.5)) return {ons, removed:0};
+  const loud=median(ons.map(o=>o.db)), bleedDb=median(best.map(o=>o.db));
+  const others=ons.filter(o=>!best.includes(o));
+  // only treat it as bleed if your own sounds are clearly louder (or there are none, e.g. a silent take)
+  if(others.length && bleedDb > median(others.map(o=>o.db))-5) return {ons, removed:0};
+  return {ons:others, removed:best.length};
+}
 /* slide the grid by up to half a step so the take's hits sit as close to it as possible */
 function fitAlign(times, align){
   const g=stepDur()*(S.quant==8?2:1); if(times.length<2) return align;
@@ -738,7 +754,7 @@ async function addTake(x, sr, inst, opt){
     const tr=mkTrack(inst,{id:S.nextId++, sens:S.sens});
     const an=analyzeTake(x,sr,inst,tr.sens,opt.notch);
     const kind=INST[inst].kind;
-    const first = kind==='pitched' ? (an.notes[0]&&an.notes[0].t0) : (an.onsets[0]&&an.onsets[0].t);
+    let first = kind==='pitched' ? (an.notes[0]&&an.notes[0].t0) : (an.onsets[0]&&an.onsets[0].t);
     if(first===undefined){ toast(kind==='pitched'?'I couldn’t hear clear notes. Hum a little louder, or raise the sensitivity in Timing & mic.':'I couldn’t hear any hits. Try a little louder, or raise the sensitivity in Timing & mic.'); return; }
     an.align = opt.align!=null ? opt.align : Math.max(0,first-0.004); an.live=!!opt.live; an.notchUsed=!!opt.notch; an.base=an.align;
     let msg='';
@@ -747,6 +763,7 @@ async function addTake(x, sr, inst, opt){
       const bpm=detectTempo(times,w);
       if(bpm){ S.bpm=bpm; const span=(Math.max(...times)-an.align)/stepDur(); S.bars=[1,2,4,8].find(b=>b*16>=span+1)||8; msg=` Tempo set to ${bpm} BPM, ${S.bars} bar${S.bars>1?'s':''}.`; syncTransport(); }
     }
+    if(opt.live){ const cb=removeClickBleed(an.onsets, an.align); if(cb.removed){ an.onsets=cb.ons; an.bleed=cb.removed; if(kind!=='pitched'&&an.onsets[0]) first=an.onsets[0].t; } }
     an.align=fitAlign(takeTimes(an,inst), an.align); if(!opt.live) an.align=Math.min(an.align, first+0.02);
     if(opt.live && S.latAuto && !S.calibrated){
       // not calibrated yet: if the first sound lands 1–3 steps after the downbeat, it was most likely meant for beat one
@@ -760,7 +777,7 @@ async function addTake(x, sr, inst, opt){
     save(); renderTracks(); updateKeyInfo();
     let detail='';
     if(inst==='kit'){ const c={kick:0,snare:0,hat:0}; tr.hits.forEach(h=>c[h.d]=(c[h.d]||0)+1); detail=` (${c.kick} kick, ${c.snare} snare, ${c.hat} hat)`; }
-    toast(`${INST[inst].label}: ${count} ${kind==='pitched'?'notes':'hits'}${detail}.${msg}`+(opt.live&&!S.calibrated&&S.latAuto?' If it sounds late, calibrate once under Timing & mic.':''));
+    toast(`${INST[inst].label}: ${count} ${kind==='pitched'?'notes':'hits'}${detail}.${msg}`+(an.bleed?` Ignored ${an.bleed} metronome clicks the mic picked up; headphones avoid this.`:'')+(opt.live&&!S.calibrated&&S.latAuto?' If it sounds late, calibrate once under Timing & mic.':''));
     tr._dirty=true; await renderDirty();
     if(!playing){ playing=true; updatePlayBtn(); startAll(ctx.currentTime+0.08); }
   } finally { busy(); }
@@ -768,6 +785,7 @@ async function addTake(x, sr, inst, opt){
 function reanalyze(tr){
   if(!tr._raw) return;
   const an=analyzeTake(tr._raw.x,tr._raw.sr,tr.inst,tr.sens,tr._an.notchUsed??true);
+  if(tr._an.live){ const cb=removeClickBleed(an.onsets, tr._an.base); an.onsets=cb.ons; }
   const kind=INST[tr.inst].kind; const first= kind==='pitched'?(an.notes[0]&&an.notes[0].t0):(an.onsets[0]&&an.onsets[0].t);
   an.base = tr._an.live ? tr._an.base : (first!=null?Math.max(0,first-0.004):tr._an.base); an.align=fitAlign(takeTimes(an,tr.inst), an.base)+(tr._an.nudged||0); an.nudged=tr._an.nudged||0;
   an.live=tr._an.live; tr._an=an; quantizeTrack(tr); tr._dirty=true; if(kind==='pitched') keyChanged(); save(); redrawTrack(tr); scheduleRender();
