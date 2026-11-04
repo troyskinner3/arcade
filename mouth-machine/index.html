@@ -174,6 +174,10 @@ details.opts .optbody{display:flex;flex-direction:column;gap:10px;margin-top:10p
 .ctlbtn{height:34px;padding:0 10px;gap:6px;color:var(--muted)}
 .ctlbtn .chev{display:block;width:14px;height:14px}
 .ctlbtn[aria-expanded="true"]{color:var(--ink)}
+.notebar{display:flex;flex-direction:column;gap:6px;padding:8px;border-radius:10px;background:var(--cell);border:1px solid var(--c)}
+.notebar .nb-info{font-family:var(--f-mono);font-size:12px;color:var(--ink)}
+.notebar .nb-btns{display:flex;flex-wrap:wrap;gap:6px}
+.notebar .ibtn{min-width:40px}
 .ctl{display:flex;flex-direction:column;gap:10px;padding-top:4px;border-top:1px dashed var(--line)}
 .kitpanel{display:flex;flex-direction:column;gap:10px;padding:12px;border-radius:12px;background:var(--cell)}
 .kp-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
@@ -289,11 +293,11 @@ details summary{cursor:pointer;font-weight:600}
 /* ============================== constants ============================== */
 const DRUM_SOUNDS = ['808','Punchy','Lo-fi'];
 const INST = {
-  kit:  {label:'Drum kit', kind:'drums', color:'#e4572e', say:'B · ch · k · ts', sounds:DRUM_SOUNDS, hint:'Beatbox the whole groove: B for kick, ch for snare, k for clap, ts for hi-hat. Add more sounds and teach it your own noises in Your kit below. Fix any hit by tapping the grid.'},
-  kick: {label:'Kick', kind:'drum', drum:'kick', color:'#e4572e', say:'B · bm', sounds:DRUM_SOUNDS, hint:'Just the kick drum. Say B or bm wherever you want a kick.'},
-  snare:{label:'Snare', kind:'drum', drum:'snare', color:'#f0a238', say:'ch · K · Pf', sounds:DRUM_SOUNDS, hint:'Just the snare. ch, K, Pf or psh all work.'},
-  hat:  {label:'Hi-hat', kind:'drum', drum:'hat', color:'#22b0a0', say:'ts · tk', sounds:DRUM_SOUNDS, hint:'Just the hi-hats. Say ts, tk or tss.'},
-  clap: {label:'Clap', kind:'drum', drum:'clap', color:'#e2689f', say:'k · clap', sounds:DRUM_SOUNDS, hint:'Claps. Say k, clap, or snap your fingers. Any short, sharp sound works.'},
+  kit:  {label:'Drum kit', kind:'drums', color:'#e4572e', say:'“B” · “ch” · “k” · “ts”', sounds:DRUM_SOUNDS, hint:'Beatbox the whole groove: “B” for kick, “ch” for snare, “k” for clap, “ts” for hi-hat. Add more sounds and teach it your own noises in Your kit below. Fix any hit by tapping the grid.'},
+  kick: {label:'Kick', kind:'drum', drum:'kick', color:'#e4572e', say:'“B” · “bm”', sounds:DRUM_SOUNDS, hint:'Just the kick drum. Say “B” or “bm” wherever you want a kick.'},
+  snare:{label:'Snare', kind:'drum', drum:'snare', color:'#f0a238', say:'“ch” · “K” · “Pf”', sounds:DRUM_SOUNDS, hint:'Just the snare. “ch”, “K”, “Pf” or “psh” all work.'},
+  hat:  {label:'Hi-hat', kind:'drum', drum:'hat', color:'#22b0a0', say:'“ts” · “tk”', sounds:DRUM_SOUNDS, hint:'Just the hi-hats. Say “ts”, “tk” or “tss”.'},
+  clap: {label:'Clap', kind:'drum', drum:'clap', color:'#e2689f', say:'“k” · clap', sounds:DRUM_SOUNDS, hint:'Claps. Say “k”, clap your hands, or snap your fingers. Any short, sharp sound works.'},
   bass: {label:'Bass', kind:'pitched', oct:-1, color:'#7b6cf6', say:'sing low', sounds:['Sub','Reese','Pluck'], hint:'Sing or hum the bass line. It plays an octave lower than you sing.'},
   lead: {label:'Lead', kind:'pitched', oct:0, color:'#3a8dde', say:'sing · whistle', sounds:['Saw','Square','Bell'], hint:'Sing (“ahh”, “ooo”, “doo”), hum, or whistle a melody. Slides between notes are fine.'},
   keys: {label:'Keys', kind:'pitched', oct:0, color:'#8fbf3a', say:'sing roots', sounds:['E-piano','Organ'], hint:'Sing or hum a riff. Each note becomes a chord on electric piano or organ.'},
@@ -1067,7 +1071,7 @@ function renderKitPanel(){
     <div class="slots">${S.kit.slots.map(x=>{ const taught=x.ex&&x.ex.length>=3; const w=warn[x.id];
       return `<div class="slot" data-id="${x.id}">
         <select class="sel ssnd" aria-label="Sound it plays">${opts(x.sound)}</select>
-        <input class="sel ssay" value="${(x.say||'').replace(/"/g,'&quot;')}" placeholder="Your noise (e.g. tongue click)" aria-label="Your noise" maxlength="24">
+        <input class="sel ssay" value="${(x.say||'').replace(/"/g,'&quot;')}" placeholder="Your noise (e.g. “tk” or a tongue click)" aria-label="Your noise" maxlength="24">
         <span class="sst ${taught?'ok':''}">${taught?'✓ Taught':'Not taught'}</span>
         <button class="ibtn sprev" aria-label="Preview sound">▶</button>
         ${canTeach?`<button class="ibtn steach">${taught?'Re-teach':'Teach'}</button>`:''}
@@ -1079,7 +1083,7 @@ function renderKitPanel(){
       ${canTeach&&untaught.length?`<button class="btn primary" id="teachAll">Teach ${untaught.length===S.kit.slots.length?'all':untaught.length} sound${untaught.length>1?'s':''}</button>`:''}
       ${canTeach&&!untaught.length?`<button class="btn" id="teachAll">Re-teach all</button>`:''}
     </div>
-    ${T.length<2?'<p class="small">Until two or more sounds are taught, takes are sorted by built-in rules: B kick, ch snare, k clap, ts hi-hat.</p>':untaught.length?'<p class="small">Sounds that aren’t taught yet won’t get any hits. Teach them, or remove them.</p>':''}</div>`;
+    ${T.length<2?'<p class="small">Until two or more sounds are taught, takes are sorted by built-in rules: “B” kick, “ch” snare, “k” clap, “ts” hi-hat.</p>':untaught.length?'<p class="small">Sounds that aren’t taught yet won’t get any hits. Teach them, or remove them.</p>':''}</div>`;
   p.querySelector('.kp-head').onclick=()=>{ setOpen('kit',!kOpen); renderKitPanel(); };
   p.querySelectorAll('.slot').forEach(row=>{ const sl=slotOf(row.dataset.id);
     row.querySelector('.ssnd').onchange=e=>{ sl.sound=e.target.value; kitChanged(); };
@@ -1235,7 +1239,7 @@ function buildPads(){
   $('instHint').textContent=INST[S.inst].hint; updateMergeRow(); renderKitPanel();
 }
 function updateMergeRow(){ const rr2=$('replaceRow'); if(rr2&&!recState){ const has=INST[S.inst].kind==='pitched' && userTracks().some(t=>t.inst===S.inst); rr2.hidden=!has;
-    if(has) $('replaceTxt').textContent=`New Bass, Lead, Keys or Pad takes replace that instrument’s existing part (turn off to add another ${INST[S.inst].label} part instead)`; }
+    if(has) $('replaceTxt').textContent=`New Bass, Lead, Keys, Pad or Arp takes replace that instrument’s existing part (turn off to add another ${INST[S.inst].label} part instead)`; }
   const r=$('mergeRow'); if(!r||recState) return; r.hidden=!(INST[S.inst].kind!=='pitched' && userTracks().some(t=>INST[t.inst].kind!=='pitched')); }
 function knob(parent,{id,label,min,max,val,fmt,oninput,color,step=1}){
   const w=document.createElement('div'); w.className='knob'; if(color) w.style.setProperty('--c',color);
@@ -1263,6 +1267,11 @@ function renderTracks(){
       <button class="ibtn s" aria-pressed="${tr.solo}" title="Solo">S</button>
       <button class="ibtn del" title="Delete part" aria-label="Delete part">✕</button></div>
       <div class="gridwrap"><div class="gridin"><canvas></canvas><div class="ph"></div></div></div>
+      ${pitched?`<div class="notebar" hidden><span class="nb-info"></span><div class="nb-btns">
+        <button class="ibtn" data-act="left" aria-label="Move note earlier">◀</button><button class="ibtn" data-act="right" aria-label="Move note later">▶</button>
+        <button class="ibtn" data-act="up" aria-label="Move note up">▲</button><button class="ibtn" data-act="down" aria-label="Move note down">▼</button>
+        <button class="ibtn" data-act="shorter">Shorter</button><button class="ibtn" data-act="longer">Longer</button>
+        <button class="ibtn del" data-act="delete">Delete</button><button class="ibtn" data-act="done">Done</button></div></div>`:''}
       <div class="tquick"><select class="sel snd" id="snd${tr.id}" aria-label="Sound">${d.sounds.map(s=>`<option ${s===tr.sound?'selected':''}>${s}</option>`).join('')}</select><div class="knobs qv"></div><button class="ibtn ctlbtn" aria-expanded="${cOpen}">Controls ${CHEV}</button></div>
       <div class="ctl" ${cOpen?'':'hidden'}><div class="knobs kmore"></div>
       <div class="tfoot">
@@ -1275,7 +1284,7 @@ function renderTracks(){
         ${tr._raw?'<button class="ibtn orig">▶ '+((tr.takeN||1)>1?'Last take':'Your take')+'</button>':''}
         ${!pitched&&(tr.takeN||1)>1?'<button class="ibtn undo">Undo last take</button>':''}
         ${tr._raw?'<button class="ibtn savetake" title="Download your raw recording">Save take</button>':''}
-        <span class="grp tip">${pitched?'Press and drag to draw a note; drag a note’s end to resize it or its middle to move it; tap a note to remove it.':'Tap the grid to add or remove hits.'}${tr._an?' Small ticks on top show exactly when you made each sound.':''}</span>
+        <span class="grp tip">${pitched?'Tap a note to select it, then drag it anywhere or use the edit bar; drag its end to trim or extend it. Press and drag on an empty spot to draw a new note.':'Tap the grid to add or remove hits.'}${tr._an?' Small ticks on top show exactly when you made each sound.':''}</span>
       </div></div>`;
     box.appendChild(el);
     el.querySelector('.snd').onchange=e=>{ tr.sound=e.target.value; tr._dirty=true; save(); scheduleRender(); };
@@ -1299,6 +1308,8 @@ function renderTracks(){
     const ob=el.querySelector('.orig'); if(ob) ob.onclick=()=>playOriginal(tr,ob);
     const cs2=el.querySelector('.chdsel'); if(cs2) cs2.onchange=e=>{ tr.chordType=e.target.value; delete tr.chords; tr._dirty=true; save(); drawGrid(tr); scheduleRender(); };
     [['apat','pat',v=>v],['arate','rate',Number],['aoct','oct',Number],['agate','gate',Number]].forEach(([cls,key,conv])=>{ const se=el.querySelector('.'+cls); if(se) se.onchange=e=>{ tr.arp=Object.assign(arpOf(tr),{[key]:conv(e.target.value)}); tr._dirty=true; save(); scheduleRender(); }; });
+    el.querySelectorAll('.notebar [data-act]').forEach(btn=>btn.onclick=()=>noteBarAction(tr,btn.dataset.act));
+    if(tr._sel && !tr.notes.includes(tr._sel)) tr._sel=null;
     const sb2=el.querySelector('.sld'); if(sb2) sb2.onclick=()=>{ tr.slides=!slidesOn(tr); sb2.setAttribute('aria-pressed',tr.slides); sb2.textContent='Slides '+(tr.slides?'on':'off'); tr._dirty=true; save(); scheduleRender(); };
     const st2=el.querySelector('.savetake'); if(st2) st2.onclick=()=>saveTake(tr);
     const ub=el.querySelector('.undo'); if(ub) ub.onclick=()=>undoTake(tr);
@@ -1355,9 +1366,13 @@ function drawGrid(tr){
   } else {
     rawTicks(tr,g,X,Y,cw,lineH,n,sPL,gut,lines,gapH);
     if(chordsOn(tr)){ g.fillStyle=col; g.globalAlpha=0.22; tr.notes.forEach(nt=>{ notePitches(tr,nt).slice(1).forEach(pp=>{ const i=rows.indexOf(pp); if(i<0) return; let s2=nt.s, left=nt.l; while(left>0){ const room=sPL-(s2%sPL), seg=Math.min(left,room); rr(g,X(s2)+1,Y(s2)+1+i*rh+0.5,Math.max(cw*seg-2,3),rh-1,2.5); g.fill(); s2=(s2+seg)%n; left-=seg; } }); }); g.globalAlpha=1; }
-    tr.notes.forEach(nt=>{ const i=rows.indexOf(pitchOf(nt)); if(i<0) return; g.globalAlpha=0.45+0.55*nt.v; g.fillStyle=col;
+    const selN=tr._sel;
+    tr.notes.forEach(nt=>{ const i=rows.indexOf(pitchOf(nt)); if(i<0) return; g.globalAlpha=nt===selN?1:0.45+0.55*nt.v; g.fillStyle=col;
       let s=nt.s, left=nt.l; while(left>0){ const room=sPL-(s%sPL), seg=Math.min(left,room); rr(g,X(s)+1,Y(s)+1+i*rh+0.5,Math.max(cw*seg-2,3),rh-1,2.5); g.fill(); s=(s+seg)%n; left-=seg; } });
     g.globalAlpha=1;
+    if(selN && tr.notes.includes(selN)){ const i=rows.indexOf(pitchOf(selN)); if(i>=0){ g.strokeStyle=cssVar('--ink'); g.lineWidth=2;
+      let s2=selN.s, left=selN.l; while(left>0){ const room=sPL-(s2%sPL), seg=Math.min(left,room); rr(g,X(s2)+1,Y(s2)+1+i*rh+0.5,Math.max(cw*seg-2,3),rh-1,2.5); g.stroke(); s2=(s2+seg)%n; left-=seg; }
+      const e=selN.s+selN.l-1; g.fillStyle=cssVar('--ink'); g.fillRect(X(e)+cw-5,Y(e)+1+i*rh+2,3,Math.max(3,rh-5)); } }
   }
 }
 function rawTicks(tr,g,X,Y,cw,lineH,n,sPL,gut,lines,gapH){
@@ -1374,26 +1389,53 @@ function cellAt(tr,e,clampIt){
   if(line<0||line>=G.lines||col<0||col>=G.sPL) return null;
   const i=Math.floor((y-line*(G.lineH+G.gapH)-1)/G.rh); return {s:line*G.sPL+col, row:G.rows[clamp(i,0,G.rows.length-1)], inRow:i>=0&&i<G.rows.length};
 }
-/* tonal grid: tap a note to delete it; press and drag on an empty cell to draw a note as long as the drag;
-   drag a note's last cell to make it longer or shorter; drag the rest of a note to move it */
+/* tonal grid editing:
+   - tap a note to select it; drag a selected note anywhere (sideways and to another pitch, snapped to the key),
+     or drag its last cell to trim or extend it; the edit bar under the grid does the same with buttons
+   - press and drag on an empty spot to draw a new note (it stays selected); tapping empty space deselects */
+function nextPitch(p,dir){ const K=currentKey(); if(K.none) return p+dir; let m=p+dir; for(let i=0;i<12 && !K.set.includes(((m-K.tonic)%12+12)%12);i++) m+=dir; return m; }
+function selectNote(tr,n){ tr._sel=n||null; if(tr._cv) tr._cv.style.touchAction=n?'none':'pan-y'; drawGrid(tr); renderNoteBar(tr); }
+function noteChanged(tr){ keyCache=null; tr.notes.sort((a,b)=>a.s-b.s); tr._dirty=true; save(); redrawTrack(tr); renderNoteBar(tr); scheduleRender(); }
 function noteDown(tr,e){
   const c=cellAt(tr,e); if(!c||!c.inRow) return; const q=S.quant==8?2:1;
   try{ tr._cv.setPointerCapture(e.pointerId); }catch(_){}
   const n=tr.notes.find(nt=>pitchOf(nt)===c.row && c.s>=nt.s && c.s<nt.s+nt.l);
-  if(n) tr._drag={note:n, mode:(c.s>=n.s+n.l-q && n.l>q)?'resize':(n.l<=q?'resize':'move'), s0:c.s, ns:n.s, nl:n.l, moved:false, created:false};
-  else { const kp=snap(c.row); const nt={s:Math.floor(c.s/q)*q,l:q,p:kp,v:0.85,x:true}; tr.notes.push(nt); keyCache=null; tr._drag={note:nt,mode:'resize',s0:c.s,ns:nt.s,nl:q,moved:false,created:true}; drawGrid(tr); previewNote(tr,kp); }
+  if(n){ const wasSel=tr._sel===n; if(!wasSel) selectNote(tr,n);
+    tr._drag={note:n, mode:(c.s>=n.s+n.l-q && n.l>q)?'resize':'move', s0:c.s, row0:c.row, ns:n.s, np:pitchOf(n), moved:false, created:false};
+    previewNote(tr,pitchOf(n)); return; }
+  if(tr._sel){ selectNote(tr,null); tr._drag=null; return; }          // tap on empty space: just deselect
+  const kp=snap(c.row); const nt={s:Math.floor(c.s/q)*q,l:q,p:kp,v:0.85,x:true}; tr.notes.push(nt); keyCache=null;
+  tr._drag={note:nt,mode:'resize',s0:c.s,row0:c.row,ns:nt.s,np:kp,moved:false,created:true}; tr._sel=nt; drawGrid(tr); previewNote(tr,kp);
 }
 function noteMove(tr,e){
   const d=tr._drag; if(!d) return; const c=cellAt(tr,e,true); if(!c) return; const n=steps(), q=S.quant==8?2:1;
-  if(c.s!==d.s0) d.moved=true; if(!d.moved) return;
+  if(c.s!==d.s0 || c.row!==d.row0) d.moved=true; if(!d.moved) return;
   if(d.mode==='resize') d.note.l=clamp(Math.floor((c.s-d.note.s)/q)*q+q, q, n-d.note.s);
-  else d.note.s=clamp(d.ns+Math.round((c.s-d.s0)/q)*q, 0, n-d.note.l);
+  else { d.note.s=clamp(d.ns+Math.round((c.s-d.s0)/q)*q, 0, n-d.note.l);
+    const np=snap(c.row); if(np!==pitchOf(d.note)){ d.note.p=np; d.note.x=true; previewNote(tr,np); } }
   drawGrid(tr);
 }
 function noteUp(tr,e,cancel){
   const d=tr._drag; if(!d) return; tr._drag=null;
-  if(!d.moved && !d.created && !cancel){ tr.notes.splice(tr.notes.indexOf(d.note),1); keyCache=null; }
-  tr.notes.sort((a,b)=>a.s-b.s); tr._dirty=true; save(); drawGrid(tr); scheduleRender();
+  if(d.moved||d.created) noteChanged(tr); else { drawGrid(tr); renderNoteBar(tr); }
+  if(tr._cv) tr._cv.style.touchAction=tr._sel?'none':'pan-y';
+}
+function renderNoteBar(tr){
+  const bar=tr._el&&tr._el.querySelector('.notebar'); if(!bar) return; const n=tr._sel;
+  if(!n || !tr.notes.includes(n)){ bar.hidden=true; tr._sel=null; return; }
+  bar.hidden=false; const nm=m=>NOTE_NAMES[((m%12)+12)%12]+(Math.floor(m/12)-1);
+  bar.querySelector('.nb-info').textContent=`${nm(pitchOf(n)+12*tr.oct)} · step ${n.s+1} · ${n.l} step${n.l>1?'s':''} long`;
+}
+function noteBarAction(tr,act){
+  const n=tr._sel; if(!n) return; const q=S.quant==8?2:1, N=steps();
+  if(act==='left') n.s=Math.max(0,n.s-q);
+  else if(act==='right') n.s=Math.min(N-n.l,n.s+q);
+  else if(act==='up'||act==='down'){ n.p=nextPitch(pitchOf(n),act==='up'?1:-1); n.x=true; previewNote(tr,n.p); }
+  else if(act==='shorter') n.l=Math.max(q,n.l-q);
+  else if(act==='longer') n.l=Math.min(N-n.s,n.l+q);
+  else if(act==='delete'){ tr.notes.splice(tr.notes.indexOf(n),1); tr._sel=null; if(tr._cv) tr._cv.style.touchAction='pan-y'; }
+  else if(act==='done'){ selectNote(tr,null); return; }
+  noteChanged(tr);
 }
 function previewNote(tr,row){ if(playing) return; ensureCtx(); const out=ctx.createGain(); out.gain.value=trackGain(tr)||0.6; out.connect(chain.input); voice(ctx,out,tr.sound,ctx.currentTime+0.01,0.25,row+12*tr.oct,0.8,tr.tone/100); }
 function gridTap(tr,e){
