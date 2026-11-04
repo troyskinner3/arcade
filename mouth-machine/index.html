@@ -1454,8 +1454,11 @@ async function exportZip(){
   finally{ btn.disabled=false; btn.textContent='Download song (.zip)'; }
 }
 async function saveTake(tr){
-  const {x,sr}=tr._raw, b=ctx.createBuffer(1,x.length,sr); b.copyToChannel(x,0);
-  const nm=`mouth-machine-take-${INST[tr.inst].label.toLowerCase().replace(/\s+/g,'-')}-${S.bpm}bpm`;
+  // compact copy for sharing: 16 kHz mono (everything the analysis uses), about 32 KB per second
+  const {x,sr}=tr._raw, R=16000; let y=biquad(biquad(x,'lp',7000,0.707,sr),'lp',7000,0.707,sr);
+  const n=Math.floor((y.length-1)*R/sr), z=new Float32Array(n); for(let i=0;i<n;i++){ const p=i*sr/R, i0=Math.floor(p), fr=p-i0; z[i]=y[i0]*(1-fr)+y[i0+1]*fr; }
+  const b={numberOfChannels:1,length:n,sampleRate:R,getChannelData:()=>z};
+  const nm=`mouth-machine-take-${INST[tr.inst].label.toLowerCase().replace(/\s+/g,'-')}-${S.bpm}bpm`; ensureCtx();
   const info=JSON.stringify({inst:tr.inst,bpm:S.bpm,bars:S.bars,quant:S.quant,latMs:S.latAuto?'auto':S.latMs,calibrated:!!S.calibrated,align:tr._an&&tr._an.align,live:tr._an&&tr._an.live,notes:tr.notes,hits:tr.hits,ua:navigator.userAgent},null,1);
   await offerFile(nm+'.zip', zip([{name:nm+'.wav',data:wavBytes(b)},{name:nm+'.json',data:new TextEncoder().encode(info)}]));
 }
