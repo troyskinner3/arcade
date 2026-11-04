@@ -309,7 +309,7 @@ function defaultState(){
 }
 let S = defaultState();
 (function load(){
-  try{ const raw=localStorage.getItem(STORE_KEY); if(raw){ const o=JSON.parse(raw); if(o&&o.v===1){ S=Object.assign(defaultState(),o); S.master=Object.assign(defaultState().master,o.master||{}); if(!o.mig2){ S.ec=false; S.playAlong=false; S.mig2=true; } delete S.kitProfile; } } }catch(e){}
+  try{ const raw=localStorage.getItem(STORE_KEY); if(raw){ const o=JSON.parse(raw); if(o&&o.v===1){ S=Object.assign(defaultState(),o); S.master=Object.assign(defaultState().master,o.master||{}); if(!o.mig2){ S.ec=false; S.playAlong=false; S.mig2=true; } if(!o.mig3){ if(!S.latAuto && S.latMs<15){ S.latAuto=true; S.calibrated=false; } S.mig3=true; } delete S.kitProfile; } } }catch(e){}
   if(!S.kit||!Array.isArray(S.kit.slots)||!S.kit.slots.length) S.kit=defaultKit();
   if(!Array.isArray(S.tracks)) S.tracks = exampleTracks();
   S.tracks.forEach(t=>{ t._dirty=true; });
@@ -528,6 +528,7 @@ function trackNotes(x, sr, onsets, sens){
   const dbs=frames.map(f=>f.db), floor=percentile(dbs,0.15), top=percentile(dbs,0.99);
   const gate=floor+Math.max(8,(top-floor)*(0.42-0.25*sN)), cth=0.2+0.12*sN;
   const voiced=frames.map(f=>f.db>gate && f.conf<cth && f.m>28 && f.m<(whistled?112:96));
+  const build=()=>{
   const sm=frames.map((f,i)=>{ if(!voiced[i]) return NaN; const w=[]; for(let j=i-2;j<=i+2;j++) if(j>=0&&j<frames.length&&voiced[j]) w.push(frames[j].m); return median(w); });
   const onF=onsets.filter(o=>o.rise>6).map(o=>o.t);
   const nearOnset=(t)=>onF.some(ot=>Math.abs(ot-t)<0.012);
@@ -555,6 +556,8 @@ function trackNotes(x, sr, onsets, sens){
       const h=v.slice(0,k).reduce((p,c)=>p+c,0)/k, t=v.slice(-k).reduce((p,c)=>p+c,0)/k; return Math.abs(t-h)/((v.length-k)*hopS); };
     let pl=runs.filter(r=>r.l!==null && (r.e-r.s+1)*hopS>=0.08 && ((r.e-r.s+1)*hopS>=0.25 || drift(r)<4));
     const merged=[]; for(const r of pl){ const m=merged[merged.length-1]; if(m&&m.l===r.l) m.e=r.e; else merged.push({...r}); } pl=merged;
+    while(pl.length>1){ const A=pl[0], B=pl[1], la=(A.e-A.s+1)*hopS, lb=(B.e-B.s+1)*hopS;
+      if(la<0.22 && lb>la && Math.abs(B.l-A.l)<=3 && B.s-A.e<=12) { pl.shift(); B.scoop=1; } else break; }
     const dbMax=(i0,i1)=>{ let m=-200; for(let i=i0;i<=i1;i++) m=Math.max(m,frames[i].db); return m; };
     const pitchIn=(i0,i1)=>median(sm.slice(i0,i1+1).filter(v=>!isNaN(v)));
     if(!pl.length){ notes.push({t0:frames[a0s].t-hopS/2, t1:frames[b].t+hopS/2, p:pitchIn(a,b), db:dbMax(a,b)}); continue; }
@@ -564,9 +567,19 @@ function trackNotes(x, sr, onsets, sens){
     pl.forEach((r,k)=>{ const i0=cut[k], i1=k===pl.length-1?b:cut[k+1]-1;
       notes.push({t0:frames[i0].t-hopS/2, t1:frames[i1].t+hopS/2, p:pitchIn(r.s+Math.floor((r.e-r.s)/2),r.e), db:dbMax(i0,i1), g:k>0?1:0}); });
   }
+  return notes; };
+  // Your own tuning: people are in tune with themselves, not necessarily with A=440. Measure the take's offset from the
+  // piano keys (circular mean over steady voiced moments; tested on real hummed and whistled takes) and remove it,
+  // so held notes sit on keys instead of flickering between two.
+  let tune=0; { let cs=0,sn=0,nw=0; for(let i=2;i<frames.length-2;i++){ if(!voiced[i]||!voiced[i-2]||!voiced[i+2]) continue;
+      if(Math.abs(frames[i].m-frames[i-2].m)>0.25||Math.abs(frames[i].m-frames[i+2].m)>0.25) continue;
+      const an=2*Math.PI*(frames[i].m-Math.round(frames[i].m)); cs+=Math.cos(an); sn+=Math.sin(an); nw++; }
+    if(nw>=10 && Math.hypot(cs,sn)/nw>0.12) tune=Math.atan2(sn,cs)/(2*Math.PI); }
+  if(tune) frames.forEach(f=>{ f.m-=tune; });
+  const notes=build();
   const maxDb=notes.reduce((m,n)=>Math.max(m,n.db),-200);
   notes.forEach(n=>n.v=clamp(0.45+0.55*(n.db-(maxDb-20))/20,0.45,1));
-  notes.whistled=whistled;
+  notes.whistled=whistled; notes.tune=tune;
   return notes;
 }
 function mono(ab){ const n=ab.length, out=new Float32Array(n); const c=ab.numberOfChannels; for(let ch=0;ch<c;ch++){ const d=ab.getChannelData(ch); for(let i=0;i<n;i++) out[i]+=d[i]/c; } return out; }
@@ -619,7 +632,10 @@ function quantizeTrack(tr){
       const e=Math.round(raw(nt.t1)/q+0.3)*q; ns.push({s,l:clamp(e-s,q,n-s),p:+nt.p.toFixed(2),v:+nt.v.toFixed(2),...(nt.g?{g:1}:{})}); }
     ns.sort((a,b)=>a.s-b.s||b.l-a.l);
     const out=[]; for(const nt of ns){ const last=out[out.length-1]; if(last&&last.s===nt.s) continue; if(last&&last.s+last.l>nt.s) last.l=nt.s-last.s; out.push(nt); }
-    tr.notes=out;
+    // two back-to-back notes of one phrase that land on the same key (a held note that drifted) are one held note
+    const keyed=[]; for(const nt of out){ const pv=keyed[keyed.length-1];
+      if(pv && nt.g && pv.s+pv.l===nt.s && !nt.x && !pv.x && Math.abs(pv.p-nt.p)<0.5){ if(nt.l>pv.l) pv.p=nt.p; pv.l+=nt.l; } else keyed.push(nt); }
+    tr.notes=keyed;
   }
 }
 
@@ -1009,12 +1025,13 @@ function renderKitPanel(){
 }
 function kitChanged(){ save(); S.tracks.forEach(tr=>{ if(INST[tr.inst].kind==='drums'){ tr._dirty=true; redrawTrack(tr); } }); scheduleRender(); renderKitPanel(); }
 function finishCalib(x,sr,pre){
-  const ons=detectOnsets(biquad(biquad(x,'notch',1500,4,sr),'notch',2000,4,sr), sr, 60, 0.12);
+  const ons=removeClickBleed(detectOnsets(biquad(biquad(x,'notch',1500,4,sr),'notch',2000,4,sr), sr, 60, 0.12), pre).ons;
   const beat=60/S.bpm, lo=-0.12*beat;
   // claps always come after the click they answer, so measure each one in a window from just before a click to most of a beat after
   const dev=ons.map(o=>{ const t=o.t-pre; return ((((t-lo)%beat)+beat)%beat)+lo; });
   if(dev.length<4){ toast('I heard '+dev.length+' claps. Clap louder on every click and try again.'); return; }
   const md=median(dev), spread=median(dev.map(d=>Math.abs(d-md)));
+  if(md<0.015){ toast('That measured almost no delay, which usually means the mic heard the click instead of your claps. Wear headphones and calibrate again.'); return; }
   if(spread>0.06){ toast('Those claps were too uneven to measure. Try again, clapping right on each click.'); return; }
   S.latAuto=false; S.calibrated=true; S.latMs=clamp(Math.round(md*1000),-50,600); save(); syncSettings(); if(window._showCal) window._showCal();
   toast('Mic delay set to '+S.latMs+' ms from '+dev.length+' claps');
