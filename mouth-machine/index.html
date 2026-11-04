@@ -1453,14 +1453,23 @@ async function exportZip(){
   } catch(e){ toast('Export failed: '+(e&&e.message||e)); }
   finally{ btn.disabled=false; btn.textContent='Download song (.zip)'; }
 }
+function mulawWav(z,R){
+  let pk=1e-6; for(const v of z) pk=Math.max(pk,Math.abs(v)); const g=0.95/pk, n=z.length, out=new DataView(new ArrayBuffer(58+n));
+  const ws=(o,t)=>{ for(let i=0;i<t.length;i++) out.setUint8(o+i,t.charCodeAt(i)); };
+  ws(0,'RIFF'); out.setUint32(4,50+n,true); ws(8,'WAVE'); ws(12,'fmt '); out.setUint32(16,18,true); out.setUint16(20,7,true); out.setUint16(22,1,true);
+  out.setUint32(24,R,true); out.setUint32(28,R,true); out.setUint16(32,1,true); out.setUint16(34,8,true); out.setUint16(36,0,true);
+  ws(38,'fact'); out.setUint32(42,4,true); out.setUint32(46,n,true); ws(50,'data'); out.setUint32(54,n,true);
+  for(let i=0;i<n;i++){ let v=Math.max(-1,Math.min(1,z[i]*g))*32635, sign=v<0?0x80:0; v=Math.abs(v)+132; let e=7; for(let m=0x4000;!(v&m)&&e>0;m>>=1) e--; const mant=(v>>(e+3))&0x0f; out.setUint8(58+i,~(sign|(e<<4)|mant)&0xff); }
+  return new Uint8Array(out.buffer);
+}
 async function saveTake(tr){
-  // compact copy for sharing: 16 kHz mono (everything the analysis uses), about 32 KB per second
-  const {x,sr}=tr._raw, R=16000; let y=biquad(biquad(x,'lp',7000,0.707,sr),'lp',7000,0.707,sr);
+  // compact copy for sharing: 12 kHz mono, 8-bit mu-law (about 12 KB per second); still holds what the analysis uses
+  const {x,sr}=tr._raw, R=12000; let y=biquad(biquad(x,'lp',5500,0.707,sr),'lp',5500,0.707,sr);
   const n=Math.floor((y.length-1)*R/sr), z=new Float32Array(n); for(let i=0;i<n;i++){ const p=i*sr/R, i0=Math.floor(p), fr=p-i0; z[i]=y[i0]*(1-fr)+y[i0+1]*fr; }
   const b={numberOfChannels:1,length:n,sampleRate:R,getChannelData:()=>z};
   const nm=`mouth-machine-take-${INST[tr.inst].label.toLowerCase().replace(/\s+/g,'-')}-${S.bpm}bpm`; ensureCtx();
   const info=JSON.stringify({inst:tr.inst,bpm:S.bpm,bars:S.bars,quant:S.quant,latMs:S.latAuto?'auto':S.latMs,calibrated:!!S.calibrated,align:tr._an&&tr._an.align,live:tr._an&&tr._an.live,notes:tr.notes,hits:tr.hits,ua:navigator.userAgent},null,1);
-  await offerFile(nm+'.zip', zip([{name:nm+'.wav',data:wavBytes(b)},{name:nm+'.json',data:new TextEncoder().encode(info)}]));
+  await offerFile(nm+'.zip', zip([{name:nm+'.wav',data:mulawWav(z,R)},{name:nm+'.json',data:new TextEncoder().encode(info)}]));
 }
 async function offerFile(filename, blob){
   let dl=null; try{ if(window.claude&&window.claude.use) dl=await window.claude.use('downloads'); }catch(e){}
