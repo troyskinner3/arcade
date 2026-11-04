@@ -1123,8 +1123,8 @@ async function addTake(x, sr, inst, opt){
     if(opt.live){ const cb=removeClickBleed(an.onsets, an.align); if(cb.removed){ an.onsets=cb.ons; an.bleed=cb.removed; if(kind!=='pitched'&&an.onsets[0]) first=an.onsets[0].t; } }
     if(userTracks().length===0) guessFix=null;   // starting over: re-learn the mic delay
     const unCal = opt.live && S.latAuto && !S.calibrated;
-    an.align=fitAlign(takeTimes(an,inst), an.align + (unCal && guessFix!=null ? guessFix : 0)); if(!opt.live) an.align=Math.min(an.align, first+0.02);
-    if(unCal && guessFix==null){
+    an.align=fitAlign(takeTimes(an,inst), an.align + (unCal && guessFix!=null && kind!=='pitched' ? guessFix : 0)); if(!opt.live) an.align=Math.min(an.align, first+0.02);
+    if(unCal && guessFix==null && kind!=='pitched'){   // drums only: a hummed note's soft start is too vague to anchor beat one
       // not calibrated yet: if the first sound lands 1–3 steps after the downbeat, it was most likely meant for beat one.
       // Later takes reuse the same correction (the delay doesn't change), so a layer that starts on the off-beat stays there.
       const k=Math.round((first-an.align)/stepDur()); if(k>=1 && k<=3){ an.align+=k*stepDur(); an.guessed=k; }
@@ -1207,7 +1207,7 @@ function buildPads(){
   $('instHint').textContent=INST[S.inst].hint; updateMergeRow(); renderKitPanel();
 }
 function updateMergeRow(){ const rr2=$('replaceRow'); if(rr2&&!recState){ const has=INST[S.inst].kind==='pitched' && userTracks().some(t=>t.inst===S.inst); rr2.hidden=!has;
-    if(has) $('replaceTxt').textContent=`Record over my existing ${INST[S.inst].label} part (turn off to add another ${INST[S.inst].label} part)`; }
+    if(has) $('replaceTxt').textContent=`New Bass, Lead, Keys or Pad takes replace that instrument’s existing part (turn off to add another ${INST[S.inst].label} part instead)`; }
   const r=$('mergeRow'); if(!r||recState) return; r.hidden=!(INST[S.inst].kind!=='pitched' && userTracks().some(t=>INST[t.inst].kind!=='pitched')); }
 function knob(parent,{id,label,min,max,val,fmt,oninput,color,step=1}){
   const w=document.createElement('div'); w.className='knob'; if(color) w.style.setProperty('--c',color);
@@ -1350,7 +1350,7 @@ function noteDown(tr,e){
   try{ tr._cv.setPointerCapture(e.pointerId); }catch(_){}
   const n=tr.notes.find(nt=>pitchOf(nt)===c.row && c.s>=nt.s && c.s<nt.s+nt.l);
   if(n) tr._drag={note:n, mode:(c.s>=n.s+n.l-q && n.l>q)?'resize':(n.l<=q?'resize':'move'), s0:c.s, ns:n.s, nl:n.l, moved:false, created:false};
-  else { const nt={s:Math.floor(c.s/q)*q,l:q,p:c.row,v:0.85,x:true}; tr.notes.push(nt); keyCache=null; tr._drag={note:nt,mode:'resize',s0:c.s,ns:nt.s,nl:q,moved:false,created:true}; drawGrid(tr); previewNote(tr,c.row); }
+  else { const kp=snap(c.row); const nt={s:Math.floor(c.s/q)*q,l:q,p:kp,v:0.85,x:true}; tr.notes.push(nt); keyCache=null; tr._drag={note:nt,mode:'resize',s0:c.s,ns:nt.s,nl:q,moved:false,created:true}; drawGrid(tr); previewNote(tr,kp); }
 }
 function noteMove(tr,e){
   const d=tr._drag; if(!d) return; const c=cellAt(tr,e,true); if(!c) return; const n=steps(), q=S.quant==8?2:1;
