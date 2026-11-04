@@ -26,7 +26,8 @@ Simple browser games for mobile and desktop. Plain HTML/CSS/JS with no build ste
 - **Two Thumbs Up Classic** (`two-thumbs-up-classic/`): the original one-finger version. Drag to slingshot, and the hand auto-grabs near the top of its arc.
 
 - **Mouth Machine** (`mouth-machine/`, mobile and desktop): a beatbox-to-beat studio. Pick an instrument, record a part with the mic (with count-in and metronome) or import a voice memo, and it becomes real instruments.
-  - Drums: beatbox the whole kit in one take: B = kick, ch = snare, k = clap, ts = hi-hat (sorted by brightness and length, or by your own examples after "Teach my sounds": four short takes of each sound on the click) or record each drum on its own. Drum takes layer onto the same Drums part (one grid; Undo last take removes a layer). Hits snap to 16th (or 8th) notes.
+  - Drums: beatbox the whole kit in one take (default B = kick, ch = snare, k = clap, ts = hi-hat) or record each drum on its own. Drum takes layer onto the same Drums part (one grid; Undo last take removes a layer). Hits snap to 16th (or 8th) notes.
+  - Your kit (on the Drum kit pad): up to 12 slots, each playing one of 19 synthesized sounds (toms, rim, cowbell, shaker, crash, ride, 808 boom…) or "My own noise" (your taught recording). Teach each slot your trigger noise with a short take on the click; hits are then sorted by comparing a spectral fingerprint (tone shape at the attack and body, plus length, brightness, bass and hiss) against your examples. Look-alike noises get a warning.
   - Bass, lead, keys and pad: hum or whistle. Pitch is tracked and snapped to the detected key and scale.
   - Each part gets its own sound, volume, pan, reverb, tone, octave and nudge controls, plus an editable grid. Master swing, room, drive and punch.
   - Export a .zip with the mix WAV, dry stems and a MIDI file. Parts (not the recordings) are saved in `localStorage`.
