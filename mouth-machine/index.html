@@ -991,7 +991,8 @@ function micBlocked(why){
   n.innerHTML = '<b>Live mic recording isn’t allowed inside the Claude viewer.</b> Record each part with your phone’s voice recorder instead, starting right on beat one. On iPhone, use Voice Memos, tap the recording, then Share → Save to Files. Then pick the instrument here and tap <b>Import a recording</b>.';
   $('recBtn').hidden=true; $('playAlongRow').hidden=true;  $('importBtn').classList.add('primary'); const cn=$('calNote'); if(cn) cn.hidden=true;
 }
-const autoLat=()=>ctx?(ctx.outputLatency?ctx.outputLatency+(ctx.baseLatency||0)+0.012:(ctx.baseLatency||0)+0.045):0.06;
+// Safari/iOS don't report output delay; real iPhone takes measure about 0.1 s. autoAdj is learned from your own takes.
+const autoLat=()=>(ctx?(ctx.outputLatency?ctx.outputLatency+(ctx.baseLatency||0)+0.012:(ctx.baseLatency||0)+0.09):0.09)+(S.autoAdj||0);
 const latency=()=>S.latAuto?autoLat():S.latMs/1000;
 async function startRecord(calib=false, teach=null){
   ensureCtx();
@@ -1155,12 +1156,15 @@ async function addTake(x, sr, inst, opt){
     if(opt.live){ const cb=removeClickBleed(an.onsets, an.align); if(cb.removed){ an.onsets=cb.ons; an.bleed=cb.removed; if(kind!=='pitched'&&an.onsets[0]) first=an.onsets[0].t; } }
     if(userTracks().length===0) guessFix=null;   // starting over: re-learn the mic delay
     const unCal = opt.live && S.latAuto && !S.calibrated;
-    an.align=fitAlign(takeTimes(an,inst), an.align + (unCal && guessFix!=null && kind!=='pitched' ? guessFix : 0)); if(!opt.live) an.align=Math.min(an.align, first+0.02);
+    const preFit = an.align + (unCal && guessFix!=null && kind!=='pitched' ? guessFix : 0);
+    an.align=fitAlign(takeTimes(an,inst), preFit); if(!opt.live) an.align=Math.min(an.align, first+0.02);
+    // learn this phone's real delay from how far the take sat from the grid (only while not calibrated); it settles over a few takes
+    if(opt.live && S.latAuto){ const d=an.align-preFit; S.autoAdj=clamp(0.6*(S.autoAdj||0)+0.4*(d+(S.autoAdj||0)), -0.06, 0.2); }
     if(unCal && guessFix==null && kind!=='pitched'){   // drums only: a hummed note's soft start is too vague to anchor beat one
       // not calibrated yet: if the first sound lands 1–3 steps after the downbeat, it was most likely meant for beat one.
       // Later takes reuse the same correction (the delay doesn't change), so a layer that starts on the off-beat stays there.
       const k=Math.round((first-an.align)/stepDur()); if(k>=1 && k<=3){ an.align+=k*stepDur(); an.guessed=k; }
-      guessFix = an.align-an.base;
+      guessFix = (an.guessed||0)*stepDur();   // remember only the beat-one shift, never the fine-tuning (it used to pile up)
     }
     const isDrum = kind!=='pitched';
     const tgtTonal = !isDrum && S.replaceTonal ? [...userTracks()].reverse().find(t=>t.inst===inst) : null;
