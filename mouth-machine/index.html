@@ -520,7 +520,6 @@ let ctx=null, chain=null, playing=false, t0=0, metroBuf=null, metroDirty=true, i
 function ensureCtx(){
   if(!ctx){
     const AC=window.AudioContext||window.webkitAudioContext; ctx=new AC({latencyHint:'interactive'});
-    try{ if(navigator.audioSession) navigator.audioSession.type='play-and-record'; }catch(e){}
     chain=buildChain(ctx, true); applyMaster();
     S.tracks.forEach(t=>{ t._dirty=true; });
   }
@@ -686,6 +685,7 @@ process(inputs){const ch=inputs[0]&&inputs[0][0];if(ch){if(this.n===0)this.t=cur
 registerProcessor('mm-cap',Cap);`;
 async function ensureMic(){
   if(mic) return true;
+  try{ if(navigator.audioSession) navigator.audioSession.type='play-and-record'; }catch(e){}
   let stream;
   try{ stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:S.ec,noiseSuppression:false,autoGainControl:false,channelCount:1}}); }
   catch(e){ micBlocked(); toast('The microphone isn’t available here. Use Import a recording.'); return false; }
@@ -703,7 +703,14 @@ async function ensureMic(){
   }
   return true;
 }
-function dropMic(){ if(mic){ mic.stream.getTracks().forEach(t=>t.stop()); try{mic.src.disconnect();}catch(e){} mic=null; } }
+/* The mic is only held while a take is recording: it is released as soon as the take ends, is cancelled, or the page is hidden. */
+function dropMic(){
+  if(mic){ mic.stream.getTracks().forEach(t=>t.stop()); try{mic.src.disconnect(); mic.node.disconnect();}catch(e){} mic=null; }
+  try{ if(navigator.audioSession) navigator.audioSession.type='playback'; }catch(e){}
+}
+function onHide(){ if(recState){ capturing=false; recState=null; stopAll(); setRecUI(false); } dropMic(); }
+document.addEventListener('visibilitychange',()=>{ if(document.hidden) onHide(); });
+window.addEventListener('pagehide',onHide);
 function micBlocked(why){
   const n=$('micNote'); n.hidden=false;
   n.innerHTML = '<b>Live mic recording isn’t allowed inside the Claude viewer.</b> Record each part with your phone’s voice recorder instead, starting right on beat one. On iPhone, use Voice Memos, tap the recording, then Share → Save to Files. Then pick the instrument here and tap <b>Import a recording</b>.';
@@ -728,7 +735,7 @@ async function startRecord(calib=false){
   recState={calib, inst:S.inst, countStart:when, start:when+bar, end:when+bar+L, lat:calib?0:latency(), chunks:[]};
   capturing=true; setRecUI(true);
 }
-function cancelRecord(){ capturing=false; recState=null; stopAll(); setRecUI(false); toast('Recording cancelled'); }
+function cancelRecord(){ capturing=false; recState=null; stopAll(); setRecUI(false); dropMic(); toast('Recording cancelled'); }
 function setRecUI(on){ ['instHint','calNote','playAlongRow','detectRow','micNote','mergeRow'].forEach(id=>{ const el=$(id); if(!el) return; if(on){ el.dataset.wasHidden=el.hidden?'1':''; el.hidden=true; } else if(el.dataset.wasHidden!==undefined){ el.hidden=el.dataset.wasHidden==='1'; delete el.dataset.wasHidden; } });
   if(on) requestAnimationFrame(()=>{ try{ $('recStatus').scrollIntoView({block:'center',behavior:'smooth'}); }catch(e){} }); $('recStatus').hidden=!on; $('recBtn').classList.toggle('live',on); $('recTxt').textContent=on?'Stop':'Record'; $('importBtn').disabled=on; $('calBtn').disabled=on; }
 function assemble(chunks, a, b, sr){
@@ -737,7 +744,7 @@ function assemble(chunks, a, b, sr){
   return out;
 }
 async function finishRecord(){
-  const r=recState; capturing=false; recState=null; stopAll(); setRecUI(false);
+  const r=recState; capturing=false; recState=null; stopAll(); setRecUI(false); dropMic();
   const sr=ctx.sampleRate, pre=0.08, a=r.start+r.lat-pre, b=r.end+r.lat+0.25;
   const x=assemble(r.chunks,a,b,sr);
   if(r.calib){ finishCalib(x,sr,pre); return; }
