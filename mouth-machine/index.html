@@ -144,6 +144,34 @@ input[type=range]{width:100%;accent-color:var(--c,var(--ink));height:28px;margin
 .exrow{display:flex;gap:10px;flex-wrap:wrap;align-items:end}
 .fab{position:fixed;right:max(16px,calc(env(safe-area-inset-right,0px) + 12px));bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:15;width:56px;height:56px;border-radius:50%;border:0;background:var(--lcd-ink);color:#1a1a1a;display:grid;place-items:center;box-shadow:0 6px 20px rgba(0,0,0,.3)}
 .fab svg{width:22px;height:22px}
+.chev{width:16px;height:16px;flex:none;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;transition:transform .18s}
+[aria-expanded="true"] > .chev, [aria-expanded="true"] .chev{transform:rotate(90deg)}
+button.card-head{all:unset;box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;cursor:pointer;width:100%;margin:-16px;padding:16px;width:calc(100% + 32px);border-radius:16px}
+button.card-head:focus-visible{outline:2px solid var(--focus);outline-offset:-2px}
+button.card-head .hd{display:flex;align-items:center;gap:8px}
+.card.closed{gap:0}
+.sec-body{display:flex;flex-direction:column;gap:14px}
+.kp-head{all:unset;box-sizing:border-box;display:flex;align-items:center;gap:8px;cursor:pointer;width:100%}
+.kp-head:focus-visible{outline:2px solid var(--focus);outline-offset:2px;border-radius:6px}
+.kp-head b{margin-right:auto}
+.kp-body{display:flex;flex-direction:column;gap:10px}
+details.opts{border-top:1px solid var(--line);padding-top:10px}
+details.opts summary{list-style:none;display:flex;align-items:center;gap:6px;font-size:14px;color:var(--muted);font-weight:600;cursor:pointer}
+details.opts summary::-webkit-details-marker{display:none}
+details.opts[open] summary .chev{transform:rotate(90deg)}
+details.opts .optbody{display:flex;flex-direction:column;gap:10px;margin-top:10px}
+.tcoll{padding:0 6px;min-width:30px}
+.tcoll .chev{width:18px;height:18px}
+.tsum{font-size:12px;color:var(--muted);font-weight:500;white-space:nowrap}
+.track.closed .gridwrap,.track.closed .tquick,.track.closed .ctl{display:none}
+.track.closed{gap:0}
+.tquick{display:flex;align-items:end;gap:10px}
+.tquick .snd{flex:0 1 auto;max-width:34%;margin-bottom:2px}
+.tname span:not(.led):not(.tsum){overflow:hidden;text-overflow:ellipsis}
+.tquick .knobs{flex:1;min-width:0;grid-template-columns:1fr}
+.ctlbtn{height:34px;padding:0 10px;gap:6px;color:var(--muted)}
+.ctlbtn[aria-expanded="true"]{color:var(--ink)}
+.ctl{display:flex;flex-direction:column;gap:10px;padding-top:4px;border-top:1px dashed var(--line)}
 .kitpanel{display:flex;flex-direction:column;gap:10px;padding:12px;border-radius:12px;background:var(--cell)}
 .kp-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
 .kitpanel .small{margin:0}
@@ -198,11 +226,13 @@ details summary{cursor:pointer;font-weight:600}
     </div>
     <div class="kitpanel" id="kitPanel" hidden></div>
     <p class="note" id="micNote" hidden></p>
-    <div class="note calnote" id="calNote" hidden><p><b>First time recording here?</b> Calibrate once (about 10 seconds of clapping) so your hits land on the right steps. Bluetooth headphones like AirPods add a big delay, so calibrate with the headphones you’ll use.</p><button class="btn" id="calNow">Calibrate</button></div>
-    <label class="chk" id="playAlongRow"><input type="checkbox" id="playAlong"> <span>Play the other parts while I record (wear headphones so the mic doesn’t hear them)</span></label>
+    <div class="note calnote" id="calNote" hidden><p><b>First time recording here?</b> Calibrate once (about 10 seconds of clapping) so your hits land on the right steps. Bluetooth headphones like AirPods add a big delay, so calibrate with the headphones you’ll use.</p><span class="recrow" style="gap:8px"><button class="btn" id="calNow">Calibrate</button><button class="btn" id="calLater">Not now</button></span></div>
     <label class="chk" id="mergeRow" hidden><input type="checkbox" id="mergeDrums"> <span>Layer this take onto my existing Drums part (turn off to make a separate part)</span></label>
     <label class="chk" id="replaceRow" hidden><input type="checkbox" id="replaceTonal"> <span id="replaceTxt"></span></label>
+    <details class="opts" id="optsBox"><summary><svg class="chev" viewBox="0 0 20 20" aria-hidden="true"><path d="M7 5l5 5-5 5"/></svg>Recording options</summary><div class="optbody">
+    <label class="chk" id="playAlongRow"><input type="checkbox" id="playAlong"> <span>Play the other parts while I record (wear headphones so the mic doesn’t hear them)</span></label>
     <label class="chk" id="detectRow"><input type="checkbox" id="detectTempo" checked> <span>Set the tempo and loop length from this recording (first part only)</span></label>
+    </div></details>
   </section>
 
   <div class="banner" id="exBanner" hidden>
@@ -213,7 +243,8 @@ details summary{cursor:pointer;font-weight:600}
   <section class="tracks" id="tracks" aria-label="Parts"></section>
 
   <section class="card" aria-labelledby="mixh">
-    <div class="card-head"><h2 id="mixh">Sound &amp; mix</h2><span class="keyinfo" id="keyInfo"></span></div>
+    <button class="card-head" data-sec="mix" aria-expanded="false" aria-controls="mixBody"><span class="hd"><h2 id="mixh">Sound &amp; mix</h2></span><span class="hd"><span class="keyinfo" id="keyInfo"></span><svg class="chev" viewBox="0 0 20 20" aria-hidden="true"><path d="M7 5l5 5-5 5"/></svg></span></button>
+    <div class="sec-body" id="mixBody">
     <div class="mixgrid">
       <div class="field"><label for="key">Key</label><select class="sel" id="key"></select></div>
       <div class="field"><label for="scale">Snap notes to</label><select class="sel" id="scale">
@@ -222,24 +253,29 @@ details summary{cursor:pointer;font-weight:600}
       <div class="field"><label for="quant">Timing grid</label><select class="sel" id="quant"><option value="16">16th notes</option><option value="8">8th notes</option></select></div>
     </div>
     <div class="knobs" id="masterKnobs"></div>
+    </div>
   </section>
 
   <section class="card" aria-labelledby="exh">
-    <div class="card-head"><h2 id="exh">Export</h2></div>
+    <button class="card-head" data-sec="export" aria-expanded="false" aria-controls="exportBody"><span class="hd"><h2 id="exh">Export</h2></span><span class="hd"><svg class="chev" viewBox="0 0 20 20" aria-hidden="true"><path d="M7 5l5 5-5 5"/></svg></span></button>
+    <div class="sec-body" id="exportBody">
     <p class="small">One .zip with the full mix as a WAV, each part as its own dry WAV, and a MIDI file you can open in GarageBand, FL Studio or any music app.</p>
     <div class="exrow">
       <div class="field"><label for="loops">Length</label><select class="sel" id="loops"><option value="1">Loop × 1</option><option value="2">Loop × 2</option><option value="4">Loop × 4</option><option value="8">Loop × 8</option></select></div>
       <button class="btn primary" id="exportBtn">Download song (.zip)</button>
     </div>
+    </div>
   </section>
 
   <section class="card" aria-labelledby="timh">
-    <div class="card-head"><h2 id="timh">Timing &amp; mic</h2></div>
+    <button class="card-head" data-sec="timing" aria-expanded="false" aria-controls="timingBody"><span class="hd"><h2 id="timh">Timing &amp; mic</h2></span><span class="hd"><svg class="chev" viewBox="0 0 20 20" aria-hidden="true"><path d="M7 5l5 5-5 5"/></svg></span></button>
+    <div class="sec-body" id="timingBody">
     <div class="knobs" id="timingKnobs"></div>
     <label class="chk"><input type="checkbox" id="latAuto"> <span>Estimate the mic delay automatically</span></label>
     <label class="chk"><input type="checkbox" id="ec"> <span>Echo cancellation (only if you record without headphones; it can swallow beatbox hits)</span></label>
     <div class="recrow"><button class="btn" id="calBtn">Calibrate timing: clap along for one loop</button></div>
     <p class="small">If your hits keep landing late, calibrate. AirPods and other Bluetooth headphones add 150–300 ms of delay and switch your phone to a lower-quality mic; wired headphones give the best timing. Imported recordings line up on their first sound, so the delay setting only affects live recording.</p>
+    </div>
   </section>
   <button class="fab" id="fab" aria-label="Play loop" hidden></button>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
@@ -317,6 +353,9 @@ let S = defaultState();
 let saveTimer=0;
 function save(){ clearTimeout(saveTimer); saveTimer=setTimeout(()=>{ try{ localStorage.setItem(STORE_KEY, JSON.stringify(S,(k,v)=>k[0]==='_'?undefined:v)); }catch(e){} },300); }
 
+const isOpen=(k,def)=> (S.ui && k in S.ui) ? S.ui[k] : def;
+function setOpen(k,v){ S.ui=S.ui||{}; S.ui[k]=v; save(); }
+const CHEV='<svg class="chev" viewBox="0 0 20 20" aria-hidden="true"><path d="M7 5l5 5-5 5"/></svg>';
 const steps = ()=>S.bars*16;
 const stepDur = ()=>60/S.bpm/4;
 const loopLen = ()=>steps()*stepDur();
@@ -941,7 +980,7 @@ async function startRecord(calib=false, teach=null){
   capturing=true; setRecUI(true);
 }
 function cancelRecord(){ teachQueue=null; capturing=false; recState=null; stopAll(); setRecUI(false); dropMic(); toast('Recording cancelled'); }
-function setRecUI(on){ ['instHint','calNote','playAlongRow','detectRow','micNote','mergeRow','kitPanel','replaceRow'].forEach(id=>{ const el=$(id); if(!el) return; if(on){ el.dataset.wasHidden=el.hidden?'1':''; el.hidden=true; } else if(el.dataset.wasHidden!==undefined){ el.hidden=el.dataset.wasHidden==='1'; delete el.dataset.wasHidden; } });
+function setRecUI(on){ ['instHint','calNote','playAlongRow','detectRow','micNote','mergeRow','kitPanel','replaceRow','optsBox'].forEach(id=>{ const el=$(id); if(!el) return; if(on){ el.dataset.wasHidden=el.hidden?'1':''; el.hidden=true; } else if(el.dataset.wasHidden!==undefined){ el.hidden=el.dataset.wasHidden==='1'; delete el.dataset.wasHidden; } });
   if(on) requestAnimationFrame(()=>{ try{ $('recStatus').scrollIntoView({block:'center',behavior:'smooth'}); }catch(e){} }); $('recStatus').hidden=!on; $('recBtn').classList.toggle('live',on); $('recTxt').textContent=on?'Stop':'Record'; $('importBtn').disabled=on; $('calBtn').disabled=on; }
 function assemble(chunks, a, b, sr){
   const n=Math.max(1,Math.round((b-a)*sr)), out=new Float32Array(n);
@@ -994,7 +1033,8 @@ function renderKitPanel(){
   const canTeach=!$('recBtn').hidden, T=taughtSlots(), warn=T.length>=2?kitWarnings():{}, used=new Set(S.kit.slots.map(x=>x.sound));
   const opts=sel=>Object.entries(SOUNDS).map(([k,v])=>`<option value="${k}" ${k===sel?'selected':''}>${v.label}</option>`).join('');
   const untaught=S.kit.slots.filter(x=>!(x.ex&&x.ex.length>=3));
-  p.innerHTML=`<div class="kp-head"><b>Your kit</b><span class="small">${S.kit.slots.length} sound${S.kit.slots.length>1?'s':''} · ${T.length} taught</span></div>
+  const kOpen=isOpen('kit',false);
+  p.innerHTML=`<button class="kp-head" aria-expanded="${kOpen}"><b>Your kit</b><span class="small">${S.kit.slots.length} sound${S.kit.slots.length>1?'s':''} · ${T.length} taught${kOpen?'':' · tap to edit'}</span>${CHEV}</button><div class="kp-body" ${kOpen?'':'hidden'}>
     <p class="small">Each row is one sound: what it plays, and the noise you’ll make for it. ${canTeach?'Teach each noise so it can tell them apart.':'Teaching needs live recording, which this viewer doesn’t allow. Open the site in your browser to teach.'}</p>
     <div class="slots">${S.kit.slots.map(x=>{ const taught=x.ex&&x.ex.length>=3; const w=warn[x.id];
       return `<div class="slot" data-id="${x.id}">
@@ -1011,7 +1051,8 @@ function renderKitPanel(){
       ${canTeach&&untaught.length?`<button class="btn primary" id="teachAll">Teach ${untaught.length===S.kit.slots.length?'all':untaught.length} sound${untaught.length>1?'s':''}</button>`:''}
       ${canTeach&&!untaught.length?`<button class="btn" id="teachAll">Re-teach all</button>`:''}
     </div>
-    ${T.length<2?'<p class="small">Until two or more sounds are taught, takes are sorted by built-in rules: B kick, ch snare, k clap, ts hi-hat.</p>':untaught.length?'<p class="small">Sounds that aren’t taught yet won’t get any hits. Teach them, or remove them.</p>':''}`;
+    ${T.length<2?'<p class="small">Until two or more sounds are taught, takes are sorted by built-in rules: B kick, ch snare, k clap, ts hi-hat.</p>':untaught.length?'<p class="small">Sounds that aren’t taught yet won’t get any hits. Teach them, or remove them.</p>':''}</div>`;
+  p.querySelector('.kp-head').onclick=()=>{ setOpen('kit',!kOpen); renderKitPanel(); };
   p.querySelectorAll('.slot').forEach(row=>{ const sl=slotOf(row.dataset.id);
     row.querySelector('.ssnd').onchange=e=>{ sl.sound=e.target.value; kitChanged(); };
     row.querySelector('.ssay').oninput=e=>{ sl.say=e.target.value; save(); };
@@ -1179,20 +1220,23 @@ function renderTracks(){
   const box=$('tracks'); box.innerHTML='';
   $('exBanner').hidden=!S.tracks.some(t=>t.ex);
   $('detectRow').hidden=userTracks().length>0; updateMergeRow();
+  if(!recState){ const ob=$('optsBox'); ob.hidden=$('detectRow').hidden && $('playAlongRow').hidden; }
   if(!S.tracks.length){ box.innerHTML='<div class="empty">No parts yet. Pick an instrument above and record or import your first take.</div>'; return; }
   const counts={};
   S.tracks.forEach(tr=>{
     const d=INST[tr.inst]; counts[tr.inst]=(counts[tr.inst]||0)+1;
     const el=document.createElement('article'); el.className='track'; el.style.setProperty('--c',d.color); tr._el=el;
     const pitched=d.kind==='pitched';
+    const tOpen=isOpen('t'+tr.id,true), cOpen=isOpen('c'+tr.id,false); if(!tOpen) el.classList.add('closed');
     el.innerHTML=`<div class="thead">
-      <div class="tname"><span class="led"></span><span>${d.label}${counts[tr.inst]>1?' '+counts[tr.inst]:''}</span>${tr.ex?'<small>example</small>':''}</div>
-      <select class="sel snd" id="snd${tr.id}" aria-label="Sound">${d.sounds.map(s=>`<option ${s===tr.sound?'selected':''}>${s}</option>`).join('')}</select>
+      <button class="ibtn tcoll" aria-expanded="${tOpen}" aria-label="Show or hide this part">${CHEV}</button>
+      <div class="tname"><span class="led"></span><span>${d.label}${counts[tr.inst]>1?' '+counts[tr.inst]:''}</span>${tr.ex?'<small>example</small>':''}<span class="tsum">${pitched?tr.notes.length+' notes':tr.hits.length+' hits'}</span></div>
       <button class="ibtn m" aria-pressed="${tr.mute}" title="Mute">M</button>
       <button class="ibtn s" aria-pressed="${tr.solo}" title="Solo">S</button>
       <button class="ibtn del" title="Delete part" aria-label="Delete part">✕</button></div>
       <div class="gridwrap"><div class="gridin"><canvas></canvas><div class="ph"></div></div></div>
-      <div class="knobs"></div>
+      <div class="tquick"><select class="sel snd" id="snd${tr.id}" aria-label="Sound">${d.sounds.map(s=>`<option ${s===tr.sound?'selected':''}>${s}</option>`).join('')}</select><div class="knobs qv"></div><button class="ibtn ctlbtn" aria-expanded="${cOpen}">Controls ${CHEV}</button></div>
+      <div class="ctl" ${cOpen?'':'hidden'}><div class="knobs kmore"></div>
       <div class="tfoot">
         <span class="grp">Move <button class="ibtn nl" aria-label="Move one step earlier">◀</button><button class="ibtn nr" aria-label="Move one step later">▶</button></span>
         ${pitched?`<button class="ibtn sld" aria-pressed="${slidesOn(tr)}" title="Slide between notes where you slid">Slides ${slidesOn(tr)?'on':'off'}</button>`:''}
@@ -1202,7 +1246,7 @@ function renderTracks(){
         ${!pitched&&(tr.takeN||1)>1?'<button class="ibtn undo">Undo last take</button>':''}
         ${tr._raw?'<button class="ibtn savetake" title="Download your raw recording">Save take</button>':''}
         <span class="grp tip">${pitched?'Press and drag to draw a note; drag a note’s end to resize it or its middle to move it; tap a note to remove it.':'Tap the grid to add or remove hits.'}${tr._an?' Small ticks on top show exactly when you made each sound.':''}</span>
-      </div>`;
+      </div></div>`;
     box.appendChild(el);
     el.querySelector('.snd').onchange=e=>{ tr.sound=e.target.value; tr._dirty=true; save(); scheduleRender(); };
     const mb=el.querySelector('.m'), sb=el.querySelector('.s');
@@ -1211,12 +1255,14 @@ function renderTracks(){
     const del=el.querySelector('.del');
     del.onclick=()=>{ if(del.dataset.arm){ disposeTrack(tr); S.tracks=S.tracks.filter(t=>t!==tr); keyChanged(); save(); renderTracks(); scheduleRender(); return; }
       del.dataset.arm='1'; del.textContent='Delete?'; setTimeout(()=>{ if(del.isConnected){ delete del.dataset.arm; del.textContent='✕'; } },2500); };
-    const kn=el.querySelector('.knobs');
-    knob(kn,{id:'v'+tr.id,label:'Volume',min:0,max:100,val:tr.vol,fmt:pct,color:d.color,oninput:v=>{tr.vol=v;applyAllMix();save();}});
+    const kn=el.querySelector('.kmore');
+    knob(el.querySelector('.qv'),{id:'v'+tr.id,label:'Volume',min:0,max:100,val:tr.vol,fmt:pct,color:d.color,oninput:v=>{tr.vol=v;applyAllMix();save();}});
     knob(kn,{id:'p'+tr.id,label:'Pan',min:-100,max:100,val:tr.pan,fmt:v=>v===0?'C':(v<0?'L'+(-v):'R'+v),color:d.color,oninput:v=>{tr.pan=v;applyMix(tr);save();}});
     knob(kn,{id:'r'+tr.id,label:'Reverb',min:0,max:100,val:tr.send,fmt:pct,color:d.color,oninput:v=>{tr.send=v;applyMix(tr);save();}});
     knob(kn,{id:'t'+tr.id,label:pitched?'Brightness':'Tone',min:0,max:100,val:tr.tone,fmt:pct,color:d.color,oninput:v=>{tr.tone=v;tr._dirty=true;save();scheduleRender();}});
     if(tr._raw) knob(kn,{id:'se'+tr.id,label:'Sensitivity',min:0,max:100,val:tr.sens,fmt:pct,color:d.color,oninput:v=>{tr.sens=v; clearTimeout(tr._st); tr._st=setTimeout(()=>reanalyze(tr),250);}});
+    const tc=el.querySelector('.tcoll'); tc.onclick=()=>{ const o=!el.classList.contains('closed'); el.classList.toggle('closed',o); tc.setAttribute('aria-expanded',!o); setOpen('t'+tr.id,!o); if(o===false) requestAnimationFrame(()=>drawGrid(tr)); };
+    const cbn=el.querySelector('.ctlbtn'), cpan=el.querySelector('.ctl'); cbn.onclick=()=>{ const o=cpan.hidden; cpan.hidden=!o; cbn.setAttribute('aria-expanded',o); setOpen('c'+tr.id,o); };
     el.querySelector('.nl').onclick=()=>nudge(tr,-1); el.querySelector('.nr').onclick=()=>nudge(tr,1);
     if(pitched){ const ov=el.querySelector('.ov'); const so=dv=>{ tr.oct=clamp(tr.oct+dv,-3,3); ov.textContent=(tr.oct>0?'+':'')+tr.oct; tr._dirty=true; save(); scheduleRender(); };
       el.querySelector('.od').onclick=()=>so(-1); el.querySelector('.ou').onclick=()=>so(1); }
@@ -1232,7 +1278,7 @@ function renderTracks(){
     drawGrid(tr);
   });
 }
-function redrawTrack(tr){ if(tr._cv) drawGrid(tr); }
+function redrawTrack(tr){ if(tr._cv) drawGrid(tr); const sm=tr._el&&tr._el.querySelector('.tsum'); if(sm) sm.textContent=INST[tr.inst].kind==='pitched'?tr.notes.length+' notes':tr.hits.length+' hits'; }
 function nudge(tr,dv){ const n=steps(); new Set([...(tr._takes||[]).map(t=>t.an), tr._an].filter(Boolean)).forEach(a=>a.align-=dv*stepDur()); if(tr.hits) tr.hits.forEach(h=>h.s=((h.s+dv)%n+n)%n); if(tr.notes){ tr.notes.forEach(x=>x.s=((x.s+dv)%n+n)%n); tr.notes.sort((a,b)=>a.s-b.s); } tr._dirty=true; save(); redrawTrack(tr); scheduleRender(); }
 let origSrc=null;
 function playOriginal(tr,btn){ ensureCtx(); if(origSrc){ try{origSrc.stop();}catch(e){} origSrc=null; btn.textContent='▶ Your take'; return; }
@@ -1363,7 +1409,8 @@ function init(){
   $('mergeDrums').checked=S.mergeDrums; $('mergeDrums').onchange=e=>{ S.mergeDrums=e.target.checked; save(); };
   $('playAlong').checked=S.playAlong; $('playAlong').onchange=e=>{ S.playAlong=e.target.checked; save(); };
   $('clearEx').onclick=()=>{ S.tracks.filter(t=>t.ex).forEach(disposeTrack); S.tracks=S.tracks.filter(t=>!t.ex); keyChanged(); save(); renderTracks(); };
-  const showCal=()=>{ $('calNote').hidden=!( !S.calibrated && !$('recBtn').hidden ); }; showCal(); window._showCal=showCal;
+  const showCal=()=>{ $('calNote').hidden=!( !S.calibrated && !$('recBtn').hidden && !isOpen('calHide',false) ); }; showCal(); window._showCal=showCal;
+  $('calLater').onclick=()=>{ setOpen('calHide',true); showCal(); toast('You can calibrate any time under Timing & mic'); };
   $('calNow').onclick=()=>{ toast('Clap on every click after the count-in'); startRecord(true); };
   if(!micAllowedByPage() || (window.self!==window.top && !(document.permissionsPolicy||document.featurePolicy))) micBlocked();
   // mix
@@ -1387,6 +1434,9 @@ function init(){
   $('latAuto').onchange=e=>{ S.latAuto=e.target.checked; save(); syncSettings(); };
   $('ec').onchange=e=>{ S.ec=e.target.checked; save(); dropMic(); };
   $('calBtn').onclick=()=>{ toast('Clap on every click after the count-in'); startRecord(true); };
+  document.querySelectorAll('button.card-head[data-sec]').forEach(btn=>{ const k='sec-'+btn.dataset.sec, card=btn.closest('.card'), body=document.getElementById(btn.getAttribute('aria-controls'));
+    const set=o=>{ btn.setAttribute('aria-expanded',o); body.hidden=!o; card.classList.toggle('closed',!o); }; set(isOpen(k,false));
+    btn.onclick=()=>{ const o=btn.getAttribute('aria-expanded')!=='true'; set(o); setOpen(k,o); }; });
   syncSettings();
   renderTracks(); updateKeyInfo();
   let rw=0; window.addEventListener('resize',()=>{ clearTimeout(rw); rw=setTimeout(()=>S.tracks.forEach(redrawTrack),150); });
