@@ -186,6 +186,7 @@ details summary{cursor:pointer;font-weight:600}
       <button id="importBtn" class="btn big">Import a recording</button>
       <input type="file" id="fileIn" accept="audio/*,video/*,.m4a,.mp3,.wav,.aac,.ogg,.webm,.caf" hidden>
     </div>
+    <div class="note calnote" id="teachRow" hidden><p id="teachTxt"></p><button class="btn" id="teachBtn">Teach my sounds</button></div>
     <p class="note" id="micNote" hidden></p>
     <div class="note calnote" id="calNote" hidden><p><b>First time recording here?</b> Calibrate once (about 10 seconds of clapping) so your hits land on the right steps. Bluetooth headphones like AirPods add a big delay, so calibrate with the headphones you’ll use.</p><button class="btn" id="calNow">Calibrate</button></div>
     <label class="chk" id="playAlongRow"><input type="checkbox" id="playAlong"> <span>Play the other parts while I record (wear headphones so the mic doesn’t hear them)</span></label>
@@ -277,7 +278,7 @@ function mkTrack(inst, o={}){
 }
 function S0sens(){ return (typeof S!=='undefined' && S) ? S.sens : 55; }
 function defaultState(){
-  return {v:1,bpm:94,bars:2,swing:14,key:'auto',scale:'auto',quant:16,metro:false,playAlong:false,ec:false,calibrated:false,mergeDrums:true,latAuto:true,latMs:80,sens:55,loops:4,
+  return {v:1,bpm:94,bars:2,swing:14,key:'auto',scale:'auto',quant:16,metro:false,playAlong:false,ec:false,calibrated:false,mergeDrums:true,kitProfile:null,latAuto:true,latMs:80,sens:55,loops:4,
     master:{vol:80,rev:45,drive:20,punch:50}, inst:'kit', nextId:10, tracks:null};
 }
 let S = defaultState();
@@ -360,8 +361,6 @@ function detectOnsets(x, sr, sens, minGap){
     let pre=0; for(let b=Math.max(0,j-Math.round(0.05*sr/B));b<j-Math.round(0.008*sr/B);b++) if(env[b]>pre) pre=env[b];
     const o={t, db:20*Math.log10(pkv+1e-9), fl:v, rise:20*Math.log10((pkv+1e-9)/(pre+1e-9))};
     const last=out[out.length-1];
-    // a hit right behind another must be a real new attack, not the earlier sound's tail changing colour
-    if(last && t-last.t>=minGap && t-last.t<0.2 && o.rise<5) continue;
     if(last && t-last.t<minGap){ if(o.fl>last.fl) out[out.length-1]=o; continue; }
     out.push(o);
   }
@@ -376,6 +375,11 @@ function detectOnsets(x, sr, sens, minGap){
     let pk=0,pb=b0; for(let b=b0;b<Math.min(nB,b0+Math.round(0.03*sr/B));b++) if(env[b]>pk){pk=env[b];pb=b;}
     let e=pb; const lim=Math.min(nB-8,pb+Math.round(0.4*sr/B)); while(e<lim && sm(e)>0.2*pk) e++;
     o.dur=Math.max(0.008,(e-b0)*B/sr); }
+  // a hit right behind a similar-sounding one must be a real new attack, not that sound's tail changing colour
+  // (a different sound right after, like "k" then "B", is kept)
+  for(let i=out.length-1;i>0;i--){ const o=out[i], p=out[i-1];
+    const similar=(o.low>0.7&&p.low>0.7) || (Math.abs(Math.log2(o.cen/p.cen))<1.5 && Math.abs(o.low-p.low)<0.3);
+    if(o.t-p.t<0.2 && o.rise<5 && similar) out.splice(i,1); }
   const maxDb=out.reduce((m,o)=>Math.max(m,o.db),-200);
   for(const o of out) o.v=clamp(0.3+0.7*(o.db-(maxDb-26))/26,0.3,1);
   return out;
@@ -388,7 +392,18 @@ const KIT_PROTO={clap:[Math.log2(1900),Math.log2(0.03)], snare:[Math.log2(3600),
 function nearestProto(o,names){ const f=[Math.log2(o.cen),Math.log2(o.dur)]; let bn=names[0],bd=1e9;
   for(const n of names){ const c=KIT_PROTO[n]; const d=Math.hypot(f[0]-c[0],(f[1]-c[1])*0.55); if(d<bd){bd=d;bn=n;} } return bn; }
 function widestGap(vals){ const v=vals.slice().sort((a,b)=>a-b); let g=0,cut=null; for(let i=1;i<v.length;i++) if(v[i]-v[i-1]>g){ g=v[i]-v[i-1]; cut=(v[i]+v[i-1])/2; } return {g,cut}; }
+const TEACH=[{d:'kick',say:'B'},{d:'snare',say:'ch'},{d:'clap',say:'k'},{d:'hat',say:'ts'}];
+const SCALE=[0.45,0.6,0.18,0.18];
+const featOf=o=>[Math.log2(Math.max(60,o.cen)), Math.log2(o.dur), o.low, o.hi||0];
+function hasProfile(){ return S.kitProfile && TEACH.every(t=>S.kitProfile[t.d]); }
 function classifyKit(ons){
+  if(hasProfile()){
+    // sort by your own examples: nearest learned sound
+    ons.forEach(o=>{ const f=featOf(o); let best='kick',bd=1e9;
+      for(const t of TEACH){ const p=S.kitProfile[t.d]; let d=0; for(let i=0;i<4;i++){ const z=(f[i]-p[i])/SCALE[i]; d+=z*z; } if(d<bd){bd=d;best=t.d;} }
+      o.cls=best; });
+    return;
+  }
   const rest=[];
   ons.forEach(o=>{ if(o.low>0.45||o.cen<850) o.cls='kick'; else rest.push(o); });
   if(!rest.length) return;
@@ -452,7 +467,7 @@ function analyzeTake(x, sr, inst, sens, notch){
   let y=biquad(x,'hp',45,0.707,sr);
   if(notch){ for(const f of [1500,2000]){ y=biquad(y,'notch',f,4,sr); y=biquad(y,'notch',f,4,sr); } }
   const kind=INST[inst].kind;
-  const ons=detectOnsets(y, sr, sens, kind==='pitched'?0.09:0.065);
+  const ons=detectOnsets(y, sr, sens, kind==='pitched'?0.09:0.035);
   let notes=null;
   if(kind==='drums') classifyKit(ons);
   if(kind==='pitched') notes=trackNotes(y, sr, ons, sens);
@@ -674,7 +689,7 @@ function updatePlayBtn(){ const f=$('fab'); if(f){ f.setAttribute('aria-label',p
   b.innerHTML = playing ? '<svg viewBox="0 0 20 20" fill="currentColor"><rect x="4" y="4" width="12" height="12" rx="1.5"/></svg>' : '<svg viewBox="0 0 20 20" fill="currentColor"><path d="M5 3l12 7-12 7z"/></svg>'; }
 
 /* ============================== mic + recording ============================== */
-let mic=null, capturing=false, recState=null, guessFix=null;
+let mic=null, capturing=false, recState=null, guessFix=null, teachQueue=null, teachGot={};
 function micAllowedByPage(){
   if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || !window.isSecureContext) return false;
   try{ const pp=document.permissionsPolicy||document.featurePolicy; if(pp&&pp.allowsFeature) return pp.allowsFeature('microphone'); }catch(e){}
@@ -708,35 +723,40 @@ function dropMic(){
   if(mic){ mic.stream.getTracks().forEach(t=>t.stop()); try{mic.src.disconnect(); mic.node.disconnect();}catch(e){} mic=null; }
   try{ if(navigator.audioSession) navigator.audioSession.type='playback'; }catch(e){}
 }
-function onHide(){ if(recState){ capturing=false; recState=null; stopAll(); setRecUI(false); } dropMic(); }
+function onHide(){
+  if(recState){ capturing=false; recState=null; setRecUI(false); teachQueue=null; }
+  if(ctx){ stopAll(); if(origSrc){ try{origSrc.stop();}catch(e){} origSrc=null; } playing=false; updatePlayBtn(); try{ ctx.suspend(); }catch(e){} }
+  dropMic();
+}
 document.addEventListener('visibilitychange',()=>{ if(document.hidden) onHide(); });
 window.addEventListener('pagehide',onHide);
 function micBlocked(why){
   const n=$('micNote'); n.hidden=false;
   n.innerHTML = '<b>Live mic recording isn’t allowed inside the Claude viewer.</b> Record each part with your phone’s voice recorder instead, starting right on beat one. On iPhone, use Voice Memos, tap the recording, then Share → Save to Files. Then pick the instrument here and tap <b>Import a recording</b>.';
-  $('recBtn').hidden=true; $('playAlongRow').hidden=true; $('importBtn').classList.add('primary'); const cn=$('calNote'); if(cn) cn.hidden=true;
+  $('recBtn').hidden=true; $('playAlongRow').hidden=true; const tr0=$('teachRow'); if(tr0) tr0.hidden=true; $('importBtn').classList.add('primary'); const cn=$('calNote'); if(cn) cn.hidden=true;
 }
 const autoLat=()=>ctx?(ctx.outputLatency?ctx.outputLatency+(ctx.baseLatency||0)+0.012:(ctx.baseLatency||0)+0.045):0.06;
 const latency=()=>S.latAuto?autoLat():S.latMs/1000;
-async function startRecord(calib=false){
+async function startRecord(calib=false, teach=null){
   ensureCtx();
   if(recState){ cancelRecord(); return; }
   if(!await ensureMic()) return;
   await renderDirty();
   if(playing){ stopAll(); playing=false; updatePlayBtn(); }
-  const bar=240/S.bpm, L=loopLen(), when=ctx.currentTime+0.25;
-  const along = !calib && S.playAlong;
+  const bar=240/S.bpm, L=teach?Math.min(loopLen(),2*bar):loopLen(), when=ctx.currentTime+0.25;
+  const along = !calib && !teach && S.playAlong;
   // metronome loop starts one bar early = count-in; parts start on bar 1
   stopAll(when);
   t0=when+bar;
   if(along) S.tracks.forEach(tr=>{ if(tr._buf){ ensureNodes(tr); tr._src=startSrc(tr._buf,tr._g,when+bar,0); } });
   if(!metroGain){ metroGain=ctx.createGain(); metroGain.connect(ctx.destination); }
   metroGain.gain.value=0.75; metroSrc=startSrc(metroBuf,metroGain,when,0);
-  recState={calib, inst:S.inst, countStart:when, start:when+bar, end:when+bar+L, lat:calib?0:latency(), chunks:[]};
+  recState={calib, teach, inst:S.inst, countStart:when, start:when+bar, end:when+bar+L, lat:calib?0:latency(), chunks:[]};
+  if(!teach) teachQueue=null;
   capturing=true; setRecUI(true);
 }
-function cancelRecord(){ capturing=false; recState=null; stopAll(); setRecUI(false); dropMic(); toast('Recording cancelled'); }
-function setRecUI(on){ ['instHint','calNote','playAlongRow','detectRow','micNote','mergeRow'].forEach(id=>{ const el=$(id); if(!el) return; if(on){ el.dataset.wasHidden=el.hidden?'1':''; el.hidden=true; } else if(el.dataset.wasHidden!==undefined){ el.hidden=el.dataset.wasHidden==='1'; delete el.dataset.wasHidden; } });
+function cancelRecord(){ teachQueue=null; capturing=false; recState=null; stopAll(); setRecUI(false); dropMic(); toast('Recording cancelled'); }
+function setRecUI(on){ ['instHint','calNote','playAlongRow','detectRow','micNote','mergeRow','teachRow'].forEach(id=>{ const el=$(id); if(!el) return; if(on){ el.dataset.wasHidden=el.hidden?'1':''; el.hidden=true; } else if(el.dataset.wasHidden!==undefined){ el.hidden=el.dataset.wasHidden==='1'; delete el.dataset.wasHidden; } });
   if(on) requestAnimationFrame(()=>{ try{ $('recStatus').scrollIntoView({block:'center',behavior:'smooth'}); }catch(e){} }); $('recStatus').hidden=!on; $('recBtn').classList.toggle('live',on); $('recTxt').textContent=on?'Stop':'Record'; $('importBtn').disabled=on; $('calBtn').disabled=on; }
 function assemble(chunks, a, b, sr){
   const n=Math.max(1,Math.round((b-a)*sr)), out=new Float32Array(n);
@@ -744,12 +764,38 @@ function assemble(chunks, a, b, sr){
   return out;
 }
 async function finishRecord(){
-  const r=recState; capturing=false; recState=null; stopAll(); setRecUI(false); dropMic();
+  const r=recState; capturing=false; recState=null; stopAll(); setRecUI(false); if(!r.teach) dropMic(); updateTeachRow();
   const sr=ctx.sampleRate, pre=0.08, a=r.start+r.lat-pre, b=r.end+r.lat+0.25;
   const x=assemble(r.chunks,a,b,sr);
   if(r.calib){ finishCalib(x,sr,pre); return; }
+  if(r.teach){ finishTeach(x,sr,r.teach); return; }
   await addTake(x, sr, r.inst, {align:pre, notch:true, live:true});
 }
+function startTeach(){
+  teachQueue=TEACH.slice(); teachGot={};
+  toast('Say each sound on every click: B, then ch, then k, then ts');
+  nextTeach();
+}
+function nextTeach(){
+  if(!teachQueue||!teachQueue.length) return;
+  const t=teachQueue[0]; setTimeout(()=>{ if(teachQueue && teachQueue[0]===t) startRecord(false,t); }, 700);
+}
+function finishTeach(x,sr,t){
+  const an=analyzeTake(x,sr,'kick',60,true);
+  const ons=an.onsets.slice().sort((a,b)=>b.db-a.db).slice(0,8);
+  if(ons.length<3){ teachQueue=null; dropMic(); toast(`I only heard ${ons.length} “${t.say}” sounds. Tap Teach again and say it louder on every click.`); updateTeachRow(); return; }
+  teachGot[t.d]=[0,1,2,3].map(i=>median(ons.map(o=>featOf(o)[i])));
+  teachQueue.shift();
+  if(teachQueue.length){ toast(`Got your “${t.say}”. Next: say “${teachQueue[0].say}” on every click.`); nextTeach(); return; }
+  S.kitProfile=teachGot; teachQueue=null; dropMic(); save(); updateTeachRow();
+  // re-sort drum takes from this session with the new profile
+  let n=0; S.tracks.forEach(tr=>{ (tr._takes||[]).forEach(tk=>{ if(tk.inst==='kit'){ classifyKit(tk.an.onsets); n++; } }); if(n){ quantizeTrack(tr); tr._dirty=true; redrawTrack(tr); } });
+  if(n) scheduleRender();
+  toast('Learned your B, ch, k and ts. Drum kit takes now sort by your sounds'+(n?' (re-sorted this session’s takes).':'.'));
+}
+function updateTeachRow(){ const r=$('teachRow'); if(!r||recState) return; r.hidden=!(S.inst==='kit' && !$('recBtn').hidden);
+  $('teachTxt').innerHTML = hasProfile() ? '<b>Sorting by your sounds.</b> Re-teach if you change mics or headphones.' : '<b>Hits landing in the wrong row?</b> Teach it your B, ch, k and ts: four short takes, about 30 seconds.';
+  $('teachBtn').textContent = hasProfile()?'Re-teach':'Teach my sounds'; }
 function finishCalib(x,sr,pre){
   const ons=detectOnsets(biquad(biquad(x,'notch',1500,4,sr),'notch',2000,4,sr), sr, 60, 0.12);
   const beat=60/S.bpm, lo=-0.12*beat;
@@ -878,7 +924,7 @@ function buildPads(){
   const p=$('pads'); p.innerHTML='';
   Object.entries(INST).forEach(([k,d])=>{ const b=document.createElement('button'); b.className='pad'; b.style.setProperty('--c',d.color); b.setAttribute('aria-pressed',S.inst===k);
     b.innerHTML=`<i></i><b>${d.label}</b><small>${d.say}</small>`; b.onclick=()=>{ S.inst=k; save(); buildPads(); }; p.appendChild(b); });
-  $('instHint').textContent=INST[S.inst].hint; updateMergeRow();
+  $('instHint').textContent=INST[S.inst].hint; updateMergeRow(); updateTeachRow();
 }
 function updateMergeRow(){ const r=$('mergeRow'); if(!r||recState) return; r.hidden=!(INST[S.inst].kind!=='pitched' && userTracks().some(t=>INST[t.inst].kind!=='pitched')); }
 function knob(parent,{id,label,min,max,val,fmt,oninput,color,step=1}){
@@ -1033,6 +1079,7 @@ function init(){
   $('playAlong').checked=S.playAlong; $('playAlong').onchange=e=>{ S.playAlong=e.target.checked; save(); };
   $('clearEx').onclick=()=>{ S.tracks.filter(t=>t.ex).forEach(disposeTrack); S.tracks=S.tracks.filter(t=>!t.ex); keyChanged(); save(); renderTracks(); };
   const showCal=()=>{ $('calNote').hidden=!( !S.calibrated && !$('recBtn').hidden ); }; showCal(); window._showCal=showCal;
+  $('teachBtn').onclick=()=>startTeach();
   $('calNow').onclick=()=>{ toast('Clap on every click after the count-in'); startRecord(true); };
   if(!micAllowedByPage() || (window.self!==window.top && !(document.permissionsPolicy||document.featurePolicy))) micBlocked();
   // mix
@@ -1071,8 +1118,8 @@ function tick(){
   S.tracks.forEach(tr=>{ if(!tr._ph||!tr._grid) return; tr._ph.style.display=showPh?'block':'none'; if(showPh){ const G=tr._grid, pos=ph*steps(), L=Math.min(G.lines-1,Math.floor(pos/G.sPL)); tr._ph.style.transform=`translate(${G.gut+(pos-L*G.sPL)*G.cw}px,${L*(G.lineH+G.gapH)}px)`; } });
   if(recState){
     const r=recState, beat=60/S.bpm, dots=$('beats').children;
-    if(now<r.start){ const b=Math.floor((now-r.countStart)/beat); $('recLabel').textContent = now<r.countStart?'Get ready':`Count-in ${4-b}`; [...dots].forEach((d,i)=>{ d.className = (now>=r.countStart && i===b)?'on'+(i===0?' one':''):''; }); $('recProg').style.width='0%'; }
-    else { const el=now-r.start, b=Math.floor(el/beat)%4, bar=Math.floor(el/(beat*4))+1; [...dots].forEach((d,i)=>d.className=i===b?'on'+(i===0?' one':''):''); $('recLabel').textContent=r.calib?`Clap along · bar ${Math.min(bar,S.bars)} of ${S.bars}`:`● Recording bar ${Math.min(bar,S.bars)} of ${S.bars}`; $('recProg').style.width=clamp(el/L*100,0,100)+'%'; }
+    if(now<r.start){ const b=Math.floor((now-r.countStart)/beat); $('recLabel').textContent = now<r.countStart?'Get ready':(r.teach?`Say “${r.teach.say}” on each click · ${4-b}`:`Count-in ${4-b}`); [...dots].forEach((d,i)=>{ d.className = (now>=r.countStart && i===b)?'on'+(i===0?' one':''):''; }); $('recProg').style.width='0%'; }
+    else { const el=now-r.start, b=Math.floor(el/beat)%4, bar=Math.floor(el/(beat*4))+1; [...dots].forEach((d,i)=>d.className=i===b?'on'+(i===0?' one':''):''); const RL=r.end-r.start, nb=Math.round(RL/(beat*4)); $('recLabel').textContent=r.teach?`Say “${r.teach.say}” on every click · ${Math.min(bar,nb)}/${nb}`:r.calib?`Clap along · bar ${Math.min(bar,nb)} of ${nb}`:`● Recording bar ${Math.min(bar,nb)} of ${nb}`; $('recProg').style.width=clamp(el/RL*100,0,100)+'%'; }
     if(mic){ const a=new Float32Array(mic.an.fftSize); mic.an.getFloatTimeDomainData(a); let m=0; for(const v of a) m=Math.max(m,Math.abs(v)); $('meter').style.width=clamp(Math.sqrt(m)*100,0,100)+'%'; }
     if(now>r.end+r.lat+0.3) finishRecord();
   }
