@@ -25,7 +25,14 @@ Simple browser games for mobile and desktop. Plain HTML/CSS/JS with no build ste
   - Progress is saved only in the browser (`localStorage`). There's no server or account, so it doesn't follow you to another device or browser.
 - **Two Thumbs Up Classic** (`two-thumbs-up-classic/`): the original one-finger version. Drag to slingshot, and the hand auto-grabs near the top of its arc.
 
-Both have a ⚙ button with live tuning sliders, saved in your browser.
+- **Mouth Machine** (`mouth-machine/`, mobile and desktop): a beatbox-to-beat studio. Pick an instrument, record a part with the mic (with count-in and metronome) or import a voice memo, and it becomes real instruments.
+  - Drums: beatbox the whole kit in one take (kick, snare and hi-hat are sorted by brightness) or record each drum on its own. Hits snap to 16th (or 8th) notes.
+  - Bass, lead, keys and pad: hum or whistle. Pitch is tracked and snapped to the detected key and scale.
+  - Each part gets its own sound, volume, pan, reverb, tone, octave and nudge controls, plus an editable grid. Master swing, room, drive and punch.
+  - Export a .zip with the mix WAV, dry stems and a MIDI file. Parts (not the recordings) are saved in `localStorage`.
+  - Wear headphones while recording. Timing & mic has a clap-along calibration for mic delay.
+
+The Two Thumbs Up games have a ⚙ button with live tuning sliders, saved in your browser.
 
 `climber/` and `climber-classic/` just forward to the new addresses.
 
