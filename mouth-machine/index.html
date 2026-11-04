@@ -327,15 +327,18 @@ function median(a){ if(!a.length) return NaN; const b=a.slice().sort((x,y)=>x-y)
 function detectOnsets(x, sr, sens, minGap){
   const N=1024, H=256, fft=getFFT(N), win=fft.win, sN=sens/100;
   const nF=Math.max(0,Math.floor((x.length-N)/H)+1);
-  const flux=new Float32Array(nF), en=new Float32Array(nF), re=new Float32Array(N), im=new Float32Array(N), prev=new Float32Array(N/2);
+  const kH=Math.ceil(4000*N/sr), flux=new Float32Array(nF), fluxH=new Float32Array(nF), enH=new Float32Array(nF), en=new Float32Array(nF), re=new Float32Array(N), im=new Float32Array(N), prev=new Float32Array(N/2);
   for(let f=0;f<nF;f++){ const o=f*H; let e=0;
     for(let i=0;i<N;i++){ const v=x[o+i]; re[i]=v*win[i]; im[i]=0; e+=v*v; }
-    en[f]=10*Math.log10(e/N+1e-12); fft(re,im); let s=0;
-    for(let k=1;k<N/2;k++){ const m=Math.log1p(100*Math.hypot(re[k],im[k])); const d=m-prev[k]; if(d>0) s+=d; prev[k]=m; }
-    flux[f]=f===0?0:s; }
-  let mx=0; for(let f=0;f<nF;f++) if(flux[f]>mx) mx=flux[f]; if(mx>0) for(let f=0;f<nF;f++) flux[f]/=mx;
+    en[f]=10*Math.log10(e/N+1e-12); fft(re,im); let s=0, sh=0, eh=0;
+    for(let k=1;k<N/2;k++){ const mg=Math.hypot(re[k],im[k]); const m=Math.log1p(100*mg); const d=m-prev[k]; if(d>0){ s+=d; if(k>=kH) sh+=d; } prev[k]=m; if(k>=kH) eh+=mg*mg; }
+    flux[f]=f===0?0:s; fluxH[f]=f===0?0:sh; enH[f]=10*Math.log10(eh/N+1e-12); }
+  let mx=0, mxH=0; for(let f=0;f<nF;f++){ if(flux[f]>mx) mx=flux[f]; if(fluxH[f]>mxH) mxH=fluxH[f]; }
+  // quiet hissy sounds (a soft "ts") are judged against the high band on its own, so loud kicks and snares don't drown them out
+  for(let f=0;f<nF;f++){ const a=mx>0?flux[f]/mx:0, b=mxH>0?fluxH[f]/mxH:0; flux[f]=Math.max(a,b*0.9); }
   const floor=percentile(en,0.15), top=percentile(en,0.995);
   const gate=floor+Math.max(8,(top-floor)*(0.5-0.32*sN)), delta=0.11-0.075*sN;
+  const floorH=percentile(enH,0.15), topH=percentile(enH,0.995), gateH=floorH+Math.max(10,(topH-floorH)*(0.45-0.3*sN));
   // sample envelope for refinement
   const B=32, nB=Math.floor(x.length/B), env=new Float32Array(nB);
   for(let b=0;b<nB;b++){ let m=0; for(let i=b*B;i<b*B+B;i++){ const a=Math.abs(x[i]); if(a>m) m=a; } env[b]=m; }
@@ -345,7 +348,7 @@ function detectOnsets(x, sr, sens, minGap){
     if(!(v>=flux[f-1]&&v>=flux[f-2]&&v>flux[f+1]&&v>=flux[f+2])) continue;
     const loc=[]; for(let j=Math.max(0,f-W);j<=Math.min(nF-1,f+W);j++) loc.push(flux[j]);
     if(v<median(loc)+delta) continue;
-    let me=-200; for(let j=f;j<=Math.min(nF-1,f+4);j++) if(en[j]>me) me=en[j]; if(me<gate) continue;
+    let me=-200, mh=-200; for(let j=f;j<=Math.min(nF-1,f+4);j++){ if(en[j]>me) me=en[j]; if(enH[j]>mh) mh=enH[j]; } if(me<gate && mh<gateH) continue;
     // refine
     const tc=(f*H+N/2)/sr, c=Math.round(tc*sr/B), lo=Math.max(1,c-Math.round(0.04*sr/B)), hi=Math.min(nB-1,c+Math.round(0.045*sr/B));
     let pk=lo,pv=0; for(let b=lo;b<=hi;b++) if(env[b]>pv){pv=env[b];pk=b;}
@@ -729,10 +732,10 @@ function removeClickBleed(ons, pre){
   if(ons.length<4) return {ons, removed:0};
   const beat=60/S.bpm; let best=null;
   for(const o of ons){ const ph=(((o.t-pre)%beat)+beat)%beat;
-    const m=ons.filter(q=>{ const d=(((q.t-pre-ph)%beat)+beat*1.5)%beat-beat/2; return Math.abs(d)<0.006; });
+    const m=ons.filter(q=>{ const d=(((q.t-pre-ph)%beat)+beat*1.5)%beat-beat/2; return Math.abs(d)<0.0025; });
     if(!best||m.length>best.length) best=m; }
   const beats=Math.round(loopLen()/beat);
-  if(!best || best.length<Math.max(4,beats*0.5)) return {ons, removed:0};
+  if(!best || best.length<Math.max(4,beats*0.75)) return {ons, removed:0};
   const loud=median(ons.map(o=>o.db)), bleedDb=median(best.map(o=>o.db));
   const others=ons.filter(o=>!best.includes(o));
   // only treat it as bleed if your own sounds are clearly louder (or there are none, e.g. a silent take)
