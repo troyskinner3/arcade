@@ -28,7 +28,9 @@ Simple browser games for mobile and desktop. Plain HTML/CSS/JS with no build ste
 - **Mouth Machine** (`mouth-machine/`, mobile and desktop): a beatbox-to-beat studio. Pick an instrument, record a part with the mic (with count-in and metronome) or import a voice memo, and it becomes real instruments.
   - Drums: beatbox the whole kit in one take (default B = kick, ch = snare, k = clap, ts = hi-hat) or record each drum on its own. Drum takes layer onto the same Drums part (one grid; Undo last take removes a layer). Hits snap to 16th (or 8th) notes.
   - Your kit (on the Drum kit pad): up to 12 slots, each playing one of 19 synthesized sounds (toms, rim, cowbell, shaker, crash, ride, 808 boom…) or "My own noise" (your taught recording). Teach each slot your trigger noise with a short take on the click; hits are then sorted by comparing a spectral fingerprint (tone shape at the attack and body, plus length, brightness, bass and hiss) against your examples. Look-alike noises get a warning.
-  - Bass, lead, keys and pad: hum or whistle. Pitch is tracked and snapped to the detected key and scale.
+  - Bass, lead, keys and pad: hum or whistle. Pitch is tracked and snapped to the detected key and scale; whistling (1-4 kHz) is followed by its own tracker and moved down whole octaves into the part's range. A new take records over the existing part of that instrument unless you choose to add another part.
+  - Chords: Keys and Pad play each note as a triad built from the key (on by default, toggle per part); Bass and Lead stay single notes unless switched on.
+  - Drawing notes: press and drag to draw a long note, drag a note's end to resize it or its middle to move it, tap to delete. Drawn notes stay exactly where you put them.
   - Each part gets its own sound, volume, pan, reverb, tone, octave and nudge controls, plus an editable grid. Master swing, room, drive and punch.
   - Export a .zip with the mix WAV, dry stems and a MIDI file. Parts (not the recordings) are saved in `localStorage`.
   - Wear headphones while recording. Timing & mic has a clap-along calibration for mic delay.
