@@ -224,6 +224,9 @@ main{display:flex;flex-direction:column;gap:16px;padding-block:16px calc(110px +
 .glabels{position:absolute;left:0;top:0;bottom:0;pointer-events:none;border-radius:10px 0 0 10px;overflow:hidden}
 .glabels span{position:absolute;left:0;padding-left:5px;display:flex;align-items:center;font:600 9px var(--f-mono);color:var(--ink);opacity:.75;background:var(--cell);text-transform:uppercase;white-space:nowrap;overflow:hidden}
 .zoom{display:flex;gap:4px;margin-left:auto}
+.ovw{position:relative;height:26px;margin-top:6px;border-radius:7px;background:var(--cell);overflow:hidden;touch-action:none;cursor:pointer}
+.ovw canvas{display:block;width:100%;height:100%}
+.ovw-win{position:absolute;top:0;bottom:0;left:0;border:2px solid var(--ink);border-radius:7px;background:color-mix(in srgb,var(--ink) 10%,transparent);pointer-events:none;box-sizing:border-box;min-width:10px}
 .zoom .ibtn{min-width:38px;font-size:16px}
 .gridin{position:relative;touch-action:manipulation}
 .gridin canvas{display:block}
@@ -1671,7 +1674,29 @@ function setZoom(tr,cw,anchorX){ const G=tr._grid, wrap=tr._cv&&tr._cv.parentEle
   const ax=anchorX==null?wrap.clientWidth/2:anchorX, step=(wrap.scrollLeft+ax-G.gut)/G.cw;
   gridCW=clamp(cw,G.fit,40); try{ localStorage.setItem('noodle.zoom',gridCW); }catch(e){}
   drawGrid(tr); const G2=tr._grid; wrap.scrollLeft=Math.max(0,step*G2.cw+G2.gut-ax); tr._scrollX=wrap.scrollLeft; }
+/* overview under the grid: the whole part in miniature, with a window over the part you're looking at */
+function drawOverview(tr){ const cv=tr._cv; if(!cv||!cv.isConnected) return; const box=cv.closest('.track'), ov=box&&box.querySelector('.ovw'); if(!ov) return;
+  const wrap=cv.parentElement.parentElement, over=wrap.scrollWidth>wrap.clientWidth+2; ov.hidden=!over; if(!over) return;
+  const oc=ov.querySelector('canvas'), W=ov.clientWidth||300, H=ov.clientHeight||26, dpr=Math.min(2,window.devicePixelRatio||1); oc.width=Math.round(W*dpr); oc.height=Math.round(H*dpr);
+  const g=oc.getContext('2d'); g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,W,H); const n=pSteps(tr), cw=W/n, col=INST[tr.inst].color;
+  g.fillStyle=cssVar('--beat'); for(let s0=0;s0<n;s0+=8) g.fillRect(s0*cw,0,cw*4,H);
+  g.fillStyle=cssVar('--barline'); for(let s0=16;s0<n;s0+=16) g.fillRect(s0*cw,0,1,H);
+  g.fillStyle=col;
+  if(INST[tr.inst].kind==='pitched'){ const ps=tr.notes.map(pitchOf); if(ps.length){ const lo=Math.min(...ps)-1, hi=Math.max(...ps)+1, rh=Math.max(2,(H-4)/Math.max(6,hi-lo+1));
+    tr.notes.forEach(nt=>{ if(nt.s>=n) return; g.globalAlpha=0.55+0.45*nt.v; g.fillRect(nt.s*cw,Math.max(1,H-2-(pitchOf(nt)-lo+1)*rh),Math.max(1.5,nt.l*cw-0.5),Math.max(2,rh-0.5)); }); } }
+  else { const rows=tr._grid?tr._grid.rows:[INST[tr.inst].drum], rh=(H-2)/Math.max(rows.length,1); tr.hits.forEach(h=>{ if(h.s>=n) return; const i=Math.max(0,rows.indexOf(h.d)); g.globalAlpha=0.45+0.55*h.v; g.fillRect(h.s*cw,1+i*rh,Math.max(1.5,cw-0.5),Math.max(2,rh-0.5)); }); }
+  g.globalAlpha=1; overviewWin(tr); }
+function overviewWin(tr){ const cv=tr._cv; if(!cv||!cv.isConnected) return; const ov=cv.closest('.track').querySelector('.ovw'); if(!ov||ov.hidden) return;
+  const wrap=cv.parentElement.parentElement, sw=wrap.scrollWidth||1, win=ov.querySelector('.ovw-win');
+  win.style.left=(wrap.scrollLeft/sw*100)+'%'; win.style.width=(wrap.clientWidth/sw*100)+'%'; }
+function wireOverview(tr,el){ const ov=el.querySelector('.ovw'); if(!ov) return; let drag=null;
+  const go=e=>{ const wrap=tr._cv.parentElement.parentElement, r=ov.getBoundingClientRect(), f=clamp((e.clientX-r.left)/r.width,0,1);
+    tr._touchT=Date.now(); wrap.scrollLeft=clamp(f*wrap.scrollWidth-wrap.clientWidth/2, 0, wrap.scrollWidth-wrap.clientWidth); overviewWin(tr); };
+  ov.addEventListener('pointerdown',e=>{ drag=e.pointerId; try{ ov.setPointerCapture(e.pointerId); }catch(_){} go(e); });
+  ov.addEventListener('pointermove',e=>{ if(drag===e.pointerId) go(e); });
+  ['pointerup','pointercancel'].forEach(ev=>ov.addEventListener(ev,()=>{ drag=null; })); }
 function wireGrid(tr,el){ const wrap=el.querySelector('.gridwrap'); if(!wrap) return; const touched=()=>{ tr._touchT=Date.now(); };
+  wireOverview(tr,el); wrap.addEventListener('scroll',()=>overviewWin(tr),{passive:true});
   wrap.addEventListener('scroll',()=>{ if(!tr._autoScroll) { tr._scrollX=wrap.scrollLeft; } tr._autoScroll=false; },{passive:true});
   ['pointerdown','wheel','touchstart'].forEach(ev=>wrap.addEventListener(ev,touched,{passive:true}));
   let pinch=null; const dist=t=>Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY);
@@ -1770,7 +1795,7 @@ function buildCard(tr){
     const el=document.createElement('article'); el.className='track'; el.style.setProperty('--c',d.color); tr._el=el;
     const pitched=d.kind==='pitched';
     const cOpen=isOpen('c'+tr.id,false);
-    el.innerHTML=`<div class="gridbox"><div class="gridwrap"><div class="gridin"><canvas></canvas><div class="ph"></div></div></div><div class="glabels"></div></div>
+    el.innerHTML=`<div class="gridbox"><div class="gridwrap"><div class="gridin"><canvas></canvas><div class="ph"></div></div></div><div class="glabels"></div></div><div class="ovw" hidden aria-hidden="true"><canvas></canvas><div class="ovw-win"></div></div>
       ${pitched?`<div class="notebar" hidden><span class="nb-info"></span><div class="nb-btns">
         <button class="ibtn" data-act="left" aria-label="Move note earlier">◀</button><button class="ibtn" data-act="right" aria-label="Move note later">▶</button>
         <button class="ibtn" data-act="up" aria-label="Move note up">▲</button><button class="ibtn" data-act="down" aria-label="Move note down">▼</button>
@@ -1878,6 +1903,7 @@ function drawVox(tr){
 }
 function drawGrid(tr){
   if(tr.inst==='vox'){ if(tr._cv) drawVox(tr); return; }
+  if(!tr._ovRaf) tr._ovRaf=requestAnimationFrame(()=>{ tr._ovRaf=0; drawOverview(tr); });
   const cv=tr._cv; if(!cv) return; const wrap=cv.parentElement.parentElement; const n=pSteps(tr);
   const pitched=INST[tr.inst].kind==='pitched';
   const gr=gridRows(tr), rows=gr.rows, rh=pitched?clamp(Math.floor(176/Math.max(1,rows.length)),8,15):gr.rh; const gut=(!pitched&&rows.length>1)?52:0;
