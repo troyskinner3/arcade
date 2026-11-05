@@ -401,6 +401,9 @@ input[type=range]::-moz-range-thumb{width:10px;height:18px;border-radius:1px;bac
 .ovrow .ovw{flex:1;margin-top:0;min-width:0}
 .ovrow .zoom .ibtn{height:26px;min-width:34px}
 .pdel,.cta-del{color:var(--rec)}
+.nsel{position:absolute;touch-action:none;z-index:2;cursor:grab}
+.ibtn.scbtn[aria-pressed="true"]{background:var(--lcd-ink);color:#141414;border-color:var(--lcd-ink)}
+.sctools .scamt{flex:1 1 140px;min-width:120px}
 .prow.blank.pending .prow-side{display:flex}
 .cta-del{min-width:38px;padding:0 10px}
 .ctl{border-top:1px solid var(--line);padding-top:8px;gap:8px}
@@ -776,9 +779,11 @@ async function renderVox(tr){
       mk.connect(dl); dl.connect(g); g.connect(p); p.connect(oc.destination); }); }
   if(fx.echo>0){ const dl=oc.createDelay(2), fb=oc.createGain(), lp=oc.createBiquadFilter(), wet=oc.createGain(); dl.delayTime.value=stepDur()*2; fb.gain.value=0.35; lp.type='lowpass'; lp.frequency.value=4500; wet.gain.value=fx.echo/100*0.5;
     mk.connect(dl); dl.connect(lp); lp.connect(fb); fb.connect(dl); lp.connect(wet); wet.connect(oc.destination); }
-  const va=tr.va||0, PL=pSteps(tr)*stepDur(); if(va>=0) src.start(0,va,PL); else src.start(-va,0,Math.max(0.01,PL+va));
+  const va=tr.va||0, PL=pSteps(tr)*stepDur(), SC=scOn(tr), reps=SC?pLoops(tr):1;
+  for(let r=0;r<reps;r++){ const sN=r?oc.createBufferSource():src; if(r){ sN.buffer=ab; sN.connect(hp); } const o=r*PL; if(va>=0) sN.start(o,va,PL); else sN.start(o-va,0,Math.max(0.01,PL+va)); }
   const r=await oc.startRendering();
   for(let ch=0;ch<2;ch++){ const s2=r.getChannelData(ch), dst=b.getChannelData(ch); for(let i=0;i<s2.length;i++) dst[i%n]+=s2[i]; }
+  if(SC) applyDuck(b,tr);
   return b;
 }
 const steps = ()=>S.bars*16;
@@ -790,7 +795,22 @@ const pBars = tr=>Math.min(tr.len||S.bars, S.bars);
 const pSteps = tr=>pBars(tr)*16;
 const pRep = tr=>tr.rep!==false;
 const pLoops = tr=>pRep(tr)?Math.max(1,Math.round(S.bars/pBars(tr))):1;
-const bufLen = tr=>(pRep(tr)?pBars(tr):S.bars)*16*stepDur();
+const scOn = tr=>!!(tr.sc && tr.sc.src && INST[tr.inst].kind!=='drums' && INST[tr.inst].kind!=='drum');
+const bufLen = tr=>(pRep(tr)&&!scOn(tr)?pBars(tr):S.bars)*16*stepDur();
+/* ---- sidechain: duck a part every time a chosen drum hits (built into the part's sound) ---- */
+function drumSources(){ const seen=new Map(); S.kit.slots.forEach(x=>seen.set(x.id,slotLabel(x.id)));
+  S.tracks.forEach(t=>{ const k=INST[t.inst].kind; if((k==='drums'||k==='drum')&&t.hits) t.hits.forEach(h=>{ if(!seen.has(h.d)) seen.set(h.d,slotLabel(h.d)); }); });
+  const order=['kick','snare','clap','hat']; return [...seen.entries()].sort((a,b)=>((order.indexOf(a[0])+1||9)-(order.indexOf(b[0])+1||9))); }
+function scHits(src){ const out=[]; S.tracks.forEach(t=>{ const k=INST[t.inst].kind; if((k==='drums'||k==='drum')&&t.hits) songEvents(t,t.hits).forEach(h=>{ if(h.d===src) out.push(h.s); }); }); return [...new Set(out)].sort((a,b)=>a-b); }
+function scSig(tr){ return scOn(tr)? [tr.sc.src,tr.sc.amt,S.bpm,S.bars,S.swing,scHits(tr.sc.src).join(',')].join('|') : ''; }
+function applyDuck(b,tr){ const hits=scHits(tr.sc.src); if(!hits.length) return;
+  const sr=b.sampleRate, n=b.length, L=n/sr, depth=clamp((tr.sc.amt??60)/100,0,1)*0.92, att=0.006, tau=Math.max(0.05,60/S.bpm/2)/2.6;
+  const ts=hits.map(s=>stepTime(s)+0.002).filter(t=>t<L); ts.push(...ts.map(t=>t-L));   // the last hits' release wraps into the loop start
+  ts.sort((a,b)=>a-b); const B=32, env=new Float32Array(Math.ceil(n/B)+1); let j=0;
+  for(let k=0;k<env.length;k++){ const t=k*B/sr; while(j+1<ts.length && ts[j+1]<=t) j++; let g=1;
+    for(let q=Math.max(0,j-2);q<=Math.min(ts.length-1,j+1);q++){ const dt=t-ts[q]; if(dt<-att) continue; const e=dt<0? (1+dt/att) : Math.exp(-dt/tau); g=Math.min(g,1-depth*e); }
+    env[k]=g; }
+  for(let ch=0;ch<b.numberOfChannels;ch++){ const d=b.getChannelData(ch); for(let i=0;i<n;i++){ const k=i/B, k0=k|0, f=k-k0; d[i]*=env[k0]+(env[k0+1]-env[k0])*f; } } }
 /* a part's events laid out across the whole song: its own loop, repeated (r>0 marks a repeat) */
 function songEvents(tr, list){ const n=pSteps(tr), out=[]; for(let r=0;r<pLoops(tr);r++) for(const e of list){ const s0=e.s!==undefined?e.s:e.x; if(s0>=n) continue; out.push(Object.assign({},e, e.s!==undefined?{s:e.s+r*n}:{x:e.x+r*n}, {r})); } return out; }
 const mtof = m=>440*Math.pow(2,(m-69)/12);
@@ -1334,13 +1354,15 @@ async function renderStem(tr){
   let out=oc.createGain(); out.connect(oc.destination);
   const d=INST[tr.inst];
   if(d.kind!=='pitched' && tr.sound==='Lo-fi'){ const lp=oc.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=3600; const sh=oc.createWaveShaper(); sh.curve=driveCurve(0.5); out.disconnect(); out.connect(sh); sh.connect(lp); lp.connect(oc.destination); }
-  if(d.kind==='pitched' && tr.inst==='arp'){ for(const e of arpEvents(tr)) if(e.x<PN) voice(oc,out,tr.sound,tAt(e.x)+0.002,Math.max(0.03,e.l*stepDur()),e.p+12*tr.oct,e.v,T); }
-  else if(d.kind==='pitched'){ for(const nt of tr.notes){ if(nt.s>=PN) continue; const ts=stepTime(nt.s), dur=Math.max(0.05,nt.l*stepDur()-0.012); const ps=notePitches(tr,nt); const pv=slidesOn(tr)&&nt.g ? tr.notes.find(o=>o!==nt && o.s+o.l===nt.s) : null; const pps=pv?notePitches(tr,pv):null;
+  const SC=scOn(tr), NL=!tr.notes?[]:SC?songEvents(tr,tr.notes):tr.notes.filter(x=>x.s<PN);
+  if(d.kind==='pitched' && tr.inst==='arp'){ for(const e of (SC?songEvents(tr,arpEvents(tr)):arpEvents(tr).filter(e=>e.x<PN))) voice(oc,out,tr.sound,tAt(e.x)+0.002,Math.max(0.03,e.l*stepDur()),e.p+12*tr.oct,e.v,T); }
+  else if(d.kind==='pitched'){ for(const nt of NL){ const ts=stepTime(nt.s), dur=Math.max(0.05,nt.l*stepDur()-0.012); const ps=notePitches(tr,nt); const pv=slidesOn(tr)&&nt.g ? NL.find(o=>o!==nt && o.s+o.l===nt.s) : null; const pps=pv?notePitches(tr,pv):null;
     ps.forEach((pp,j)=>voice(oc,out,tr.sound,ts+0.002,dur,pp+12*tr.oct,nt.v*(ps.length>1?1.1/Math.sqrt(ps.length+0.2):1),T, pps?pps[Math.min(j,pps.length-1)]+12*tr.oct:null)); } }
   else { for(const h of tr.hits) if(h.s<PN) drumHit(oc,out,h.d,stepTime(h.s)+0.002,h.v,tr.sound,T); }
   const r=await oc.startRendering();
   const b=ctx.createBuffer(2,n,sr);
   for(let ch=0;ch<2;ch++){ const src=r.getChannelData(ch), dst=b.getChannelData(ch); for(let i=0;i<src.length;i++) dst[i%n]+=src[i]; }
+  if(SC) applyDuck(b,tr);
   return b;
 }
 async function renderMetro(){
@@ -1359,6 +1381,7 @@ async function renderDirty(){
     do{ renderAgain=false;
       const lenChanged = Math.abs(renderedLen-loopLen())>1e-6;
       if(lenChanged){ S.tracks.forEach(t=>t._dirty=true); metroDirty=true; }
+      S.tracks.forEach(t=>{ const sg=scSig(t); if(sg!==(t._scSig||'')){ t._scSig=sg; t._dirty=true; } });
       const todo=S.tracks.filter(t=>t._dirty||!t._buf);
       for(const tr of todo){ tr._dirty=false; ensureNodes(tr); const b=await renderStem(tr); if(!tr._dirty){ tr._buf=b; if(playing && !lenChanged) swapSource(tr); } }
       if(metroDirty) await renderMetro();
@@ -1955,7 +1978,7 @@ function buildCard(tr){
     const el=document.createElement('article'); el.className='track'; el.style.setProperty('--c',d.color); tr._el=el;
     const pitched=d.kind==='pitched';
     const cOpen=isOpen('c'+tr.id,false);
-    el.innerHTML=`<div class="gridbox"><div class="gridwrap"><div class="gridin"><canvas></canvas><div class="ph"></div></div></div><div class="glabels"></div></div><div class="ovrow"><div class="ovw" hidden aria-hidden="true"><canvas></canvas><div class="ovw-win"></div></div>${d.kind==='audio'?'':'<span class="zoom"><button class="ibtn zo" aria-label="Zoom out">−</button><button class="ibtn zi" aria-label="Zoom in">+</button></span>'}</div>
+    el.innerHTML=`<div class="gridbox"><div class="gridwrap"><div class="gridin"><canvas></canvas><div class="ph"></div><div class="nsel" hidden></div></div></div><div class="glabels"></div></div><div class="ovrow"><div class="ovw" hidden aria-hidden="true"><canvas></canvas><div class="ovw-win"></div></div>${d.kind==='audio'?'':'<span class="zoom"><button class="ibtn zo" aria-label="Zoom out">−</button><button class="ibtn zi" aria-label="Zoom in">+</button></span>'}</div>
       ${pitched?`<div class="notebar" hidden><span class="nb-info"></span><div class="nb-btns">
         <button class="ibtn" data-act="left" aria-label="Move note earlier">◀</button><button class="ibtn" data-act="right" aria-label="Move note later">▶</button>
         <button class="ibtn" data-act="up" aria-label="Move note up">▲</button><button class="ibtn" data-act="down" aria-label="Move note down">▼</button>
@@ -1965,7 +1988,6 @@ function buildCard(tr){
       <div class="ctl" ${cOpen?'':'hidden'}>${d.kind==='drums'?'<div class="kitpanel" id="kitPanel"></div>':''}<div class="knobs kmore"></div>
       <div class="tfoot">
         <span class="grp">Move <button class="ibtn nl" aria-label="Move one step earlier">◀</button><button class="ibtn nr" aria-label="Move one step later">▶</button></span>
-        ${tr.inst==='vox'?'<span class="grp tip">Gray line: your pitch. White line: after tuning (it snaps to the song’s key). Move nudges the whole take by a step.</span>':''}
         ${pitched&&tr.inst!=='arp'?`<button class="ibtn sld" aria-pressed="${slidesOn(tr)}" title="Slide between notes where you slid">Slides ${slidesOn(tr)?'on':'off'}</button>`:''}
         ${pitched?`<label class="grp">Chord <select class="sel chdsel" aria-label="Chord size">${Object.entries(CHORD_TYPES).map(([k,v])=>`<option value="${k}" ${k===chordType(tr)?'selected':''}>${v}</option>`).join('')}</select></label>`:''}
         ${tr.inst==='arp'?(()=>{ const A=arpOf(tr), o=(cls,lab,opts,val)=>`<label class="grp">${lab} <select class="sel ${cls}" aria-label="${lab}">${opts.map(([k,v])=>`<option value="${k}" ${String(k)===String(val)?'selected':''}>${v}</option>`).join('')}</select></label>`;
@@ -1978,16 +2000,18 @@ function buildCard(tr){
         <label class="grp">Length <select class="sel plen" aria-label="Part length">${[1,2,4,8,16].map(b=>`<option value="${b}" ${b===(tr.len||S.bars)?'selected':''}>${b} bar${b>1?'s':''}</option>`).join('')}</select></label>
         ${pBars(tr)<S.bars?`<button class="ibtn prep" aria-pressed="${pRep(tr)}">Repeat ${pRep(tr)?'on':'off'}</button>`:''}
         ${pBars(tr)<S.bars&&pRep(tr)?`<button class="ibtn punroll">Edit all ${S.bars} bars separately</button>`:''}
-        </div>${instSwap(tr)}<div class="tfoot ptools">
+        </div>${d.kind==='drums'||d.kind==='drum'?'':`<div class="tfoot ptools sctools"><button class="ibtn scbtn" aria-pressed="${scOn(tr)}" title="Duck this part every time a drum hits">Sidechain ${scOn(tr)?'on':'off'}</button>${scOn(tr)?`<label class="grp">Source <select class="sel scsrc" aria-label="Sidechain source">${drumSources().map(([id,lab])=>`<option value="${id}" ${id===tr.sc.src?'selected':''}>${lab}</option>`).join('')}</select></label><div class="knobs scamt"></div>`:''}</div>`}${instSwap(tr)}<div class="tfoot ptools">
         <button class="ibtn pdup">Duplicate</button>
 
-        ${tr.inst==='vox'?'':`<span class="grp tip">${pitched?'Tap a note to select it, then drag it anywhere or use the edit bar; drag its end to trim or extend it. Tap an empty spot to add a note. Tap a note to select it, then drag it or drag its end to make it longer. Swipe to scroll, pinch or use − + to zoom.':'Tap the grid to add or remove hits. Swipe to scroll, pinch or use − + to zoom.'}${tr._an?' Small ticks on top show exactly when you made each sound.':''}</span>`}
       </div></div>`;
     el.querySelector('.snd').onchange=e=>{ tr.sound=e.target.value; if(tr.inst==='vox'){ tr.fx=Object.assign({},VOX_PRESETS[tr.sound]); tr._dirty=true; save(); scheduleRender(); openEditor(tr); return; } tr._dirty=true; save(); scheduleRender(); };
     el.querySelector('.plen').onchange=e=>setPartLen(tr,+e.target.value);
     const prp=el.querySelector('.prep'); if(prp) prp.onclick=()=>{ tr.rep=!pRep(tr); tr._dirty=true; save(); renderTracks(); scheduleRender(); };
     const pun=el.querySelector('.punroll'); if(pun) pun.onclick=()=>unrollPart(tr);
     el.querySelector('.pdup').onclick=()=>duplicatePart(tr);
+    const scb=el.querySelector('.scbtn'); if(scb) scb.onclick=()=>{ tr.sc = scOn(tr) ? Object.assign({},tr.sc,{src:''}) : {src:(tr.sc&&tr.sc.src)||'kick', amt:(tr.sc&&tr.sc.amt)??60}; if(!scOn(tr)) tr.sc.src=''; else if(!scHits(tr.sc.src).length){ const any=drumSources().find(([id])=>scHits(id).length); if(any && tr.sc.src==='kick' && !scHits('kick').length) tr.sc.src=any[0]; } tr._dirty=true; save(); renderTracks(); scheduleRender(); };
+    const scs=el.querySelector('.scsrc'); if(scs) scs.onchange=e=>{ tr.sc.src=e.target.value; tr._dirty=true; save(); scheduleRender(); };
+    const sca=el.querySelector('.scamt'); if(sca) knob(sca,{id:'sc'+tr.id,label:'Amount',min:0,max:100,val:tr.sc.amt??60,fmt:pct,color:d.color,oninput:v=>{ tr.sc.amt=v; clearTimeout(tr._sct); tr._sct=setTimeout(()=>{ tr._dirty=true; save(); scheduleRender(); },120); }});
     el.querySelectorAll('.swap').forEach(b=>b.onclick=()=>changeInst(tr,b.dataset.k));
     el.querySelector('.pclear').onclick=()=>clearPart(tr);
     const pf=el.querySelector('.pfill'); if(pf) pf.onclick=()=>fillGaps(tr);
@@ -2012,6 +2036,8 @@ function buildCard(tr){
     const st2=el.querySelector('.savetake'); if(st2) st2.onclick=()=>saveTake(tr);
     const ub=el.querySelector('.undo'); if(ub) ub.onclick=()=>undoTake(tr);
     const cv=el.querySelector('canvas');
+    const hs=el.querySelector('.nsel'); tr._nsel=hs;
+    if(hs){ hs.addEventListener('pointerdown',e=>{ e.stopPropagation(); noteDown(tr,e,true); }); hs.addEventListener('pointermove',e=>noteMove(tr,e)); hs.addEventListener('pointerup',e=>noteUp(tr,e)); hs.addEventListener('pointercancel',e=>noteUp(tr,e,true)); }
     if(pitched){ cv.style.touchAction='pan-x pan-y'; cv.addEventListener('pointerdown',e=>noteDown(tr,e)); cv.addEventListener('pointermove',e=>noteMove(tr,e)); cv.addEventListener('pointerup',e=>noteUp(tr,e)); cv.addEventListener('pointercancel',e=>noteUp(tr,e,true)); }
     else if(d.kind!=='audio'){ cv.style.touchAction='pan-x pan-y'; let down=null;
       cv.addEventListener('pointerdown',e=>{ down={x:e.clientX,y:e.clientY,id:e.pointerId}; });
@@ -2105,6 +2131,7 @@ function drawGrid(tr){
     if(selN && tr.notes.includes(selN)){ const i=rows.indexOf(pitchOf(selN)); if(i>=0){ g.strokeStyle=cssVar('--ink'); g.lineWidth=2;
       let s2=selN.s, left=selN.l; while(left>0){ const room=sPL-(s2%sPL), seg=Math.min(left,room); rr(g,X(s2)+1,Y(s2)+1+i*rh+0.5,Math.max(cw*seg-2,3),rh-1,1.5); g.stroke(); s2=(s2+seg)%n; left-=seg; }
       const e=selN.s+selN.l-1; g.fillStyle=cssVar('--ink'); g.fillRect(X(e)+cw-5,Y(e)+1+i*rh+2,3,Math.max(3,rh-5)); } }
+    placeHandle(tr);
   }
 }
 function rawTicks(tr,g,X,Y,cw,lineH,n,sPL,gut,lines,gapH){
@@ -2126,25 +2153,28 @@ function cellAt(tr,e,clampIt){
      or drag its last cell to trim or extend it; the edit bar under the grid does the same with buttons
    - press and drag on an empty spot to draw a new note (it stays selected); tapping empty space deselects */
 function nextPitch(p,dir){ const K=currentKey(); if(K.none) return p+dir; let m=p+dir; for(let i=0;i<12 && !K.set.includes(((m-K.tonic)%12+12)%12);i++) m+=dir; return m; }
-function selectNote(tr,n){ tr._sel=n||null; if(tr._cv) tr._cv.style.touchAction=n?'none':'pan-x pan-y'; drawGrid(tr); renderNoteBar(tr); }
+function selectNote(tr,n){ tr._sel=n||null; drawGrid(tr); renderNoteBar(tr); }
 function noteChanged(tr){ keyCache=null; tr.notes.sort((a,b)=>a.s-b.s); tr._dirty=true; save(); redrawTrack(tr); renderNoteBar(tr); scheduleRender(); }
-function noteDown(tr,e){
-  const c=cellAt(tr,e); if(!c||!c.inRow) return; const q=S.quant==8?2:1;
-  try{ tr._cv.setPointerCapture(e.pointerId); }catch(_){}
-  const n=tr.notes.find(nt=>pitchOf(nt)===c.row && c.s>=nt.s && c.s<nt.s+nt.l);
-  if(n){ const wasSel=tr._sel===n; if(!wasSel) selectNote(tr,n);
-    tr._drag={note:n, mode:(c.s>=n.s+n.l-q && n.l>q)?'resize':'move', s0:c.s, row0:c.row, ns:n.s, np:pitchOf(n), moved:false, created:false};
+function placeHandle(tr){ const h=tr._nsel, G=tr._grid, n=tr._sel; if(!h) return;
+  const i=(n&&G)?G.rows.indexOf(pitchOf(n)):-1; if(i<0||!tr.notes.includes(n)){ h.hidden=true; return; }
+  const pad=8; h.hidden=false; h.style.left=(G.gut+n.s*G.cw-pad)+'px'; h.style.top=Math.max(0,1+i*G.rh-pad)+'px'; h.style.width=(n.l*G.cw+pad*2)+'px'; h.style.height=(G.rh+pad*2)+'px'; }
+function noteDown(tr,e,onSel){
+  const q=S.quant==8?2:1; tr._touchT=Date.now();
+  if(onSel && tr._sel){ const n=tr._sel, c=cellAt(tr,e,true); if(!c) return;
+    try{ tr._nsel.setPointerCapture(e.pointerId); }catch(_){}
+    tr._drag={note:n, mode:(c.s>=n.s+n.l-q)?'resize':'move', s0:c.s, row0:c.row, ns:n.s, np:pitchOf(n), moved:false, created:false};
     previewNote(tr,pitchOf(n)); return; }
-  if(tr._sel){ selectNote(tr,null); tr._drag=null; return; }          // tap on empty space: just deselect
-  // empty spot: nothing yet. A tap adds a note, a sideways drag draws one, an up/down swipe just scrolls.
-  try{ tr._cv.releasePointerCapture(e.pointerId); }catch(_){}
-  tr._drag={pending:true, c, x0:e.clientX, y0:e.clientY, id:e.pointerId};
+  const c=cellAt(tr,e); if(!c||!c.inRow) return;
+  // the grid only reacts to a tap (so a swipe always scrolls): tap a note to select it, tap empty space to deselect or add a note
+  const n=tr.notes.find(nt=>pitchOf(nt)===c.row && c.s>=nt.s && c.s<nt.s+nt.l);
+  tr._drag={pending:true, c, hit:n||null, x0:e.clientX, y0:e.clientY, id:e.pointerId};
 }
 function startNewNote(tr,c){ const q=S.quant==8?2:1, kp=snap(c.row); const nt={s:Math.floor(c.s/q)*q,l:q,p:kp,v:0.85,x:true}; tr.notes.push(nt); keyCache=null;
   tr._drag={note:nt,mode:'resize',s0:c.s,row0:c.row,ns:nt.s,np:kp,moved:false,created:true}; tr._sel=nt; drawGrid(tr); previewNote(tr,kp); }
 function noteMove(tr,e){
   let d=tr._drag; if(!d) return;
-  if(d.pending){ const dx=Math.abs(e.clientX-d.x0), dy=Math.abs(e.clientY-d.y0); if(dx>=8||dy>=8) tr._drag=null; return; }   // a swipe scrolls const c=cellAt(tr,e,true); if(!c) return; const n=pSteps(tr), q=S.quant==8?2:1;
+  if(d.pending){ const dx=Math.abs(e.clientX-d.x0), dy=Math.abs(e.clientY-d.y0); if(dx>=8||dy>=8) tr._drag=null; return; }   // a swipe scrolls
+  tr._touchT=Date.now(); const c=cellAt(tr,e,true); if(!c) return; const n=pSteps(tr), q=S.quant==8?2:1;
   if(c.s!==d.s0 || c.row!==d.row0) d.moved=true; if(!d.moved) return;
   if(d.mode==='resize') d.note.l=clamp(Math.floor((c.s-d.note.s)/q)*q+q, q, n-d.note.s);
   else { d.note.s=clamp(d.ns+Math.round((c.s-d.s0)/q)*q, 0, n-d.note.l);
@@ -2153,9 +2183,12 @@ function noteMove(tr,e){
 }
 function noteUp(tr,e,cancel){
   const d=tr._drag; if(!d) return; tr._drag=null;
-  if(d.pending){ if(!cancel){ startNewNote(tr,d.c); tr._drag=null; noteChanged(tr); if(tr._cv) tr._cv.style.touchAction='none'; } return; }
+  if(d.pending){ if(cancel) return;
+    if(d.hit){ selectNote(tr,d.hit); previewNote(tr,pitchOf(d.hit)); }
+    else if(tr._sel) selectNote(tr,null);
+    else { startNewNote(tr,d.c); tr._drag=null; noteChanged(tr); }
+    return; }
   if(d.moved||d.created) noteChanged(tr); else { drawGrid(tr); renderNoteBar(tr); }
-  if(tr._cv) tr._cv.style.touchAction=tr._sel?'none':'pan-x pan-y';
 }
 function renderNoteBar(tr){
   const bar=tr._el&&tr._el.querySelector('.notebar'); if(!bar) return; const n=tr._sel;
@@ -2170,7 +2203,7 @@ function noteBarAction(tr,act){
   else if(act==='up'||act==='down'){ n.p=nextPitch(pitchOf(n),act==='up'?1:-1); n.x=true; previewNote(tr,n.p); }
   else if(act==='shorter') n.l=Math.max(q,n.l-q);
   else if(act==='longer') n.l=Math.min(N-n.s,n.l+q);
-  else if(act==='delete'){ tr.notes.splice(tr.notes.indexOf(n),1); tr._sel=null; if(tr._cv) tr._cv.style.touchAction='pan-y'; }
+  else if(act==='delete'){ tr.notes.splice(tr.notes.indexOf(n),1); tr._sel=null; if(tr._cv) tr._cv.style.touchAction='pan-x pan-y'; }
   else if(act==='done'){ selectNote(tr,null); return; }
   noteChanged(tr);
 }
