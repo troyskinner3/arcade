@@ -984,6 +984,10 @@ const pitchOf=n=>n.x?Math.round(n.p):snap(n.p);
    parent 7-note scale; notes outside the key (or "any note") get a major triad. */
 const PARENT={major:'major','pent-major':'major',minor:'minor','pent-minor':'minor',blues:'minor',dorian:'dorian'};
 const slidesOn=tr=>tr.slides ?? true;
+function chordName(ps){ if(!ps||ps.length<2) return ''; const r=ps[0], iv=new Set(ps.slice(1).map(p=>((p-r)%12+12)%12)), nm=NOTE_NAMES[((r%12)+12)%12].replace('♯','#').replace('♭','b');
+  if(iv.size===1&&iv.has(7)) return nm+'5'; const m=iv.has(3)&&!iv.has(4), dim=m&&iv.has(6)&&!iv.has(7);
+  let q=dim?'dim':m?'m':''; if(iv.has(11)) q+= (q?'':'')+'maj7'; else if(iv.has(10)) q+= dim?'7':'7'; if(iv.has(2)) q= q.includes('7')?q.replace('7','9'):q+'add9';
+  return nm+q; }
 const CHORD_TYPES={off:'Single notes',triad:'Triad',seventh:'7th',ninth:'9th',power:'Power (root + 5th)'};
 const chordType=tr=> tr.chordType ?? (tr.chords===true?'triad': tr.chords===false?'off' : (['keys','pad','arp'].includes(tr.inst)?'triad':'off'));
 const chordsOn=tr=>chordType(tr)!=='off';
@@ -1771,7 +1775,7 @@ function buildCard(tr){
         </div>${instSwap(tr)}<div class="tfoot ptools">
         <button class="ibtn pdup">Duplicate</button>
         <button class="ibtn del delpart" title="Delete part">Delete part</button>
-        ${tr.inst==='vox'?'':`<span class="grp tip">${pitched?'Tap a note to select it, then drag it anywhere or use the edit bar; drag its end to trim or extend it. Press and drag on an empty spot to draw a new note.':'Tap the grid to add or remove hits.'}${tr._an?' Small ticks on top show exactly when you made each sound.':''}</span>`}
+        ${tr.inst==='vox'?'':`<span class="grp tip">${pitched?'Tap a note to select it, then drag it anywhere or use the edit bar; drag its end to trim or extend it. Tap an empty spot to add a note, or drag sideways to draw a longer one. Swiping up or down just scrolls.':'Tap the grid to add or remove hits.'}${tr._an?' Small ticks on top show exactly when you made each sound.':''}</span>`}
       </div></div>`;
     el.querySelector('.snd').onchange=e=>{ tr.sound=e.target.value; if(tr.inst==='vox'){ tr.fx=Object.assign({},VOX_PRESETS[tr.sound]); tr._dirty=true; save(); scheduleRender(); openEditor(tr); return; } tr._dirty=true; save(); scheduleRender(); };
     el.querySelector('.plen').onchange=e=>setPartLen(tr,+e.target.value);
@@ -1817,7 +1821,7 @@ function gridRows(tr){
   const d=INST[tr.inst];
   if(d.kind==='drums'){ const rows=S.kit.slots.map(x=>x.id).reverse(); (tr.hits||[]).forEach(h=>{ if(!rows.includes(h.d)) rows.unshift(h.d); }); return {rows, rh:rows.length>6?17:20}; }
   if(d.kind==='drum') return {rows:[d.drum], rh:30};
-  const ps=tr.notes.flatMap(n=>notePitches(tr,n)); let lo=ps.length?Math.min(...ps):60, hi=ps.length?Math.max(...ps):67;
+  const ps=tr.notes.map(pitchOf); let lo=ps.length?Math.min(...ps):60, hi=ps.length?Math.max(...ps):67;
   lo-=2; hi+=2;
   // keep the visible pitch range steady while editing: it only grows when a note goes past the edge
   if(tr._range && ps.length){ lo=Math.min(lo,tr._range.lo); hi=Math.max(hi,tr._range.hi); }
@@ -1874,11 +1878,17 @@ function drawGrid(tr){
     if(gut){ g.fillStyle=cssVar('--ink'); g.globalAlpha=0.6; g.font='600 9px '+mono; for(let L=0;L<lines;L++) rows.forEach((r,i)=>g.fillText(slotLabel(r).toUpperCase().slice(0,8),5,L*(lineH+gapH)+1+i*rh+rh/2+3)); g.globalAlpha=1; }
   } else {
     rawTicks(tr,g,X,Y,cw,lineH,n,sPL,gut,lines,gapH);
-    if(chordsOn(tr)){ g.fillStyle=col; g.globalAlpha=0.22; tr.notes.forEach(nt=>{ notePitches(tr,nt).slice(1).forEach(pp=>{ const i=rows.indexOf(pp); if(i<0) return; let s2=nt.s, left=nt.l; while(left>0){ const room=sPL-(s2%sPL), seg=Math.min(left,room); rr(g,X(s2)+1,Y(s2)+1+i*rh+0.5,Math.max(cw*seg-2,3),rh-1,2.5); g.fill(); s2=(s2+seg)%n; left-=seg; } }); }); g.globalAlpha=1; }
     const selN=tr._sel;
     tr.notes.forEach(nt=>{ const i=rows.indexOf(pitchOf(nt)); if(i<0) return; g.globalAlpha=nt===selN?1:0.45+0.55*nt.v; g.fillStyle=col;
       let s=nt.s, left=nt.l; while(left>0){ const room=sPL-(s%sPL), seg=Math.min(left,room); rr(g,X(s)+1,Y(s)+1+i*rh+0.5,Math.max(cw*seg-2,3),rh-1,2.5); g.fill(); s=(s+seg)%n; left-=seg; } });
     g.globalAlpha=1;
+    // chord name on each note (when chords are on): e.g. Am, C7, Fmaj7
+    if(chordsOn(tr)){ g.font='700 '+Math.max(8,Math.min(10,rh-1))+'px '+mono; g.textBaseline='middle';
+      tr.notes.forEach(nt=>{ const i=rows.indexOf(pitchOf(nt)); if(i<0) return; const w=Math.min(nt.l,sPL-(nt.s%sPL))*cw-2, name=chordName(notePitches(tr,nt));
+        if(!name) return; const tw=g.measureText(name).width; const x=X(nt.s)+1, y=Y(nt.s)+1+i*rh+rh/2+0.5;
+        if(tw+6<=w){ g.fillStyle=cssVar('--bg'); g.globalAlpha=0.9; g.fillText(name,x+3,y); }
+        else { g.fillStyle=col; g.globalAlpha=0.9; g.fillText(name,x+Math.max(w,3)+2,y-rh*0.55); } });
+      g.globalAlpha=1; g.textBaseline='alphabetic'; }
     if(selN && tr.notes.includes(selN)){ const i=rows.indexOf(pitchOf(selN)); if(i>=0){ g.strokeStyle=cssVar('--ink'); g.lineWidth=2;
       let s2=selN.s, left=selN.l; while(left>0){ const room=sPL-(s2%sPL), seg=Math.min(left,room); rr(g,X(s2)+1,Y(s2)+1+i*rh+0.5,Math.max(cw*seg-2,3),rh-1,2.5); g.stroke(); s2=(s2+seg)%n; left-=seg; }
       const e=selN.s+selN.l-1; g.fillStyle=cssVar('--ink'); g.fillRect(X(e)+cw-5,Y(e)+1+i*rh+2,3,Math.max(3,rh-5)); } }
@@ -1913,11 +1923,17 @@ function noteDown(tr,e){
     tr._drag={note:n, mode:(c.s>=n.s+n.l-q && n.l>q)?'resize':'move', s0:c.s, row0:c.row, ns:n.s, np:pitchOf(n), moved:false, created:false};
     previewNote(tr,pitchOf(n)); return; }
   if(tr._sel){ selectNote(tr,null); tr._drag=null; return; }          // tap on empty space: just deselect
-  const kp=snap(c.row); const nt={s:Math.floor(c.s/q)*q,l:q,p:kp,v:0.85,x:true}; tr.notes.push(nt); keyCache=null;
-  tr._drag={note:nt,mode:'resize',s0:c.s,row0:c.row,ns:nt.s,np:kp,moved:false,created:true}; tr._sel=nt; drawGrid(tr); previewNote(tr,kp);
+  // empty spot: nothing yet. A tap adds a note, a sideways drag draws one, an up/down swipe just scrolls.
+  try{ tr._cv.releasePointerCapture(e.pointerId); }catch(_){}
+  tr._drag={pending:true, c, x0:e.clientX, y0:e.clientY, id:e.pointerId};
 }
+function startNewNote(tr,c){ const q=S.quant==8?2:1, kp=snap(c.row); const nt={s:Math.floor(c.s/q)*q,l:q,p:kp,v:0.85,x:true}; tr.notes.push(nt); keyCache=null;
+  tr._drag={note:nt,mode:'resize',s0:c.s,row0:c.row,ns:nt.s,np:kp,moved:false,created:true}; tr._sel=nt; drawGrid(tr); previewNote(tr,kp); }
 function noteMove(tr,e){
-  const d=tr._drag; if(!d) return; const c=cellAt(tr,e,true); if(!c) return; const n=pSteps(tr), q=S.quant==8?2:1;
+  let d=tr._drag; if(!d) return;
+  if(d.pending){ const dx=Math.abs(e.clientX-d.x0), dy=Math.abs(e.clientY-d.y0); if(dx<8&&dy<8) return;
+    if(dy>=dx){ tr._drag=null; return; }                                // a scroll
+    try{ tr._cv.setPointerCapture(e.pointerId); }catch(_){} tr._cv.style.touchAction='none'; startNewNote(tr,d.c); d=tr._drag; } const c=cellAt(tr,e,true); if(!c) return; const n=pSteps(tr), q=S.quant==8?2:1;
   if(c.s!==d.s0 || c.row!==d.row0) d.moved=true; if(!d.moved) return;
   if(d.mode==='resize') d.note.l=clamp(Math.floor((c.s-d.note.s)/q)*q+q, q, n-d.note.s);
   else { d.note.s=clamp(d.ns+Math.round((c.s-d.s0)/q)*q, 0, n-d.note.l);
@@ -1926,6 +1942,7 @@ function noteMove(tr,e){
 }
 function noteUp(tr,e,cancel){
   const d=tr._drag; if(!d) return; tr._drag=null;
+  if(d.pending){ if(!cancel){ startNewNote(tr,d.c); tr._drag=null; noteChanged(tr); if(tr._cv) tr._cv.style.touchAction='none'; } return; }
   if(d.moved||d.created) noteChanged(tr); else { drawGrid(tr); renderNoteBar(tr); }
   if(tr._cv) tr._cv.style.touchAction=tr._sel?'none':'pan-y';
 }
