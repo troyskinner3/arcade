@@ -2033,7 +2033,7 @@ function renderTracks(){
   });
   // a blank card you've just added, waiting for an instrument
   if(pendingNew){ const row=document.createElement('article'); row.className='prow blank';
-    row.innerHTML=`<div class="prow-main" style="cursor:default"><span class="prow-top"><b>New part</b><span class="tsum">pick what it plays</span></span></div><div class="prow-side"><button class="ibtn pn-x" aria-label="Cancel new part">✕</button></div>${pickChips()}<div class="prow-cta"><button class="btn pn-cancel">Cancel</button></div>`;
+    row.innerHTML=`<div class="prow-main" style="cursor:default"><span class="prow-top"><b>New part</b><span class="tsum">pick what it plays</span></span></div><div class="prow-side"><button class="ibtn pn-x" aria-label="Cancel new part">✕</button></div>${pickChips()}`;
     pickFor='new'; row.querySelectorAll('.chip').forEach(b=>b.onclick=()=>pickInstrument(b.dataset.k)); row.classList.add('pending'); row.querySelectorAll('.pn-x,.pn-cancel').forEach(b=>b.onclick=()=>{ pendingNew=false; pickFor=null; renderTracks(); }); box.appendChild(row); }
   const add=document.createElement('button'); add.className='btn addpart'; add.textContent='+ Add part'; add.hidden=pendingNew;
   add.onclick=()=>{ pendingNew=true; renderTracks(); requestAnimationFrame(()=>add.previousElementSibling&&add.previousElementSibling.scrollIntoView({block:'center',behavior:'smooth'})); };
