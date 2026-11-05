@@ -73,3 +73,20 @@ Untaught drum sorting now keeps the rules for hi-hats and claps and decides kick
 out of the examples: prescribed sounds 63% → 66% right drum, own sounds 56% → 57% (kicks 74% → 78% / 49% → 55%).
 Letting the examples also overrule rule-"claps" scored higher on AVP (68% / 63%) but turned the owner's deliberate
 "k" claps into kicks: AVP's click-like "p" kicks look like Noodle's "k" clap, and Noodle asks for "k" as the clap.
+
+### Learned note starts (shipped as a combination)
+
+`onset_model.py` trains a small network (37 inputs → 32 → 1, ~10 KB of weights) on the detector's own per-frame
+readings (`dump_frames.js`): pitch change, voicing, loudness change and confidence across ±80 ms, labelled "a note
+starts within 20 ms". Training data: VocalSet + odd Vocadito tracks (CC BY 4.0). Test: even Vocadito tracks (unseen
+singers) and HumTrans (humming, never trained on), key-free note F1, plus the owner's 5 takes (40 notes):
+
+| method                                   | singing | humming | owner's takes |
+|------------------------------------------|---------|---------|---------------|
+| rules (previous)                         | 0.492   | 0.618   | 35/40         |
+| model alone                              | 0.593   | 0.632   | 33/40 (splits off scoops, merges legato semitones) |
+| model + absorb scoops / split on pitch   | 0.553–0.583 | 0.569–0.632 | — |
+| **rules + model splits (p ≥ 0.8) + adds** (default) | **0.538** | **0.625** | **36/40** |
+
+`NT.model` = `'combine'` (default), `true` (model alone) or `false` (rules); `NT.splitThr` sets how sure the model
+must be to split a rule note. Whistles always use the rules (the model never saw whistling).
