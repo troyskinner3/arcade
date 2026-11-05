@@ -14,7 +14,7 @@
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@700&family=JetBrains+Mono:wght@500;700&display=swap">
 <style>
 /* Layout: a single column "groovebox" — transport strip on top, sample pads, then one channel strip per part, then mix + export. */
 :root{
@@ -304,6 +304,146 @@ details.opts .optbody{display:flex;flex-direction:column;gap:10px;margin-top:10p
 details summary{cursor:pointer;font-weight:600}
 @media (max-width:420px){ .pad{min-height:58px;padding:8px} .pad b{font-size:13px} .brand{font-size:15px} }
 @media (prefers-reduced-motion: reduce){ *{transition:none!important} }
+/* ===================== DAW skin =====================
+   Flat graphite surfaces, hairline dividers, square corners, lanes instead of cards.
+   Color carries meaning only: each part's own color, red = record, green = playing, amber = active, blue = solo. */
+:root{
+  --f-body:-apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  --bg:#b8bbc0; --panel:#d3d5d9; --panel2:#dfe1e4; --pad:#e9eaec; --ink:#16171a; --muted:#53565c; --line:#9b9ea4;
+  --cell:#c9ccd1; --beat:#bfc2c7; --barline:#8c9097; --lcd:#26272a; --lcd-ink:#f2b33d; --play:#3fae5a; --rad:2px; --hd:#c4c7cb;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#18191b; --panel:#26272a; --panel2:#2f3034; --pad:#3a3b40; --ink:#e4e5e7; --muted:#8e9097; --line:#0e0f10;
+  --cell:#1d1e21; --beat:#222326; --barline:#3d3f44; --lcd:#0f1011; --lcd-ink:#f2b33d; --play:#4cc46a; --hd:#202124 } }
+:root[data-theme="dark"]{
+  --bg:#18191b; --panel:#26272a; --panel2:#2f3034; --pad:#3a3b40; --ink:#e4e5e7; --muted:#8e9097; --line:#0e0f10;
+  --cell:#1d1e21; --beat:#222326; --barline:#3d3f44; --lcd:#0f1011; --lcd-ink:#f2b33d; --play:#4cc46a; --hd:#202124 }
+body{font-size:14px;line-height:1.4}
+h2{font-family:var(--f-body);font-weight:600;font-size:11px;letter-spacing:.07em;color:var(--muted)}
+
+/* transport strip */
+.bar{border-bottom:1px solid #000}
+.bar-in{padding-block:8px;gap:8px}
+.brand{font-size:15px}
+.lcd{border-radius:var(--rad);border-color:#000;background:#060607;height:34px;box-shadow:inset 0 1px 0 rgba(0,0,0,.6)}
+.lcd button{width:28px;font-size:16px}
+.lcd input,.lcd select{font-size:15px}
+.tbtn{width:38px;height:34px;border-radius:var(--rad);border-color:#000;background:#2b2c30}
+.tbtn[aria-pressed="true"]{background:var(--lcd-ink);border-color:var(--lcd-ink)}
+
+/* the arrangement: parts are lanes, stacked with hairlines, edge to edge */
+main{gap:10px;padding-top:10px}
+.tracks{gap:0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);background:var(--line)}
+@media (max-width:760px){ .tracks{margin-inline:calc(-1 * max(16px, env(safe-area-inset-left,0px)))} }
+.prow{position:relative;border:0;border-radius:0;background:var(--panel);padding:8px 10px 8px 14px;gap:6px 10px;border-bottom:1px solid var(--line)}
+.prow:last-of-type{border-bottom:0}
+.prow::before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px;background:var(--c)}
+.prow .led{display:none}
+.prow-top b{font-size:13px;font-weight:600}
+.tsum,.prow-top .tsum{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+.prow.open{background:var(--panel2);border-color:var(--line)}
+.mini{height:26px;border-radius:var(--rad);background:var(--cell);box-shadow:inset 0 0 0 1px var(--line)}
+.mph{width:1px;opacity:1;background:var(--ink)}
+.prow-side{gap:3px}
+.prow-side .ibtn{height:30px;min-width:30px;font-size:12px}
+.prow-side .rec::before{width:10px;height:10px}
+.prow.blank{background:var(--hd);border-style:solid}
+.prow.blank::before{opacity:.45}
+.btn.addpart{border-radius:0!important;border:0;min-height:44px;background:var(--hd);color:var(--muted);justify-content:flex-start;padding:0 14px;font-size:13px;font-weight:600}
+.btn.addpart:hover{color:var(--ink)}
+.empty{border-radius:0;border:0;background:var(--hd)}
+
+/* faders */
+input[type=range]{-webkit-appearance:none;appearance:none;background:transparent;height:24px}
+input[type=range]::-webkit-slider-runnable-track{height:3px;background:color-mix(in srgb,var(--c,var(--ink)) 70%,transparent);border-radius:0}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:10px;height:18px;margin-top:-7.5px;border-radius:1px;background:var(--pad);border:1px solid var(--line);box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)}
+input[type=range]::-moz-range-track{height:3px;background:color-mix(in srgb,var(--c,var(--ink)) 70%,transparent)}
+input[type=range]::-moz-range-thumb{width:10px;height:18px;border-radius:1px;background:var(--pad);border:1px solid var(--line)}
+.prow-vol{max-width:120px;height:24px}
+
+/* controls: square, flat, compact */
+.btn,.ibtn,.sel,.chip,.rec-btn,.dock-rec,.dbtn,.note,.recstatus,.kitpanel,.slot,.notebar,.prow-take,.toast,.ovw,.ovw-win,.gridwrap,.glabels,.banner,.pad,.mini{border-radius:var(--rad)!important}
+.btn{min-height:36px;padding:0 12px;font-size:13px;font-weight:600;background:var(--pad);border-color:var(--line)}
+.btn.big{min-height:44px;font-size:14px}
+.btn.primary{background:var(--lcd-ink);color:#141414;border-color:var(--lcd-ink)}
+.ibtn{height:30px;min-width:30px;font-size:12px;font-weight:600;background:var(--pad);border-color:var(--line)}
+.sel{height:30px;font-size:13px;background:var(--pad);border-color:var(--line)}
+.ibtn[aria-pressed="true"].m{background:#7c7f86;color:#fff;border-color:#7c7f86}
+.ibtn[aria-pressed="true"].s{background:#4a8fe7;color:#fff;border-color:#4a8fe7}
+.ibtn.sld[aria-pressed="true"],.ibtn.prep[aria-pressed="true"]{background:var(--lcd-ink);color:#141414;border-color:var(--lcd-ink)}
+.rec-btn{min-height:40px;font-size:14px;font-weight:600}
+.prow-cta .rec-btn,.prow-cta .btn{min-height:36px;font-size:13px}
+
+/* segmented choices (instrument, length) instead of pills */
+.pk-row{gap:0}
+.pk-row h4{font-family:var(--f-body);font-size:10px;font-weight:600;letter-spacing:.08em;margin-bottom:4px}
+.chip{min-height:32px;padding:0 10px;font-size:12px;font-weight:600;gap:6px;background:var(--pad);border:1px solid var(--line);margin:0 -1px -1px 0;border-radius:0!important}
+.chip i{width:8px;height:8px;border-radius:1px}
+.chip.on{background:var(--lcd-ink);color:#141414}
+.chip.on i{box-shadow:none;outline:1px solid #141414}
+.chip:active{transform:none;filter:brightness(1.15)}
+.chip.len,.pswap .chip{min-height:28px;padding:0 9px;font-size:11px}
+
+/* the open part: a detail view under its lane */
+.prow-edit{margin:2px -10px -8px -14px;padding:8px 10px 10px 14px;background:var(--bg);border-top:1px solid var(--line)}
+.prow-edit .track{gap:8px}
+.gridwrap{background:var(--cell);box-shadow:inset 0 0 0 1px var(--line)}
+.glabels span{background:var(--hd);font-size:9px;letter-spacing:.04em;border-right:1px solid var(--line)}
+.ph{width:1px;opacity:1}
+.ovw{height:22px;margin-top:4px;background:var(--cell);box-shadow:inset 0 0 0 1px var(--line)}
+.ovw-win{border:1px solid var(--lcd-ink);background:color-mix(in srgb,var(--lcd-ink) 14%,transparent)}
+.tquick{gap:4px}
+.zoom{gap:0}
+.zoom .ibtn{min-width:32px;font-size:15px;margin-left:-1px}
+.ctl{border-top:1px solid var(--line);padding-top:8px;gap:8px}
+.knob label{font-size:11px}
+.tfoot{gap:6px}
+.tfoot .grp{font-size:11px}
+.tfoot .grp .sel{height:28px;font-size:12px}
+.tfoot .tip{font-size:11px;line-height:1.35}
+.notebar{background:var(--panel);border-color:var(--c);padding:6px}
+.notebar .ibtn{min-width:34px}
+.kitpanel{background:var(--panel);box-shadow:inset 0 0 0 1px var(--line);padding:10px}
+.slot{background:var(--panel2)}
+.prow-take{background:var(--panel);box-shadow:inset 0 0 0 1px var(--line);padding:6px 8px}
+.prow-take span{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
+.prow-take .btn{min-height:30px;padding:0 10px;font-size:12px}
+.prow-hint{font-size:12px}
+.note{background:var(--hd);font-size:13px;box-shadow:inset 0 0 0 1px var(--line)}
+.calnote .btn{min-height:30px}
+
+/* record status: a meter bridge */
+.recstatus{background:#060607;border:1px solid #000;padding:10px}
+.prow-recbox .recstatus{padding:10px}
+.beats{gap:4px}
+.beats span,.prow-recbox .beats span,#recSheet .beats span{border-radius:1px!important;width:20px!important;height:10px!important}
+.reclabel,.prow-recbox .reclabel{font-family:var(--f-mono);font-size:14px}
+.prog,.meter{border-radius:0;height:3px}
+.prow-recbox .stopbtn{min-height:36px}
+
+/* panels below the arrangement: header strip + body, edge to edge on phones */
+.card{background:var(--panel);border:0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);border-radius:0;padding:0;gap:0}
+@media (max-width:760px){ .card{margin-inline:calc(-1 * max(16px, env(safe-area-inset-left,0px)))} }
+button.card-head{margin:0;width:100%;padding:10px 14px;border-radius:0;background:var(--hd)}
+.card .sec-body{padding:12px 14px 14px;gap:12px}
+.card.onb{padding:12px 14px;gap:10px;box-shadow:inset 3px 0 0 var(--lcd-ink)}
+.onb .steps{font-size:13px;gap:4px}
+.mixgrid{gap:8px 12px}
+.field{font-size:11px}
+.exopt{border-top:1px solid var(--line);padding-top:10px}
+.exopt h3{font-size:13px;font-weight:600}
+.keyinfo{font-size:12px}
+.chev{width:14px;height:14px}
+
+/* dock: transport */
+.dock{background:var(--lcd);border-top:1px solid #000}
+.dock-in{gap:6px;padding-block:8px}
+.dbtn{width:44px;height:42px;border-color:#000;background:#2b2c30}
+.dbtn.play[aria-pressed="true"]{background:var(--play);border-color:var(--play);color:#06210e}
+.dock-rec{height:42px;font-weight:600}
+.dock-rec .dr-l{font-size:14px}
+.toast{font-size:13px;padding:8px 12px;background:#060607;color:#e4e5e7;border:1px solid #000}
+.sheet-head{background:var(--hd)}
 </style>
 
 <header class="bar">
@@ -1926,12 +2066,12 @@ function drawGrid(tr){
   if(!pitched){
     g.globalAlpha=0.35; g.fillStyle=cBar; rows.forEach((r,i)=>{ for(let s=0;s<n;s++){ g.beginPath(); g.arc(X(s)+cw/2,Y(s)+1+i*rh+rh/2,1.4,0,7); g.fill(); } }); g.globalAlpha=1;
     rawTicks(tr,g,X,Y,cw,lineH,n,sPL,gut,lines,gapH);
-    tr.hits.forEach(h=>{ const i=rows.indexOf(h.d); if(i<0) return; g.globalAlpha=0.35+0.65*h.v; g.fillStyle=col; rr(g,X(h.s)+1.5,Y(h.s)+1+i*rh+1.5,cw-3,rh-3,3); g.fill(); }); g.globalAlpha=1;
+    tr.hits.forEach(h=>{ const i=rows.indexOf(h.d); if(i<0) return; g.globalAlpha=0.35+0.65*h.v; g.fillStyle=col; rr(g,X(h.s)+1.5,Y(h.s)+1+i*rh+1.5,cw-3,rh-3,1.5); g.fill(); }); g.globalAlpha=1;
   } else {
     rawTicks(tr,g,X,Y,cw,lineH,n,sPL,gut,lines,gapH);
     const selN=tr._sel;
     tr.notes.forEach(nt=>{ const i=rows.indexOf(pitchOf(nt)); if(i<0) return; g.globalAlpha=nt===selN?1:0.45+0.55*nt.v; g.fillStyle=col;
-      let s=nt.s, left=nt.l; while(left>0){ const room=sPL-(s%sPL), seg=Math.min(left,room); rr(g,X(s)+1,Y(s)+1+i*rh+0.5,Math.max(cw*seg-2,3),rh-1,2.5); g.fill(); s=(s+seg)%n; left-=seg; } });
+      let s=nt.s, left=nt.l; while(left>0){ const room=sPL-(s%sPL), seg=Math.min(left,room); rr(g,X(s)+1,Y(s)+1+i*rh+0.5,Math.max(cw*seg-2,3),rh-1,1.5); g.fill(); s=(s+seg)%n; left-=seg; } });
     g.globalAlpha=1;
     // chord name on each note (when chords are on): e.g. Am, C7, Fmaj7
     if(chordsOn(tr)){ g.font='700 '+Math.max(8,Math.min(10,rh-1))+'px '+mono; g.textBaseline='middle';
@@ -1941,7 +2081,7 @@ function drawGrid(tr){
         else if(cw>=12 && !tr.notes.some(o=>o!==nt && o.s>nt.s && o.s<=nt.s+nt.l+Math.ceil((tw+4)/cw) && Math.abs(pitchOf(o)-pitchOf(nt))<=1)){ g.fillStyle=col; g.globalAlpha=0.9; g.fillText(name,x+Math.max(w,3)+2,y); } });
       g.globalAlpha=1; g.textBaseline='alphabetic'; }
     if(selN && tr.notes.includes(selN)){ const i=rows.indexOf(pitchOf(selN)); if(i>=0){ g.strokeStyle=cssVar('--ink'); g.lineWidth=2;
-      let s2=selN.s, left=selN.l; while(left>0){ const room=sPL-(s2%sPL), seg=Math.min(left,room); rr(g,X(s2)+1,Y(s2)+1+i*rh+0.5,Math.max(cw*seg-2,3),rh-1,2.5); g.stroke(); s2=(s2+seg)%n; left-=seg; }
+      let s2=selN.s, left=selN.l; while(left>0){ const room=sPL-(s2%sPL), seg=Math.min(left,room); rr(g,X(s2)+1,Y(s2)+1+i*rh+0.5,Math.max(cw*seg-2,3),rh-1,1.5); g.stroke(); s2=(s2+seg)%n; left-=seg; }
       const e=selN.s+selN.l-1; g.fillStyle=cssVar('--ink'); g.fillRect(X(e)+cw-5,Y(e)+1+i*rh+2,3,Math.max(3,rh-5)); } }
   }
 }
