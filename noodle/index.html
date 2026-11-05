@@ -402,6 +402,7 @@ input[type=range]::-moz-range-thumb{width:10px;height:18px;border-radius:1px;bac
 .ovrow .zoom .ibtn{height:26px;min-width:34px}
 .pdel,.cta-del{color:var(--rec)}
 .nsel{position:absolute;touch-action:none;z-index:2;cursor:grab}
+.tb-hint{flex:1 1 100%;margin:2px 0 0;font-size:12px;color:var(--muted)}
 .hptip{grid-column:1/-1;display:flex;gap:10px;align-items:flex-start;padding:9px 10px;background:color-mix(in srgb,var(--lcd-ink) 10%,var(--hd));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--lcd-ink) 45%,var(--line)), inset 3px 0 0 var(--lcd-ink);border-radius:var(--rad);color:var(--ink)}
 .hptip svg{flex:none;color:var(--lcd-ink);margin-top:1px}
 .hptip p{margin:0;font-size:12.5px;line-height:1.4;color:var(--muted)}
@@ -1616,7 +1617,7 @@ async function discardTake(p=rs){ if(snapNow().json!==p.pre.json){ await restore
 function cancelRecord(){ teachQueue=null; capturing=false; recState=null; stopAll(); setRecUI(false); dropMic(); toast('Recording cancelled'); if(rs.mode==='take'){ const r=rs.resume; S.target=null; rs.mode=null; if(r) restoreSnap(r.snap).then(()=>{ hist.cur=r.snap; updateHistBtns(); takeBar=r.bar; editId=r.bar.id; renderTracks(); }); else renderTracks(); } }
 /* ---- recording into a part happens on the part itself: count-in and meter show on its row, and the take lands there, already open ---- */
 const RSE=$('recStatus');
-let micOff=false, takeBar=null;
+let micOff=false, takeBar=null, bleedHint=false;
 function takeMode(){ return rs.mode==='take' && $('recSheet').hidden; }
 async function recordInto(id, resume=null){
   if(recState){ cancelRecord(); return; }
@@ -1636,7 +1637,7 @@ function importInto(id){
 }
 function afterTake(){
   const changed = rs.pre && snapNow().json!==rs.pre.json;
-  if(changed){ takeBar={id:S.activeId, pre:rs.pre, histLen:rs.histLen}; editId=S.activeId; }
+  if(changed){ takeBar={id:S.activeId, pre:rs.pre, histLen:rs.histLen, hint:bleedHint}; editId=S.activeId; } bleedHint=false;
   S.target=null; rs.mode=null; renderTracks();
   const tr=S.tracks.find(t=>t.id===S.activeId); if(tr&&tr._row) requestAnimationFrame(()=>tr._row.scrollIntoView({block:'nearest',behavior:'smooth'}));
 }
@@ -1650,9 +1651,13 @@ function assemble(chunks, a, b, sr){
 }
 async function finishRecord(){
   const r=recState; capturing=false; recState=null; stopAll(); setRecUI(false); if(!r.teach) dropMic(); renderKitPanel();
-  if(r.inst==='vox' && !r.calib && !r.teach){ const m=measureTakeDelay(r); if(m!=null){ r.lat=m; S.vocLat=S.vocLat==null?m:+(0.5*S.vocLat+0.5*m).toFixed(4); save(); } }
+  let leak=0;
+  if(r.inst==='vox' && !r.calib && !r.teach){ const m=measureTakeDelay(r); if(m!=null){ r.lat=m;
+      const bar=r.start-r.countStart, cin=biquad(assemble(r.chunks, r.countStart+bar/2+m, r.start+m-0.02, ctx.sampleRate),'hp',150,0.707,ctx.sampleRate); let q=0; for(let i=0;i<cin.length;i++) q+=cin[i]*cin[i]; leak=Math.sqrt(q/Math.max(1,cin.length)); S.vocLat=S.vocLat==null?m:+(0.5*S.vocLat+0.5*m).toFixed(4); save(); } }
   const sr=ctx.sampleRate, pre=0.08, a=r.start+r.lat-pre, b=r.end+r.lat+0.25;
   const x=assemble(r.chunks,a,b,sr);
+  // only mention headphones when the beat actually leaked in: compare the count-in (you're silent) with your singing
+  bleedHint=false; if(r.inst==='vox' && leak>0){ const h=biquad(x,'hp',150,0.707,sr); let q=0; for(let i=0;i<h.length;i++) q+=h[i]*h[i]; const voice=Math.sqrt(q/Math.max(1,h.length)); bleedHint = voice>0 && leak/voice>0.15; }
   if(r.calib){ finishCalib(x,sr,pre); showReview(); return; }
   if(r.teach){ finishTeach(x,sr,r.teach); if(!teachQueue) showReview(); return; }
   await addTake(x, sr, r.inst, {align:pre, notch:true, live:true}); flushSave(); if(takeMode()) afterTake(); else showReview();
@@ -1665,15 +1670,16 @@ function countInRef(r){ const sr=ctx.sampleRate, n=Math.floor((r.start-r.countSt
     for(let i=0;i<n;i++){ const k=(off+i)%len; ref[i]+=g*0.5*(L[k]+Rr[k]); } });
   return ref; }
 function measureTakeDelay(r, micOverride){ try{
-  const sr=ctx.sampleRate, D=Math.max(1,Math.round(sr/4000)), fs=sr/D, maxLag=0.5;
-  const dec=x=>{ const n=Math.floor(x.length/D), o=new Float32Array(n); for(let i=0;i<n;i++){ let s2=0; for(let k=0;k<D;k++) s2+=x[i*D+k]; o[i]=s2/D; } return o; };
-  const mic=dec(biquad(micOverride||assemble(r.chunks, r.countStart, r.start+maxLag, sr),'hp',150,0.707,sr)), rf=dec(biquad(countInRef(r),'hp',150,0.707,sr));
+  const sr=ctx.sampleRate, D=Math.max(1,Math.round(sr/6000)), fs=sr/D, maxLag=0.5;
+  const dec=x=>{ const n=Math.floor(x.length/D), o=new Float32Array(n); for(let i=0;i<n;i++){ let s2=0; for(let k=0;k<D;k++) s2+=x[i*D+k]; o[i]=s2/D; } for(let i=n-1;i>0;i--) o[i]-=o[i-1]; o[0]=0; return o; };   // block-average, then emphasize attacks
+  // above ~1 kHz only: clicks and drum attacks line up sharply, while sustained bass and pads would blur the match
+  const hp=x=>biquad(biquad(x,'hp',1000,0.707,sr),'hp',1000,0.707,sr), mic=dec(hp(micOverride||assemble(r.chunks, r.countStart, r.start+maxLag, sr))), rf=dec(hp(countInRef(r)));
   const N=rf.length, nL=Math.min(Math.floor(maxLag*fs), mic.length-N); if(nL<10) return null;
   let e1=0; for(let i=0;i<N;i++) e1+=rf[i]*rf[i]; if(e1<1e-9) return null;
   const cs=new Float32Array(nL); let best=0, bl=0;
   for(let lag=0;lag<nL;lag++){ let c=0,e2=0; for(let i=0;i<N;i++){ const v=mic[i+lag]; c+=rf[i]*v; e2+=v*v; } const nc=Math.abs(c)/Math.sqrt(e1*e2+1e-12); cs[lag]=nc; if(nc>best){ best=nc; bl=lag; } }
-  const srt=Array.from(cs).sort((x,y)=>x-y), med=srt[srt.length>>1];
-  if(best<0.06 || best<3.5*med) return null;
+  let side=0; const w=Math.round(0.015*fs); for(let l=0;l<nL;l++) if(Math.abs(l-bl)>w && cs[l]>side) side=cs[l];
+  if(best<0.12 || best<1.25*side) return null;
   const y0=cs[bl-1]??best, y2=cs[bl+1]??best, den=y0-2*best+y2, d=den? (y0-y2)/(2*den) : 0, lag=(bl+clamp(d,-0.5,0.5))/fs;
   return lag>=0.004 && lag<=0.45 ? +lag.toFixed(4) : null; }catch(e){ return null; } }
 function startTeach(ids){
@@ -1800,7 +1806,7 @@ async function addVocalTake(x, sr, opt){
   const over=!!(tr && tr._raw);
   if(!tr){ tr=mkTrack('vox',{id:S.nextId++}); S.tracks.push(tr); }
   S.activeId=tr.id;
-  tr._raw={x,sr}; tr.va=+va.toFixed(4); tr._pitch=null; tr._tuned=null; tr._dirty=true;
+  tr._raw={x,sr}; tr.va=+va.toFixed(4); tr.vtake=(tr.vtake||0)+1; tr._pitch=null; tr._tuned=null; tr._dirty=true;   // vtake: each take counts as a change (undo, Retake) even when it has no pitched notes
   // notes of the vocal (for the song's key and the editor), measured once
   const fr=voxPitch(tr); tr.vn=[]; let cur=null;
   fr.forEach((f,i)=>{ const m=f.ms; if(isNaN(m)){ if(cur){ if(cur.n>=8) tr.vn.push({t:cur.t-va, l:cur.n*0.01, p:+median(cur.ps).toFixed(2)}); cur=null; } return; }
@@ -2092,10 +2098,9 @@ function renderTracks(){
       ${picking?pickChips():''}
       ${empty&&!open&&!recHere&&!picking?`<div class="pk-row plens"><h4>Length</h4>${[1,2,4,8,16].map(b=>`<button class="chip len${b===(tr.len||S.bars)?' on':''}" data-b="${b}" aria-pressed="${b===(tr.len||S.bars)}">${b} bar${b>1?'s':''}</button>`).join('')}</div>`:''}
       ${empty&&!open&&!recHere&&!picking?`<p class="prow-hint">${d.hint.split(/(?<=\.) /)[0]} <b>${d.say||''}</b></p>`:''}
-      ${tr.inst==='vox'&&(empty&&!open&&!picking||recHere)?'<div class="hptip"><svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 13v-2.5a6.5 6.5 0 0113 0V13"/><rect x="2.5" y="12" width="3.5" height="5.5" rx="1"/><rect x="14" y="12" width="3.5" height="5.5" rx="1"/></svg><p><b>Headphones give the best vocals.</b> Without them the phone cancels the beat from your mic, but a little can still bleed through.</p></div>':''}
       ${calTip?'<div class="note calnote"><p><b>First time?</b> Calibrate once (10 seconds of clapping) so your hits land on time.</p><span class="recrow" style="gap:8px"><button class="btn cal-now">Calibrate</button><button class="btn cal-later">Not now</button></span></div>':''}
       ${empty&&!open&&!recHere&&!picking?`<div class="prow-cta">${micOff?`<button class="rec-btn cta-imp"><span class="dot"></span>Import ${d.label}</button>`:`<button class="rec-btn cta-rec"><span class="dot"></span>Record ${d.label}</button>`}${tr.inst==='vox'?'':`<button class="btn cta-draw">Draw</button>`}${micOff?'':'<button class="btn cta-imp">Import</button>'}<button class="btn del cta-del" aria-label="Delete ${partName(tr)}" title="Delete part"><svg viewBox="0 0 20 20" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 5.5h13M8 5.5V3.5h4v2M5.5 5.5l.8 11h7.4l.8-11M8.5 8.5v5M11.5 8.5v5"/></svg></button></div>`:''}
-      ${open&&takeBar&&takeBar.id===tr.id&&!recHere?'<div class="prow-take"><span>New take</span><button class="btn tb-redo">Retake</button><button class="btn tb-del">Discard</button><button class="btn primary tb-ok">Keep</button></div>':''}
+      ${open&&takeBar&&takeBar.id===tr.id&&!recHere?'<div class="prow-take"><span>New take</span><button class="btn tb-redo">Retake</button><button class="btn tb-del">Discard</button><button class="btn primary tb-ok">Keep</button>'+(takeBar.hint?'<p class="tb-hint">Some of the beat leaked into the mic. Wired headphones avoid this.</p>':'')+'</div>':''}
       ${open?'<div class="prow-edit"></div>':''}
       <input type="range" class="prow-vol" min="0" max="100" value="${tr.vol}" aria-label="${partName(tr)} volume">`;
     box.appendChild(row);
