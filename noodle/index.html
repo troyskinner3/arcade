@@ -402,12 +402,18 @@ input[type=range]::-moz-range-thumb{width:10px;height:18px;border-radius:1px;bac
 .ovrow .zoom .ibtn{height:26px;min-width:34px}
 .pdel,.cta-del{color:var(--rec)}
 .nsel{position:absolute;touch-action:none;z-index:2;cursor:grab}
+.snapends{display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-top:-4px}
+.snapv{font-family:var(--f-mono);color:var(--ink);margin-left:4px}
 .glabels.keys{pointer-events:auto}
 .glabels .pkey{justify-content:flex-end;padding:0 4px 0 0;background:#d6d8db;color:#2a2b2f;border-right:1px solid var(--line);border-bottom:1px solid #a9acb1;font:600 8px var(--f-mono);letter-spacing:0;opacity:1;text-transform:none;cursor:pointer;box-sizing:border-box}
 .glabels .pkey.blk{background:#1b1c1f;color:#9a9ca3;border-bottom-color:#000}
 .glabels .pkey.c{font-weight:700;color:#000}
 .glabels .pkey.blk.c{color:#fff}
 .glabels .pkey.hit{background:var(--lcd-ink);color:#141414}
+.tb-det{flex:1 1 100%;display:flex;align-items:center;gap:8px;margin-top:2px;font-size:12px;color:var(--muted)}
+.tb-det>span:first-child{font-weight:600;color:var(--ink);text-transform:uppercase;letter-spacing:.07em;font-size:11px;min-width:44px}
+.tb-det input{flex:1}
+.tb-end{font-size:11px;color:var(--muted)}
 .tb-hint{flex:1 1 100%;margin:2px 0 0;font-size:12px;color:var(--muted)}
 .hptip{grid-column:1/-1;display:flex;gap:10px;align-items:flex-start;padding:9px 10px;background:color-mix(in srgb,var(--lcd-ink) 10%,var(--hd));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--lcd-ink) 45%,var(--line)), inset 3px 0 0 var(--lcd-ink);border-radius:var(--rad);color:var(--ink)}
 .hptip svg{flex:none;color:var(--lcd-ink);margin-top:1px}
@@ -566,6 +572,7 @@ button.card-head{margin:0;width:100%;padding:10px 14px;border-radius:0;backgroun
       <div class="field"><label for="scale">Snap notes to</label><select class="sel" id="scale">
         <option value="auto">Auto (major or minor)</option><option value="major">Major</option><option value="minor">Minor</option>
         <option value="pent-minor">Minor pentatonic</option><option value="pent-major">Major pentatonic</option><option value="blues">Blues</option><option value="dorian">Dorian</option><option value="chromatic">Any note (no snapping)</option></select></div>
+      <div class="field"><label for="snapStr">Snap strength <span class="snapv" id="snapV"></span></label><input type="range" id="snapStr" min="0" max="100" step="5" aria-label="How strongly recorded notes snap to the key"><span class="snapends"><span>Loose</span><span>Tight</span></span></div>
       <div class="field"><label for="quant">Timing grid</label><select class="sel" id="quant"><option value="16">16th notes</option><option value="8">8th notes</option></select></div>
     </div>
     <div class="knobs" id="masterKnobs"></div>
@@ -1075,8 +1082,17 @@ function whistleFrames(x, sr){
   }
   return out;
 }
+/* melody detector settings (defaults tuned on real hums and singing: see the evaluation notes in the repo) */
+const NT={ yinTh:0.12, lp:1000, gateA:0.42, gateB:0.25, confA:0.2, confB:0.12, gapFrames:2, onsetRise:6, splitMin:0.08,
+  hyst:0.65, heldMin:0.08, heldLong:0.25, driftMax:6, scoopMax:0.22, scoopIv:3, minSeg:0.07, pitchFrom:0.5, smoothW:2, mergeSame:0 };
+/* Notes: Fewer ↔ More. Negative merges short blips and slides into neighbours; positive lets quicker changes stand. */
+function detailNT(d){ d=clamp(d||0,-50,50)/50; const L=(a,lo,hi)=>d<0? a+(lo-a)*(-d) : a+(hi-a)*d;
+  return {heldMin:L(NT.heldMin,0.14,0.05), driftMax:L(NT.driftMax,2.5,9), scoopMax:L(NT.scoopMax,0.32,0.1), hyst:L(NT.hyst,0.9,0.6),
+    mergeSame:d<0?0.12*(-d):0, onsetRise:L(NT.onsetRise,16,4), gapFrames:Math.round(L(NT.gapFrames,8,NT.gapFrames)), splitMin:L(NT.splitMin,0.18,0.06), minSeg:L(NT.minSeg,0.12,0.06)}; }
+function withDetail(d,fn){ if(!d) return fn(); const keep=Object.assign({},NT); Object.assign(NT,detailNT(d)); try{ return fn(); } finally{ Object.assign(NT,keep); } }
+const partDetail=tr=>clamp((tr&&tr.detail!=null?tr.detail:0)+(S.detailBias||0),-50,50);
 function trackNotes(x, sr, onsets, sens){
-  const R=16000, ratio=sr/R; let y=biquad(biquad(x,'lp',1000,0.707,sr),'lp',1000,0.707,sr);
+  const R=16000, ratio=sr/R; let y=biquad(biquad(x,'lp',NT.lp,0.707,sr),'lp',NT.lp,0.707,sr);
   const len=Math.floor((y.length-1)/ratio), z=new Float32Array(len);
   for(let i=0;i<len;i++){ const p=i*ratio, i0=Math.floor(p), fr=p-i0; z[i]=y[i0]*(1-fr)+y[i0+1]*fr; }
   const W=400, tauMin=16, tauMax=280, hop=160, sN=sens/100;
@@ -1086,7 +1102,7 @@ function trackNotes(x, sr, onsets, sens){
     const db=10*Math.log10(e/W+1e-12);
     let run=0; d[0]=1;
     for(let tau=1;tau<=tauMax;tau++){ let sum=0; for(let j=0;j<W;j++){ const df=z[s+j]-z[s+j+tau]; sum+=df*df; } run+=sum; d[tau]=run>0?sum*tau/run:1; }
-    let tb=-1; for(let tau=tauMin;tau<=tauMax;tau++){ if(d[tau]<0.18){ while(tau+1<=tauMax&&d[tau+1]<d[tau]) tau++; tb=tau; break; } }
+    let tb=-1; for(let tau=tauMin;tau<=tauMax;tau++){ if(d[tau]<NT.yinTh){ while(tau+1<=tauMax&&d[tau+1]<d[tau]) tau++; tb=tau; break; } }
     if(tb<0){ let mv=9; for(let tau=tauMin;tau<=tauMax;tau++) if(d[tau]<mv){mv=d[tau];tb=tau;} }
     let tI=tb; if(tb>tauMin&&tb<tauMax){ const a=d[tb-1],b=d[tb],c=d[tb+1]; const den=a-2*b+c; if(Math.abs(den)>1e-9) tI=tb+0.5*(a-c)/den; }
     frames.push({t:(s+W/2)/R, db, conf:d[tb], m:69+12*Math.log2((R/tI)/440)});
@@ -1097,18 +1113,18 @@ function trackNotes(x, sr, onsets, sens){
   if(wv>=8 && wv>hv*0.7 && median(wvF.map(f=>f.hz))>950){ frames.length=0; frames.push(...wf); whistled=true; }
   if(!frames.length) return [];
   const dbs=frames.map(f=>f.db), floor=percentile(dbs,0.15), top=percentile(dbs,0.99);
-  const gate=floor+Math.max(8,(top-floor)*(0.42-0.25*sN)), cth=0.2+0.12*sN;
+  const gate=floor+Math.max(8,(top-floor)*(NT.gateA-NT.gateB*sN)), cth=NT.confA+NT.confB*sN;
   const voiced=frames.map(f=>f.db>gate && f.conf<cth && f.m>28 && f.m<(whistled?112:96));
   const build=()=>{
-  const sm=frames.map((f,i)=>{ if(!voiced[i]) return NaN; const w=[]; for(let j=i-2;j<=i+2;j++) if(j>=0&&j<frames.length&&voiced[j]) w.push(frames[j].m); return median(w); });
-  const onF=onsets.filter(o=>o.rise>6).map(o=>o.t);
+  const sm=frames.map((f,i)=>{ if(!voiced[i]) return NaN; const w=[]; for(let j=i-NT.smoothW;j<=i+NT.smoothW;j++) if(j>=0&&j<frames.length&&voiced[j]) w.push(frames[j].m); return median(w); });
+  const onF=onsets.filter(o=>o.rise>NT.onsetRise).map(o=>o.t);
   const nearOnset=(t)=>onF.some(ot=>Math.abs(ot-t)<0.012);
   const notes=[], hopS=0.01;
   // 1. voiced stretches, broken by a breath (>=30 ms unvoiced) or a fresh attack (a new syllable)
   const segs=[]; let a0=-1, unv=0, last=-1;
   for(let i=0;i<frames.length;i++){
-    if(voiced[i]){ if(a0<0) a0=i; else if(nearOnset(frames[i].t) && (i-a0)*hopS>0.08){ segs.push([a0,last]); a0=i; } last=i; unv=0; }
-    else if(a0>=0){ unv++; if(unv>=3){ segs.push([a0,last]); a0=-1; unv=0; } }
+    if(voiced[i]){ if(a0<0) a0=i; else if(nearOnset(frames[i].t) && (i-a0)*hopS>NT.splitMin){ segs.push([a0,last]); a0=i; } last=i; unv=0; }
+    else if(a0>=0){ unv++; if(unv>=NT.gapFrames){ segs.push([a0,last]); a0=-1; unv=0; } }
   }
   if(a0>=0) segs.push([a0,last]);
   // 2. inside each stretch, find the steady pitches you settle on. A slide or scoop belongs to the note it
@@ -1118,17 +1134,17 @@ function trackNotes(x, sr, onsets, sens){
     const prevEnd=segs.indexOf(sg)>0?segs[segs.indexOf(sg)-1][1]:-1;
     while(i-1>lim && i-1>prevEnd && frames[i-1].db>pk-22 && frames[i-1].db>gate-6) i--; sg.push(i); }
   for(const [a,b,a0s] of segs){
-    if((b-a+1)*hopS<0.07) continue;
+    if((b-a+1)*hopS<NT.minSeg) continue;
     const lab=[]; let cur=null;
-    for(let i=a;i<=b;i++){ const m=sm[i]; if(!isNaN(m)){ if(cur===null||Math.abs(m-cur)>0.65) cur=Math.round(m); } lab.push(cur); }
+    for(let i=a;i<=b;i++){ const m=sm[i]; if(!isNaN(m)){ if(cur===null||Math.abs(m-cur)>NT.hyst) cur=Math.round(m); } lab.push(cur); }
     const runs=[]; lab.forEach((l,j)=>{ const r=runs[runs.length-1]; if(r&&r.l===l) r.e=a+j; else runs.push({l,s:a+j,e:a+j}); });
     // held = long enough AND not drifting (a slide moves steadily; vibrato wobbles around one pitch)
     const drift=r=>{ const v=sm.slice(r.s,r.e+1).filter(x=>!isNaN(x)); if(v.length<6) return 99; const k=Math.max(2,Math.floor(v.length/4));
       const h=v.slice(0,k).reduce((p,c)=>p+c,0)/k, t=v.slice(-k).reduce((p,c)=>p+c,0)/k; return Math.abs(t-h)/((v.length-k)*hopS); };
-    let pl=runs.filter(r=>r.l!==null && (r.e-r.s+1)*hopS>=0.08 && ((r.e-r.s+1)*hopS>=0.25 || drift(r)<4));
+    let pl=runs.filter(r=>r.l!==null && (r.e-r.s+1)*hopS>=NT.heldMin && ((r.e-r.s+1)*hopS>=NT.heldLong || drift(r)<NT.driftMax));
     const merged=[]; for(const r of pl){ const m=merged[merged.length-1]; if(m&&m.l===r.l) m.e=r.e; else merged.push({...r}); } pl=merged;
     while(pl.length>1){ const A=pl[0], B=pl[1], la=(A.e-A.s+1)*hopS, lb=(B.e-B.s+1)*hopS;
-      if(la<0.22 && lb>la && Math.abs(B.l-A.l)<=3 && B.s-A.e<=12) { pl.shift(); B.scoop=1; } else break; }
+      if(la<NT.scoopMax && lb>la && Math.abs(B.l-A.l)<=NT.scoopIv && B.s-A.e<=12) { pl.shift(); B.scoop=1; } else break; }
     const dbMax=(i0,i1)=>{ let m=-200; for(let i=i0;i<=i1;i++) m=Math.max(m,frames[i].db); return m; };
     const pitchIn=(i0,i1)=>median(sm.slice(i0,i1+1).filter(v=>!isNaN(v)));
     if(!pl.length){ notes.push({t0:frames[a0s].t-hopS/2, t1:frames[b].t+hopS/2, p:pitchIn(a,b), db:dbMax(a,b)}); continue; }
@@ -1136,7 +1152,7 @@ function trackNotes(x, sr, onsets, sens){
     const cut=pl.map((r,k)=>{ if(k===0) return a0s; const A=pl[k-1], mid=(A.l+r.l)/2, up=r.l>A.l;
       for(let i=A.s;i<=r.s;i++){ const m=sm[i]; if(!isNaN(m) && (up? m>=mid : m<=mid) && i>A.s+2) return i; } return A.e+1; });
     pl.forEach((r,k)=>{ const i0=cut[k], i1=k===pl.length-1?b:cut[k+1]-1;
-      notes.push({t0:frames[i0].t-hopS/2, t1:frames[i1].t+hopS/2, p:pitchIn(r.s+Math.floor((r.e-r.s)/2),r.e), db:dbMax(i0,i1), g:k>0?1:0}); });
+      notes.push({t0:frames[i0].t-hopS/2, t1:frames[i1].t+hopS/2, p:pitchIn(r.s+Math.floor((r.e-r.s)*NT.pitchFrom),r.e), db:dbMax(i0,i1), g:k>0?1:0}); });
   }
   return notes; };
   // Your own tuning: people are in tune with themselves, not necessarily with A=440. Measure the take's offset from the
@@ -1162,7 +1178,10 @@ function analyzeTake(x, sr, inst, sens, notch){
   const ons=detectOnsets(y, sr, sens, kind==='pitched'?0.09:0.035);
   let notes=null;
   if(kind==='drums') classifyKit(ons);
-  if(kind==='pitched') notes=trackNotes(yHp, sr, ons, sens);
+  if(kind==='pitched'){ notes=trackNotes(yHp, sr, ons, sens);
+    // Fewer notes: a quick re-attack on the same pitch ("la-la" on one note) becomes one held note
+    if(NT.mergeSame>0 && notes.length>1){ const keep=[notes[0]]; for(let i=1;i<notes.length;i++){ const a=keep[keep.length-1], n=notes[i]; if(Math.abs(n.p-a.p)<0.5 && n.t0-a.t1<NT.mergeSame){ a.t1=n.t1; a.db=Math.max(a.db,n.db); } else keep.push(n); }
+      keep.whistled=notes.whistled; keep.tune=notes.tune; notes=keep; } }
   return {onsets:ons, notes};
 }
 function fitWhistle(an, inst){
@@ -1229,10 +1248,17 @@ function currentKey(){
   const scaleName = S.scale==='auto'?best.mode:S.scale;
   return keyCache={tonic:best.tonic, mode:best.mode, scale:scaleName, set:SCALES[scaleName]};
 }
-function snap(p){ const K=currentKey(); if(K.none) return Math.round(p);
-  let bm=Math.round(p), bd=1e9; for(let m=Math.floor(p)-3;m<=Math.ceil(p)+3;m++){ if(K.set.includes(((m-K.tonic)%12+12)%12)){ const d=Math.abs(m-p); if(d<bd-1e-9){bd=d;bm=m;} } } return bm; }
+/* Snap strength (Loose ↔ Tight). Recorded notes go to the nearest note in the key, EXCEPT an out-of-key note you sang
+   confidently (close to the centre of that semitone and held at least 0.15 s) is kept. How close counts as confident
+   comes from the slider: Tight keeps nothing out of key, Loose keeps everything (plain rounding).
+   Measured (see EVAL notes): hummed melodies come out best Tight; singing with lyrics improves when looser. So the
+   default is Tight, and corrections you make (pulling notes back out of the key) loosen it for you. */
+const snapTol=()=>{ const v=S.snapStr??100; return v>=100?0:0.5*Math.pow(1-v/100,0.7); };
+function snap(p,len){ const K=currentKey(); if(K.none) return Math.round(p); const r=Math.round(p), ink=m=>K.set.includes(((m-K.tonic)%12+12)%12);
+  if(ink(r) || (Math.abs(p-r)<snapTol() && (len==null || len>=0.15))) return r;
+  let bm=r, bd=1e9; for(let m=r-3;m<=r+3;m++){ if(ink(m)){ const d=Math.abs(m-p); if(d<bd-1e-9){bd=d;bm=m;} } } return bm; }
 /* a note you drew by hand (x:true) stays exactly where you put it; recorded notes snap to the key */
-const pitchOf=n=>n.x?Math.round(n.p):snap(n.p);
+const pitchOf=n=>n.x?Math.round(n.p):snap(n.p, n.l!=null?n.l*stepDur():null);
 /* Auto-chords: the note you played is the root; the 3rd and 5th come from the song's key (stacked scale steps),
    so in A minor an A plays A minor, a C plays C major, a B plays B diminished. Pentatonic and blues keys use their
    parent 7-note scale; notes outside the key (or "any note") get a major triad. */
@@ -1834,7 +1860,7 @@ async function addTake(x, sr, inst, opt){
   await new Promise(r=>setTimeout(r,30));
   try{
     let tr=mkTrack(inst,{id:S.nextId++, sens:S.sens});
-    const an=analyzeTake(x,sr,inst,tr.sens,opt.notch); const wmsg=fitWhistle(an,inst);
+    const tgD=S.tracks.find(t=>t.id===S.target); const an=withDetail(partDetail(tgD), ()=>analyzeTake(x,sr,inst,tr.sens,opt.notch)); const wmsg=fitWhistle(an,inst);
     const kind=INST[inst].kind;
     let first = kind==='pitched' ? (an.notes[0]&&an.notes[0].t0) : (an.onsets[0]&&an.onsets[0].t);
     if(first===undefined){ toast(kind==='pitched'?'I couldn’t hear clear notes. Hum a little louder, or raise the sensitivity in Timing & mic.':'I couldn’t hear any hits. Try a little louder, or raise the sensitivity in Timing & mic.'); return; }
@@ -1906,7 +1932,7 @@ function reanalyze(tr){
   if(INST[tr.inst].kind==='audio') return;
   if(!tr._raw || !tr._an) return;
   const tk = tr._takes && tr._takes[tr._takes.length-1], tinst = tk ? tk.inst : tr.inst, old = tr._an;
-  const an=analyzeTake(tr._raw.x,tr._raw.sr,tinst,tr.sens,old.notchUsed??true); fitWhistle(an,tinst);
+  const an=withDetail(partDetail(tr), ()=>analyzeTake(tr._raw.x,tr._raw.sr,tinst,tr.sens,old.notchUsed??true)); fitWhistle(an,tinst);
   if(old.live){ const cb=removeClickBleed(an.onsets, old.base); an.onsets=cb.ons; }
   an.base=old.base; an.live=old.live; an.notchUsed=old.notchUsed;
   an.align=fitAlign(takeTimes(an,tinst), old.align);
@@ -2120,7 +2146,7 @@ function renderTracks(){
       ${empty&&!open&&!recHere&&!picking?`<p class="prow-hint">${d.hint.split(/(?<=\.) /)[0]} <b>${d.say||''}</b></p>`:''}
       ${calTip?'<div class="note calnote"><p><b>First time?</b> Calibrate once (10 seconds of clapping) so your hits land on time.</p><span class="recrow" style="gap:8px"><button class="btn cal-now">Calibrate</button><button class="btn cal-later">Not now</button></span></div>':''}
       ${empty&&!open&&!recHere&&!picking?`<div class="prow-cta">${micOff?`<button class="rec-btn cta-imp"><span class="dot"></span>Import ${d.label}</button>`:`<button class="rec-btn cta-rec"><span class="dot"></span>Record ${d.label}</button>`}${tr.inst==='vox'?'':`<button class="btn cta-draw">Draw</button>`}${micOff?'':'<button class="btn cta-imp">Import</button>'}<button class="btn del cta-del" aria-label="Delete ${partName(tr)}" title="Delete part"><svg viewBox="0 0 20 20" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 5.5h13M8 5.5V3.5h4v2M5.5 5.5l.8 11h7.4l.8-11M8.5 8.5v5M11.5 8.5v5"/></svg></button></div>`:''}
-      ${open&&takeBar&&takeBar.id===tr.id&&!recHere?'<div class="prow-take"><span>New take</span><button class="btn tb-redo">Retake</button><button class="btn tb-del">Discard</button><button class="btn primary tb-ok">Keep</button>'+(takeBar.hint?'<p class="tb-hint">Some of the beat leaked into the mic. Wired headphones avoid this.</p>':'')+'</div>':''}
+      ${open&&takeBar&&takeBar.id===tr.id&&!recHere?'<div class="prow-take"><span>New take</span><button class="btn tb-redo">Retake</button><button class="btn tb-del">Discard</button><button class="btn primary tb-ok">Keep</button>'+(INST[tr.inst].kind==='pitched'&&tr._raw?'<label class="tb-det"><span>Notes</span><span class="tb-end">Fewer</span><input type="range" class="pdet" min="-50" max="50" step="10" value="'+(tr.detail||0)+'" aria-label="Fewer or more notes"><span class="tb-end">More</span></label>':'')+(takeBar.hint?'<p class="tb-hint">Some of the beat leaked into the mic. Wired headphones avoid this.</p>':'')+'</div>':''}
       ${open?'<div class="prow-edit"></div>':''}
       <input type="range" class="prow-vol" min="0" max="100" value="${tr.vol}" aria-label="${partName(tr)} volume">`;
     box.appendChild(row);
@@ -2128,6 +2154,7 @@ function renderTracks(){
     row.querySelector('.rec').onclick=()=>recordInto(tr.id);
     const cr=row.querySelector('.cta-rec'); if(cr) cr.onclick=()=>recordInto(tr.id);
     row.querySelectorAll('.cta-imp').forEach(b=>b.onclick=()=>importInto(tr.id));
+    row.addEventListener('input',e=>{ const inp=e.target; if(!inp.classList||!inp.classList.contains('pdet')) return; tr.detail=+inp.value; row.querySelectorAll('.pdet').forEach(o=>{ if(o!==inp) o.value=inp.value; }); clearTimeout(tr._detT); tr._detT=setTimeout(()=>{ reanalyze(tr); redrawTrack(tr); },160); });
     const cdel=row.querySelector('.cta-del'); if(cdel) cdel.onclick=()=>deletePart(tr);
     const cd=row.querySelector('.cta-draw'); if(cd) cd.onclick=()=>{ S.activeId=tr.id; tr._draw=true; openEditor(tr); };
     row.querySelectorAll('.chip[data-k]').forEach(b=>b.onclick=()=>pickInstrument(b.dataset.k));
@@ -2195,6 +2222,7 @@ function buildCard(tr){
         <section class="isec"><h4>${tr.inst==='vox'?'Mix & vocal FX':'Mix'}</h4><div class="knobs kmore"></div></section>
         ${pitched?`<section class="isec"><h4>Notes</h4>
           ${tr.inst==='bass'?'':`<div class="irow"><span class="ilab">Chord</span><div class="ictl"><select class="sel chdsel" aria-label="Chord size">${Object.entries(CHORD_TYPES).map(([k,v])=>`<option value="${k}" ${k===chordType(tr)?'selected':''}>${v}</option>`).join('')}</select></div></div>`}
+          ${tr._raw&&tr._an?`<div class="irow"><span class="ilab">Detail</span><div class="ictl"><span class="tb-end">Fewer</span><input type="range" class="pdet" min="-50" max="50" step="10" value="${tr.detail||0}" aria-label="Fewer or more notes" style="flex:1;min-width:110px"><span class="tb-end">More</span></div></div>`:''}
           <div class="irow"><span class="ilab">Octave</span><div class="ictl seg"><button class="ibtn od" aria-label="Octave down">−</button><b class="ov">${tr.oct>0?'+':''}${tr.oct}</b><button class="ibtn ou" aria-label="Octave up">+</button></div></div>
           ${tr.inst!=='arp'?`<div class="irow"><span class="ilab">Slides</span><div class="ictl"><button class="ibtn tog sld" aria-pressed="${slidesOn(tr)}" title="Slide between notes where you slid">${slidesOn(tr)?'On':'Off'}</button></div></div>`:''}
           ${tr.inst==='arp'?(()=>{ const A=arpOf(tr), o=(cls,lab,opts,val)=>`<div class="irow"><span class="ilab">${lab}</span><div class="ictl"><select class="sel ${cls}" aria-label="${lab}">${opts.map(([k,v])=>`<option value="${k}" ${String(k)===String(val)?'selected':''}>${v}</option>`).join('')}</select></div></div>`;
@@ -2379,7 +2407,15 @@ function cellAt(tr,e,clampIt){
 function nextPitch(p,dir){ const K=currentKey(); if(K.none) return p+dir; let m=p+dir; for(let i=0;i<12 && !K.set.includes(((m-K.tonic)%12+12)%12);i++) m+=dir; return m; }
 function selectNote(tr,n){ tr._sel=n||null; drawGrid(tr); renderNoteBar(tr); }
 function noteChanged(tr){ keyCache=null; tr.notes.sort((a,b)=>a.s-b.s); enforceMono(tr); tr._dirty=true; save(); redrawTrack(tr); renderNoteBar(tr); scheduleRender(); }
-function deleteSelNote(tr){ const n=tr._sel; if(!n||!tr.notes.includes(n)) return; tr.notes.splice(tr.notes.indexOf(n),1); tr._sel=null; keyCache=null; noteChanged(tr); }
+/* ---- learning from your corrections (no setup): small nudges to the same settings you can see and change ---- */
+let learnToldThisSession=false;
+function learnNote(msg){ if(learnToldThisSession) return; learnToldThisSession=true; toast(msg); }
+function learnFromPitchFix(a,b){ const K=currentKey(); if(K.none||a===b||Math.abs(a-b)>2) return; const ink=m=>K.set.includes(((m-K.tonic)%12+12)%12);
+  let d=0; if(!ink(a)&&ink(b)) d=5; else if(ink(a)&&!ink(b)) d=-5; if(!d) return;
+  S.snapStr=clamp((S.snapStr??100)+d,0,100); const ss=$('snapStr'); if(ss){ ss.value=S.snapStr; ss.dispatchEvent(new Event('input')); } save();
+  learnNote(d>0?'Noted: recorded notes will snap a little more to the key (Snap strength, under Mix & global FX).':'Noted: recorded notes will keep a little more of what you sang (Snap strength, under Mix & global FX).'); }
+function learnDetail(d){ S.detailBias=clamp((S.detailBias||0)+d,-30,30); save(); if(S.detailBias<=-6) learnNote('Noted: future takes will lean toward fewer, longer notes. Change it any time with Notes on a take.'); }
+function deleteSelNote(tr){ const n=tr._sel; if(!n||!tr.notes.includes(n)) return; if(!n.x && n.l<=2) learnDetail(-2); tr.notes.splice(tr.notes.indexOf(n),1); tr._sel=null; keyCache=null; noteChanged(tr); }
 function placeHandle(tr){ const h=tr._nsel, G=tr._grid, n=tr._sel, x=tr._ndel; if(!h) return;
   const i=(n&&G)?G.rows.indexOf(pitchOf(n)):-1; if(i<0||!tr.notes.includes(n)){ h.hidden=true; if(x) x.hidden=true; return; }
   if(x){ const top=1+i*G.rh, above=top>=26; x.hidden=false; x.style.left=Math.max(0,G.gut+(n.s+n.l)*G.cw-12)+'px'; x.style.top=(above?top-26:top+G.rh+2)+'px'; }
@@ -2388,7 +2424,7 @@ function noteDown(tr,e,onSel){
   const q=S.quant==8?2:1; tr._touchT=Date.now();
   if(onSel && tr._sel){ const n=tr._sel, c=cellAt(tr,e,true); if(!c) return;
     try{ tr._nsel.setPointerCapture(e.pointerId); }catch(_){}
-    tr._drag={note:n, mode:(c.s>=n.s+n.l-q)?'resize':'move', s0:c.s, row0:c.row, ns:n.s, np:pitchOf(n), moved:false, created:false};
+    tr._drag={note:n, mode:(c.s>=n.s+n.l-q)?'resize':'move', s0:c.s, row0:c.row, ns:n.s, np:pitchOf(n), moved:false, created:false, rec:!n.x};
     previewNote(tr,pitchOf(n)); return; }
   const c=cellAt(tr,e); if(!c||!c.inRow) return;
   // the grid only reacts to a tap (so a swipe always scrolls): tap a note to select it, tap empty space to deselect or add a note
@@ -2414,6 +2450,7 @@ function noteUp(tr,e,cancel){
     else if(tr._sel) selectNote(tr,null);
     else { startNewNote(tr,d.c); tr._drag=null; noteChanged(tr); }
     return; }
+  if(d.moved && d.rec && d.mode==='move') learnFromPitchFix(d.np, pitchOf(d.note));
   if(d.moved||d.created) noteChanged(tr); else { drawGrid(tr); renderNoteBar(tr); }
 }
 function renderNoteBar(tr){
@@ -2496,6 +2533,8 @@ function init(){
   // mix
   const ks=$('key'); ks.innerHTML='<option value="auto">Auto-detect</option>'+NOTE_NAMES.map((n,i)=>`<option value="${i}">${n}</option>`).join('');
   ks.value=S.key; ks.onchange=e=>{ S.key=e.target.value; keyChanged(); save(); S.tracks.forEach(redrawTrack); scheduleRender(); };
+  { const ss=$('snapStr'), sv=()=>{ const v=S.snapStr??100; $('snapV').textContent=v<=10?'loose':v>=100?'tight':v<40?'medium-loose':v<70?'medium':'medium-tight'; }; ss.value=S.snapStr??100; sv();
+    ss.oninput=()=>{ S.snapStr=+ss.value; sv(); clearTimeout(ss._t); ss._t=setTimeout(()=>{ keyChanged(); save(); S.tracks.forEach(redrawTrack); scheduleRender(); },150); }; }
   $('scale').value=S.scale; $('scale').onchange=e=>{ S.scale=e.target.value; keyChanged(); save(); S.tracks.forEach(redrawTrack); scheduleRender(); };
   $('genre').value=S.genre||''; $('genre').onchange=e=>{ if(e.target.value) applyStyle(e.target.value); };
   $('quant').value=S.quant; $('quant').onchange=e=>{ S.quant=+e.target.value; S.tracks.forEach(t=>{ if(t._an){ quantizeTrack(t); t._dirty=true; redrawTrack(t);} }); save(); scheduleRender(); toast('Recorded parts re-snapped to '+(S.quant==8?'8th':'16th')+' notes'); };
