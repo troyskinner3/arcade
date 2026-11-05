@@ -766,8 +766,9 @@ const VOX_PRESETS={
   'Rock':     {tune:10, low:45, pres:72, air:35, comp:72, dbl:10, echo:5},
   'Natural':  {tune:0,  low:30, pres:35, air:30, comp:30, dbl:0,  echo:0},
 };
-const VOX_KNOBS=[['tune','Tune',v=>v?v+'%':'off'],['low','Low cut',v=>Math.round(40+v*2.6)+' Hz'],['pres','Presence',v=>{const g=(v-25)/75*9; return (g>0?'+':'')+g.toFixed(1)+' dB';}],['air','Air',v=>'+'+(v/10).toFixed(1)+' dB'],['comp','Compression',v=>v+'%'],['dbl','Double',v=>v+'%'],['echo','Echo',v=>v+'%']];
-const fxOf=tr=>Object.assign({},VOX_PRESETS.Pop,tr.fx||{});
+const fmtSt=v=>{ const st=Math.round((v-50)*1.2)/10; return st===0?'0':(st>0?'+':'')+st.toFixed(1)+' st'; };
+const VOX_KNOBS=[['tune','Tune',v=>v?v+'%':'off'],['form','Formant',fmtSt],['low','Low cut',v=>Math.round(40+v*2.6)+' Hz'],['pres','Presence',v=>{const g=(v-25)/75*9; return (g>0?'+':'')+g.toFixed(1)+' dB';}],['air','Air',v=>'+'+(v/10).toFixed(1)+' dB'],['comp','Compression',v=>v+'%'],['dbl','Double',v=>v+'%'],['echo','Echo',v=>v+'%']];
+const fxOf=tr=>Object.assign({form:50},VOX_PRESETS.Pop,tr.fx||{});
 /* recordings of vocal parts are kept in this browser (IndexedDB), so they survive a reload */
 const takeStore={ db:null,
   open(){ if(this.db) return Promise.resolve(this.db); return new Promise(res=>{ try{ const r=indexedDB.open('mouth-machine',1); r.onupgradeneeded=()=>r.result.createObjectStore('takes'); r.onsuccess=()=>{ this.db=r.result; res(this.db); }; r.onerror=()=>res(null); }catch(e){ res(null); } }); },
@@ -800,7 +801,7 @@ function voxTarget(tr){
   return fr.map(f=>{ const m=f.ms; if(isNaN(m)){ cs*=0.6; return 0; } const tgt=K.none?Math.round(m):snap(m); cs+=(tgt-m-cs)*k; return cs; });
 }
 /* pitch shifting by overlapping pitch-period grains (PSOLA): keeps the voice's timing and formants */
-function psola(x,sr,fr,corr){
+function psola(x,sr,fr,corr,F=1){
   const at=t=>{ const i=Math.max(0,Math.min(fr.length-1,Math.round(t/0.01-0.5))); return i; };
   const y=new Float32Array(x.length); let ta=0, ts=0; const marks=[];
   while(ta<x.length){ marks.push(ta); const f=fr[at(ta/sr)], T= f&&!isNaN(f.ms)? sr/(440*Math.pow(2,(f.ms-69)/12)) : sr*0.008; ta+=Math.max(24,Math.round(T)); }
@@ -808,17 +809,21 @@ function psola(x,sr,fr,corr){
   while(ts<x.length){
     while(ai+1<marks.length && Math.abs(marks[ai+1]-ts)<=Math.abs(marks[ai]-ts)) ai++;
     const a=marks[ai], i=at(a/sr), f=fr[i], voiced=f&&!isNaN(f.ms);
-    const T=voiced? sr/(440*Math.pow(2,(f.ms-69)/12)) : sr*0.008, r=voiced? Math.pow(2,corr[i]/12) : 1, L=Math.max(16,Math.round(T)), g=1/r;
-    for(let j=-L;j<L;j++){ const xi=a+j, yi=ts+j; if(xi<0||xi>=x.length||yi<0||yi>=y.length) continue; y[yi]+=x[xi]*g*(0.5+0.5*Math.cos(Math.PI*j/L)); }
+    const T=voiced? sr/(440*Math.pow(2,(f.ms-69)/12)) : sr*0.008, r=voiced? Math.pow(2,corr[i]/12) : 1, L=Math.max(16,Math.round(T));
+    if(F===1){ const g=1/r; for(let j=-L;j<L;j++){ const xi=a+j, yi=ts+j; if(xi<0||xi>=x.length||yi<0||yi>=y.length) continue; y[yi]+=x[xi]*g*(0.5+0.5*Math.cos(Math.PI*j/L)); } }
+    else { const Ls=Math.max(8,Math.round(L/F)), g=F/r;   // formant shift: the grain (two pitch periods) is squeezed or stretched by F as it's placed
+      for(let j=-Ls;j<Ls;j++){ const yi=ts+j; if(yi<0||yi>=y.length) continue; const p=a+j*F, k=Math.floor(p), fr2=p-k; if(k<0||k+1>=x.length) continue;
+        y[yi]+=(x[k]+(x[k+1]-x[k])*fr2)*g*(0.5+0.5*Math.cos(Math.PI*j/Ls)); } }
     ts+=Math.max(12,Math.round(T/r));
   }
   return y;
 }
 function voxTuned(tr){
-  const fx=fxOf(tr), key=fx.tune+'|'+JSON.stringify(currentKey());
+  const fx=fxOf(tr), key=fx.tune+'|'+fx.form+'|'+JSON.stringify(currentKey());
   if(tr._tuned && tr._tunedKey===key) return tr._tuned;
   const {x,sr}=tr._raw; let out=x;
-  if(fx.tune>0){ const fr=voxPitch(tr); out=psola(x,sr,fr,voxTarget(tr)); }
+  const F=Math.pow(2,(fx.form-50)*0.12/12);
+  if(fx.tune>0 || F!==1){ const fr=voxPitch(tr), corr=fx.tune>0?voxTarget(tr):new Float32Array(fr.length); out=psola(x,sr,fr,corr,F); }
   let pk=1e-6; for(let i=0;i<out.length;i++) pk=Math.max(pk,Math.abs(out[i])); const g=0.7/pk; const o2=new Float32Array(out.length); for(let i=0;i<out.length;i++) o2[i]=out[i]*g;
   tr._tuned=o2; tr._tunedKey=key; return o2;
 }
