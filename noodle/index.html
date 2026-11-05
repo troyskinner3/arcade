@@ -2050,9 +2050,11 @@ function partCount(tr){ const k=INST[tr.inst].kind; return k==='audio' ? (tr._ra
 function loopTag(tr){ const b=pBars(tr); return b<S.bars ? ` · ${b} bar${b>1?'s':''}${pRep(tr)?' ×'+pLoops(tr):', once'}` : ''; }
 function partName(tr){ if(tr.name) return tr.name; const same=S.tracks.filter(t=>t.inst===tr.inst); return INST[tr.inst].label+(same.length>1?' '+(same.indexOf(tr)+1):''); }
 let editId=null;
-let gridCW=16; try{ gridCW=+localStorage.getItem('noodle.zoom')||16; }catch(e){}
+let gridCW=16; try{ const z=+localStorage.getItem('noodle.zoom'); if(isFinite(z)&&z>0) gridCW=z; }catch(e){}
+const zoomCW=()=>isFinite(gridCW)&&gridCW>0?gridCW:16;
 function setZoom(tr,cw,anchorX){ const G=tr._grid, wrap=tr._cv&&tr._cv.parentElement.parentElement; if(!G||!wrap) return;
   const ax=anchorX==null?wrap.clientWidth/2:anchorX, step=(wrap.scrollLeft+ax-G.gut)/G.cw;
+  if(!isFinite(cw)||cw<=0) return;   // a bad pinch reading (two touches at one point) must never become the zoom
   gridCW=clamp(cw,G.fit,40); try{ localStorage.setItem('noodle.zoom',gridCW); }catch(e){}
   drawGrid(tr); const G2=tr._grid; wrap.scrollLeft=Math.max(0,step*G2.cw+G2.gut-ax); tr._scrollX=wrap.scrollLeft; }
 /* overview under the grid: the whole part in miniature, with a window over the part you're looking at */
@@ -2081,7 +2083,7 @@ function wireGrid(tr,el){ const wrap=el.querySelector('.gridwrap'); if(!wrap) re
   wrap.addEventListener('scroll',()=>{ if(!tr._autoScroll) { tr._scrollX=wrap.scrollLeft; } tr._autoScroll=false; },{passive:true});
   ['pointerdown','wheel','touchstart'].forEach(ev=>wrap.addEventListener(ev,touched,{passive:true}));
   let pinch=null; const dist=t=>Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY);
-  wrap.addEventListener('touchstart',e=>{ if(e.touches.length===2 && tr._grid){ const r=wrap.getBoundingClientRect(); pinch={d:dist(e.touches),cw:tr._grid.cw,x:(e.touches[0].clientX+e.touches[1].clientX)/2-r.left}; tr._drag=null; } },{passive:true});
+  wrap.addEventListener('touchstart',e=>{ if(e.touches.length===2 && tr._grid){ const r=wrap.getBoundingClientRect(); pinch=dist(e.touches)<12?null:{d:dist(e.touches),cw:tr._grid.cw,x:(e.touches[0].clientX+e.touches[1].clientX)/2-r.left}; tr._drag=null; } },{passive:true});
   wrap.addEventListener('touchmove',e=>{ if(pinch && e.touches.length===2){ e.preventDefault(); const cw=pinch.cw*dist(e.touches)/pinch.d; if(!pinch.raf) pinch.raf=requestAnimationFrame(()=>{ if(pinch){ pinch.raf=0; setZoom(tr,cw,pinch.x); } }); } },{passive:false});
   wrap.addEventListener('touchend',e=>{ if(e.touches.length<2) pinch=null; },{passive:true});
   wrap.addEventListener('wheel',e=>{ if(e.ctrlKey && tr._grid){ e.preventDefault(); const r=wrap.getBoundingClientRect(); setZoom(tr,tr._grid.cw*Math.exp(-e.deltaY*0.01),e.clientX-r.left); } },{passive:false});
@@ -2307,7 +2309,7 @@ function drawGrid(tr){
   const cv=tr._cv; if(!cv) return; const wrap=cv.parentElement.parentElement; const n=pSteps(tr);
   const pitched=INST[tr.inst].kind==='pitched';
   const gr=gridRows(tr), rows=gr.rows, rh=pitched?clamp(Math.floor(176/Math.max(1,rows.length)),8,15):gr.rh; const gut=(!pitched&&rows.length>1)?52:0;
-  const VW=Math.max(200,wrap.clientWidth||320), fit=(VW-gut)/n, cw=Math.max(fit, Math.min(gridCW,40)), W=Math.ceil(gut+n*cw);
+  const VW=Math.max(200,wrap.clientWidth||320), fit=(VW-gut)/n, cw=Math.max(fit, Math.min(zoomCW(),40)), W=Math.ceil(gut+n*cw);
   const sPL=n, lines=1, lineH=rows.length*rh+2, gapH=0, H=lineH;
   tr._grid={cw,rh,rows,W,gut,sPL,lineH,gapH,lines,fit};
   const dpr=Math.min(2,window.devicePixelRatio||1); cv.width=Math.round(W*dpr); cv.height=Math.round(H*dpr); cv.style.width=W+'px'; cv.style.height=H+'px';
