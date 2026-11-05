@@ -402,6 +402,10 @@ input[type=range]::-moz-range-thumb{width:10px;height:18px;border-radius:1px;bac
 .ovrow .zoom .ibtn{height:26px;min-width:34px}
 .pdel,.cta-del{color:var(--rec)}
 .nsel{position:absolute;touch-action:none;z-index:2;cursor:grab}
+.hptip{grid-column:1/-1;display:flex;gap:10px;align-items:flex-start;padding:9px 10px;background:color-mix(in srgb,var(--lcd-ink) 10%,var(--hd));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--lcd-ink) 45%,var(--line)), inset 3px 0 0 var(--lcd-ink);border-radius:var(--rad);color:var(--ink)}
+.hptip svg{flex:none;color:var(--lcd-ink);margin-top:1px}
+.hptip p{margin:0;font-size:12.5px;line-height:1.4;color:var(--muted)}
+.hptip b{color:var(--ink);font-weight:600}
 .songname{display:block;width:100%;margin:0;padding:6px 0 2px;border:0;border-bottom:1px solid transparent;background:transparent;color:var(--ink);font:700 17px var(--f-body);letter-spacing:-.01em;border-radius:0}
 .songname::placeholder{color:var(--muted);font-weight:600}
 .songname:focus{outline:none;border-bottom-color:var(--lcd-ink)}
@@ -1575,10 +1579,13 @@ async function startRecord(calib=false, teach=null){
   // metronome loop starts one bar early = count-in; parts start on bar 1
   stopAll(when);
   t0=when+bar;
-  if(along) S.tracks.forEach(tr=>{ if(tr._buf){ ensureNodes(tr); tr._src=startSrc(tr._buf,tr._g,when+bar,0); } });
+  // vocal takes pre-roll: the song's last bar plays under the count-in, so you hear the groove coming in, echo cancellation adapts
+  // before you sing, and the count-in gives a clean stretch to measure this take's real delay
+  const preroll = along && !calib && !teach && S.inst==='vox', SL=loopLen(), poff=((SL-bar)%SL+SL)%SL;
+  if(along) S.tracks.forEach(tr=>{ if(tr._buf){ ensureNodes(tr); tr._src=preroll?startSrc(tr._buf,tr._g,when,poff):startSrc(tr._buf,tr._g,when+bar,0); } });
   if(!metroGain){ metroGain=ctx.createGain(); metroGain.connect(ctx.destination); }
   metroGain.gain.value=0.75; metroSrc=startSrc(metroBuf,metroGain,when,0); gateOpen(when);
-  recState={calib, teach, inst:S.inst, countStart:when, start:when+bar, end:when+bar+L, lat:calib?0:latency(), chunks:[]};
+  recState={calib, teach, inst:S.inst, countStart:when, start:when+bar, end:when+bar+L, preroll, poff, along, lat:calib?0:(!teach&&S.inst==='vox'&&S.vocLat!=null?S.vocLat:latency()), chunks:[]};
   if(!teach) teachQueue=null;
   capturing=true; setRecUI(true);
 }
@@ -1643,12 +1650,32 @@ function assemble(chunks, a, b, sr){
 }
 async function finishRecord(){
   const r=recState; capturing=false; recState=null; stopAll(); setRecUI(false); if(!r.teach) dropMic(); renderKitPanel();
+  if(r.inst==='vox' && !r.calib && !r.teach){ const m=measureTakeDelay(r); if(m!=null){ r.lat=m; S.vocLat=S.vocLat==null?m:+(0.5*S.vocLat+0.5*m).toFixed(4); save(); } }
   const sr=ctx.sampleRate, pre=0.08, a=r.start+r.lat-pre, b=r.end+r.lat+0.25;
   const x=assemble(r.chunks,a,b,sr);
   if(r.calib){ finishCalib(x,sr,pre); showReview(); return; }
   if(r.teach){ finishTeach(x,sr,r.teach); if(!teachQueue) showReview(); return; }
   await addTake(x, sr, r.inst, {align:pre, notch:true, live:true}); flushSave(); if(takeMode()) afterTake(); else showReview();
 }
+/* What the phone played during the count-in (metronome + pre-rolled parts), and how late the mic heard it.
+   Normalized cross-correlation at ~4 kHz over 0–500 ms; returns seconds, or null when there's no clear match. */
+function countInRef(r){ const sr=ctx.sampleRate, n=Math.floor((r.start-r.countStart)*sr), ref=new Float32Array(n);
+  if(metroBuf){ const md=metroBuf.getChannelData(0); for(let i=0;i<n;i++) ref[i]+=md[i%md.length]*0.75; }
+  if(r.preroll) S.tracks.forEach(t=>{ const g=trackGain(t); if(!t._buf||!g) return; const L=t._buf.getChannelData(0), Rr=t._buf.getChannelData(t._buf.numberOfChannels>1?1:0), len=t._buf.length, off=Math.round(r.poff*sr);
+    for(let i=0;i<n;i++){ const k=(off+i)%len; ref[i]+=g*0.5*(L[k]+Rr[k]); } });
+  return ref; }
+function measureTakeDelay(r, micOverride){ try{
+  const sr=ctx.sampleRate, D=Math.max(1,Math.round(sr/4000)), fs=sr/D, maxLag=0.5;
+  const dec=x=>{ const n=Math.floor(x.length/D), o=new Float32Array(n); for(let i=0;i<n;i++){ let s2=0; for(let k=0;k<D;k++) s2+=x[i*D+k]; o[i]=s2/D; } return o; };
+  const mic=dec(biquad(micOverride||assemble(r.chunks, r.countStart, r.start+maxLag, sr),'hp',150,0.707,sr)), rf=dec(biquad(countInRef(r),'hp',150,0.707,sr));
+  const N=rf.length, nL=Math.min(Math.floor(maxLag*fs), mic.length-N); if(nL<10) return null;
+  let e1=0; for(let i=0;i<N;i++) e1+=rf[i]*rf[i]; if(e1<1e-9) return null;
+  const cs=new Float32Array(nL); let best=0, bl=0;
+  for(let lag=0;lag<nL;lag++){ let c=0,e2=0; for(let i=0;i<N;i++){ const v=mic[i+lag]; c+=rf[i]*v; e2+=v*v; } const nc=Math.abs(c)/Math.sqrt(e1*e2+1e-12); cs[lag]=nc; if(nc>best){ best=nc; bl=lag; } }
+  const srt=Array.from(cs).sort((x,y)=>x-y), med=srt[srt.length>>1];
+  if(best<0.06 || best<3.5*med) return null;
+  const y0=cs[bl-1]??best, y2=cs[bl+1]??best, den=y0-2*best+y2, d=den? (y0-y2)/(2*den) : 0, lag=(bl+clamp(d,-0.5,0.5))/fs;
+  return lag>=0.004 && lag<=0.45 ? +lag.toFixed(4) : null; }catch(e){ return null; } }
 function startTeach(ids){
   openRec('teach');
   teachQueue=ids.map(slotOf).filter(Boolean).map(x=>({d:x.id, say:x.say||slotLabel(x.id)}));
@@ -2065,6 +2092,7 @@ function renderTracks(){
       ${picking?pickChips():''}
       ${empty&&!open&&!recHere&&!picking?`<div class="pk-row plens"><h4>Length</h4>${[1,2,4,8,16].map(b=>`<button class="chip len${b===(tr.len||S.bars)?' on':''}" data-b="${b}" aria-pressed="${b===(tr.len||S.bars)}">${b} bar${b>1?'s':''}</button>`).join('')}</div>`:''}
       ${empty&&!open&&!recHere&&!picking?`<p class="prow-hint">${d.hint.split(/(?<=\.) /)[0]} <b>${d.say||''}</b></p>`:''}
+      ${tr.inst==='vox'&&(empty&&!open&&!picking||recHere)?'<div class="hptip"><svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 13v-2.5a6.5 6.5 0 0113 0V13"/><rect x="2.5" y="12" width="3.5" height="5.5" rx="1"/><rect x="14" y="12" width="3.5" height="5.5" rx="1"/></svg><p><b>Headphones give the best vocals.</b> Without them the phone cancels the beat from your mic, but a little can still bleed through.</p></div>':''}
       ${calTip?'<div class="note calnote"><p><b>First time?</b> Calibrate once (10 seconds of clapping) so your hits land on time.</p><span class="recrow" style="gap:8px"><button class="btn cal-now">Calibrate</button><button class="btn cal-later">Not now</button></span></div>':''}
       ${empty&&!open&&!recHere&&!picking?`<div class="prow-cta">${micOff?`<button class="rec-btn cta-imp"><span class="dot"></span>Import ${d.label}</button>`:`<button class="rec-btn cta-rec"><span class="dot"></span>Record ${d.label}</button>`}${tr.inst==='vox'?'':`<button class="btn cta-draw">Draw</button>`}${micOff?'':'<button class="btn cta-imp">Import</button>'}<button class="btn del cta-del" aria-label="Delete ${partName(tr)}" title="Delete part"><svg viewBox="0 0 20 20" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 5.5h13M8 5.5V3.5h4v2M5.5 5.5l.8 11h7.4l.8-11M8.5 8.5v5M11.5 8.5v5"/></svg></button></div>`:''}
       ${open&&takeBar&&takeBar.id===tr.id&&!recHere?'<div class="prow-take"><span>New take</span><button class="btn tb-redo">Retake</button><button class="btn tb-del">Discard</button><button class="btn primary tb-ok">Keep</button></div>':''}
@@ -2151,6 +2179,7 @@ function buildCard(tr){
           <div class="irow"><span class="ilab">Length</span><div class="ictl"><select class="sel plen" aria-label="Part length">${[1,2,4,8,16].map(b=>`<option value="${b}" ${b===(tr.len||S.bars)?'selected':''}>${b} bar${b>1?'s':''}</option>`).join('')}</select></div></div>
           ${pBars(tr)<S.bars?`<div class="irow"><span class="ilab">Repeat</span><div class="ictl"><button class="ibtn tog prep" aria-pressed="${pRep(tr)}">${pRep(tr)?'On':'Off'}</button>${pRep(tr)?`<button class="ibtn punroll" title="Copy the loop across the song so each bar can be changed">Unloop to ${S.bars} bars</button>`:''}</div></div>`:''}
           <div class="irow"><span class="ilab">Nudge</span><div class="ictl seg"><button class="ibtn nl" aria-label="Move one step earlier">◀</button><button class="ibtn nr" aria-label="Move one step later">▶</button></div></div>
+          ${tr.inst==='vox'?'<div class="irow"><span class="ilab">Fine</span><div class="ictl seg"><button class="ibtn fe" title="10 ms earlier">−10 ms</button><button class="ibtn fl" title="10 ms later">+10 ms</button></div></div>':''}
         </section>
         ${pitched?`<section class="isec"><div class="isec-h"><h4>Envelope</h4><button class="ibtn envbtn" aria-expanded="${isOpen('env'+tr.id,false)}">${tr.adsr?'Custom':'Sound default'} ${CHEV}</button></div><div class="envpanel" ${isOpen('env'+tr.id,false)?'':'hidden'}><canvas aria-label="Amplitude envelope: drag the points"></canvas><div class="envrow"><span class="envvals"></span><button class="ibtn envreset">Reset</button></div></div></section>`:''}
         ${d.kind==='drums'||d.kind==='drum'?'':`<section class="isec"><h4>Sidechain</h4>
@@ -2187,6 +2216,8 @@ function buildCard(tr){
     if(tr._raw && tr.inst!=='vox') knob(kn,{id:'se'+tr.id,label:'Sensitivity',min:0,max:100,val:tr.sens,fmt:pct,color:d.color,oninput:v=>{tr.sens=v; clearTimeout(tr._st); tr._st=setTimeout(()=>reanalyze(tr),250);}});
     const cbn=el.querySelector('.ctlbtn'), cpan=el.querySelector('.ctl'); cbn.onclick=()=>{ const o=cpan.hidden; cpan.hidden=!o; cbn.setAttribute('aria-expanded',o); setOpen('c'+tr.id,o); };
     el.querySelector('.nl').onclick=()=>nudge(tr,-1); el.querySelector('.nr').onclick=()=>nudge(tr,1);
+    const fine=ms=>{ tr.va=+((tr.va||0)-ms/1000).toFixed(4); tr._dirty=true; save(); redrawTrack(tr); scheduleRender(); toast(`Vocal moved ${Math.abs(ms)} ms ${ms>0?'later':'earlier'}`); };
+    const fe=el.querySelector('.fe'), fl=el.querySelector('.fl'); if(fe) fe.onclick=()=>fine(-10); if(fl) fl.onclick=()=>fine(10);
     if(pitched){ const ov=el.querySelector('.ov'); const so=dv=>{ tr.oct=clamp(tr.oct+dv,-3,3); ov.textContent=(tr.oct>0?'+':'')+tr.oct; tr._dirty=true; save(); scheduleRender(); };
       el.querySelector('.od').onclick=()=>so(-1); el.querySelector('.ou').onclick=()=>so(1); }
     const ob=el.querySelector('.orig'); if(ob) ob.onclick=()=>playOriginal(tr,ob);
