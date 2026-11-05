@@ -88,8 +88,6 @@ main{display:flex;flex-direction:column;gap:16px;padding-block:16px calc(110px +
 #recSheet .recstatus{padding:20px}
 #recSheet .beats span{width:26px!important;height:26px!important}
 #recSheet .reclabel{font-size:20px}
-.rot-tip{display:none}
-@media (orientation:portrait) and (max-width:600px){ .rot-tip{display:inline} }
 /* parts list rows */
 .prow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 10px;align-items:center;padding:10px 12px;border-radius:14px;background:var(--panel);border:1px solid var(--line)}
 .prow-main{all:unset;box-sizing:border-box;display:flex;flex-direction:column;gap:6px;min-width:0;cursor:pointer;grid-row:1/3}
@@ -120,6 +118,35 @@ main{display:flex;flex-direction:column;gap:16px;padding-block:16px calc(110px +
 .prow-side .rec{color:var(--rec)}
 .prow-side .rec::before{content:"";width:12px;height:12px;border-radius:50%;background:currentColor}
 .addpart{min-height:52px;border-style:dashed;font-size:16px}
+/* a part opens in place: the grid and its options appear right inside the row */
+.prow{scroll-margin:12px 0 110px}
+.prow-edit,.prow-recbox,.prow-take,.prow-pick,.prow-hint{grid-column:1/-1;min-width:0}
+.prow.open{border-color:var(--c)}
+.prow.open .mini{display:none}
+.prow .chev{transition:transform .15s}
+.prow.open .prow-top .chev{transform:rotate(90deg)}
+.prow-edit .track{background:none;border:0;padding:0;border-radius:0}
+.prow-edit .tquick{align-items:center}
+.prow-recbox{display:flex;flex-direction:column;gap:8px}
+.prow-recbox .recstatus{padding:14px}
+.prow-recbox .reclabel{font-size:18px;font-weight:700}
+.prow-recbox .beats span{width:22px!important;height:22px!important}
+.prow-recbox .stopbtn{min-height:48px}
+.prow-take{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 10px;border-radius:10px;background:var(--cell)}
+.prow-take span{flex:1 1 auto;font-weight:600;font-size:14px}
+.prow-take .btn{min-height:38px;padding:0 12px}
+.prow.blank .mini{display:none}
+.prow-vol{grid-column:2;grid-row:2}
+.prow-hint{font-size:13px;color:var(--muted);margin:0}
+.prow-hint b{font-family:var(--f-mono);font-weight:500;color:var(--ink)}
+.prow-pick{display:flex;flex-direction:column;gap:10px}
+.pk-row{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.pk-row h4{margin:0 4px 0 0;width:100%;font-family:var(--f-display);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:500}
+.chip{min-height:40px;padding:0 14px;border-radius:999px;border:1px solid var(--line);background:var(--pad);font-weight:600;font-size:14px;display:inline-flex;align-items:center;gap:8px}
+.chip i{width:10px;height:10px;border-radius:50%;background:var(--c)}
+.chip:active{transform:scale(.97)}
+.dock-rec.live .dot{border-radius:2px}
+.prow .calnote{grid-column:1/-1}
 .prow-name{all:unset;cursor:pointer;display:flex;align-items:center;gap:6px;font-weight:700}
 .prow-name:focus-visible{outline:2px solid var(--focus);border-radius:6px}
 .onb .steps{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px}
@@ -289,9 +316,9 @@ details summary{cursor:pointer;font-weight:600}
   <section class="card onb" id="onb" hidden aria-labelledby="onbh">
     <h2 id="onbh">How it works</h2>
     <ol class="steps">
-      <li><b>Tap + Add part</b> and choose an instrument: drums, a melody instrument, or vocals.</li>
+      <li><b>Tap + Add part</b> and pick an instrument: drums, a melody instrument, or vocals.</li>
       <li><b>Tap Record on it.</b> After four clicks, beatbox, sing, hum or whistle along with the click.</li>
-      <li><b>Tap a part</b> to fix notes or change its sound. Export when you’re done.</li>
+      <li><b>Tap a part</b> to open it, fix notes or change its sound. Export when you’re done.</li>
     </ol>
     <p class="small" id="onbEx">The parts below are an example groove: press play to hear them. Your first recording replaces them.</p>
     <div class="recrow"><button class="btn primary" id="onbOk">Got it</button><button class="btn" id="clearEx">Clear example</button></div>
@@ -336,6 +363,7 @@ details summary{cursor:pointer;font-weight:600}
     <button class="card-head" data-sec="timing" aria-expanded="false" aria-controls="timingBody"><span class="hd"><h2 id="timh">Timing &amp; mic</h2></span><span class="hd"><svg class="chev" viewBox="0 0 20 20" aria-hidden="true"><path d="M7 5l5 5-5 5"/></svg></span></button>
     <div class="sec-body" id="timingBody">
     <div class="knobs" id="timingKnobs"></div>
+    <label class="chk" id="playAlongRow"><input type="checkbox" id="playAlong"> <span>Play the other parts while I record (wear headphones so the mic doesn’t hear them)</span></label>
     <label class="chk"><input type="checkbox" id="latAuto"> <span>Estimate the mic delay automatically</span></label>
     <label class="chk"><input type="checkbox" id="ec"> <span>Echo cancellation (only if you record without headphones; it can swallow beatbox hits)</span></label>
     <div class="recrow"><button class="btn" id="calBtn">Calibrate timing: clap along for one loop</button></div>
@@ -363,13 +391,12 @@ details summary{cursor:pointer;font-weight:600}
     <div class="note calnote" id="calNote" hidden><p><b>First time recording here?</b> Calibrate once (about 10 seconds of clapping) so your hits land on the right steps. Bluetooth headphones like AirPods add a big delay, so calibrate with the headphones you’ll use.</p><span class="recrow" style="gap:8px"><button class="btn" id="calNow">Calibrate</button><button class="btn" id="calLater">Not now</button></span></div>
     <label class="chk" id="mergeRow" hidden><input type="checkbox" id="mergeDrums"> <span>Layer this take onto my existing Drums part (turn off to make a separate part)</span></label>
     <label class="chk" id="replaceRow" hidden><input type="checkbox" id="replaceTonal"> <span id="replaceTxt"></span></label>
-    <label class="chk" id="playAlongRow"><input type="checkbox" id="playAlong"> <span>Play the other parts while I record (wear headphones so the mic doesn’t hear them)</span></label>
     <label class="chk" id="detectRow"><input type="checkbox" id="detectTempo" checked> <span>Set the tempo and loop length from this recording (first part only)</span></label>
-    <div class="recstatus" id="recStatus" hidden>
+    <div id="rsHome"><div class="recstatus" id="recStatus" hidden>
       <div class="row"><div class="beats" id="beats"><span></span><span></span><span></span><span></span></div><span class="reclabel" id="recLabel">Get ready</span></div>
       <div class="prog"><div id="recProg"></div></div>
       <div class="meter" aria-hidden="true"><div id="meter"></div></div>
-    </div>
+    </div></div>
     <div class="recrow">
       <button id="recBtn" class="rec-btn"><span class="dot"></span><span id="recTxt">Start recording</span></button>
       <button id="importBtn" class="btn big">Import a recording</button>
@@ -385,15 +412,6 @@ details summary{cursor:pointer;font-weight:600}
   </div>
 </div>
 
-<div class="sheet" id="pickSheet" hidden role="dialog" aria-modal="true" aria-labelledby="pkTitle">
-  <div class="sheet-head"><h3 id="pkTitle">Choose an instrument</h3><button class="ibtn" id="pkClose" aria-label="Close">✕</button></div>
-  <div class="sheet-body wrap" id="pkBody"></div>
-</div>
-
-<div class="sheet" id="editSheet" hidden role="dialog" aria-modal="true" aria-label="Edit part">
-  <div class="sheet-head"><button class="btn" id="edBack">‹ Parts</button><span class="small rot-tip">Turn your phone sideways for a wider grid</span></div>
-  <div class="sheet-body wrap" id="editBody"></div>
-</div>
 
 <script>
 "use strict";
@@ -1211,7 +1229,7 @@ async function ensureMic(){
   try{ if(navigator.audioSession) navigator.audioSession.type='play-and-record'; }catch(e){}
   let stream;
   try{ stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:S.ec,noiseSuppression:false,autoGainControl:false,channelCount:1}}); }
-  catch(e){ micBlocked(); toast('The microphone isn’t available here. Use Import a recording.'); return false; }
+  catch(e){ micBlocked(); toast('The microphone isn’t available here. Import a recording instead.'); return false; }
   const src=ctx.createMediaStreamSource(stream), an=ctx.createAnalyser(); an.fftSize=1024; src.connect(an);
   const sink=ctx.createGain(); sink.gain.value=0; sink.connect(ctx.destination);
   const onChunk=(t,d)=>{ if(capturing&&recState) recState.chunks.push({t,d}); };
@@ -1232,14 +1250,14 @@ function dropMic(){
   try{ if(navigator.audioSession) navigator.audioSession.type='playback'; }catch(e){}
 }
 function onHide(){
-  if(recState){ capturing=false; recState=null; setRecUI(false); teachQueue=null; if(!$('recSheet').hidden){ $('recSheet').hidden=true; document.body.style.overflow=''; rs.mode=null; } }
+  if(recState){ capturing=false; recState=null; setRecUI(false); teachQueue=null; if(!$('recSheet').hidden){ $('recSheet').hidden=true; document.body.style.overflow=''; } if(rs.mode){ const r=rs.resume; rs.mode=null; S.target=null; if(r) restoreSnap(r.snap).then(()=>{ hist.cur=r.snap; updateHistBtns(); takeBar=r.bar; editId=r.bar.id; renderTracks(); }); else renderTracks(); } }
   if(ctx){ stopAll(); if(origSrc){ try{origSrc.stop();}catch(e){} origSrc=null; } playing=false; updatePlayBtn(); try{ ctx.suspend(); }catch(e){} }
   dropMic();
 }
 document.addEventListener('visibilitychange',()=>{ if(document.hidden) onHide(); });
 window.addEventListener('pagehide',onHide);
 function micBlocked(why){
-  const n=$('micNote'); n.hidden=false;
+  micOff=true; const n=$('micNote'); n.hidden=false;
   n.innerHTML = '<b>Live mic recording isn’t allowed inside the Claude viewer.</b> Record each part with your phone’s voice recorder instead, starting right on beat one. On iPhone, use Voice Memos, tap the recording, then Share → Save to Files. Then pick the instrument here and tap <b>Import a recording</b>.';
   $('recBtn').hidden=true; $('playAlongRow').hidden=true;  $('importBtn').classList.add('primary'); const cn=$('calNote'); if(cn) cn.hidden=true;
 }
@@ -1268,7 +1286,7 @@ async function startRecord(calib=false, teach=null){
 let rs={mode:null, pre:null, histLen:0};
 function openRec(mode='take', partId=null){
   flushSave(); rs={mode, pre:hist.cur, histLen:hist.undo.length};
-  if(mode==='take'){ const tr=S.tracks.find(t=>t.id===partId)||activePart(); if(!tr){ openPicker('new'); return; } S.target=tr.id; S.activeId=tr.id; S.inst=tr.inst; updateDock(); }
+  if(mode==='take'){ const tr=S.tracks.find(t=>t.id===partId)||activePart(); if(!tr){ pendingNew=true; renderTracks(); return; } S.target=tr.id; S.activeId=tr.id; S.inst=tr.inst; updateDock(); }
   const sh=$('recSheet'); sh.hidden=false; document.body.style.overflow='hidden';
   $('rsTitle').textContent = mode==='calib'?'Calibrate timing' : mode==='teach'?'Teach your sounds' : 'Record into '+partName(S.tracks.find(t=>t.id===S.target));
   $('rsHint').textContent = mode==='calib'?'Clap sharply on every click after the four count-in clicks.' : mode==='teach'?'Make each noise on every click after the count-in. It does one sound at a time.' : INST[S.inst].hint.split(/(?<=\.) /)[0];
@@ -1276,7 +1294,7 @@ function openRec(mode='take', partId=null){
   $('detectRow').hidden = mode!=='take' || anyContent();
   if(window._showCal) window._showCal();
 }
-function closeRec(){ if(recState) cancelRecord(); S.target=null; $('recSheet').hidden=true; document.body.style.overflow=$('editSheet').hidden?'':'hidden'; rs.mode=null; }
+function closeRec(){ if(recState) cancelRecord(); S.target=null; $('recSheet').hidden=true; document.body.style.overflow=''; rs.mode=null; renderTracks(); }
 function showReview(){
   const changed = snapNow().json!==(rs.pre&&rs.pre.json);
   $('rsReady').hidden=true; $('rsReview').hidden=false; $('rsMsg').textContent=lastMsg||'';
@@ -1287,10 +1305,36 @@ function showReview(){
     $('rsPrev').parentElement.hidden=!tr; if(tr) requestAnimationFrame(()=>drawMini(tr,$('rsPrev')));
   } else { keep.textContent='Done'; retry.hidden=rs.mode!=='calib'; disc.hidden=true; $('rsPlaying').hidden=true; $('rsPrev').parentElement.hidden=true; }
 }
-async function discardTake(){ if(snapNow().json!==rs.pre.json){ await restoreSnap(rs.pre); hist.cur=rs.pre; hist.undo.length=rs.histLen; hist.redo=[]; updateHistBtns(); } }
-function cancelRecord(){ teachQueue=null; capturing=false; recState=null; stopAll(); setRecUI(false); dropMic(); toast('Recording cancelled'); }
+async function discardTake(p=rs){ if(snapNow().json!==p.pre.json){ await restoreSnap(p.pre); hist.cur=p.pre; hist.undo.length=p.histLen; hist.redo=[]; updateHistBtns(); } }
+function cancelRecord(){ teachQueue=null; capturing=false; recState=null; stopAll(); setRecUI(false); dropMic(); toast('Recording cancelled'); if(rs.mode==='take'){ const r=rs.resume; S.target=null; rs.mode=null; if(r) restoreSnap(r.snap).then(()=>{ hist.cur=r.snap; updateHistBtns(); takeBar=r.bar; editId=r.bar.id; renderTracks(); }); else renderTracks(); } }
+/* ---- recording into a part happens on the part itself: count-in and meter show on its row, and the take lands there, already open ---- */
+const RSE=$('recStatus');
+let micOff=false, takeBar=null;
+function takeMode(){ return rs.mode==='take' && $('recSheet').hidden; }
+async function recordInto(id, resume=null){
+  if(recState){ cancelRecord(); return; }
+  const tr=S.tracks.find(t=>t.id===id); if(!tr) return;
+  if(micOff){ importInto(id); return; }
+  flushSave(); rs={mode:'take', pre:hist.cur, histLen:hist.undo.length, resume}; takeBar=null; pickFor=null;
+  S.target=tr.id; S.activeId=tr.id; S.inst=tr.inst; if(hasContent(tr)) editId=tr.id; updateDock();
+  await startRecord(false);
+  if(!recState){ S.target=null; rs.mode=null; if(resume) await restoreSnap(resume.snap).then(()=>{ hist.cur=resume.snap; updateHistBtns(); takeBar=resume.bar; editId=resume.bar.id; }); }
+  renderTracks(); if(tr._row) tr._row.scrollIntoView({block:'nearest',behavior:'smooth'});
+}
+function importInto(id){
+  const tr=S.tracks.find(t=>t.id===id); if(!tr) return;
+  flushSave(); rs={mode:'take', pre:hist.cur, histLen:hist.undo.length}; takeBar=null; pickFor=null;
+  S.target=tr.id; S.activeId=tr.id; S.inst=tr.inst; updateDock(); $('fileIn').click();
+}
+function afterTake(){
+  const changed = rs.pre && snapNow().json!==rs.pre.json;
+  if(changed){ takeBar={id:S.activeId, pre:rs.pre, histLen:rs.histLen}; editId=S.activeId; }
+  S.target=null; rs.mode=null; renderTracks();
+  const tr=S.tracks.find(t=>t.id===S.activeId); if(tr&&tr._row) requestAnimationFrame(()=>tr._row.scrollIntoView({block:'nearest',behavior:'smooth'}));
+}
 function setRecUI(on){ ['calNote','playAlongRow','detectRow','micNote','mergeRow','replaceRow'].forEach(id=>{ const el=$(id); if(!el) return; if(on){ el.dataset.wasHidden=el.hidden?'1':''; el.hidden=true; } else if(el.dataset.wasHidden!==undefined){ el.hidden=el.dataset.wasHidden==='1'; delete el.dataset.wasHidden; } });
- $('recStatus').hidden=!on; $('recBtn').classList.toggle('live',on); $('recTxt').textContent=on?'Stop':'Start recording'; $('importBtn').disabled=on; $('calBtn').disabled=on; }
+ RSE.hidden=!on; $('recBtn').classList.toggle('live',on); $('recTxt').textContent=on?'Stop':'Start recording'; $('importBtn').disabled=on; $('calBtn').disabled=on;
+ const dr=$('dockRec'); if(dr){ dr.classList.toggle('live',on); dr.querySelector('.dr-l').textContent=on?'Stop':'Record'; } }
 function assemble(chunks, a, b, sr){
   const n=Math.max(1,Math.round((b-a)*sr)), out=new Float32Array(n);
   for(const ch of chunks){ const s=Math.round((ch.t-a)*sr); for(let i=0;i<ch.d.length;i++){ const k=s+i; if(k>=0&&k<n) out[k]=ch.d[i]; } }
@@ -1302,7 +1346,7 @@ async function finishRecord(){
   const x=assemble(r.chunks,a,b,sr);
   if(r.calib){ finishCalib(x,sr,pre); showReview(); return; }
   if(r.teach){ finishTeach(x,sr,r.teach); if(!teachQueue) showReview(); return; }
-  await addTake(x, sr, r.inst, {align:pre, notch:true, live:true}); flushSave(); showReview();
+  await addTake(x, sr, r.inst, {align:pre, notch:true, live:true}); flushSave(); if(takeMode()) afterTake(); else showReview();
 }
 function startTeach(ids){
   openRec('teach');
@@ -1538,7 +1582,7 @@ async function importFile(file){
   busy();
   if(ab.duration>90){ toast('That recording is '+Math.round(ab.duration)+' s long. Only the first 90 s are used.'); }
   let x=mono(ab); if(ab.duration>90) x=x.subarray(0,Math.floor(90*ab.sampleRate));
-  await addTake(x, ab.sampleRate, S.inst, {align:null, notch:false, live:false}); flushSave(); if(!$('recSheet').hidden) showReview();
+  await addTake(x, ab.sampleRate, S.inst, {align:null, notch:false, live:false}); flushSave(); if(takeMode()) afterTake(); else if(!$('recSheet').hidden) showReview();
 }
 
 /* ============================== UI ============================== */
@@ -1548,17 +1592,14 @@ function showBusy(msg){ const t=$('toast'); t.textContent=msg; t.classList.add('
 function updateDock(){ const di=$('dockInst'), t=activePart(); if(di) di.textContent= t ? partName(t) : 'New part'; }
 function buildPads(){ updateDock(); }
 /* instrument picker: grouped, with the mouth sounds and a one-line description */
-function openPicker(forWhat){
-  pickFor=forWhat; const body=$('pkBody'), groups=[['Drums',['kit','kick','snare','hat','clap']],['Melody',['bass','lead','keys','pad','arp']],['Voice',['vox']]];
-  body.innerHTML=groups.map(([g,ids])=>`<div class="pk-group"><h4>${g}</h4><div class="pk-list">${ids.map(k=>{ const d=INST[k]; return `<button class="pk-item${['kit','arp','vox'].includes(k)?' wide':''}" data-k="${k}" style="--c:${d.color}"><b><i></i>${d.label}</b><small>${d.say}</small><span>${d.hint.split(/(?<=\.) /)[0]}</span></button>`; }).join('')}</div></div>`).join('');
-  body.querySelectorAll('.pk-item').forEach(b=>b.onclick=()=>pickInstrument(b.dataset.k));
-  $('pickSheet').hidden=false; document.body.style.overflow='hidden';
-}
-function closePicker(){ $('pickSheet').hidden=true; pickFor=null; document.body.style.overflow=($('recSheet').hidden&&$('editSheet').hidden)?'':'hidden'; }
+const PICK_GROUPS=[['Drums',['kit','kick','snare','hat','clap']],['Melody',['bass','lead','keys','pad','arp']],['Voice',['vox']]];
+function pickChips(){ return `<div class="prow-pick">${PICK_GROUPS.map(([g,ids])=>`<div class="pk-row"><h4>${g}</h4>${ids.map(k=>`<button class="chip" data-k="${k}" style="--c:${INST[k].color}"><i></i>${INST[k].label}</button>`).join('')}</div>`).join('')}</div>`; }
+function openPicker(forWhat){ pickFor=forWhat; if(forWhat==='new') pendingNew=true; renderTracks(); }
+function closePicker(){ pickFor=null; renderTracks(); }
 function pickInstrument(k){
   if(pickFor==='new'){ const tr=mkTrack(k,{id:S.nextId++}); S.tracks.push(tr); S.activeId=tr.id; pendingNew=false; }
   else { const old=S.tracks.find(t=>t.id===pickFor); if(old && !hasContent(old)){ const tr=mkTrack(k,{id:old.id, vol:old.vol, pan:old.pan, send:old.send}); disposeTrack(old); S.tracks[S.tracks.indexOf(old)]=tr; S.activeId=tr.id; } }
-  closePicker(); save(); renderTracks(); updateDock(); keyCache=null;
+  pickFor=null; save(); renderTracks(); updateDock(); keyCache=null;
   requestAnimationFrame(()=>{ const r=activePart(); if(r&&r._row) r._row.scrollIntoView({block:'center',behavior:'smooth'}); });
 }
 function updateMergeRow(){ ['mergeRow','replaceRow'].forEach(id=>{ const e=$(id); if(e) e.hidden=true; }); }
@@ -1573,7 +1614,8 @@ function partCount(tr){ const k=INST[tr.inst].kind; return k==='audio' ? (tr._ra
 function partName(tr){ const same=S.tracks.filter(t=>t.inst===tr.inst); return INST[tr.inst].label+(same.length>1?' '+(same.indexOf(tr)+1):''); }
 let editId=null;
 function renderTracks(){
-  const box=$('tracks'); box.innerHTML='';
+  const box=$('tracks'); $('rsHome').appendChild(RSE); box.innerHTML='';
+  if(editId!=null && !S.tracks.some(t=>t.id===editId)) editId=null;
   const hasEx=S.tracks.some(t=>t.ex); $('onb').hidden=isOpen('onbHide',false) && !hasEx; $('onbEx').hidden=!hasEx; $('clearEx').hidden=!hasEx;
   if(!rs.mode){ $('detectRow').hidden=userTracks().length>0; } updateMergeRow();
   if(!S.tracks.length && !pendingNew){ box.innerHTML='<div class="empty">No parts yet. Tap + Add part to start.</div>'; }
@@ -1582,15 +1624,34 @@ function renderTracks(){
     const row=document.createElement('article'); row.className='prow'; row.style.setProperty('--c',d.color); tr._row=row;
     const empty=!hasContent(tr) && !tr.ex;
     if(empty) row.classList.add('blank');
-    row.innerHTML=`<button class="prow-main" aria-label="${empty?'Change instrument for':'Edit'} ${partName(tr)}"><span class="prow-top"><span class="led"></span><b>${partName(tr)}</b><span class="tsum">${empty?'empty · tap to change instrument':partCount(tr)+(tr.ex?' · example':'')}</span>${empty?'':CHEV}</span><span class="mini"><canvas></canvas><span class="mph"></span></span></button>
+    const open = editId===tr.id && (!empty || tr._draw), picking = empty && pickFor===tr.id, recHere = recState && !recState.calib && !recState.teach && S.target===tr.id;
+    if(open) row.classList.add('open');
+    const calTip = empty && !open && !micOff && !S.calibrated && !isOpen('calHide',false) && !recHere && !picking;
+    row.innerHTML=`<button class="prow-main" aria-expanded="${open||picking}" aria-label="${empty?'Change instrument for':(open?'Close':'Open')} ${partName(tr)}"><span class="prow-top"><span class="led"></span><b>${partName(tr)}</b><span class="tsum">${empty?(picking?'pick what it plays':'empty · tap to change instrument'):partCount(tr)+(tr.ex?' · example':'')}</span>${empty&&!open?'':CHEV}</span><span class="mini"><canvas></canvas><span class="mph"></span></span></button>
       <div class="prow-side"><button class="ibtn rec" title="Record into ${partName(tr)}" aria-label="Record into ${partName(tr)}"></button><button class="ibtn m" aria-pressed="${tr.mute}" title="Mute">M</button><button class="ibtn s" aria-pressed="${tr.solo}" title="Solo">S</button></div>
-      ${empty?`<div class="prow-cta"><button class="rec-btn cta-rec"><span class="dot"></span>Record ${d.label}</button>${tr.inst==='vox'?'':'<button class="btn cta-draw">Draw instead</button>'}</div>`:''}
+      ${recHere?'<div class="prow-recbox"><button class="btn stopbtn">Stop</button></div>':''}
+      ${picking?pickChips():''}
+      ${empty&&!open&&!recHere&&!picking?`<p class="prow-hint">${d.hint.split(/(?<=\.) /)[0]} <b>${d.say||''}</b></p>`:''}
+      ${calTip?'<div class="note calnote"><p><b>First time?</b> Calibrate once (10 seconds of clapping) so your hits land on time.</p><span class="recrow" style="gap:8px"><button class="btn cal-now">Calibrate</button><button class="btn cal-later">Not now</button></span></div>':''}
+      ${empty&&!open&&!recHere&&!picking?`<div class="prow-cta">${micOff?`<button class="rec-btn cta-imp"><span class="dot"></span>Import ${d.label}</button>`:`<button class="rec-btn cta-rec"><span class="dot"></span>Record ${d.label}</button>`}${tr.inst==='vox'?'':`<button class="btn cta-draw">Draw</button>`}${micOff?'':'<button class="btn cta-imp">Import</button>'}</div>`:''}
+      ${open&&takeBar&&takeBar.id===tr.id&&!recHere?'<div class="prow-take"><span>New take</span><button class="btn tb-redo">Retake</button><button class="btn tb-del">Discard</button><button class="btn primary tb-ok">Keep</button></div>':''}
+      ${open?'<div class="prow-edit"></div>':''}
       <input type="range" class="prow-vol" min="0" max="100" value="${tr.vol}" aria-label="${partName(tr)} volume">`;
     box.appendChild(row);
-    row.querySelector('.prow-main').onclick=()=>{ S.activeId=tr.id; updateDock(); if(empty) openPicker(tr.id); else openEditor(tr); };
-    row.querySelector('.rec').onclick=()=>openRec('take',tr.id);
-    const cr=row.querySelector('.cta-rec'); if(cr) cr.onclick=()=>openRec('take',tr.id);
-    const cd=row.querySelector('.cta-draw'); if(cd) cd.onclick=()=>{ S.activeId=tr.id; openEditor(tr); };
+    row.querySelector('.prow-main').onclick=()=>{ S.activeId=tr.id; updateDock(); if(recHere) return; if(empty&&!open){ pickFor=picking?null:tr.id; renderTracks(); } else if(open) closeEditor(); else openEditor(tr); };
+    row.querySelector('.rec').onclick=()=>recordInto(tr.id);
+    const cr=row.querySelector('.cta-rec'); if(cr) cr.onclick=()=>recordInto(tr.id);
+    row.querySelectorAll('.cta-imp').forEach(b=>b.onclick=()=>importInto(tr.id));
+    const cd=row.querySelector('.cta-draw'); if(cd) cd.onclick=()=>{ S.activeId=tr.id; tr._draw=true; openEditor(tr); };
+    row.querySelectorAll('.chip').forEach(b=>b.onclick=()=>pickInstrument(b.dataset.k));
+    const cn=row.querySelector('.cal-now'); if(cn) cn.onclick=()=>{ openRec('calib'); startRecord(true); };
+    const cl=row.querySelector('.cal-later'); if(cl) cl.onclick=()=>{ setOpen('calHide',true); renderTracks(); toast('You can calibrate any time under Timing & mic'); };
+    if(recHere){ const rb=row.querySelector('.prow-recbox'); rb.insertBefore(RSE, rb.firstChild); row.querySelector('.stopbtn').onclick=()=>cancelRecord(); }
+    const tb=k=>row.querySelector(k);
+    if(tb('.tb-ok')){ tb('.tb-ok').onclick=()=>{ takeBar=null; renderTracks(); };
+      tb('.tb-del').onclick=async()=>{ const p=takeBar; takeBar=null; await discardTake(p); renderTracks(); toast('Take discarded'); };
+      tb('.tb-redo').onclick=async()=>{ const p=takeBar; takeBar=null; flushSave(); const snap=hist.cur; await discardTake(p); recordInto(p.id,{snap,bar:p}); }; }
+    if(open){ const ed=row.querySelector('.prow-edit'); ed.appendChild(buildCard(tr)); requestAnimationFrame(()=>{ if(tr._cv&&tr._cv.isConnected) drawGrid(tr); }); }
     const mb=row.querySelector('.m'), sb=row.querySelector('.s');
     mb.onclick=()=>{ tr.mute=!tr.mute; mb.setAttribute('aria-pressed',tr.mute); save(); applyAllMix(); };
     sb.onclick=()=>{ tr.solo=!tr.solo; sb.setAttribute('aria-pressed',tr.solo); save(); applyAllMix(); };
@@ -1600,19 +1661,20 @@ function renderTracks(){
   });
   // a blank card you've just added, waiting for an instrument
   if(pendingNew){ const row=document.createElement('article'); row.className='prow blank';
-    row.innerHTML=`<div class="prow-main" style="cursor:default"><span class="prow-top"><b>New part</b><span class="tsum">choose what it plays</span></span><span class="mini"></span></div><div class="prow-side"><button class="ibtn" aria-label="Cancel new part">✕</button></div><div class="prow-cta"><button class="btn primary">Choose instrument</button></div>`;
-    row.querySelector('.btn.primary').onclick=()=>openPicker('new'); row.querySelector('.prow-side .ibtn').onclick=()=>{ pendingNew=false; renderTracks(); }; box.appendChild(row); }
+    row.innerHTML=`<div class="prow-main" style="cursor:default"><span class="prow-top"><b>New part</b><span class="tsum">pick what it plays</span></span></div><div class="prow-side"><button class="ibtn" aria-label="Cancel new part">✕</button></div>${pickChips()}`;
+    pickFor='new'; row.querySelectorAll('.chip').forEach(b=>b.onclick=()=>pickInstrument(b.dataset.k)); row.querySelector('.prow-side .ibtn').onclick=()=>{ pendingNew=false; pickFor=null; renderTracks(); }; box.appendChild(row); }
   const add=document.createElement('button'); add.className='btn addpart'; add.textContent='+ Add part'; add.hidden=pendingNew;
   add.onclick=()=>{ pendingNew=true; renderTracks(); requestAnimationFrame(()=>add.previousElementSibling&&add.previousElementSibling.scrollIntoView({block:'center',behavior:'smooth'})); };
   box.appendChild(add);
   updateDock();
-  if(editId!=null){ const tr=S.tracks.find(t=>t.id===editId); if(tr) openEditor(tr); else closeEditor(); }
 }
 function openEditor(tr){
-  editId=tr.id; S.activeId=tr.id; updateDock(); const sh=$('editSheet'), bodyEl=$('editBody'); sh.hidden=false; document.body.style.overflow='hidden';
-  bodyEl.innerHTML=''; bodyEl.appendChild(buildCard(tr)); requestAnimationFrame(()=>drawGrid(tr));
+  const was=S.tracks.find(t=>t.id===editId); if(was&&was!==tr){ was._cv=null; was._sel=null; }
+  if(!takeBar||takeBar.id!==tr.id) takeBar=null;
+  editId=tr.id; S.activeId=tr.id; pickFor=null; renderTracks();
+  requestAnimationFrame(()=>{ if(tr._row) tr._row.scrollIntoView({block:'nearest',behavior:'smooth'}); });
 }
-function closeEditor(){ const tr=S.tracks.find(t=>t.id===editId); editId=null; $('editSheet').hidden=true; document.body.style.overflow=$('recSheet').hidden?'':'hidden'; if(tr){ tr._cv=null; tr._sel=null; drawMini(tr,tr._mini); } }
+function closeEditor(){ const tr=S.tracks.find(t=>t.id===editId); editId=null; takeBar=null; if(tr){ tr._cv=null; tr._sel=null; } renderTracks(); }
 /* small one-line picture of a part's pattern, for the parts list and the review step */
 function drawMini(tr,cv){
   if(!cv||!cv.isConnected) return; const W=cv.clientWidth||300, H=cv.clientHeight||30, dpr=window.devicePixelRatio||1; cv.width=Math.round(W*dpr); cv.height=Math.round(H*dpr);
@@ -1633,19 +1695,14 @@ function buildCard(tr){
     const d=INST[tr.inst];
     const el=document.createElement('article'); el.className='track'; el.style.setProperty('--c',d.color); tr._el=el;
     const pitched=d.kind==='pitched';
-    const cOpen=isOpen('c'+tr.id,true);
-    el.innerHTML=`<div class="thead">
-      <div class="tname"><span class="led"></span><span>${partName(tr)}</span>${tr.ex?'<small>example</small>':''}<span class="tsum">${partCount(tr)}</span></div>
-      <button class="ibtn m" aria-pressed="${tr.mute}" title="Mute">M</button>
-      <button class="ibtn s" aria-pressed="${tr.solo}" title="Solo">S</button>
-      <button class="ibtn del" title="Delete part" aria-label="Delete part">✕</button></div>
-      <div class="gridwrap"><div class="gridin"><canvas></canvas><div class="ph"></div></div></div>
+    const cOpen=isOpen('c'+tr.id,false);
+    el.innerHTML=`<div class="gridwrap"><div class="gridin"><canvas></canvas><div class="ph"></div></div></div>
       ${pitched?`<div class="notebar" hidden><span class="nb-info"></span><div class="nb-btns">
         <button class="ibtn" data-act="left" aria-label="Move note earlier">◀</button><button class="ibtn" data-act="right" aria-label="Move note later">▶</button>
         <button class="ibtn" data-act="up" aria-label="Move note up">▲</button><button class="ibtn" data-act="down" aria-label="Move note down">▼</button>
         <button class="ibtn" data-act="shorter">Shorter</button><button class="ibtn" data-act="longer">Longer</button>
         <button class="ibtn del" data-act="delete">Delete</button><button class="ibtn" data-act="done">Done</button></div></div>`:''}
-      <div class="tquick"><select class="sel snd" id="snd${tr.id}" aria-label="Sound">${d.sounds.map(s=>`<option ${s===tr.sound?'selected':''}>${s}</option>`).join('')}</select><div class="knobs qv"></div><button class="ibtn ctlbtn" aria-expanded="${cOpen}">Controls ${CHEV}</button></div>
+      <div class="tquick"><select class="sel snd" id="snd${tr.id}" aria-label="Sound">${d.sounds.map(s=>`<option ${s===tr.sound?'selected':''}>${s}</option>`).join('')}</select><button class="ibtn ctlbtn" aria-expanded="${cOpen}">More ${CHEV}</button></div>
       <div class="ctl" ${cOpen?'':'hidden'}>${d.kind==='drums'?'<div class="kitpanel" id="kitPanel"></div>':''}<div class="knobs kmore"></div>
       <div class="tfoot">
         <span class="grp">Move <button class="ibtn nl" aria-label="Move one step earlier">◀</button><button class="ibtn nr" aria-label="Move one step later">▶</button></span>
@@ -1658,16 +1715,13 @@ function buildCard(tr){
         ${tr._raw?'<button class="ibtn orig">▶ '+((tr.takeN||1)>1?'Last take':'Your take')+'</button>':''}
         ${!pitched&&(tr.takeN||1)>1?'<button class="ibtn undo">Undo last take</button>':''}
         ${tr._raw?'<button class="ibtn savetake" title="Download your raw recording">Save take</button>':''}
+        <button class="ibtn del delpart" title="Delete part">Delete part</button>
         ${tr.inst==='vox'?'':`<span class="grp tip">${pitched?'Tap a note to select it, then drag it anywhere or use the edit bar; drag its end to trim or extend it. Press and drag on an empty spot to draw a new note.':'Tap the grid to add or remove hits.'}${tr._an?' Small ticks on top show exactly when you made each sound.':''}</span>`}
       </div></div>`;
     el.querySelector('.snd').onchange=e=>{ tr.sound=e.target.value; if(tr.inst==='vox'){ tr.fx=Object.assign({},VOX_PRESETS[tr.sound]); tr._dirty=true; save(); scheduleRender(); openEditor(tr); return; } tr._dirty=true; save(); scheduleRender(); };
-    const mb=el.querySelector('.m'), sb=el.querySelector('.s');
-    mb.onclick=()=>{ tr.mute=!tr.mute; mb.setAttribute('aria-pressed',tr.mute); save(); applyAllMix(); };
-    sb.onclick=()=>{ tr.solo=!tr.solo; sb.setAttribute('aria-pressed',tr.solo); save(); applyAllMix(); };
-    const del=el.querySelector('.del');
+    const del=el.querySelector('.delpart');
     del.onclick=()=>{ const nm=partName(tr); disposeTrack(tr); S.tracks=S.tracks.filter(t=>t!==tr); keyChanged(); save(); closeEditor(); renderTracks(); scheduleRender(); toast('Deleted '+nm+'. Tap Undo to bring it back.'); };
     const kn=el.querySelector('.kmore');
-    knob(el.querySelector('.qv'),{id:'v'+tr.id,label:'Volume',min:0,max:100,val:tr.vol,fmt:pct,color:d.color,oninput:v=>{tr.vol=v;applyAllMix();save();}});
     knob(kn,{id:'p'+tr.id,label:'Pan',min:-100,max:100,val:tr.pan,fmt:v=>v===0?'C':(v<0?'L'+(-v):'R'+v),color:d.color,oninput:v=>{tr.pan=v;applyMix(tr);save();}});
     knob(kn,{id:'r'+tr.id,label:'Reverb',min:0,max:100,val:tr.send,fmt:pct,color:d.color,oninput:v=>{tr.send=v;applyMix(tr);save();}});
     if(tr.inst==='vox'){ const fx=fxOf(tr); VOX_KNOBS.forEach(([k,lab,fmt])=>knob(kn,{id:'fx'+k+tr.id,label:lab,min:0,max:100,val:fx[k],fmt,color:d.color,oninput:v=>{ tr.fx=Object.assign(fxOf(tr),{[k]:v}); tr._dirty=true; save(); scheduleRender(); if(k==='tune') drawGrid(tr); }})); }
@@ -1862,15 +1916,14 @@ let latInp=null;
 function init(){
   updateDock(); syncTransport();
   $('play').onclick=togglePlay; updatePlayBtn();
-  $('undoBtn').onclick=undo; $('redoBtn').onclick=redo;
-  $('dockRec').onclick=()=>{ if(!$('recSheet').hidden) return; const t=activePart(); if(t) openRec('take',t.id); else { pendingNew=true; renderTracks(); openPicker('new'); } };
-  $('pkClose').onclick=closePicker;
-  $('rsClose').onclick=closeRec; $('edBack').onclick=closeEditor;
+  $('undoBtn').onclick=()=>{ takeBar=null; undo(); }; $('redoBtn').onclick=()=>{ takeBar=null; redo(); };
+  $('dockRec').onclick=()=>{ if(recState){ if(rs.mode==='take') cancelRecord(); return; } if(!$('recSheet').hidden) return; const t=activePart(); if(t) recordInto(t.id); else openPicker('new'); };
+  $('rsClose').onclick=closeRec;
   $('rsKeep').onclick=()=>closeRec();
   $('rsDiscard').onclick=async()=>{ await discardTake(); closeRec(); toast('Take discarded'); };
   $('rsRetry').onclick=async()=>{ if(rs.mode==='calib'){ showRetryReady(); startRecord(true); return; } await discardTake(); showRetryReady(); if($('recBtn').hidden) $('fileIn').click(); else startRecord(false); };
   window.showRetryReady=()=>{ $('rsReview').hidden=true; $('rsReady').hidden=false; };
-  document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ if(!$('pickSheet').hidden) closePicker(); else if(!$('recSheet').hidden) closeRec(); else if(!$('editSheet').hidden) closeEditor(); }
+  document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ if(!$('recSheet').hidden) closeRec(); else if(pickFor!=null){ pickFor=null; pendingNew=false; renderTracks(); } else if(editId!=null) closeEditor(); }
     if((e.metaKey||e.ctrlKey) && e.key.toLowerCase()==='z' && !/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName)){ e.preventDefault(); e.shiftKey?redo():undo(); } });
   $('onbOk').onclick=()=>{ setOpen('onbHide',true); renderTracks(); };
   $('bpm').onchange=e=>setTempo(+e.target.value);
