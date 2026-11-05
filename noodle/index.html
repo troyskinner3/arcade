@@ -327,7 +327,7 @@ details summary{cursor:pointer;font-weight:600}
   <section class="tracks" id="tracks" aria-label="Parts"></section>
 
   <section class="card" aria-labelledby="mixh">
-    <button class="card-head" data-sec="mix" aria-expanded="false" aria-controls="mixBody"><span class="hd"><h2 id="mixh">Sound &amp; mix</h2></span><span class="hd"><span class="keyinfo" id="keyInfo"></span><svg class="chev" viewBox="0 0 20 20" aria-hidden="true"><path d="M7 5l5 5-5 5"/></svg></span></button>
+    <button class="card-head" data-sec="mix" aria-expanded="false" aria-controls="mixBody"><span class="hd"><h2 id="mixh">Mix &amp; global FX</h2></span><span class="hd"><span class="keyinfo" id="keyInfo"></span><svg class="chev" viewBox="0 0 20 20" aria-hidden="true"><path d="M7 5l5 5-5 5"/></svg></span></button>
     <div class="sec-body" id="mixBody">
     <div class="mixgrid">
       <div class="field"><label for="genre">Style</label><select class="sel" id="genre"><option value="">Choose a style…</option><option>Pop</option><option>Hip hop</option><option>EDM</option><option>Rock</option><option>Lo-fi</option></select></div>
@@ -1023,9 +1023,10 @@ function makeIR(c){
 function driveCurve(amt){ if(amt<=0.01) return null; const k=amt*14, n=2048, c=new Float32Array(n); for(let i=0;i<n;i++){ const x=i/(n-1)*2-1; c[i]=Math.tanh(k*x)/Math.tanh(k); } return c; }
 function buildChain(c, live){
   const input=c.createGain(), shaper=c.createWaveShaper(), comp=c.createDynamicsCompressor(), out=c.createGain(), revIn=c.createGain(), conv=c.createConvolver(), revRet=c.createGain();
-  input.connect(shaper); shaper.connect(comp); comp.connect(out); out.connect(c.destination);
+  input.connect(shaper); shaper.connect(comp); comp.connect(out);
+  let gate=null; if(live){ gate=c.createGain(); out.connect(gate); gate.connect(c.destination); } else out.connect(c.destination);
   revIn.connect(conv); conv.connect(revRet); revRet.connect(input);
-  const ch={input,shaper,comp,out,revIn,conv,revRet,c};
+  const ch={input,shaper,comp,out,revIn,conv,revRet,c,gate};
   setChain(ch); return ch;
 }
 function setChain(ch){
@@ -1192,8 +1193,9 @@ async function renderDirty(){
 }
 let metroSrc=null, metroGain=null;
 function startSrc(buf, dest, when, off){ const s=ctx.createBufferSource(); s.buffer=buf; s.loop=true; s.connect(dest); s.start(when, off%buf.duration); return s; }
+function gateOpen(when){ const g=chain&&chain.gate; if(!g) return; g.gain.cancelScheduledValues(0); g.gain.setValueAtTime(1,Math.max(when,ctx.currentTime)); }
 function startAll(when, off=0, opts={}){
-  stopAll(when);
+  stopAll(when); gateOpen(when);
   t0=when-off; const L=loopLen();
   S.tracks.forEach(tr=>{ if(tr._buf && opts.tracks!==false){ ensureNodes(tr); tr._src=startSrc(tr._buf,tr._g,when+(opts.trackDelay||0),off); } });
   if(!metroGain){ metroGain=ctx.createGain(); metroGain.connect(ctx.destination); }
@@ -1205,10 +1207,12 @@ function swapSource(tr){ const now=ctx.currentTime+0.03, L=loopLen(), off=(((now
 async function togglePlay(){
   ensureCtx();
   if(recState) return;
-  if(playing){ stopAll(); playing=false; updatePlayBtn(); return; }
+  if(playing){ const now=ctx.currentTime, g=chain&&chain.gate; if(g){ g.gain.cancelScheduledValues(0); g.gain.setValueAtTime(g.gain.value,now); g.gain.linearRampToValueAtTime(0,now+0.025); } stopAll(now+0.03); playing=false; updatePlayBtn(); return; }
   playing=true; updatePlayBtn();
+  const ready = renderedLen>0 && Math.abs(renderedLen-loopLen())<1e-6 && S.tracks.every(t=>t._buf || !hasContent(t));
+  if(ready){ startAll(ctx.currentTime+0.02); renderDirty(); return; }
   await renderDirty();
-  if(playing){ startAll(ctx.currentTime+0.06); }
+  if(playing){ startAll(ctx.currentTime+0.03); }
 }
 function updatePlayBtn(){ const f=$('fab'); if(f){ f.setAttribute('aria-label',playing?'Stop':'Play loop'); f.innerHTML=playing?'<svg viewBox="0 0 20 20" fill="currentColor"><rect x="4" y="4" width="12" height="12" rx="1.5"/></svg>':'<svg viewBox="0 0 20 20" fill="currentColor"><path d="M5 3l12 7-12 7z"/></svg>'; }
   const b=$('play'); b.setAttribute('aria-pressed',playing); b.setAttribute('aria-label',playing?'Stop':'Play loop');
@@ -1277,7 +1281,7 @@ async function startRecord(calib=false, teach=null){
   t0=when+bar;
   if(along) S.tracks.forEach(tr=>{ if(tr._buf){ ensureNodes(tr); tr._src=startSrc(tr._buf,tr._g,when+bar,0); } });
   if(!metroGain){ metroGain=ctx.createGain(); metroGain.connect(ctx.destination); }
-  metroGain.gain.value=0.75; metroSrc=startSrc(metroBuf,metroGain,when,0);
+  metroGain.gain.value=0.75; metroSrc=startSrc(metroBuf,metroGain,when,0); gateOpen(when);
   recState={calib, teach, inst:S.inst, countStart:when, start:when+bar, end:when+bar+L, lat:calib?0:latency(), chunks:[]};
   if(!teach) teachQueue=null;
   capturing=true; setRecUI(true);
@@ -1592,7 +1596,7 @@ function showBusy(msg){ const t=$('toast'); t.textContent=msg; t.classList.add('
 function updateDock(){ const di=$('dockInst'), t=activePart(); if(di) di.textContent= t ? partName(t) : 'New part'; }
 function buildPads(){ updateDock(); }
 /* instrument picker: grouped, with the mouth sounds and a one-line description */
-const PICK_GROUPS=[['Drums',['kit','kick','snare','hat','clap']],['Melody',['bass','lead','keys','pad','arp']],['Voice',['vox']]];
+const PICK_GROUPS=[['Percussion',['kit','kick','snare','hat','clap']],['Melodic',['bass','lead','keys','pad','arp']],['Vocals',['vox']]];
 function pickChips(){ return `<div class="prow-pick">${PICK_GROUPS.map(([g,ids])=>`<div class="pk-row"><h4>${g}</h4>${ids.map(k=>`<button class="chip" data-k="${k}" style="--c:${INST[k].color}"><i></i>${INST[k].label}</button>`).join('')}</div>`).join('')}</div>`; }
 function openPicker(forWhat){ pickFor=forWhat; if(forWhat==='new') pendingNew=true; renderTracks(); }
 function closePicker(){ pickFor=null; renderTracks(); }
@@ -1915,7 +1919,7 @@ function syncSettings(){ $('latAuto').checked=S.latAuto; $('ec').checked=S.ec; i
 let latInp=null;
 function init(){
   updateDock(); syncTransport();
-  $('play').onclick=togglePlay; updatePlayBtn();
+  $('play').addEventListener('pointerdown',e=>{ if(e.button) return; e.preventDefault(); togglePlay(); }); $('play').onclick=e=>{ if(e.detail===0) togglePlay(); }; updatePlayBtn();
   $('undoBtn').onclick=()=>{ takeBar=null; undo(); }; $('redoBtn').onclick=()=>{ takeBar=null; redo(); };
   $('dockRec').onclick=()=>{ if(recState){ if(rs.mode==='take') cancelRecord(); return; } if(!$('recSheet').hidden) return; const t=activePart(); if(t) recordInto(t.id); else openPicker('new'); };
   $('rsClose').onclick=closeRec;
@@ -1977,6 +1981,8 @@ function init(){
   hist.cur=snapNow(); updateHistBtns();
   // bring back vocal recordings saved in this browser
   S.tracks.filter(t=>t.inst==='vox' && !t._raw).forEach(tr=>loadVox(tr).then(ok=>{ if(!ok) return; redrawTrack(tr); if(tr._row) renderTracks(); if(ctx) scheduleRender(); }));
+  // build every part's sound right away (the audio stays silent until the first tap), so the first Play starts instantly
+  setTimeout(()=>{ try{ if(!ctx){ const AC=window.AudioContext||window.webkitAudioContext; ctx=new AC({latencyHint:'interactive'}); chain=buildChain(ctx,true); applyMaster(); S.tracks.forEach(t=>{ t._dirty=true; }); } scheduleRender(); }catch(e){} }, 250);
 }
 function tick(){
   requestAnimationFrame(tick);
