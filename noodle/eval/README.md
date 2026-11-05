@@ -16,6 +16,12 @@ another key).
 
 Serve the folder holding `data/` and a link to the app as `noodle.html`: `python3 -m http.server 8800`.
 
+- **VocalSet + Annotated-VocalSet** — 20 trained singers; scales, arpeggios, long tones and songs in many techniques
+  (straight, vibrato, breathy, belt, lip trill…) with note labels. CC BY 4.0. https://zenodo.org/records/1193957 and
+  https://zenodo.org/records/7061507 — `fetch_vocalset.py` pulls a 150-file subset across all singers.
+- **AVP (Amateur Vocal Percussion)** — 28 non-beatboxers: isolated kick / snare / hats plus a labelled freestyle, each
+  with prescribed ("Fixed") and their own ("Personal") sounds. CC BY 4.0. https://zenodo.org/records/5036529
+
 ## Scripts
 
 - `run_detector.js <list> <out.json>` — notes for each audio file in a list.
@@ -24,6 +30,12 @@ Serve the folder holding `data/` and a link to the app as `noodle.html`: `python
   lead-in, so each file's labels are shifted by the single best time offset (the same for every method).
 - `diagnose.py` — where errors come from (missed notes, ±1 semitone, octave, timing).
 - `conf_snap.py`, `decode_proto.py` — key-snapping experiments.
+- `bp_sweep.js` + `bp_eval.html` — Spotify Basic Pitch (Apache-2.0) in the browser with several post-processing settings.
+- `sweep_ext.js` + `swift_hook.js` / `crepe_hook.js` — swap the detector's YIN pitch for SwiftF0 (MIT) or CREPE (MIT)
+  through the `EXT_PITCH` hook (does nothing in the app unless a test sets it).
+- `avp_eval.js`, `avp_score.py`, `avp_pool.js` — beatbox: hits found, right drum, untaught vs taught, and built-in
+  examples pooled from other people.
+- `vs_breakdown.py` — VocalSet scores by exercise and technique.
 
 ## Results (November 2026)
 
@@ -38,3 +50,18 @@ Tuned on half the clips (odd Vocadito tracks, 5 hummers); reported on the other 
 The owner's own hummed test melody (5 takes, 40 notes) stayed at 35/40 with the new settings, but dropped with
 any looser snap (32/40 at ±20 cents), and dropped to 27/40 with `hyst 0.8`, which looked good on the tuning half
 only. So the app defaults to a tight snap, with a Loose ↔ Tight slider and learning from corrections for singers.
+
+### Second round (same day)
+
+- **Smoothing** the pitch over ~0.2 s before deciding where notes change (`smoothW` 2 → 10): held-out 0.508 → 0.524,
+  VocalSet 0.248 → 0.263, the owner's takes unchanged (35/40). Now the default.
+- **Basic Pitch** (best setting, onset threshold 0.65): mean 0.506 vs 0.554 for the app's detector on Vocadito +
+  HumTrans; it finds too many notes on humming (1.3× the true count). Not adopted.
+- **SwiftF0 / CREPE as the pitch tracker** under the same note logic: no gain (0.443–0.445 vs 0.452 on all three
+  sets). Pitch per frame is not the weak spot; deciding where notes start and end is.
+- **VocalSet is hard for every method** (note F1 ~0.25): legato and vibrato blur note boundaries; half of the matched
+  note starts are more than 50 ms off.
+- **Beatbox (AVP, 28 people)**: hits found F1 0.72 (prescribed sounds) / 0.82 (own sounds). Right drum untaught
+  63% / 56%, taught 79% / 77%. Snare is the weak class (28–35% untaught, ~55% taught; mostly mistaken for hi-hat).
+  Built-in examples pooled from other people (tested on people left out) lift prescribed-sound accuracy to 72%
+  (snare 70%) but not own-sound accuracy (52–57%); a hybrid with the hi-hat rule is the next thing to try.

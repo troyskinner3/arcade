@@ -1084,7 +1084,7 @@ function whistleFrames(x, sr){
 }
 /* melody detector settings (defaults tuned on real hums and singing: see the evaluation notes in the repo) */
 const NT={ yinTh:0.12, lp:1000, gateA:0.42, gateB:0.25, confA:0.2, confB:0.12, gapFrames:2, onsetRise:6, splitMin:0.08,
-  hyst:0.65, heldMin:0.08, heldLong:0.25, driftMax:6, scoopMax:0.22, scoopIv:3, minSeg:0.07, pitchFrom:0.5, smoothW:2, mergeSame:0 };
+  hyst:0.65, heldMin:0.08, heldLong:0.25, driftMax:6, scoopMax:0.22, scoopIv:3, minSeg:0.07, pitchFrom:0.5, smoothW:10, mergeSame:0 };
 /* Notes: Fewer ↔ More. Negative merges short blips and slides into neighbours; positive lets quicker changes stand. */
 function detailNT(d){ d=clamp(d||0,-50,50)/50; const L=(a,lo,hi)=>d<0? a+(lo-a)*(-d) : a+(hi-a)*d;
   return {heldMin:L(NT.heldMin,0.14,0.05), driftMax:L(NT.driftMax,2.5,9), scoopMax:L(NT.scoopMax,0.32,0.1), hyst:L(NT.hyst,0.9,0.6),
@@ -1107,6 +1107,7 @@ function trackNotes(x, sr, onsets, sens){
     let tI=tb; if(tb>tauMin&&tb<tauMax){ const a=d[tb-1],b=d[tb],c=d[tb+1]; const den=a-2*b+c; if(Math.abs(den)>1e-9) tI=tb+0.5*(a-c)/den; }
     frames.push({t:(s+W/2)/R, db, conf:d[tb], m:69+12*Math.log2((R/tI)/440)});
   }
+  if(window.EXT_PITCH) window.EXT_PITCH(frames,z,R,W);   // evaluation hook only (eval/): lets a test swap in another pitch tracker
   // whistling? use the whistle tracker instead of the hum tracker
   const wf=whistleFrames(x,sr), hv=frames.filter(f=>f.conf<0.2).length, wvF=wf.filter(f=>f.conf<0.2), wv=wvF.length;
   let whistled=false;

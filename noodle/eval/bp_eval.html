@@ -1,0 +1,18 @@
+<!doctype html><meta charset="utf-8"><script src="/bp/tf.min.js"></script><script src="/bp/basicpitch.js"></script>
+<script>
+let bp=null;
+async function bpRaw(url){ if(!bp) bp=new BP.BasicPitch('/bp/package/model/model.json');
+  const buf=await (await fetch(url)).arrayBuffer(); const dec=await new OfflineAudioContext(1,1,44100).decodeAudioData(buf);
+  const n=Math.ceil(dec.duration*22050), oc=new OfflineAudioContext(1,n,22050), s=oc.createBufferSource(); s.buffer=dec; s.connect(oc.destination); s.start(); const ab=await oc.startRendering();
+  const frames=[],onsets=[],contours=[]; const t=performance.now();
+  await bp.evaluateModel(ab,(f,o,c)=>{ frames.push(...f); onsets.push(...o); contours.push(...c); },()=>{});
+  return {frames,onsets,contours,ms:performance.now()-t,dur:dec.duration}; }
+function bpNotes(R,{on=0.5,fr=0.3,minLen=5,melodia=true,mono=true}={}){
+  let ev=BP.outputToNotesPoly(R.frames,R.onsets,on,fr,minLen,true,null,null,melodia);
+  ev=BP.noteFramesToTime(BP.addPitchBendsToNoteEvents(R.contours,ev));
+  let notes=ev.map(e=>{ const b=e.pitchBends&&e.pitchBends.length? e.pitchBends.reduce((a,c)=>a+c,0)/e.pitchBends.length/3 : 0; return [e.startTimeSeconds, e.startTimeSeconds+e.durationSeconds, e.pitchMidi+b, e.amplitude]; }).sort((a,b)=>a[0]-b[0]);
+  if(mono){ // one voice: where notes overlap, keep the louder; trim the earlier one at the next start
+    notes.sort((a,b)=>b[3]-a[3]); const kept=[]; for(const n of notes){ const ov=kept.find(k=>n[0]<k[1]-0.03 && k[0]<n[1]-0.03 && Math.min(n[1],k[1])-Math.max(n[0],k[0])>0.5*(n[1]-n[0])); if(!ov) kept.push(n); }
+    notes=kept.sort((a,b)=>a[0]-b[0]); for(let i=0;i<notes.length-1;i++) notes[i][1]=Math.min(notes[i][1],Math.max(notes[i][0]+0.03,notes[i+1][0])); }
+  return notes.map(n=>[+n[0].toFixed(4),+n[1].toFixed(4),+n[2].toFixed(3)]); }
+</script>

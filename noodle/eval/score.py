@@ -12,7 +12,15 @@ def gt_humtrans(f):
         if msg.type=='note_on' and msg.velocity>0: act[msg.note]=t
         elif msg.type in('note_off','note_on') and msg.note in act: iv.append([act.pop(msg.note),t]); ps.append(msg.note)
     o=np.argsort([a for a,_ in iv]); return np.array(iv)[o], 440*2**((np.array(ps)[o]-69)/12)
-def gt(f): return gt_vocadito(f) if 'vocadito' in f else gt_humtrans(f)
+def gt_vocalset(f):
+    k=os.path.basename(f)[:-4]; lines=open(f'{S}/data/vocalset/ann/{k}.csv',encoding='utf-8',errors='ignore').read().splitlines()
+    i=[j for j,l in enumerate(lines) if l.startswith('Sequence')][0]; iv=[]; ps=[]
+    for r in csv.reader(lines[i+1:]):
+        if len(r)>14 and r[4].strip()=='Sound' and r[14].strip():
+            try: iv.append([float(r[1]),float(r[2])]); ps.append(float(r[14]))
+            except ValueError: pass
+    return np.array(iv), 440*2**((np.array(ps)-69)/12)
+def gt(f): return gt_vocadito(f) if 'vocadito' in f else gt_vocalset(f) if 'vocalset' in f else gt_humtrans(f)
 def score(ref_iv,ref_hz,est,shift=0.0, offs=False):
     if not len(est): return 0,0,0
     e=np.array(est); est_iv=e[:,:2]; est_hz=440*2**((np.round(e[:,2])+shift-69)/12)
@@ -23,7 +31,7 @@ def best_shift(ref_iv,ref_hz,est):   # the same melody hummed in another key or 
 def main(path, label=''):
     R=json.load(open(path)); agg=collections.defaultdict(list)
     for f,v in R.items():
-        ri,rh=gt(f); est=v['notes']; ds='vocadito' if 'vocadito' in f else 'humtrans'
+        ri,rh=gt(f); est=v['notes']; ds='vocadito' if 'vocadito' in f else 'vocalset' if 'vocalset' in f else 'humtrans'
         if ds=='humtrans' and est:   # labels start at 0 s, recordings have a lead-in: align by the best single time shift (same for every method)
             eo=np.array([n[0] for n in est]); best=max(((mir_eval.onset.f_measure(ri[:,0]+d,eo,window=0.05)[0],d) for d in np.arange(-0.2,1.5,0.01)))[1]; ri=ri+best
         p,r,fm=score(ri,rh,est); s=best_shift(ri,rh,est); pi,ri2,fi=score(ri,rh,est,s); _,_,fo=score(ri,rh,est,s,True)
