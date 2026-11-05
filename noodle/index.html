@@ -1223,18 +1223,33 @@ function makeIR(c){
   for(let ch=0;ch<2;ch++){ const d=b.getChannelData(ch); for(let i=0;i<len;i++){ const tt=i/len; d[i]=(Math.random()*2-1)*Math.pow(1-tt,3.2)*(i<sr*0.012?i/(sr*0.012):1); } }
   irBuf=b; irSize=size; return b;
 }
+const SAFE_CURVE=(()=>{ const n=4096, c=new Float32Array(n); for(let i=0;i<n;i++){ const x=i/(n-1)*2-1, a=Math.abs(x); c[i]=Math.sign(x)*(a<0.9?a:0.9+0.1*Math.tanh((a-0.9)/0.1)); } return c; })();
+/* auto gain staging: measure how loud the whole mix gets and trim the master input so it sits at a steady level with headroom
+   (busy mixes come down, sparse ones come up a little), so nothing slams the drive stage or clips */
+let mixTrim=1, trimTimer=0;
+function measureMix(){ if(!ctx) return; const live=S.tracks.filter(t=>t._buf && trackGain(t)>0); if(!live.length) return;
+  const n=Math.round(loopLen()*ctx.sampleRate), st=3; let pk=0;
+  const parts=live.map(t=>{ const g=trackGain(t), pan=t.pan/100, b=t._buf; return {L:b.getChannelData(0),R:b.getChannelData(b.numberOfChannels>1?1:0),len:b.length,gl:g*Math.cos((pan+1)*Math.PI/4)*Math.SQRT2,gr:g*Math.sin((pan+1)*Math.PI/4)*Math.SQRT2}; });
+  for(let i=0;i<n;i+=st){ let l=0,r=0; for(const q of parts){ const k=i%q.len; l+=q.L[k]*q.gl; r+=q.R[k]*q.gr; } const m=l>r?(l>-r?l:-r):(r>-l?r:-l); if(m>pk) pk=m; }
+  const rev=1+Math.pow(S.master.rev/100,1.5)*0.25;   // the reverb return adds a little on top
+  mixTrim=clamp(0.72/Math.max(pk*rev,1e-4),0.12,1.6); applyTrim(); }
+function scheduleTrim(){ clearTimeout(trimTimer); trimTimer=setTimeout(measureMix,160); }
+function trimBase(){ return 1/(1+S.master.drive/100*0.6); }
+function applyTrim(){ if(chain&&ctx) chain.input.gain.setTargetAtTime(trimBase()*mixTrim, ctx.currentTime, 0.06); }
 function driveCurve(amt){ if(amt<=0.01) return null; const k=amt*14, n=2048, c=new Float32Array(n); for(let i=0;i<n;i++){ const x=i/(n-1)*2-1; c[i]=Math.tanh(k*x)/Math.tanh(k); } return c; }
 function buildChain(c, live){
   const input=c.createGain(), shaper=c.createWaveShaper(), comp=c.createDynamicsCompressor(), out=c.createGain(), revIn=c.createGain(), conv=c.createConvolver(), revRet=c.createGain();
-  input.connect(shaper); shaper.connect(comp); comp.connect(out);
-  let gate=null; if(live){ gate=c.createGain(); out.connect(gate); gate.connect(c.destination); } else out.connect(c.destination);
+  // master: trim (auto gain staging) → drive → glue compressor → volume → limiter → safety clipper
+  const lim=c.createDynamicsCompressor(), safe=c.createWaveShaper(); lim.threshold.value=-2; lim.knee.value=0; lim.ratio.value=20; lim.attack.value=0.001; lim.release.value=0.12; safe.curve=SAFE_CURVE; safe.oversample='2x';
+  input.connect(shaper); shaper.connect(comp); comp.connect(out); out.connect(lim); lim.connect(safe);
+  let gate=null; if(live){ gate=c.createGain(); safe.connect(gate); gate.connect(c.destination); } else safe.connect(c.destination);
   revIn.connect(conv); conv.connect(revRet); revRet.connect(input);
   const ch={input,shaper,comp,out,revIn,conv,revRet,c,gate};
   setChain(ch); return ch;
 }
 function setChain(ch){
   const m=S.master, punch=m.punch/100, drive=m.drive/100;
-  ch.shaper.curve=driveCurve(drive); ch.input.gain.value=1/(1+drive*0.6);
+  ch.shaper.curve=driveCurve(drive); ch.input.gain.value=trimBase()*mixTrim;
   ch.comp.threshold.value=-4-punch*22; ch.comp.ratio.value=1+punch*6; ch.comp.knee.value=8; ch.comp.attack.value=0.006; ch.comp.release.value=0.14;
   ch.out.gain.value=(m.vol/100)*(1+punch*0.7)*0.9;
   ch.conv.buffer=makeIR(ch.c); ch.revRet.gain.value=0.9;
@@ -1249,7 +1264,7 @@ function ensureNodes(tr){
 }
 function applyMix(tr,now){ if(!tr._g) return; const t=ctx.currentTime;
   tr._g.gain.setTargetAtTime(trackGain(tr),t,now?0:0.02); tr._p.pan.setTargetAtTime(tr.pan/100,t,0.02); tr._snd.gain.setTargetAtTime(Math.pow(tr.send/100,1.5),t,0.02); }
-function applyAllMix(){ S.tracks.forEach(t=>applyMix(t)); }
+function applyAllMix(){ S.tracks.forEach(t=>applyMix(t)); scheduleTrim(); }
 
 /* ---- instruments (work in any AudioContext / OfflineAudioContext) ---- */
 const noiseCache=new WeakMap();
@@ -1398,6 +1413,7 @@ async function renderDirty(){
       if(metroDirty) await renderMetro();
       if(lenChanged){ const old=renderedLen; renderedLen=loopLen(); if(playing){ const now=ctx.currentTime+0.04; const ph=old>0?(((now-t0)/old)%1+1)%1:0; startAll(now, ph*renderedLen); } }
     } while(renderAgain);
+    measureMix();
   } finally { rendering=false; finish(); }
 }
 let metroSrc=null, metroGain=null;
