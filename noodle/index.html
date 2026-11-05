@@ -1199,8 +1199,13 @@ function chordName(ps){ if(!ps||ps.length<2) return ''; const r=ps[0], iv=new Se
   let q=dim?'dim':m?'m':''; if(iv.has(11)) q+= (q?'':'')+'maj7'; else if(iv.has(10)) q+= dim?'7':'7'; if(iv.has(2)) q= q.includes('7')?q.replace('7','9'):q+'add9';
   return nm+q; }
 const CHORD_TYPES={off:'Single notes',triad:'Triad',seventh:'7th',ninth:'9th',power:'Power (root + 5th)'};
-const chordType=tr=> tr.chordType ?? (tr.chords===true?'triad': tr.chords===false?'off' : (['keys','pad','arp'].includes(tr.inst)?'triad':'off'));
+const chordType=tr=> tr.inst==='bass' ? 'off' : tr.chordType ?? (tr.chords===true?'triad': tr.chords===false?'off' : (['keys','pad','arp'].includes(tr.inst)?'triad':'off'));
 const chordsOn=tr=>chordType(tr)!=='off';
+/* bass is strictly one note at a time: a note ends where the next begins; of two starting together, the selected (or stronger) one stays */
+function enforceMono(tr){ if(tr.inst!=='bass'||!tr.notes||!tr.notes.length) return false; const n0=tr.notes.length, ln=tr.notes.map(x=>x.l).join();
+  const by=new Map(); tr.notes.forEach(x=>{ const o=by.get(x.s); if(!o || x===tr._sel || (o!==tr._sel && x.v>o.v)) by.set(x.s,x); });
+  const ns=[...by.values()].sort((a,b)=>a.s-b.s); for(let i=0;i<ns.length-1;i++) ns[i].l=Math.max(1,Math.min(ns[i].l, ns[i+1].s-ns[i].s));
+  if(tr._sel && !ns.includes(tr._sel)) tr._sel=null; tr.notes=ns; return ns.length!==n0 || ns.map(x=>x.l).join()!==ln; }
 /* stacked scale steps from the root: triad = root, 3rd, 5th; 7th and 9th keep stacking; power = root, 5th, octave */
 function chordTones(root,type){
   if(type==='off') return [root];
@@ -1404,6 +1409,7 @@ async function renderStem(tr){
   let out=oc.createGain(); out.connect(oc.destination);
   const d=INST[tr.inst];
   if(d.kind!=='pitched' && tr.sound==='Lo-fi'){ const lp=oc.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=3600; const sh=oc.createWaveShaper(); sh.curve=driveCurve(0.5); out.disconnect(); out.connect(sh); sh.connect(lp); lp.connect(oc.destination); }
+  enforceMono(tr);
   ENV_OVR=INST[tr.inst].kind==='pitched'?(tr.adsr||null):null;
   const SC=scOn(tr), NL=!tr.notes?[]:SC?songEvents(tr,tr.notes):tr.notes.filter(x=>x.s<PN);
   if(d.kind==='pitched' && tr.inst==='arp'){ for(const e of (SC?songEvents(tr,arpEvents(tr)):arpEvents(tr).filter(e=>e.x<PN))) voice(oc,out,tr.sound,tAt(e.x)+0.002,Math.max(0.03,e.l*stepDur()),e.p+12*tr.oct,e.v,T); }
@@ -1982,6 +1988,7 @@ function renderTracks(){
   if(!S.tracks.length && !pendingNew){ box.innerHTML='<div class="empty">No parts yet. Tap + Add part to start.</div>'; }
   S.tracks.forEach(tr=>{
     if(!tr.len) tr.len=S.bars;
+    enforceMono(tr);
     const d=INST[tr.inst], pitched=d.kind==='pitched';
     const row=document.createElement('article'); row.className='prow'; row.style.setProperty('--c',d.color); tr._row=row;
     const empty=!hasContent(tr) && !tr.ex;
@@ -2069,7 +2076,7 @@ function buildCard(tr){
         ${d.kind==='drums'?'<section class="isec"><div class="kitpanel" id="kitPanel"></div></section>':''}
         <section class="isec"><h4>${tr.inst==='vox'?'Mix & vocal FX':'Mix'}</h4><div class="knobs kmore"></div></section>
         ${pitched?`<section class="isec"><h4>Notes</h4>
-          <div class="irow"><span class="ilab">Chord</span><div class="ictl"><select class="sel chdsel" aria-label="Chord size">${Object.entries(CHORD_TYPES).map(([k,v])=>`<option value="${k}" ${k===chordType(tr)?'selected':''}>${v}</option>`).join('')}</select></div></div>
+          ${tr.inst==='bass'?'':`<div class="irow"><span class="ilab">Chord</span><div class="ictl"><select class="sel chdsel" aria-label="Chord size">${Object.entries(CHORD_TYPES).map(([k,v])=>`<option value="${k}" ${k===chordType(tr)?'selected':''}>${v}</option>`).join('')}</select></div></div>`}
           <div class="irow"><span class="ilab">Octave</span><div class="ictl seg"><button class="ibtn od" aria-label="Octave down">−</button><b class="ov">${tr.oct>0?'+':''}${tr.oct}</b><button class="ibtn ou" aria-label="Octave up">+</button></div></div>
           ${tr.inst!=='arp'?`<div class="irow"><span class="ilab">Slides</span><div class="ictl"><button class="ibtn tog sld" aria-pressed="${slidesOn(tr)}" title="Slide between notes where you slid">${slidesOn(tr)?'On':'Off'}</button></div></div>`:''}
           ${tr.inst==='arp'?(()=>{ const A=arpOf(tr), o=(cls,lab,opts,val)=>`<div class="irow"><span class="ilab">${lab}</span><div class="ictl"><select class="sel ${cls}" aria-label="${lab}">${opts.map(([k,v])=>`<option value="${k}" ${String(k)===String(val)?'selected':''}>${v}</option>`).join('')}</select></div></div>`;
@@ -2243,7 +2250,7 @@ function cellAt(tr,e,clampIt){
    - press and drag on an empty spot to draw a new note (it stays selected); tapping empty space deselects */
 function nextPitch(p,dir){ const K=currentKey(); if(K.none) return p+dir; let m=p+dir; for(let i=0;i<12 && !K.set.includes(((m-K.tonic)%12+12)%12);i++) m+=dir; return m; }
 function selectNote(tr,n){ tr._sel=n||null; drawGrid(tr); renderNoteBar(tr); }
-function noteChanged(tr){ keyCache=null; tr.notes.sort((a,b)=>a.s-b.s); tr._dirty=true; save(); redrawTrack(tr); renderNoteBar(tr); scheduleRender(); }
+function noteChanged(tr){ keyCache=null; tr.notes.sort((a,b)=>a.s-b.s); enforceMono(tr); tr._dirty=true; save(); redrawTrack(tr); renderNoteBar(tr); scheduleRender(); }
 function deleteSelNote(tr){ const n=tr._sel; if(!n||!tr.notes.includes(n)) return; tr.notes.splice(tr.notes.indexOf(n),1); tr._sel=null; keyCache=null; noteChanged(tr); }
 function placeHandle(tr){ const h=tr._nsel, G=tr._grid, n=tr._sel, x=tr._ndel; if(!h) return;
   const i=(n&&G)?G.rows.indexOf(pitchOf(n)):-1; if(i<0||!tr.notes.includes(n)){ h.hidden=true; if(x) x.hidden=true; return; }
