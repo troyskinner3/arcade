@@ -402,6 +402,7 @@ input[type=range]::-moz-range-thumb{width:10px;height:18px;border-radius:1px;bac
 .ovrow .zoom .ibtn{height:26px;min-width:34px}
 .pdel,.cta-del{color:var(--rec)}
 .nsel{position:absolute;touch-action:none;z-index:2;cursor:grab}
+.ndel{position:absolute;z-index:3;width:24px;height:24px;padding:0;border:1px solid #000;border-radius:var(--rad);background:var(--rec);color:#fff;font:700 12px var(--f-body);display:grid;place-items:center;line-height:1}
 .envpanel{display:flex;flex-direction:column;gap:6px}
 .envpanel canvas{width:100%;height:130px;display:block;touch-action:none;border-radius:var(--rad);box-shadow:inset 0 0 0 1px var(--line)}
 .envrow{display:flex;align-items:center;gap:8px;justify-content:space-between}
@@ -2020,12 +2021,7 @@ function buildCard(tr){
     const el=document.createElement('article'); el.className='track'; el.style.setProperty('--c',d.color); tr._el=el;
     const pitched=d.kind==='pitched';
     const cOpen=isOpen('c'+tr.id,false);
-    el.innerHTML=`<div class="gridbox"><div class="gridwrap"><div class="gridin"><canvas></canvas><div class="ph"></div><div class="nsel" hidden></div></div></div><div class="glabels"></div></div><div class="ovrow"><div class="ovw" hidden aria-hidden="true"><canvas></canvas><div class="ovw-win"></div></div>${d.kind==='audio'?'':'<span class="zoom"><button class="ibtn zo" aria-label="Zoom out">−</button><button class="ibtn zi" aria-label="Zoom in">+</button></span>'}</div>
-      ${pitched?`<div class="notebar" hidden><span class="nb-info"></span><div class="nb-btns">
-        <button class="ibtn" data-act="left" aria-label="Move note earlier">◀</button><button class="ibtn" data-act="right" aria-label="Move note later">▶</button>
-        <button class="ibtn" data-act="up" aria-label="Move note up">▲</button><button class="ibtn" data-act="down" aria-label="Move note down">▼</button>
-        <button class="ibtn" data-act="shorter">Shorter</button><button class="ibtn" data-act="longer">Longer</button>
-        <button class="ibtn del" data-act="delete">Delete</button><button class="ibtn" data-act="done">Done</button></div></div>`:''}
+    el.innerHTML=`<div class="gridbox"><div class="gridwrap"><div class="gridin"><canvas></canvas><div class="ph"></div><div class="nsel" hidden></div><button class="ndel" hidden aria-label="Delete note" title="Delete note">✕</button></div></div><div class="glabels"></div></div><div class="ovrow"><div class="ovw" hidden aria-hidden="true"><canvas></canvas><div class="ovw-win"></div></div>${d.kind==='audio'?'':'<span class="zoom"><button class="ibtn zo" aria-label="Zoom out">−</button><button class="ibtn zi" aria-label="Zoom in">+</button></span>'}</div>
       <div class="tquick"><select class="sel snd" id="snd${tr.id}" aria-label="Sound">${d.sounds.map(s=>`<option ${s===tr.sound?'selected':''}>${s}</option>`).join('')}</select><button class="ibtn ctlbtn" aria-expanded="${cOpen}">More ${CHEV}</button>${pitched?'<button class="ibtn pfill" title="Stretch each note to the next one so there are no gaps">Fill gaps</button>':''}<button class="ibtn pclear" title="Clear all notes in this part">Clear</button><button class="ibtn del pdel" title="Delete part" aria-label="Delete part"><svg viewBox="0 0 20 20" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 5.5h13M8 5.5V3.5h4v2M5.5 5.5l.8 11h7.4l.8-11M8.5 8.5v5M11.5 8.5v5"/></svg></button></div>
       <div class="ctl" ${cOpen?'':'hidden'}>${d.kind==='drums'?'<div class="kitpanel" id="kitPanel"></div>':''}<div class="knobs kmore"></div>
       <div class="tfoot">
@@ -2073,13 +2069,13 @@ function buildCard(tr){
     const ob=el.querySelector('.orig'); if(ob) ob.onclick=()=>playOriginal(tr,ob);
     const cs2=el.querySelector('.chdsel'); if(cs2) cs2.onchange=e=>{ tr.chordType=e.target.value; delete tr.chords; tr._dirty=true; save(); drawGrid(tr); scheduleRender(); };
     [['apat','pat',v=>v],['arate','rate',Number],['aoct','oct',Number],['agate','gate',Number]].forEach(([cls,key,conv])=>{ const se=el.querySelector('.'+cls); if(se) se.onchange=e=>{ tr.arp=Object.assign(arpOf(tr),{[key]:conv(e.target.value)}); tr._dirty=true; save(); scheduleRender(); }; });
-    el.querySelectorAll('.notebar [data-act]').forEach(btn=>btn.onclick=()=>noteBarAction(tr,btn.dataset.act));
     if(tr._sel && !tr.notes.includes(tr._sel)) tr._sel=null;
     const sb2=el.querySelector('.sld'); if(sb2) sb2.onclick=()=>{ tr.slides=!slidesOn(tr); sb2.setAttribute('aria-pressed',tr.slides); sb2.textContent='Slides '+(tr.slides?'on':'off'); tr._dirty=true; save(); scheduleRender(); };
     const st2=el.querySelector('.savetake'); if(st2) st2.onclick=()=>saveTake(tr);
     const ub=el.querySelector('.undo'); if(ub) ub.onclick=()=>undoTake(tr);
     const cv=el.querySelector('canvas');
-    const hs=el.querySelector('.nsel'); tr._nsel=hs;
+    const hs=el.querySelector('.nsel'); tr._nsel=hs; tr._ndel=el.querySelector('.ndel');
+    if(tr._ndel){ tr._ndel.addEventListener('pointerdown',e=>e.stopPropagation()); tr._ndel.onclick=e=>{ e.stopPropagation(); deleteSelNote(tr); }; }
     if(hs){ hs.addEventListener('pointerdown',e=>{ e.stopPropagation(); noteDown(tr,e,true); }); hs.addEventListener('pointermove',e=>noteMove(tr,e)); hs.addEventListener('pointerup',e=>noteUp(tr,e)); hs.addEventListener('pointercancel',e=>noteUp(tr,e,true)); }
     if(pitched){ cv.style.touchAction='pan-x pan-y'; cv.addEventListener('pointerdown',e=>noteDown(tr,e)); cv.addEventListener('pointermove',e=>noteMove(tr,e)); cv.addEventListener('pointerup',e=>noteUp(tr,e)); cv.addEventListener('pointercancel',e=>noteUp(tr,e,true)); }
     else if(d.kind!=='audio'){ cv.style.touchAction='pan-x pan-y'; let down=null;
@@ -2198,8 +2194,10 @@ function cellAt(tr,e,clampIt){
 function nextPitch(p,dir){ const K=currentKey(); if(K.none) return p+dir; let m=p+dir; for(let i=0;i<12 && !K.set.includes(((m-K.tonic)%12+12)%12);i++) m+=dir; return m; }
 function selectNote(tr,n){ tr._sel=n||null; drawGrid(tr); renderNoteBar(tr); }
 function noteChanged(tr){ keyCache=null; tr.notes.sort((a,b)=>a.s-b.s); tr._dirty=true; save(); redrawTrack(tr); renderNoteBar(tr); scheduleRender(); }
-function placeHandle(tr){ const h=tr._nsel, G=tr._grid, n=tr._sel; if(!h) return;
-  const i=(n&&G)?G.rows.indexOf(pitchOf(n)):-1; if(i<0||!tr.notes.includes(n)){ h.hidden=true; return; }
+function deleteSelNote(tr){ const n=tr._sel; if(!n||!tr.notes.includes(n)) return; tr.notes.splice(tr.notes.indexOf(n),1); tr._sel=null; keyCache=null; noteChanged(tr); }
+function placeHandle(tr){ const h=tr._nsel, G=tr._grid, n=tr._sel, x=tr._ndel; if(!h) return;
+  const i=(n&&G)?G.rows.indexOf(pitchOf(n)):-1; if(i<0||!tr.notes.includes(n)){ h.hidden=true; if(x) x.hidden=true; return; }
+  if(x){ const top=1+i*G.rh, above=top>=26; x.hidden=false; x.style.left=Math.max(0,G.gut+(n.s+n.l)*G.cw-12)+'px'; x.style.top=(above?top-26:top+G.rh+2)+'px'; }
   const pad=8; h.hidden=false; h.style.left=(G.gut+n.s*G.cw-pad)+'px'; h.style.top=Math.max(0,1+i*G.rh-pad)+'px'; h.style.width=(n.l*G.cw+pad*2)+'px'; h.style.height=(G.rh+pad*2)+'px'; }
 function noteDown(tr,e,onSel){
   const q=S.quant==8?2:1; tr._touchT=Date.now();
@@ -2287,7 +2285,8 @@ function init(){
   $('rsDiscard').onclick=async()=>{ await discardTake(); closeRec(); toast('Take discarded'); };
   $('rsRetry').onclick=async()=>{ if(rs.mode==='calib'){ showRetryReady(); startRecord(true); return; } await discardTake(); showRetryReady(); if($('recBtn').hidden) $('fileIn').click(); else startRecord(false); };
   window.showRetryReady=()=>{ $('rsReview').hidden=true; $('rsReady').hidden=false; };
-  document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ if(!$('recSheet').hidden) closeRec(); else if(pickFor!=null){ pickFor=null; pendingNew=false; renderTracks(); } else if(editId!=null) closeEditor(); }
+  document.addEventListener('keydown',e=>{ if((e.key==='Delete'||e.key==='Backspace') && !/INPUT|SELECT|TEXTAREA/.test((e.target&&e.target.tagName)||'')){ const t=S.tracks.find(t=>t.id===editId); if(t&&t._sel){ e.preventDefault(); deleteSelNote(t); return; } }
+    if(e.key==='Escape'){ if(!$('recSheet').hidden) closeRec(); else if(pickFor!=null){ pickFor=null; pendingNew=false; renderTracks(); } else if(editId!=null) closeEditor(); }
     if((e.metaKey||e.ctrlKey) && e.key.toLowerCase()==='z' && !/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName)){ e.preventDefault(); e.shiftKey?redo():undo(); } });
   $('onbOk').onclick=()=>{ setOpen('onbHide',true); renderTracks(); };
   $('bpm').onchange=e=>setTempo(+e.target.value);
