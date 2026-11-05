@@ -234,7 +234,7 @@ main{display:flex;flex-direction:column;gap:16px;padding-block:16px calc(110px +
 .knobs{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:6px 14px}
 .knob{display:flex;flex-direction:column;gap:0;min-width:0}
 .knob label{display:flex;justify-content:space-between;font-size:12px;color:var(--muted)}
-.knob label span{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.knob label .kv{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
 input[type=range]{width:100%;accent-color:var(--c,var(--ink));height:28px;margin:0}
 .tfoot{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .tfoot .grp{display:flex;align-items:center;gap:4px;font-size:12px;color:var(--muted)}
@@ -402,6 +402,32 @@ input[type=range]::-moz-range-thumb{width:10px;height:18px;border-radius:1px;bac
 .ovrow .zoom .ibtn{height:26px;min-width:34px}
 .pdel,.cta-del{color:var(--rec)}
 .nsel{position:absolute;touch-action:none;z-index:2;cursor:grab}
+/* inspector (More): labeled sections, one row per setting, labels in one column */
+.ctl.insp{--lw:78px;display:flex;flex-direction:column;gap:0;padding-top:0;border-top:1px solid var(--line)}
+.isec{display:flex;flex-direction:column;gap:6px;padding:10px 0;border-bottom:1px solid var(--line)}
+.isec:last-child{border-bottom:0;padding-bottom:2px}
+.isec>h4,.isec-h h4{margin:0 0 2px;font:600 10px var(--f-body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.isec-h{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.isec-h h4{margin:0}
+.irow{display:grid;grid-template-columns:var(--lw) minmax(0,1fr);align-items:center;column-gap:10px;min-height:30px}
+.ilab{font-size:12px;color:var(--muted)}
+.ictl{display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-width:0}
+.ictl .sel{width:172px;max-width:100%}
+.ictl.seg{gap:0}
+.ictl.seg .ibtn{min-width:34px;margin-right:-1px}
+.ictl.seg b{display:inline-grid;place-items:center;min-width:38px;height:30px;margin-right:-1px;border:1px solid var(--line);background:var(--cell);font:600 12px var(--f-mono);color:var(--ink)}
+.ibtn.tog{min-width:52px}
+.ibtn.tog[aria-pressed="true"]{background:var(--lcd-ink);color:#141414;border-color:var(--lcd-ink)}
+.insp .knobs{display:flex;flex-direction:column;gap:2px}
+.insp .knob{display:grid;grid-template-columns:var(--lw) minmax(0,1fr) 42px;column-gap:10px;align-items:center;min-height:28px}
+.insp .knob label{display:contents}
+.insp .knob .kl{grid-column:1;grid-row:1;font-size:12px;color:var(--muted)}
+.insp .knob input{grid-column:2;grid-row:1}
+.insp .knob .kv{grid-column:3;grid-row:1;text-align:right;font:500 11px var(--f-mono);color:var(--ink)}
+.insp .pswap{margin-top:0}
+.insp .kitpanel{margin:0}
+.insp .envpanel{margin-top:4px}
+
 .ndel{position:absolute;z-index:3;width:24px;height:24px;padding:0;border:1px solid #000;border-radius:var(--rad);background:var(--rec);color:#fff;font:700 12px var(--f-body);display:grid;place-items:center;line-height:1}
 .envpanel{display:flex;flex-direction:column;gap:6px}
 .envpanel canvas{width:100%;height:130px;display:block;touch-action:none;border-radius:var(--rad);box-shadow:inset 0 0 0 1px var(--line)}
@@ -1868,7 +1894,7 @@ function wireEnv(tr,el){ const pan=el.querySelector('.envpanel'); if(!pan) retur
   cv.addEventListener('pointerup',up); cv.addEventListener('pointercancel',up); }
 /* ---- part tools: length, repeat, duplicate, change instrument ---- */
 function instSwap(tr){ const fam=INST[tr.inst].kind==='pitched'?PICK_GROUPS[1][1]:INST[tr.inst].kind==='audio'?[]:PICK_GROUPS[0][1];
-  if(!fam.length) return ''; return `<div class="pk-row pswap"><h4>Instrument</h4>${fam.map(k=>`<button class="chip swap${k===tr.inst?' on':''}" data-k="${k}" style="--c:${INST[k].color}" aria-pressed="${k===tr.inst}"><i></i>${INST[k].label}</button>`).join('')}</div>`; }
+  if(!fam.length) return ''; return `<section class="isec"><h4>Instrument</h4><div class="pk-row pswap">${fam.map(k=>`<button class="chip swap${k===tr.inst?' on':''}" data-k="${k}" style="--c:${INST[k].color}" aria-pressed="${k===tr.inst}"><i></i>${INST[k].label}</button>`).join('')}</div></section>`; }
 function deletePart(tr){ const nm=partName(tr); disposeTrack(tr); S.tracks=S.tracks.filter(t=>t!==tr); if(editId===tr.id) editId=null; takeBar=null; keyChanged(); save(); renderTracks(); scheduleRender(); toast('Deleted '+nm+'. Tap Undo to bring it back.'); }
 /* legato: every note lasts until the next note starts; the last one runs to the end of the part's loop */
 function fillGaps(tr){ const n=pSteps(tr), ns=tr.notes.filter(x=>x.s<n); if(!ns.length) return;
@@ -1901,8 +1927,8 @@ function changeInst(tr,k){ if(tr.inst===k) return; const from=INST[tr.inst], to=
   tr._dirty=true; keyCache=null; keyChanged(); save(); renderTracks(); scheduleRender(); toast(`${was} now plays ${to.label}`); }
 function knob(parent,{id,label,min,max,val,fmt,oninput,color,step=1}){
   const w=document.createElement('div'); w.className='knob'; if(color) w.style.setProperty('--c',color);
-  w.innerHTML=`<label for="${id}">${label}<span></span></label><input type="range" id="${id}" min="${min}" max="${max}" step="${step}" value="${val}">`;
-  const inp=w.querySelector('input'), sp=w.querySelector('span'); const upd=()=>{ sp.textContent=fmt?fmt(+inp.value):inp.value; };
+  w.innerHTML=`<label for="${id}"><span class="kl">${label}</span><span class="kv"></span></label><input type="range" id="${id}" min="${min}" max="${max}" step="${step}" value="${val}">`;
+  const inp=w.querySelector('input'), sp=w.querySelector('.kv'); const upd=()=>{ sp.textContent=fmt?fmt(+inp.value):inp.value; };
   inp.addEventListener('input',()=>{ upd(); oninput(+inp.value); }); upd(); parent.appendChild(w); return inp;
 }
 const pct=v=>v+'%';
@@ -2039,24 +2065,32 @@ function buildCard(tr){
     const cOpen=isOpen('c'+tr.id,false);
     el.innerHTML=`<div class="gridbox"><div class="gridwrap"><div class="gridin"><canvas></canvas><div class="ph"></div><div class="nsel" hidden></div><button class="ndel" hidden aria-label="Delete note" title="Delete note">✕</button></div></div><div class="glabels"></div></div><div class="ovrow"><div class="ovw" hidden aria-hidden="true"><canvas></canvas><div class="ovw-win"></div></div>${d.kind==='audio'?'':'<span class="zoom"><button class="ibtn zo" aria-label="Zoom out">−</button><button class="ibtn zi" aria-label="Zoom in">+</button></span>'}</div>
       <div class="tquick"><select class="sel snd" id="snd${tr.id}" aria-label="Sound">${d.sounds.map(s=>`<option ${s===tr.sound?'selected':''}>${s}</option>`).join('')}</select><button class="ibtn ctlbtn" aria-expanded="${cOpen}">More ${CHEV}</button>${pitched?'<button class="ibtn pfill" title="Stretch each note to the next one so there are no gaps">Fill gaps</button>':''}<button class="ibtn pclear" title="Clear all notes in this part">Clear</button><button class="ibtn del pdel" title="Delete part" aria-label="Delete part"><svg viewBox="0 0 20 20" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 5.5h13M8 5.5V3.5h4v2M5.5 5.5l.8 11h7.4l.8-11M8.5 8.5v5M11.5 8.5v5"/></svg></button></div>
-      <div class="ctl" ${cOpen?'':'hidden'}>${d.kind==='drums'?'<div class="kitpanel" id="kitPanel"></div>':''}<div class="knobs kmore"></div>
-      <div class="tfoot">
-        <span class="grp">Move <button class="ibtn nl" aria-label="Move one step earlier">◀</button><button class="ibtn nr" aria-label="Move one step later">▶</button></span>
-        ${pitched&&tr.inst!=='arp'?`<button class="ibtn sld" aria-pressed="${slidesOn(tr)}" title="Slide between notes where you slid">Slides ${slidesOn(tr)?'on':'off'}</button>`:''}
-        ${pitched?`<label class="grp">Chord <select class="sel chdsel" aria-label="Chord size">${Object.entries(CHORD_TYPES).map(([k,v])=>`<option value="${k}" ${k===chordType(tr)?'selected':''}>${v}</option>`).join('')}</select></label>`:''}
-        ${tr.inst==='arp'?(()=>{ const A=arpOf(tr), o=(cls,lab,opts,val)=>`<label class="grp">${lab} <select class="sel ${cls}" aria-label="${lab}">${opts.map(([k,v])=>`<option value="${k}" ${String(k)===String(val)?'selected':''}>${v}</option>`).join('')}</select></label>`;
-          return o('apat','Pattern',[['up','Up'],['down','Down'],['updown','Up & down'],['random','Random']],A.pat)+o('arate','Rate',[[2,'1/8'],[1,'1/16'],[0.5,'1/32']],A.rate)+o('aoct','Range',[[1,'1 octave'],[2,'2 octaves'],[3,'3 octaves']],A.oct)+o('agate','Gate',[[0.3,'Short'],[0.6,'Medium'],[0.95,'Long']],A.gate); })():''}
-        ${pitched?`<span class="grp">Octave <button class="ibtn od" aria-label="Octave down">−</button><b class="ov">${tr.oct>0?'+':''}${tr.oct}</b><button class="ibtn ou" aria-label="Octave up">+</button></span>`:''}
-        ${tr._raw?'<button class="ibtn orig">▶ '+((tr.takeN||1)>1?'Last take':'Your take')+'</button>':''}
-        ${!pitched&&(tr.takeN||1)>1?'<button class="ibtn undo">Undo last take</button>':''}
-        ${tr._raw?'<button class="ibtn savetake" title="Download your raw recording">Save take</button>':''}
-        </div><div class="tfoot ptools">
-        <label class="grp">Length <select class="sel plen" aria-label="Part length">${[1,2,4,8,16].map(b=>`<option value="${b}" ${b===(tr.len||S.bars)?'selected':''}>${b} bar${b>1?'s':''}</option>`).join('')}</select></label>
-        ${pBars(tr)<S.bars?`<button class="ibtn prep" aria-pressed="${pRep(tr)}">Repeat ${pRep(tr)?'on':'off'}</button>`:''}
-        ${pBars(tr)<S.bars&&pRep(tr)?`<button class="ibtn punroll">Edit all ${S.bars} bars separately</button>`:''}
-        </div>${pitched?`<div class="tfoot ptools"><button class="ibtn envbtn" aria-expanded="${isOpen('env'+tr.id,false)}">Envelope${tr.adsr?' · custom':''} ${CHEV}</button></div><div class="envpanel" ${isOpen('env'+tr.id,false)?'':'hidden'}><canvas aria-label="Amplitude envelope: drag the points"></canvas><div class="envrow"><span class="envvals"></span><button class="ibtn envreset">Reset</button></div></div>`:''}${d.kind==='drums'||d.kind==='drum'?'':`<div class="tfoot ptools sctools"><button class="ibtn scbtn" aria-pressed="${scOn(tr)}" title="Duck this part every time a drum hits">Sidechain ${scOn(tr)?'on':'off'}</button>${scOn(tr)?`<label class="grp">Source <select class="sel scsrc" aria-label="Sidechain source">${drumSources().map(([id,lab])=>`<option value="${id}" ${id===tr.sc.src?'selected':''}>${lab}</option>`).join('')}</select></label><div class="knobs scamt"></div>`:''}</div>`}${instSwap(tr)}<div class="tfoot ptools">
-        <button class="ibtn pdup">Duplicate</button>
-
+      <div class="ctl insp" ${cOpen?'':'hidden'}>
+        ${d.kind==='drums'?'<section class="isec"><div class="kitpanel" id="kitPanel"></div></section>':''}
+        <section class="isec"><h4>${tr.inst==='vox'?'Mix & vocal FX':'Mix'}</h4><div class="knobs kmore"></div></section>
+        ${pitched?`<section class="isec"><h4>Notes</h4>
+          <div class="irow"><span class="ilab">Chord</span><div class="ictl"><select class="sel chdsel" aria-label="Chord size">${Object.entries(CHORD_TYPES).map(([k,v])=>`<option value="${k}" ${k===chordType(tr)?'selected':''}>${v}</option>`).join('')}</select></div></div>
+          <div class="irow"><span class="ilab">Octave</span><div class="ictl seg"><button class="ibtn od" aria-label="Octave down">−</button><b class="ov">${tr.oct>0?'+':''}${tr.oct}</b><button class="ibtn ou" aria-label="Octave up">+</button></div></div>
+          ${tr.inst!=='arp'?`<div class="irow"><span class="ilab">Slides</span><div class="ictl"><button class="ibtn tog sld" aria-pressed="${slidesOn(tr)}" title="Slide between notes where you slid">${slidesOn(tr)?'On':'Off'}</button></div></div>`:''}
+          ${tr.inst==='arp'?(()=>{ const A=arpOf(tr), o=(cls,lab,opts,val)=>`<div class="irow"><span class="ilab">${lab}</span><div class="ictl"><select class="sel ${cls}" aria-label="${lab}">${opts.map(([k,v])=>`<option value="${k}" ${String(k)===String(val)?'selected':''}>${v}</option>`).join('')}</select></div></div>`;
+            return o('apat','Pattern',[['up','Up'],['down','Down'],['updown','Up & down'],['random','Random']],A.pat)+o('arate','Rate',[[2,'1/8'],[1,'1/16'],[0.5,'1/32']],A.rate)+o('aoct','Range',[[1,'1 octave'],[2,'2 octaves'],[3,'3 octaves']],A.oct)+o('agate','Gate',[[0.3,'Short'],[0.6,'Medium'],[0.95,'Long']],A.gate); })():''}
+        </section>`:''}
+        <section class="isec"><h4>Timing</h4>
+          <div class="irow"><span class="ilab">Length</span><div class="ictl"><select class="sel plen" aria-label="Part length">${[1,2,4,8,16].map(b=>`<option value="${b}" ${b===(tr.len||S.bars)?'selected':''}>${b} bar${b>1?'s':''}</option>`).join('')}</select></div></div>
+          ${pBars(tr)<S.bars?`<div class="irow"><span class="ilab">Repeat</span><div class="ictl"><button class="ibtn tog prep" aria-pressed="${pRep(tr)}">${pRep(tr)?'On':'Off'}</button>${pRep(tr)?`<button class="ibtn punroll" title="Copy the loop across the song so each bar can be changed">Unloop to ${S.bars} bars</button>`:''}</div></div>`:''}
+          <div class="irow"><span class="ilab">Nudge</span><div class="ictl seg"><button class="ibtn nl" aria-label="Move one step earlier">◀</button><button class="ibtn nr" aria-label="Move one step later">▶</button></div></div>
+        </section>
+        ${pitched?`<section class="isec"><div class="isec-h"><h4>Envelope</h4><button class="ibtn envbtn" aria-expanded="${isOpen('env'+tr.id,false)}">${tr.adsr?'Custom':'Sound default'} ${CHEV}</button></div><div class="envpanel" ${isOpen('env'+tr.id,false)?'':'hidden'}><canvas aria-label="Amplitude envelope: drag the points"></canvas><div class="envrow"><span class="envvals"></span><button class="ibtn envreset">Reset</button></div></div></section>`:''}
+        ${d.kind==='drums'||d.kind==='drum'?'':`<section class="isec"><h4>Sidechain</h4>
+          <div class="irow"><span class="ilab">Duck</span><div class="ictl"><button class="ibtn tog scbtn" aria-pressed="${scOn(tr)}" title="Duck this part every time a drum hits">${scOn(tr)?'On':'Off'}</button></div></div>
+          ${scOn(tr)?`<div class="irow"><span class="ilab">Source</span><div class="ictl"><select class="sel scsrc" aria-label="Sidechain source">${drumSources().map(([id,lab])=>`<option value="${id}" ${id===tr.sc.src?'selected':''}>${lab}</option>`).join('')}</select></div></div><div class="knobs scamt"></div>`:''}
+        </section>`}
+        ${instSwap(tr)}
+        ${tr._raw||(!pitched&&(tr.takeN||1)>1)?`<section class="isec"><h4>Recording</h4><div class="irow"><span class="ilab">Take</span><div class="ictl">
+          ${tr._raw?'<button class="ibtn orig">▶ '+((tr.takeN||1)>1?'Last take':'Your take')+'</button>':''}
+          ${tr._raw?'<button class="ibtn savetake" title="Download your raw recording">Save</button>':''}
+          ${!pitched&&(tr.takeN||1)>1?'<button class="ibtn undo">Undo last take</button>':''}</div></div></section>`:''}
+        <section class="isec"><div class="ictl"><button class="ibtn pdup">Duplicate part</button></div></section>
       </div></div>`;
     el.querySelector('.snd').onchange=e=>{ tr.sound=e.target.value; if(tr.inst==='vox'){ tr.fx=Object.assign({},VOX_PRESETS[tr.sound]); tr._dirty=true; save(); scheduleRender(); openEditor(tr); return; } tr._dirty=true; save(); scheduleRender(); };
     el.querySelector('.plen').onchange=e=>setPartLen(tr,+e.target.value);
@@ -2086,7 +2120,7 @@ function buildCard(tr){
     const cs2=el.querySelector('.chdsel'); if(cs2) cs2.onchange=e=>{ tr.chordType=e.target.value; delete tr.chords; tr._dirty=true; save(); drawGrid(tr); scheduleRender(); };
     [['apat','pat',v=>v],['arate','rate',Number],['aoct','oct',Number],['agate','gate',Number]].forEach(([cls,key,conv])=>{ const se=el.querySelector('.'+cls); if(se) se.onchange=e=>{ tr.arp=Object.assign(arpOf(tr),{[key]:conv(e.target.value)}); tr._dirty=true; save(); scheduleRender(); }; });
     if(tr._sel && !tr.notes.includes(tr._sel)) tr._sel=null;
-    const sb2=el.querySelector('.sld'); if(sb2) sb2.onclick=()=>{ tr.slides=!slidesOn(tr); sb2.setAttribute('aria-pressed',tr.slides); sb2.textContent='Slides '+(tr.slides?'on':'off'); tr._dirty=true; save(); scheduleRender(); };
+    const sb2=el.querySelector('.sld'); if(sb2) sb2.onclick=()=>{ tr.slides=!slidesOn(tr); sb2.setAttribute('aria-pressed',tr.slides); sb2.textContent=tr.slides?'On':'Off'; tr._dirty=true; save(); scheduleRender(); };
     const st2=el.querySelector('.savetake'); if(st2) st2.onclick=()=>saveTake(tr);
     const ub=el.querySelector('.undo'); if(ub) ub.onclick=()=>undoTake(tr);
     const cv=el.querySelector('canvas');
