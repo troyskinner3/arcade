@@ -402,6 +402,13 @@ input[type=range]::-moz-range-thumb{width:10px;height:18px;border-radius:1px;bac
 .ovrow .zoom .ibtn{height:26px;min-width:34px}
 .pdel,.cta-del{color:var(--rec)}
 .nsel{position:absolute;touch-action:none;z-index:2;cursor:grab}
+.envpanel{display:flex;flex-direction:column;gap:6px}
+.envpanel canvas{width:100%;height:130px;display:block;touch-action:none;border-radius:var(--rad);box-shadow:inset 0 0 0 1px var(--line)}
+.envrow{display:flex;align-items:center;gap:8px;justify-content:space-between}
+.envvals{font:500 11px var(--f-mono);color:var(--muted)}
+.envvals b{color:var(--ink);font-weight:700;margin-left:6px}
+.envvals b:first-child{margin-left:0}
+.envvals i{font-style:normal}
 .ibtn.scbtn[aria-pressed="true"]{background:var(--lcd-ink);color:#141414;border-color:var(--lcd-ink)}
 .sctools .scamt{flex:1 1 140px;min-width:120px}
 .prow.blank.pending .prow-side{display:flex}
@@ -1312,11 +1319,12 @@ function drumHit(c,out,drumId,t,v,style,T){
     n.connect(f); f.connect(g); g.connect(out); n.start(t); n.stop(t+0.4);
   }
 }
+let ENV_OVR=null, ENV_LAST=null;   // a part's own ADSR (replaces the sound's), and the last envelope a sound asked for
 function voice(c,out,sound,t,dur,m,v,T,fromM=null){
   const f=mtof(m), g=c.createGain(); g.connect(out); const oscs=[];
   const osc=(type,freq,det=0,dest=g,gain=1)=>{ const o=c.createOscillator(); o.type=type; o.frequency.value=freq; o.detune.value=det; if(gain!==1){ const gg=c.createGain(); gg.gain.value=gain; o.connect(gg); gg.connect(dest);} else o.connect(dest); oscs.push(o); return o; };
   const lp=(fr,q=0.7)=>{ const b=c.createBiquadFilter(); b.type='lowpass'; b.frequency.value=fr; b.Q.value=q; b.connect(g); return b; };
-  const env=(a,d,s,r,pk)=>{ g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(pk,t+a); g.gain.setTargetAtTime(pk*s,t+a,d/3); const te=t+Math.max(dur,a+0.01); g.gain.setTargetAtTime(0,te,r/4); return te+r+0.05; };
+  const env=(a,d,s,r,pk)=>{ ENV_LAST={a,d,s,r}; if(ENV_OVR){ a=ENV_OVR.a; d=ENV_OVR.d; s=ENV_OVR.s; r=ENV_OVR.r; } g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(pk,t+a); g.gain.setTargetAtTime(pk*s,t+a,d/3); const te=t+Math.max(dur,a+0.01); g.gain.setTargetAtTime(0,te,r/4); return te+r+0.05; };
   let end;
   switch(sound){
     case 'Sub': osc('sine',f); osc('triangle',f,0,g,0.22); end=env(0.006,0.25,0.85,0.08,0.62*v); break;
@@ -1354,11 +1362,13 @@ async function renderStem(tr){
   let out=oc.createGain(); out.connect(oc.destination);
   const d=INST[tr.inst];
   if(d.kind!=='pitched' && tr.sound==='Lo-fi'){ const lp=oc.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=3600; const sh=oc.createWaveShaper(); sh.curve=driveCurve(0.5); out.disconnect(); out.connect(sh); sh.connect(lp); lp.connect(oc.destination); }
+  ENV_OVR=INST[tr.inst].kind==='pitched'?(tr.adsr||null):null;
   const SC=scOn(tr), NL=!tr.notes?[]:SC?songEvents(tr,tr.notes):tr.notes.filter(x=>x.s<PN);
   if(d.kind==='pitched' && tr.inst==='arp'){ for(const e of (SC?songEvents(tr,arpEvents(tr)):arpEvents(tr).filter(e=>e.x<PN))) voice(oc,out,tr.sound,tAt(e.x)+0.002,Math.max(0.03,e.l*stepDur()),e.p+12*tr.oct,e.v,T); }
   else if(d.kind==='pitched'){ for(const nt of NL){ const ts=stepTime(nt.s), dur=Math.max(0.05,nt.l*stepDur()-0.012); const ps=notePitches(tr,nt); const pv=slidesOn(tr)&&nt.g ? NL.find(o=>o!==nt && o.s+o.l===nt.s) : null; const pps=pv?notePitches(tr,pv):null;
     ps.forEach((pp,j)=>voice(oc,out,tr.sound,ts+0.002,dur,pp+12*tr.oct,nt.v*(ps.length>1?1.1/Math.sqrt(ps.length+0.2):1),T, pps?pps[Math.min(j,pps.length-1)]+12*tr.oct:null)); } }
   else { for(const h of tr.hits) if(h.s<PN) drumHit(oc,out,h.d,stepTime(h.s)+0.002,h.v,tr.sound,T); }
+  ENV_OVR=null;
   const r=await oc.startRendering();
   const b=ctx.createBuffer(2,n,sr);
   for(let ch=0;ch<2;ch++){ const src=r.getChannelData(ch), dst=b.getChannelData(ch); for(let i=0;i<src.length;i++) dst[i%n]+=src[i]; }
@@ -1807,6 +1817,38 @@ function pickInstrument(k){
   requestAnimationFrame(()=>{ const r=activePart(); if(r&&r._row) r._row.scrollIntoView({block:'center',behavior:'smooth'}); });
 }
 function updateMergeRow(){ ['mergeRow','replaceRow'].forEach(id=>{ const e=$(id); if(e) e.hidden=true; }); }
+/* ---- envelope designer: attack, decay/sustain and release points on a graph ---- */
+const ENV_MAX={a:2,d:3,r:3};
+function soundEnv(tr){ const keep=ENV_OVR; ENV_OVR=null; ENV_LAST=null; try{ const oc=new OfflineAudioContext(1,256,44100); voice(oc,oc.destination,tr.sound,0,0.5,60,1,tr.tone/100); }catch(e){} ENV_OVR=keep; return ENV_LAST||{a:0.01,d:0.3,s:0.7,r:0.1}; }
+const fmtT=t=>t<1?Math.round(t*1000)+' ms':t.toFixed(2)+' s';
+function envGeom(cv){ const W=cv.clientWidth||300, H=cv.clientHeight||130, x0=10, zw=(W-20)/3.6, yTop=12, yBot=H-14; return {W,H,x0,zw,yTop,yBot,Y:v=>yBot-(yBot-yTop)*v, f:(t,mx)=>zw*Math.sqrt(clamp(t/mx,0,1))}; }
+function envPoints(E,G){ const ax=G.x0+G.f(E.a,ENV_MAX.a), dx=ax+G.f(E.d,ENV_MAX.d), sx=dx+G.zw*0.6, rx=sx+G.f(E.r,ENV_MAX.r); return {ax,dx,sx,rx}; }
+function drawEnv(tr,cv,vals){ const G=envGeom(cv), dpr=Math.min(2,window.devicePixelRatio||1); cv.width=Math.round(G.W*dpr); cv.height=Math.round(G.H*dpr);
+  const g=cv.getContext('2d'); g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,G.W,G.H); const E=tr.adsr||soundEnv(tr), P=envPoints(E,G), col=INST[tr.inst].color;
+  g.fillStyle=cssVar('--cell'); g.fillRect(0,0,G.W,G.H);
+  g.strokeStyle=cssVar('--barline'); g.lineWidth=1; g.globalAlpha=0.6; [0,0.25,0.5,0.75,1].forEach(v=>{ g.beginPath(); g.moveTo(0,Math.round(G.Y(v))+0.5); g.lineTo(G.W,Math.round(G.Y(v))+0.5); g.stroke(); });
+  [P.ax,P.dx,P.sx].forEach(x=>{ g.setLineDash([2,3]); g.beginPath(); g.moveTo(Math.round(x)+0.5,G.yTop); g.lineTo(Math.round(x)+0.5,G.yBot); g.stroke(); }); g.setLineDash([]); g.globalAlpha=1;
+  const path=()=>{ g.beginPath(); g.moveTo(G.x0,G.Y(0)); g.lineTo(P.ax,G.Y(1)); g.lineTo(P.dx,G.Y(E.s)); g.lineTo(P.sx,G.Y(E.s)); g.lineTo(P.rx,G.Y(0)); };
+  path(); g.lineTo(G.x0,G.Y(0)); g.fillStyle=col; g.globalAlpha=0.18; g.fill(); g.globalAlpha=1; path(); g.strokeStyle=col; g.lineWidth=2; g.stroke();
+  g.font='600 9px '+cssVar('--f-mono'); g.fillStyle=cssVar('--muted'); [['A',P.ax],['D',P.dx],['S',(P.dx+P.sx)/2],['R',P.rx]].forEach(([l,x])=>g.fillText(l,x-3,G.H-3));
+  [[P.ax,G.Y(1)],[P.dx,G.Y(E.s)],[P.rx,G.Y(0)]].forEach(([x,y],i)=>{ g.fillStyle=tr._envDrag===i?cssVar('--lcd-ink'):cssVar('--ink'); g.fillRect(x-5,y-5,10,10); g.strokeStyle=cssVar('--bg'); g.lineWidth=1.5; g.strokeRect(x-5,y-5,10,10); });
+  if(vals) vals.innerHTML=`<b>A</b> ${fmtT(E.a)} <b>D</b> ${fmtT(E.d)} <b>S</b> ${Math.round(E.s*100)}% <b>R</b> ${fmtT(E.r)}${tr.adsr?'':' <i>· '+tr.sound+'</i>'}`; }
+function wireEnv(tr,el){ const pan=el.querySelector('.envpanel'); if(!pan) return; const cv=pan.querySelector('canvas'), vals=pan.querySelector('.envvals'), btn=el.querySelector('.envbtn');
+  const draw=()=>drawEnv(tr,cv,vals);
+  btn.onclick=()=>{ const o=pan.hidden; pan.hidden=!o; btn.setAttribute('aria-expanded',o); setOpen('env'+tr.id,o); if(o) requestAnimationFrame(draw); };
+  if(!pan.hidden) requestAnimationFrame(draw);
+  pan.querySelector('.envreset').onclick=()=>{ tr.adsr=null; tr._dirty=true; save(); scheduleRender(); draw(); };
+  const pos=e=>{ const r=cv.getBoundingClientRect(); return {x:e.clientX-r.left,y:e.clientY-r.top}; };
+  cv.addEventListener('pointerdown',e=>{ const G=envGeom(cv), E=tr.adsr||soundEnv(tr), P=envPoints(E,G), q=pos(e);
+    const pts=[[P.ax,G.Y(1)],[P.dx,G.Y(E.s)],[P.rx,G.Y(0)]]; let best=-1,bd=30; pts.forEach(([x,y],i)=>{ const dd=Math.hypot(x-q.x,y-q.y); if(dd<bd){ bd=dd; best=i; } });
+    if(best<0) return; tr._envDrag=best; tr.adsr=Object.assign({},E); try{ cv.setPointerCapture(e.pointerId); }catch(_){} draw(); });
+  cv.addEventListener('pointermove',e=>{ if(tr._envDrag==null) return; const G=envGeom(cv), E=tr.adsr, P=envPoints(E,G), q=pos(e), inv=(px,mx)=>mx*Math.pow(clamp(px/G.zw,0,1),2);
+    if(tr._envDrag===0) E.a=Math.max(0.001,inv(q.x-G.x0,ENV_MAX.a));
+    else if(tr._envDrag===1){ E.d=Math.max(0.01,inv(q.x-P.ax,ENV_MAX.d)); E.s=clamp((G.yBot-q.y)/(G.yBot-G.yTop),0,1); }
+    else E.r=Math.max(0.01,inv(q.x-P.sx,ENV_MAX.r));
+    draw(); clearTimeout(tr._envT); tr._envT=setTimeout(()=>{ tr._dirty=true; save(); scheduleRender(); },150); });
+  const up=()=>{ if(tr._envDrag==null) return; tr._envDrag=null; draw(); tr._dirty=true; save(); scheduleRender(); previewNote(tr, tr.notes&&tr.notes[0]?pitchOf(tr.notes[0]):60); };
+  cv.addEventListener('pointerup',up); cv.addEventListener('pointercancel',up); }
 /* ---- part tools: length, repeat, duplicate, change instrument ---- */
 function instSwap(tr){ const fam=INST[tr.inst].kind==='pitched'?PICK_GROUPS[1][1]:INST[tr.inst].kind==='audio'?[]:PICK_GROUPS[0][1];
   if(!fam.length) return ''; return `<div class="pk-row pswap"><h4>Instrument</h4>${fam.map(k=>`<button class="chip swap${k===tr.inst?' on':''}" data-k="${k}" style="--c:${INST[k].color}" aria-pressed="${k===tr.inst}"><i></i>${INST[k].label}</button>`).join('')}</div>`; }
@@ -2000,7 +2042,7 @@ function buildCard(tr){
         <label class="grp">Length <select class="sel plen" aria-label="Part length">${[1,2,4,8,16].map(b=>`<option value="${b}" ${b===(tr.len||S.bars)?'selected':''}>${b} bar${b>1?'s':''}</option>`).join('')}</select></label>
         ${pBars(tr)<S.bars?`<button class="ibtn prep" aria-pressed="${pRep(tr)}">Repeat ${pRep(tr)?'on':'off'}</button>`:''}
         ${pBars(tr)<S.bars&&pRep(tr)?`<button class="ibtn punroll">Edit all ${S.bars} bars separately</button>`:''}
-        </div>${d.kind==='drums'||d.kind==='drum'?'':`<div class="tfoot ptools sctools"><button class="ibtn scbtn" aria-pressed="${scOn(tr)}" title="Duck this part every time a drum hits">Sidechain ${scOn(tr)?'on':'off'}</button>${scOn(tr)?`<label class="grp">Source <select class="sel scsrc" aria-label="Sidechain source">${drumSources().map(([id,lab])=>`<option value="${id}" ${id===tr.sc.src?'selected':''}>${lab}</option>`).join('')}</select></label><div class="knobs scamt"></div>`:''}</div>`}${instSwap(tr)}<div class="tfoot ptools">
+        </div>${pitched?`<div class="tfoot ptools"><button class="ibtn envbtn" aria-expanded="${isOpen('env'+tr.id,false)}">Envelope${tr.adsr?' · custom':''} ${CHEV}</button></div><div class="envpanel" ${isOpen('env'+tr.id,false)?'':'hidden'}><canvas aria-label="Amplitude envelope: drag the points"></canvas><div class="envrow"><span class="envvals"></span><button class="ibtn envreset">Reset</button></div></div>`:''}${d.kind==='drums'||d.kind==='drum'?'':`<div class="tfoot ptools sctools"><button class="ibtn scbtn" aria-pressed="${scOn(tr)}" title="Duck this part every time a drum hits">Sidechain ${scOn(tr)?'on':'off'}</button>${scOn(tr)?`<label class="grp">Source <select class="sel scsrc" aria-label="Sidechain source">${drumSources().map(([id,lab])=>`<option value="${id}" ${id===tr.sc.src?'selected':''}>${lab}</option>`).join('')}</select></label><div class="knobs scamt"></div>`:''}</div>`}${instSwap(tr)}<div class="tfoot ptools">
         <button class="ibtn pdup">Duplicate</button>
 
       </div></div>`;
@@ -2009,6 +2051,7 @@ function buildCard(tr){
     const prp=el.querySelector('.prep'); if(prp) prp.onclick=()=>{ tr.rep=!pRep(tr); tr._dirty=true; save(); renderTracks(); scheduleRender(); };
     const pun=el.querySelector('.punroll'); if(pun) pun.onclick=()=>unrollPart(tr);
     el.querySelector('.pdup').onclick=()=>duplicatePart(tr);
+    wireEnv(tr,el);
     const scb=el.querySelector('.scbtn'); if(scb) scb.onclick=()=>{ tr.sc = scOn(tr) ? Object.assign({},tr.sc,{src:''}) : {src:(tr.sc&&tr.sc.src)||'kick', amt:(tr.sc&&tr.sc.amt)??60}; if(!scOn(tr)) tr.sc.src=''; else if(!scHits(tr.sc.src).length){ const any=drumSources().find(([id])=>scHits(id).length); if(any && tr.sc.src==='kick' && !scHits('kick').length) tr.sc.src=any[0]; } tr._dirty=true; save(); renderTracks(); scheduleRender(); };
     const scs=el.querySelector('.scsrc'); if(scs) scs.onchange=e=>{ tr.sc.src=e.target.value; tr._dirty=true; save(); scheduleRender(); };
     const sca=el.querySelector('.scamt'); if(sca) knob(sca,{id:'sc'+tr.id,label:'Amount',min:0,max:100,val:tr.sc.amt??60,fmt:pct,color:d.color,oninput:v=>{ tr.sc.amt=v; clearTimeout(tr._sct); tr._sct=setTimeout(()=>{ tr._dirty=true; save(); scheduleRender(); },120); }});
@@ -2207,7 +2250,7 @@ function noteBarAction(tr,act){
   else if(act==='done'){ selectNote(tr,null); return; }
   noteChanged(tr);
 }
-function previewNote(tr,row){ if(playing) return; ensureCtx(); const out=ctx.createGain(); out.gain.value=trackGain(tr)||0.6; out.connect(chain.input); voice(ctx,out,tr.sound,ctx.currentTime+0.01,0.25,row+12*tr.oct,0.8,tr.tone/100); }
+function previewNote(tr,row){ if(playing) return; ensureCtx(); const out=ctx.createGain(); out.gain.value=trackGain(tr)||0.6; out.connect(chain.input); ENV_OVR=tr.adsr||null; try{ voice(ctx,out,tr.sound,ctx.currentTime+0.01,0.25,row+12*tr.oct,0.8,tr.tone/100); } finally{ ENV_OVR=null; } }
 function gridTap(tr,e){
   const G=tr._grid; if(!G) return; const r=tr._cv.getBoundingClientRect(); const x=e.clientX-r.left, y=e.clientY-r.top;
   const line=Math.floor(y/(G.lineH+G.gapH)), yy=y-line*(G.lineH+G.gapH), col=Math.floor((x-G.gut)/G.cw);
