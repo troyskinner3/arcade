@@ -396,6 +396,10 @@ input[type=range]::-moz-range-thumb{width:10px;height:18px;border-radius:1px;bac
 .zoom{gap:0}
 .zoom .ibtn{min-width:32px;font-size:15px;margin-left:-1px}
 .tquick{flex-wrap:wrap}
+.ovrow{display:flex;align-items:center;gap:6px;margin-top:4px}
+.ovrow:empty{display:none}
+.ovrow .ovw{flex:1;margin-top:0;min-width:0}
+.ovrow .zoom .ibtn{height:26px;min-width:34px}
 .pdel,.cta-del{color:var(--rec)}
 .prow.blank.pending .prow-side{display:flex}
 .cta-del{min-width:38px;padding:0 10px}
@@ -1784,6 +1788,12 @@ function updateMergeRow(){ ['mergeRow','replaceRow'].forEach(id=>{ const e=$(id)
 function instSwap(tr){ const fam=INST[tr.inst].kind==='pitched'?PICK_GROUPS[1][1]:INST[tr.inst].kind==='audio'?[]:PICK_GROUPS[0][1];
   if(!fam.length) return ''; return `<div class="pk-row pswap"><h4>Instrument</h4>${fam.map(k=>`<button class="chip swap${k===tr.inst?' on':''}" data-k="${k}" style="--c:${INST[k].color}" aria-pressed="${k===tr.inst}"><i></i>${INST[k].label}</button>`).join('')}</div>`; }
 function deletePart(tr){ const nm=partName(tr); disposeTrack(tr); S.tracks=S.tracks.filter(t=>t!==tr); if(editId===tr.id) editId=null; takeBar=null; keyChanged(); save(); renderTracks(); scheduleRender(); toast('Deleted '+nm+'. Tap Undo to bring it back.'); }
+/* legato: every note lasts until the next note starts; the last one runs to the end of the part's loop */
+function fillGaps(tr){ const n=pSteps(tr), ns=tr.notes.filter(x=>x.s<n); if(!ns.length) return;
+  const starts=[...new Set(ns.map(x=>x.s))].sort((a,b)=>a-b); let changed=0;
+  ns.forEach(x=>{ const nx=starts.find(v=>v>x.s), l=(nx==null?n:nx)-x.s; if(l!==x.l){ x.l=l; changed++; } });
+  if(!changed){ toast('No gaps to fill'); return; }
+  tr.notes.sort((a,b)=>a.s-b.s); tr._dirty=true; save(); redrawTrack(tr); renderNoteBar(tr); scheduleRender(); toast(`Filled the gaps in ${partName(tr)}. Tap Undo to go back.`); }
 function clearPart(tr){ if(!hasContent(tr)) return; const nm=partName(tr);
   if(tr.notes) tr.notes=[]; if(tr.hits) tr.hits=[]; tr._an=null; tr._takes=null; tr._raw=null; tr.takeN=0; tr._range=null;
   if(tr.inst==='vox'){ tr.va=null; tr.vn=[]; tr._tuned=null; tr._pitch=null; }
@@ -1945,13 +1955,13 @@ function buildCard(tr){
     const el=document.createElement('article'); el.className='track'; el.style.setProperty('--c',d.color); tr._el=el;
     const pitched=d.kind==='pitched';
     const cOpen=isOpen('c'+tr.id,false);
-    el.innerHTML=`<div class="gridbox"><div class="gridwrap"><div class="gridin"><canvas></canvas><div class="ph"></div></div></div><div class="glabels"></div></div><div class="ovw" hidden aria-hidden="true"><canvas></canvas><div class="ovw-win"></div></div>
+    el.innerHTML=`<div class="gridbox"><div class="gridwrap"><div class="gridin"><canvas></canvas><div class="ph"></div></div></div><div class="glabels"></div></div><div class="ovrow"><div class="ovw" hidden aria-hidden="true"><canvas></canvas><div class="ovw-win"></div></div>${d.kind==='audio'?'':'<span class="zoom"><button class="ibtn zo" aria-label="Zoom out">−</button><button class="ibtn zi" aria-label="Zoom in">+</button></span>'}</div>
       ${pitched?`<div class="notebar" hidden><span class="nb-info"></span><div class="nb-btns">
         <button class="ibtn" data-act="left" aria-label="Move note earlier">◀</button><button class="ibtn" data-act="right" aria-label="Move note later">▶</button>
         <button class="ibtn" data-act="up" aria-label="Move note up">▲</button><button class="ibtn" data-act="down" aria-label="Move note down">▼</button>
         <button class="ibtn" data-act="shorter">Shorter</button><button class="ibtn" data-act="longer">Longer</button>
         <button class="ibtn del" data-act="delete">Delete</button><button class="ibtn" data-act="done">Done</button></div></div>`:''}
-      <div class="tquick"><select class="sel snd" id="snd${tr.id}" aria-label="Sound">${d.sounds.map(s=>`<option ${s===tr.sound?'selected':''}>${s}</option>`).join('')}</select><button class="ibtn ctlbtn" aria-expanded="${cOpen}">More ${CHEV}</button><button class="ibtn pclear" title="Clear all notes in this part">Clear</button><button class="ibtn del pdel" title="Delete part" aria-label="Delete part"><svg viewBox="0 0 20 20" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 5.5h13M8 5.5V3.5h4v2M5.5 5.5l.8 11h7.4l.8-11M8.5 8.5v5M11.5 8.5v5"/></svg></button>${d.kind==='audio'?'':'<span class="zoom"><button class="ibtn zo" aria-label="Zoom out">−</button><button class="ibtn zi" aria-label="Zoom in">+</button></span>'}</div>
+      <div class="tquick"><select class="sel snd" id="snd${tr.id}" aria-label="Sound">${d.sounds.map(s=>`<option ${s===tr.sound?'selected':''}>${s}</option>`).join('')}</select><button class="ibtn ctlbtn" aria-expanded="${cOpen}">More ${CHEV}</button>${pitched?'<button class="ibtn pfill" title="Stretch each note to the next one so there are no gaps">Fill gaps</button>':''}<button class="ibtn pclear" title="Clear all notes in this part">Clear</button><button class="ibtn del pdel" title="Delete part" aria-label="Delete part"><svg viewBox="0 0 20 20" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 5.5h13M8 5.5V3.5h4v2M5.5 5.5l.8 11h7.4l.8-11M8.5 8.5v5M11.5 8.5v5"/></svg></button></div>
       <div class="ctl" ${cOpen?'':'hidden'}>${d.kind==='drums'?'<div class="kitpanel" id="kitPanel"></div>':''}<div class="knobs kmore"></div>
       <div class="tfoot">
         <span class="grp">Move <button class="ibtn nl" aria-label="Move one step earlier">◀</button><button class="ibtn nr" aria-label="Move one step later">▶</button></span>
@@ -1980,6 +1990,7 @@ function buildCard(tr){
     el.querySelector('.pdup').onclick=()=>duplicatePart(tr);
     el.querySelectorAll('.swap').forEach(b=>b.onclick=()=>changeInst(tr,b.dataset.k));
     el.querySelector('.pclear').onclick=()=>clearPart(tr);
+    const pf=el.querySelector('.pfill'); if(pf) pf.onclick=()=>fillGaps(tr);
     const del=el.querySelector('.pdel');
     del.onclick=()=>deletePart(tr);
     const kn=el.querySelector('.kmore');
