@@ -418,13 +418,14 @@ input[type=range]::-moz-range-thumb{width:10px;height:18px;border-radius:1px;bac
 .seek-dot{position:absolute;top:4px;left:0;width:13px;height:13px;margin-left:-6.5px;border-radius:50%;background:var(--lcd-ink);box-shadow:0 0 0 2px #0f1011}
 .dock-in{padding-top:2px}
 /* spotlight ruler above a vocal roll */
-.spotbar{position:relative;height:24px;margin-bottom:4px;background:var(--hd);box-shadow:inset 0 0 0 1px var(--line);border-radius:var(--rad);touch-action:pan-y;cursor:crosshair}
+.spotbar{position:relative;height:34px;margin-bottom:4px;background:var(--hd);box-shadow:inset 0 0 0 1px var(--line);border-radius:var(--rad);touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;cursor:crosshair}
 .spot-hint{position:absolute;inset:0;display:flex;align-items:center;padding-left:8px;font:500 10px var(--f-mono);letter-spacing:.04em;color:var(--muted);pointer-events:none}
 .spotreg{position:absolute;top:2px;bottom:2px;background:color-mix(in srgb,var(--lcd-ink) 45%,transparent);border:1px solid var(--lcd-ink);border-radius:1px;cursor:grab}
 .spotreg.sel{background:color-mix(in srgb,var(--lcd-ink) 70%,transparent)}
-.spotreg .sh{position:absolute;top:-2px;bottom:-2px;width:14px;cursor:ew-resize}
-.spotreg .sh.l{left:-7px} .spotreg .sh.r{right:-7px}
-.spdel{position:absolute;right:-1px;top:-1px;bottom:-1px;width:22px;padding:0;border:0;background:var(--rec);color:#fff;font:700 11px var(--f-body);border-radius:0 1px 1px 0}
+.spotreg .sh{position:absolute;top:-2px;bottom:-2px;width:24px;cursor:ew-resize;z-index:1}
+.spotreg .sh.l{left:-12px} .spotreg .sh.r{right:-12px}
+.spotreg .sh::after{content:"";position:absolute;top:7px;bottom:7px;left:10px;width:4px;border-radius:2px;background:var(--lcd-ink);box-shadow:0 0 0 1px #000}
+.spdel{position:absolute;right:12px;top:-1px;bottom:-1px;width:26px;z-index:2;padding:0;border:0;background:var(--rec);color:#fff;font:700 11px var(--f-body);border-radius:0 1px 1px 0}
 
 /* inspector (More): labeled sections, one row per setting, labels in one column */
 .ctl.insp{--lw:78px;display:flex;flex-direction:column;gap:0;padding-top:0;border-top:1px solid var(--line)}
@@ -1955,13 +1956,19 @@ function wireSpot(tr,el){ const bar=el.querySelector('.spotbar'); if(!bar) retur
     else { const z=tr.spot[drag.i], q=snapN(); if(drag.edge==='l') z.s=clamp(st,0,z.e-q); else if(drag.edge==='r') z.e=clamp(st,z.s+q,n); else { const len=drag.e0-drag.s0; z.s=clamp(drag.s0+st-drag.st0,0,n-len); z.e=z.s+len; } }
     tr._spotSel=drag.i; render(); drawGrid(tr); });
   const up=()=>{ if(!drag) return; const d=drag; drag=null;
-    if(!d.moved){ tr._spotSel = d.i>=0 && tr._spotSel!==d.i ? d.i : null; render(); return; }
+    if(!d.moved){
+      if(d.i>=0){ tr._spotSel = tr._spotSel!==d.i ? d.i : null; render(); return; }
+      if(tr._spotSel!=null){ tr._spotSel=null; render(); return; }
+      // a tap on empty ruler drops in a one-bar spotlight (one beat if the part is a single bar), selected so its edges can be dragged
+      const n=N(), len=n>16?16:4, s0=clamp(Math.floor(d.st0/len)*len,0,n-len); tr.spot=(tr.spot||[]).concat([{s:s0,e:s0+len}]);
+      const ss=tr.spot.sort((a,b)=>a.s-b.s), m=[]; ss.forEach(z=>{ const l=m[m.length-1]; if(l && z.s<=l.e) l.e=Math.max(l.e,z.e); else m.push({s:z.s,e:z.e}); });
+      tr.spot=m; tr._spotSel=m.findIndex(z=>z.s<=s0&&z.e>=s0+len); spotChanged(); return; }
     const ss=(tr.spot||[]).filter(z=>z.e-z.s>=1).sort((a,b)=>a.s-b.s), m=[]; ss.forEach(z=>{ const l=m[m.length-1]; if(l && z.s<=l.e) l.e=Math.max(l.e,z.e); else m.push({s:z.s,e:z.e}); });
     tr.spot=m; tr._spotSel=null; spotChanged(); };
   bar.addEventListener('pointerup',up); bar.addEventListener('pointercancel',up);
   bar.addEventListener('click',e=>{ const b=e.target.closest('.spdel'); if(!b) return; e.stopPropagation(); tr.spot.splice(+b.parentElement.dataset.i,1); tr._spotSel=null; spotChanged(); });
   render(); }
-function spotChanged(){ save(); renderTracks(); scheduleRender(); }
+function spotChanged(){ save(); renderTracks(); scheduleRender(); }   // (renderTracks keeps tr._spotSel, so a new region stays selected)
 /* ---- envelope designer: attack, decay/sustain and release points on a graph ---- */
 const ENV_MAX={a:2,d:3,r:3};
 function soundEnv(tr){ const keep=ENV_OVR; ENV_OVR=null; ENV_LAST=null; try{ const oc=new OfflineAudioContext(1,256,44100); voice(oc,oc.destination,tr.sound,0,0.5,60,1,tr.tone/100); }catch(e){} ENV_OVR=keep; return ENV_LAST||{a:0.01,d:0.3,s:0.7,r:0.1}; }
@@ -2167,7 +2174,7 @@ function buildCard(tr){
     const el=document.createElement('article'); el.className='track'; el.style.setProperty('--c',d.color); tr._el=el;
     const pitched=d.kind==='pitched';
     const cOpen=isOpen('c'+tr.id,false);
-    el.innerHTML=`${tr.inst==='vox'?'<div class="spotbar" title="Spotlight: drag here to mark a moment where only the vocal starts new sounds"><span class="spot-hint">Spotlight · drag to mark an a cappella moment</span></div>':''}<div class="gridbox"><div class="gridwrap"><div class="gridin"><canvas></canvas><div class="ph"></div><div class="nsel" hidden></div><button class="ndel" hidden aria-label="Delete note" title="Delete note">✕</button></div></div><div class="glabels"></div></div><div class="ovrow"><div class="ovw" hidden aria-hidden="true"><canvas></canvas><div class="ovw-win"></div></div>${d.kind==='audio'?'':'<span class="zoom"><button class="ibtn zo" aria-label="Zoom out">−</button><button class="ibtn zi" aria-label="Zoom in">+</button></span>'}</div>
+    el.innerHTML=`${tr.inst==='vox'?'<div class="spotbar" title="Spotlight: tap or drag here to mark a moment where only the vocal starts new sounds"><span class="spot-hint">Spotlight · tap or drag to mark an a cappella moment</span></div>':''}<div class="gridbox"><div class="gridwrap"><div class="gridin"><canvas></canvas><div class="ph"></div><div class="nsel" hidden></div><button class="ndel" hidden aria-label="Delete note" title="Delete note">✕</button></div></div><div class="glabels"></div></div><div class="ovrow"><div class="ovw" hidden aria-hidden="true"><canvas></canvas><div class="ovw-win"></div></div>${d.kind==='audio'?'':'<span class="zoom"><button class="ibtn zo" aria-label="Zoom out">−</button><button class="ibtn zi" aria-label="Zoom in">+</button></span>'}</div>
       <div class="tquick"><select class="sel snd" id="snd${tr.id}" aria-label="Sound">${d.sounds.map(s=>`<option ${s===tr.sound?'selected':''}>${s}</option>`).join('')}</select><button class="ibtn ctlbtn" aria-expanded="${cOpen}">More ${CHEV}</button>${pitched?'<button class="ibtn pfill" title="Stretch each note to the next one so there are no gaps">Fill gaps</button>':''}<button class="ibtn pclear" title="Clear all notes in this part">Clear</button><button class="ibtn del pdel" title="Delete part" aria-label="Delete part"><svg viewBox="0 0 20 20" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 5.5h13M8 5.5V3.5h4v2M5.5 5.5l.8 11h7.4l.8-11M8.5 8.5v5M11.5 8.5v5"/></svg></button></div>
       <div class="ctl insp" ${cOpen?'':'hidden'}>
         ${d.kind==='drums'?'<section class="isec"><div class="kitpanel" id="kitPanel"></div></section>':''}
