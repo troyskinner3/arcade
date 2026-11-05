@@ -65,3 +65,11 @@ only. So the app defaults to a tight snap, with a Loose ↔ Tight slider and lea
   63% / 56%, taught 79% / 77%. Snare is the weak class (28–35% untaught, ~55% taught; mostly mistaken for hi-hat).
   Built-in examples pooled from other people (tested on people left out) lift prescribed-sound accuracy to 72%
   (snare 70%) but not own-sound accuracy (52–57%); a hybrid with the hi-hat rule is the next thing to try.
+
+### Drums: built-in examples (shipped)
+
+Untaught drum sorting now keeps the rules for hi-hats and claps and decides kick vs snare against built-in examples
+(3 kick + 3 snare fingerprints from each AVP participant and mode; CC BY 4.0, credited in the code). On people left
+out of the examples: prescribed sounds 63% → 66% right drum, own sounds 56% → 57% (kicks 74% → 78% / 49% → 55%).
+Letting the examples also overrule rule-"claps" scored higher on AVP (68% / 63%) but turned the owner's deliberate
+"k" claps into kicks: AVP's click-like "p" kicks look like Noodle's "k" clap, and Noodle asks for "k" as the clap.
