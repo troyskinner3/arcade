@@ -219,7 +219,12 @@ main{display:flex;flex-direction:column;gap:16px;padding-block:16px calc(110px +
 .ibtn.chd[aria-pressed="true"]{background:var(--c);color:#fff;border-color:var(--c)}
 .ibtn[aria-pressed="true"].s{background:var(--lcd-ink);color:#1a1a1a;border-color:var(--lcd-ink)}
 .ibtn.del{color:var(--rec)}
-.gridwrap{overflow:hidden;border-radius:10px;background:var(--cell);-webkit-overflow-scrolling:touch}
+.gridbox{position:relative}
+.gridwrap{overflow-x:auto;overflow-y:hidden;border-radius:10px;background:var(--cell);-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;scrollbar-width:thin}
+.glabels{position:absolute;left:0;top:0;bottom:0;pointer-events:none;border-radius:10px 0 0 10px;overflow:hidden}
+.glabels span{position:absolute;left:0;padding-left:5px;display:flex;align-items:center;font:600 9px var(--f-mono);color:var(--ink);opacity:.75;background:var(--cell);text-transform:uppercase;white-space:nowrap;overflow:hidden}
+.zoom{display:flex;gap:4px;margin-left:auto}
+.zoom .ibtn{min-width:38px;font-size:16px}
 .gridin{position:relative;touch-action:manipulation}
 .gridin canvas{display:block}
 .ph{position:absolute;top:0;width:2px;background:var(--ink);opacity:.7;pointer-events:none;left:0;display:none}
@@ -1661,6 +1666,22 @@ function partCount(tr){ const k=INST[tr.inst].kind; return k==='audio' ? (tr._ra
 function loopTag(tr){ const b=pBars(tr); return b<S.bars ? ` · ${b} bar${b>1?'s':''}${pRep(tr)?' ×'+pLoops(tr):', once'}` : ''; }
 function partName(tr){ const same=S.tracks.filter(t=>t.inst===tr.inst); return INST[tr.inst].label+(same.length>1?' '+(same.indexOf(tr)+1):''); }
 let editId=null;
+let gridCW=16; try{ gridCW=+localStorage.getItem('noodle.zoom')||16; }catch(e){}
+function setZoom(tr,cw,anchorX){ const G=tr._grid, wrap=tr._cv&&tr._cv.parentElement.parentElement; if(!G||!wrap) return;
+  const ax=anchorX==null?wrap.clientWidth/2:anchorX, step=(wrap.scrollLeft+ax-G.gut)/G.cw;
+  gridCW=clamp(cw,G.fit,40); try{ localStorage.setItem('noodle.zoom',gridCW); }catch(e){}
+  drawGrid(tr); const G2=tr._grid; wrap.scrollLeft=Math.max(0,step*G2.cw+G2.gut-ax); tr._scrollX=wrap.scrollLeft; }
+function wireGrid(tr,el){ const wrap=el.querySelector('.gridwrap'); if(!wrap) return; const touched=()=>{ tr._touchT=Date.now(); };
+  wrap.addEventListener('scroll',()=>{ if(!tr._autoScroll) { tr._scrollX=wrap.scrollLeft; } tr._autoScroll=false; },{passive:true});
+  ['pointerdown','wheel','touchstart'].forEach(ev=>wrap.addEventListener(ev,touched,{passive:true}));
+  let pinch=null; const dist=t=>Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY);
+  wrap.addEventListener('touchstart',e=>{ if(e.touches.length===2 && tr._grid){ const r=wrap.getBoundingClientRect(); pinch={d:dist(e.touches),cw:tr._grid.cw,x:(e.touches[0].clientX+e.touches[1].clientX)/2-r.left}; tr._drag=null; } },{passive:true});
+  wrap.addEventListener('touchmove',e=>{ if(pinch && e.touches.length===2){ e.preventDefault(); const cw=pinch.cw*dist(e.touches)/pinch.d; if(!pinch.raf) pinch.raf=requestAnimationFrame(()=>{ if(pinch){ pinch.raf=0; setZoom(tr,cw,pinch.x); } }); } },{passive:false});
+  wrap.addEventListener('touchend',e=>{ if(e.touches.length<2) pinch=null; },{passive:true});
+  wrap.addEventListener('wheel',e=>{ if(e.ctrlKey && tr._grid){ e.preventDefault(); const r=wrap.getBoundingClientRect(); setZoom(tr,tr._grid.cw*Math.exp(-e.deltaY*0.01),e.clientX-r.left); } },{passive:false});
+  const zi=el.querySelector('.zi'), zo=el.querySelector('.zo');
+  if(zi) zi.onclick=()=>{ touched(); setZoom(tr,(tr._grid?tr._grid.cw:gridCW)*1.5); }; if(zo) zo.onclick=()=>{ touched(); setZoom(tr,(tr._grid?tr._grid.cw:gridCW)/1.5); };
+}
 function renderTracks(){
   const box=$('tracks'); $('rsHome').appendChild(RSE); box.innerHTML='';
   if(editId!=null && !S.tracks.some(t=>t.id===editId)) editId=null;
@@ -1702,7 +1723,7 @@ function renderTracks(){
     if(tb('.tb-ok')){ tb('.tb-ok').onclick=()=>{ takeBar=null; renderTracks(); };
       tb('.tb-del').onclick=async()=>{ const p=takeBar; takeBar=null; await discardTake(p); renderTracks(); toast('Take discarded'); };
       tb('.tb-redo').onclick=async()=>{ const p=takeBar; takeBar=null; flushSave(); const snap=hist.cur; await discardTake(p); recordInto(p.id,{snap,bar:p}); }; }
-    if(open){ const ed=row.querySelector('.prow-edit'); ed.appendChild(buildCard(tr)); requestAnimationFrame(()=>{ if(tr._cv&&tr._cv.isConnected) drawGrid(tr); }); }
+    if(open){ const ed=row.querySelector('.prow-edit'); ed.appendChild(buildCard(tr)); requestAnimationFrame(()=>{ if(tr._cv&&tr._cv.isConnected){ drawGrid(tr); const w=tr._cv.parentElement.parentElement; if(tr._scrollX){ tr._autoScroll=true; w.scrollLeft=tr._scrollX; } } }); }
     const mb=row.querySelector('.m'), sb=row.querySelector('.s');
     mb.onclick=()=>{ tr.mute=!tr.mute; mb.setAttribute('aria-pressed',tr.mute); save(); applyAllMix(); };
     sb.onclick=()=>{ tr.solo=!tr.solo; sb.setAttribute('aria-pressed',tr.solo); save(); applyAllMix(); };
@@ -1749,13 +1770,13 @@ function buildCard(tr){
     const el=document.createElement('article'); el.className='track'; el.style.setProperty('--c',d.color); tr._el=el;
     const pitched=d.kind==='pitched';
     const cOpen=isOpen('c'+tr.id,false);
-    el.innerHTML=`<div class="gridwrap"><div class="gridin"><canvas></canvas><div class="ph"></div></div></div>
+    el.innerHTML=`<div class="gridbox"><div class="gridwrap"><div class="gridin"><canvas></canvas><div class="ph"></div></div></div><div class="glabels"></div></div>
       ${pitched?`<div class="notebar" hidden><span class="nb-info"></span><div class="nb-btns">
         <button class="ibtn" data-act="left" aria-label="Move note earlier">◀</button><button class="ibtn" data-act="right" aria-label="Move note later">▶</button>
         <button class="ibtn" data-act="up" aria-label="Move note up">▲</button><button class="ibtn" data-act="down" aria-label="Move note down">▼</button>
         <button class="ibtn" data-act="shorter">Shorter</button><button class="ibtn" data-act="longer">Longer</button>
         <button class="ibtn del" data-act="delete">Delete</button><button class="ibtn" data-act="done">Done</button></div></div>`:''}
-      <div class="tquick"><select class="sel snd" id="snd${tr.id}" aria-label="Sound">${d.sounds.map(s=>`<option ${s===tr.sound?'selected':''}>${s}</option>`).join('')}</select><button class="ibtn ctlbtn" aria-expanded="${cOpen}">More ${CHEV}</button></div>
+      <div class="tquick"><select class="sel snd" id="snd${tr.id}" aria-label="Sound">${d.sounds.map(s=>`<option ${s===tr.sound?'selected':''}>${s}</option>`).join('')}</select><button class="ibtn ctlbtn" aria-expanded="${cOpen}">More ${CHEV}</button>${d.kind==='audio'?'':'<span class="zoom"><button class="ibtn zo" aria-label="Zoom out">−</button><button class="ibtn zi" aria-label="Zoom in">+</button></span>'}</div>
       <div class="ctl" ${cOpen?'':'hidden'}>${d.kind==='drums'?'<div class="kitpanel" id="kitPanel"></div>':''}<div class="knobs kmore"></div>
       <div class="tfoot">
         <span class="grp">Move <button class="ibtn nl" aria-label="Move one step earlier">◀</button><button class="ibtn nr" aria-label="Move one step later">▶</button></span>
@@ -1775,7 +1796,7 @@ function buildCard(tr){
         </div>${instSwap(tr)}<div class="tfoot ptools">
         <button class="ibtn pdup">Duplicate</button>
         <button class="ibtn del delpart" title="Delete part">Delete part</button>
-        ${tr.inst==='vox'?'':`<span class="grp tip">${pitched?'Tap a note to select it, then drag it anywhere or use the edit bar; drag its end to trim or extend it. Tap an empty spot to add a note, or drag sideways to draw a longer one. Swiping up or down just scrolls.':'Tap the grid to add or remove hits.'}${tr._an?' Small ticks on top show exactly when you made each sound.':''}</span>`}
+        ${tr.inst==='vox'?'':`<span class="grp tip">${pitched?'Tap a note to select it, then drag it anywhere or use the edit bar; drag its end to trim or extend it. Tap an empty spot to add a note. Tap a note to select it, then drag it or drag its end to make it longer. Swipe to scroll, pinch or use − + to zoom.':'Tap the grid to add or remove hits. Swipe to scroll, pinch or use − + to zoom.'}${tr._an?' Small ticks on top show exactly when you made each sound.':''}</span>`}
       </div></div>`;
     el.querySelector('.snd').onchange=e=>{ tr.sound=e.target.value; if(tr.inst==='vox'){ tr.fx=Object.assign({},VOX_PRESETS[tr.sound]); tr._dirty=true; save(); scheduleRender(); openEditor(tr); return; } tr._dirty=true; save(); scheduleRender(); };
     el.querySelector('.plen').onchange=e=>setPartLen(tr,+e.target.value);
@@ -1804,9 +1825,14 @@ function buildCard(tr){
     const st2=el.querySelector('.savetake'); if(st2) st2.onclick=()=>saveTake(tr);
     const ub=el.querySelector('.undo'); if(ub) ub.onclick=()=>undoTake(tr);
     const cv=el.querySelector('canvas');
-    if(pitched){ cv.style.touchAction='pan-y'; cv.addEventListener('pointerdown',e=>noteDown(tr,e)); cv.addEventListener('pointermove',e=>noteMove(tr,e)); cv.addEventListener('pointerup',e=>noteUp(tr,e)); cv.addEventListener('pointercancel',e=>noteUp(tr,e,true)); }
-    else if(d.kind!=='audio') cv.addEventListener('pointerdown',e=>gridTap(tr,e));
+    if(pitched){ cv.style.touchAction='pan-x pan-y'; cv.addEventListener('pointerdown',e=>noteDown(tr,e)); cv.addEventListener('pointermove',e=>noteMove(tr,e)); cv.addEventListener('pointerup',e=>noteUp(tr,e)); cv.addEventListener('pointercancel',e=>noteUp(tr,e,true)); }
+    else if(d.kind!=='audio'){ cv.style.touchAction='pan-x pan-y'; let down=null;
+      cv.addEventListener('pointerdown',e=>{ down={x:e.clientX,y:e.clientY,id:e.pointerId}; });
+      cv.addEventListener('pointermove',e=>{ if(down&&e.pointerId===down.id&&Math.hypot(e.clientX-down.x,e.clientY-down.y)>8) down=null; });
+      cv.addEventListener('pointerup',e=>{ if(down&&e.pointerId===down.id){ down=null; gridTap(tr,e); } });
+      cv.addEventListener('pointercancel',()=>{ down=null; }); }
     tr._cv=cv; tr._ph=el.querySelector('.ph');
+    wireGrid(tr,el);
     drawGrid(tr);
     if(d.kind==='drums') requestAnimationFrame(renderKitPanel);
     return el;
@@ -1854,13 +1880,13 @@ function drawGrid(tr){
   if(tr.inst==='vox'){ if(tr._cv) drawVox(tr); return; }
   const cv=tr._cv; if(!cv) return; const wrap=cv.parentElement.parentElement; const n=pSteps(tr);
   const pitched=INST[tr.inst].kind==='pitched';
-  const {rows,rh}=gridRows(tr); const gut=(!pitched&&rows.length>1)?52:0;
-  const W=Math.max(200,wrap.clientWidth||320);
-  let bpl=S.bars; while(bpl>1 && (W-gut)/(bpl*16)<11) bpl/=2;
-  const sPL=bpl*16, lines=n/sPL, cw=(W-gut)/sPL, lineH=rows.length*rh+2, gapH=lines>1?10:0, H=lines*lineH+(lines-1)*gapH;
-  tr._grid={cw,rh,rows,W,gut,sPL,lineH,gapH,lines};
-  const dpr=window.devicePixelRatio||1; cv.width=Math.round(W*dpr); cv.height=Math.round(H*dpr); cv.style.width=W+'px'; cv.style.height=H+'px';
+  const gr=gridRows(tr), rows=gr.rows, rh=pitched?clamp(Math.floor(176/Math.max(1,rows.length)),8,15):gr.rh; const gut=(!pitched&&rows.length>1)?52:0;
+  const VW=Math.max(200,wrap.clientWidth||320), fit=(VW-gut)/n, cw=Math.max(fit, Math.min(gridCW,40)), W=Math.ceil(gut+n*cw);
+  const sPL=n, lines=1, lineH=rows.length*rh+2, gapH=0, H=lineH;
+  tr._grid={cw,rh,rows,W,gut,sPL,lineH,gapH,lines,fit};
+  const dpr=Math.min(2,window.devicePixelRatio||1); cv.width=Math.round(W*dpr); cv.height=Math.round(H*dpr); cv.style.width=W+'px'; cv.style.height=H+'px';
   cv.parentElement.style.width=W+'px'; tr._ph.style.height=lineH+'px';
+  const lab=wrap.parentElement.querySelector('.glabels'); if(lab){ lab.style.width=gut?gut+'px':'0'; lab.innerHTML=gut?rows.map((r,i)=>`<span style="top:${1+i*rh}px;height:${rh}px;width:${gut}px">${slotLabel(r).slice(0,8)}</span>`).join(''):''; }
   const g=cv.getContext('2d'); g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,W,H);
   const cCell=cssVar('--cell'), cBeat=cssVar('--beat'), cBar=cssVar('--barline'), cPanel=cssVar('--panel'), col=INST[tr.inst].color, mono=cssVar('--f-mono');
   const X=s=>gut+(s%sPL)*cw, Y=s=>Math.floor(s/sPL)*(lineH+gapH);
@@ -1875,7 +1901,6 @@ function drawGrid(tr){
     g.globalAlpha=0.35; g.fillStyle=cBar; rows.forEach((r,i)=>{ for(let s=0;s<n;s++){ g.beginPath(); g.arc(X(s)+cw/2,Y(s)+1+i*rh+rh/2,1.4,0,7); g.fill(); } }); g.globalAlpha=1;
     rawTicks(tr,g,X,Y,cw,lineH,n,sPL,gut,lines,gapH);
     tr.hits.forEach(h=>{ const i=rows.indexOf(h.d); if(i<0) return; g.globalAlpha=0.35+0.65*h.v; g.fillStyle=col; rr(g,X(h.s)+1.5,Y(h.s)+1+i*rh+1.5,cw-3,rh-3,3); g.fill(); }); g.globalAlpha=1;
-    if(gut){ g.fillStyle=cssVar('--ink'); g.globalAlpha=0.6; g.font='600 9px '+mono; for(let L=0;L<lines;L++) rows.forEach((r,i)=>g.fillText(slotLabel(r).toUpperCase().slice(0,8),5,L*(lineH+gapH)+1+i*rh+rh/2+3)); g.globalAlpha=1; }
   } else {
     rawTicks(tr,g,X,Y,cw,lineH,n,sPL,gut,lines,gapH);
     const selN=tr._sel;
@@ -1887,7 +1912,7 @@ function drawGrid(tr){
       tr.notes.forEach(nt=>{ const i=rows.indexOf(pitchOf(nt)); if(i<0) return; const w=Math.min(nt.l,sPL-(nt.s%sPL))*cw-2, name=chordName(notePitches(tr,nt));
         if(!name) return; const tw=g.measureText(name).width; const x=X(nt.s)+1, y=Y(nt.s)+1+i*rh+rh/2+0.5;
         if(tw+6<=w){ g.fillStyle=cssVar('--bg'); g.globalAlpha=0.9; g.fillText(name,x+3,y); }
-        else { g.fillStyle=col; g.globalAlpha=0.9; g.fillText(name,x+Math.max(w,3)+2,y-rh*0.55); } });
+        else if(cw>=12 && !tr.notes.some(o=>o!==nt && o.s>nt.s && o.s<=nt.s+nt.l+Math.ceil((tw+4)/cw) && Math.abs(pitchOf(o)-pitchOf(nt))<=1)){ g.fillStyle=col; g.globalAlpha=0.9; g.fillText(name,x+Math.max(w,3)+2,y); } });
       g.globalAlpha=1; g.textBaseline='alphabetic'; }
     if(selN && tr.notes.includes(selN)){ const i=rows.indexOf(pitchOf(selN)); if(i>=0){ g.strokeStyle=cssVar('--ink'); g.lineWidth=2;
       let s2=selN.s, left=selN.l; while(left>0){ const room=sPL-(s2%sPL), seg=Math.min(left,room); rr(g,X(s2)+1,Y(s2)+1+i*rh+0.5,Math.max(cw*seg-2,3),rh-1,2.5); g.stroke(); s2=(s2+seg)%n; left-=seg; }
@@ -1913,7 +1938,7 @@ function cellAt(tr,e,clampIt){
      or drag its last cell to trim or extend it; the edit bar under the grid does the same with buttons
    - press and drag on an empty spot to draw a new note (it stays selected); tapping empty space deselects */
 function nextPitch(p,dir){ const K=currentKey(); if(K.none) return p+dir; let m=p+dir; for(let i=0;i<12 && !K.set.includes(((m-K.tonic)%12+12)%12);i++) m+=dir; return m; }
-function selectNote(tr,n){ tr._sel=n||null; if(tr._cv) tr._cv.style.touchAction=n?'none':'pan-y'; drawGrid(tr); renderNoteBar(tr); }
+function selectNote(tr,n){ tr._sel=n||null; if(tr._cv) tr._cv.style.touchAction=n?'none':'pan-x pan-y'; drawGrid(tr); renderNoteBar(tr); }
 function noteChanged(tr){ keyCache=null; tr.notes.sort((a,b)=>a.s-b.s); tr._dirty=true; save(); redrawTrack(tr); renderNoteBar(tr); scheduleRender(); }
 function noteDown(tr,e){
   const c=cellAt(tr,e); if(!c||!c.inRow) return; const q=S.quant==8?2:1;
@@ -1931,9 +1956,7 @@ function startNewNote(tr,c){ const q=S.quant==8?2:1, kp=snap(c.row); const nt={s
   tr._drag={note:nt,mode:'resize',s0:c.s,row0:c.row,ns:nt.s,np:kp,moved:false,created:true}; tr._sel=nt; drawGrid(tr); previewNote(tr,kp); }
 function noteMove(tr,e){
   let d=tr._drag; if(!d) return;
-  if(d.pending){ const dx=Math.abs(e.clientX-d.x0), dy=Math.abs(e.clientY-d.y0); if(dx<8&&dy<8) return;
-    if(dy>=dx){ tr._drag=null; return; }                                // a scroll
-    try{ tr._cv.setPointerCapture(e.pointerId); }catch(_){} tr._cv.style.touchAction='none'; startNewNote(tr,d.c); d=tr._drag; } const c=cellAt(tr,e,true); if(!c) return; const n=pSteps(tr), q=S.quant==8?2:1;
+  if(d.pending){ const dx=Math.abs(e.clientX-d.x0), dy=Math.abs(e.clientY-d.y0); if(dx>=8||dy>=8) tr._drag=null; return; }   // a swipe scrolls const c=cellAt(tr,e,true); if(!c) return; const n=pSteps(tr), q=S.quant==8?2:1;
   if(c.s!==d.s0 || c.row!==d.row0) d.moved=true; if(!d.moved) return;
   if(d.mode==='resize') d.note.l=clamp(Math.floor((c.s-d.note.s)/q)*q+q, q, n-d.note.s);
   else { d.note.s=clamp(d.ns+Math.round((c.s-d.s0)/q)*q, 0, n-d.note.l);
@@ -1944,7 +1967,7 @@ function noteUp(tr,e,cancel){
   const d=tr._drag; if(!d) return; tr._drag=null;
   if(d.pending){ if(!cancel){ startNewNote(tr,d.c); tr._drag=null; noteChanged(tr); if(tr._cv) tr._cv.style.touchAction='none'; } return; }
   if(d.moved||d.created) noteChanged(tr); else { drawGrid(tr); renderNoteBar(tr); }
-  if(tr._cv) tr._cv.style.touchAction=tr._sel?'none':'pan-y';
+  if(tr._cv) tr._cv.style.touchAction=tr._sel?'none':'pan-x pan-y';
 }
 function renderNoteBar(tr){
   const bar=tr._el&&tr._el.querySelector('.notebar'); if(!bar) return; const n=tr._sel;
@@ -2062,7 +2085,7 @@ function tick(){
   const showPh = (playing||recState) && now>=t0;
   const ph = showPh ? (((now-t0)/L)%1+1)%1 : 0;
   S.tracks.forEach(tr=>{ if(tr._mph){ tr._mph.style.display=showPh?'block':'none'; if(showPh) tr._mph.style.transform=`translateX(${ph*(tr._mph.parentElement.clientWidth||0)}px)`; } });
-  S.tracks.forEach(tr=>{ if(!tr._ph||!tr._grid) return; const ps=pSteps(tr), pp=pRep(tr)?((((now-t0)/(ps*stepDur()))%1)+1)%1*ps:ph*steps(); tr._ph.style.display=showPh&&pp<ps?'block':'none'; if(showPh&&pp<ps){ const G=tr._grid, pos=pp, L=Math.min(G.lines-1,Math.floor(pos/G.sPL)); tr._ph.style.transform=`translate(${G.gut+(pos-L*G.sPL)*G.cw}px,${L*(G.lineH+G.gapH)}px)`; } });
+  S.tracks.forEach(tr=>{ if(!tr._ph||!tr._grid) return; const ps=pSteps(tr), pp=pRep(tr)?((((now-t0)/(ps*stepDur()))%1)+1)%1*ps:ph*steps(); tr._ph.style.display=showPh&&pp<ps?'block':'none'; if(showPh&&pp<ps&&playing&&tr._cv&&!(Date.now()-(tr._touchT||0)<3000)){ const G=tr._grid, w=tr._cv.parentElement.parentElement, x=G.gut+pp*G.cw; if(w.scrollWidth>w.clientWidth+2 && (x<w.scrollLeft+G.gut || x>w.scrollLeft+w.clientWidth-24)){ tr._autoScroll=true; w.scrollLeft=Math.max(0,x-G.gut-8); } } if(showPh&&pp<ps){ const G=tr._grid, pos=pp, L=Math.min(G.lines-1,Math.floor(pos/G.sPL)); tr._ph.style.transform=`translate(${G.gut+(pos-L*G.sPL)*G.cw}px,${L*(G.lineH+G.gapH)}px)`; } });
   if(recState){
     const r=recState, beat=60/S.bpm, dots=$('beats').children;
     if(now<r.start){ const b=Math.floor((now-r.countStart)/beat); $('recLabel').textContent = now<r.countStart?'Get ready':(r.teach?`Say “${r.teach.say}” on each click · ${4-b}`:`Count-in ${4-b}`); [...dots].forEach((d,i)=>{ d.className = (now>=r.countStart && i===b)?'on'+(i===0?' one':''):''; }); $('recProg').style.width='0%'; }
