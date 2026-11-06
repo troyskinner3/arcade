@@ -609,6 +609,7 @@ button.card-head{margin:0;width:100%;padding:10px 14px;border-radius:0;backgroun
     <div class="knobs" id="timingKnobs"></div>
     <label class="chk" id="playAlongRow"><input type="checkbox" id="playAlong"> <span>Play the other parts while I record (wear headphones so the mic doesn’t hear them)</span></label>
     <label class="chk"><input type="checkbox" id="latAuto"> <span>Estimate the mic delay automatically</span></label>
+    <p class="small" id="dropLine" hidden></p>
     <label class="chk"><input type="checkbox" id="ec"> <span>Echo cancellation for drum and melody takes (only if you record without headphones; it can swallow beatbox hits). Vocal takes always use it.</span></label>
     <div class="recrow"><button class="btn" id="calBtn">Calibrate timing: clap along for one loop</button></div>
     <p class="small">If your hits keep landing late, calibrate. AirPods and other Bluetooth headphones add 150–300 ms of delay and switch your phone to a lower-quality mic; wired headphones give the best timing. Imported recordings line up on their first sound, so the delay setting only affects live recording.</p>
@@ -746,7 +747,7 @@ let S = defaultState();
 })();
 let saveTimer=0;
 function persist(){ try{ localStorage.setItem(STORE_KEY, JSON.stringify(S,(k,v)=>k[0]==='_'?undefined:v)); }catch(e){} }
-function save(){ clearTimeout(saveTimer); saveTimer=setTimeout(()=>{ saveTimer=0; persist(); histCommit(); },300); }
+function save(){ clearTimeout(saveTimer); saveTimer=setTimeout(()=>{ saveTimer=0; persist(); histCommit(); dropSoon(); },300); }
 /* Undo / redo: every saved change becomes a step (rapid changes such as a slider drag merge into one).
    A step remembers the song plus the recordings behind each part, so undoing a deleted part brings its take back. */
 const hist={undo:[],redo:[],cur:null,busy:false};
@@ -1312,7 +1313,9 @@ function currentKey(){
   if(S.scale==='chromatic') return keyCache={none:true};
   const w=new Array(12).fill(0); let tot=0;
   S.tracks.forEach(t=>{ if(t.inst==='vox') (t.vn||[]).forEach(n=>{ const pc=((Math.round(n.p)%12)+12)%12; w[pc]+=n.l*4; tot+=n.l*4; }); });
-  S.tracks.forEach(t=>{ if(INST[t.inst].kind==='pitched') t.notes.forEach(n=>{ const pc=((Math.round(n.p)%12)+12)%12; w[pc]+=n.l*n.v; tot+=n.l*n.v; }); });
+  // the key comes from what you recorded; notes you place by hand don't move it (else fixing one note re-snaps the others)
+  const recd=S.tracks.some(t=>INST[t.inst].kind==='pitched' && t.notes.some(n=>!n.x));
+  S.tracks.forEach(t=>{ if(INST[t.inst].kind==='pitched') t.notes.forEach(n=>{ if(recd && n.x) return; const pc=((Math.round(n.p)%12)+12)%12; w[pc]+=n.l*n.v; tot+=n.l*n.v; }); });
   const modes = S.scale==='auto' ? ['major','minor'] : [MAJOR_FAMILY.has(S.scale)?'major':'minor'];
   let best={tonic:9,mode:'minor',c:-2};
   if(tot>0){ for(const mode of modes){ const prof=mode==='major'?KK_MAJ:KK_MIN;
@@ -1691,7 +1694,7 @@ function onHide(){
   if(ctx){ stopAll(); if(origSrc){ try{origSrc.stop();}catch(e){} origSrc=null; } playing=false; updatePlayBtn(); try{ ctx.suspend(); }catch(e){} }
   dropMic();
 }
-document.addEventListener('visibilitychange',()=>{ if(document.hidden) onHide(); });
+document.addEventListener('visibilitychange',()=>{ if(document.hidden){ onHide(); dropSync(); } });
 window.addEventListener('pagehide',onHide);
 function micBlocked(why){
   micOff=true; const n=$('micNote'); n.hidden=false;
@@ -1947,7 +1950,45 @@ async function addVocalTake(x, sr, opt){
   toast(`Vocals: ${(x.length/sr-va).toFixed(1)} s ${over?'recorded over':'recorded'}. Tuning follows the song’s key (${(()=>{ const K=currentKey(); return K.none?'any note':NOTE_NAMES[K.tonic]+' '+K.scale; })()}).`);
   await renderDirty(); if(!playing){ playing=true; updatePlayBtn(); startAll(ctx.currentTime+0.08); }
 }
-async function addTake(x, sr, inst, opt){
+/* ---- Sending takes for research (only on devices opened with a drop link: ?drop=<web app URL>&k=<key>) ----
+   Each recorded take goes to the owner's own Google Drive folder ("Noodle takes") through their Apps Script web app:
+   the audio (24 kHz WAV) plus what Noodle heard, and later the notes as you leave them after editing. */
+const DROP_KEY='noodle.drop';
+let drop=null; try{ drop=JSON.parse(localStorage.getItem(DROP_KEY)||'null'); }catch(e){}
+(function(){ try{ const q=new URLSearchParams(location.search); if(q.get('drop')){
+  if(q.get('drop')==='off'){ drop=null; localStorage.removeItem(DROP_KEY); }
+  else { drop={url:q.get('drop'), k:q.get('k')||'', who:q.get('who')||''}; localStorage.setItem(DROP_KEY,JSON.stringify(drop)); }
+  history.replaceState(null,'',location.pathname); } }catch(e){} })();
+function dropLineUI(){ const el=$('dropLine'); if(!el) return; el.hidden=!drop; if(!drop) return;
+  el.innerHTML='Sharing your takes to help improve Noodle. <a href="#" id="dropOff">Stop</a>';
+  $('dropOff').onclick=e=>{ e.preventDefault(); drop=null; try{ localStorage.removeItem(DROP_KEY); }catch(_){} dropLineUI(); toast('Takes are no longer shared.'); }; }
+document.addEventListener('DOMContentLoaded',dropLineUI); setTimeout(dropLineUI,0);
+async function dropPost(body){ if(!drop) return; const data=JSON.stringify({k:drop.k, ...body});
+  for(let i=0;i<3;i++){ try{ await fetch(drop.url,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:data,keepalive:data.length<60000}); return true; }catch(e){ await new Promise(r=>setTimeout(r,2000*(i+1))); } }
+  return false; }
+function dropWavB64(x,sr){ const R=24000, n=Math.floor((x.length-1)*R/sr), y=new Int16Array(n);
+  const z=sr>R?biquad(biquad(x,'lp',10000,0.707,sr),'lp',10000,0.707,sr):x;
+  for(let i=0;i<n;i++){ const p=i*sr/R, i0=Math.floor(p), fr=p-i0, v=z[i0]*(1-fr)+z[i0+1]*fr; y[i]=Math.max(-32768,Math.min(32767,Math.round(v*32767))); }
+  const b=new DataView(new ArrayBuffer(44)), w=(o,t)=>{ for(let i=0;i<t.length;i++) b.setUint8(o+i,t.charCodeAt(i)); };
+  w(0,'RIFF'); b.setUint32(4,36+n*2,true); w(8,'WAVE'); w(12,'fmt '); b.setUint32(16,16,true); b.setUint16(20,1,true); b.setUint16(22,1,true); b.setUint32(24,R,true); b.setUint32(28,R*2,true); b.setUint16(32,2,true); b.setUint16(34,16,true); w(36,'data'); b.setUint32(40,n*2,true);
+  return new Promise(res=>{ const fr=new FileReader(); fr.onload=()=>res(String(fr.result).split(',')[1]); fr.readAsDataURL(new Blob([b.buffer,y.buffer])); }); }
+const slug=t=>String(t||'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,40);
+function dropState(tr){ return {notes:tr.notes?tr.notes.map(n=>({s:n.s,l:n.l,p:pitchOf(n),raw:+(+n.p).toFixed(3),v:n.v,x:!!n.x})):undefined, hits:tr.hits?tr.hits.map(h=>({s:h.s,d:h.d,v:h.v})):undefined, va:tr.va, sound:tr.sound}; }
+function dropMeta(tr){ return {sid:tr.sid, song:S.title||'', inst:tr.inst, bpm:S.bpm, bars:S.bars, quant:S.quant, key:S.key, scale:S.scale, snapStr:S.snapStr??100, sens:tr.sens??S.sens, latMs:S.latMs, who:drop&&drop.who||'',
+  recordedAt:tr.sidAt, updatedAt:new Date().toISOString(), heard:tr.sidHeard, now:dropState(tr), ua:navigator.userAgent.slice(0,120)}; }
+async function dropTake(x, sr, inst){ if(!drop) return;
+  const tr=S.tracks.find(t=>(t._raw&&t._raw.x===x)||(t._takes||[]).some(k=>k.raw&&k.raw.x===x)); if(!tr) return;
+  const d=new Date(), pad=v=>String(v).padStart(2,'0');
+  tr.sid=`${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}-${slug(S.title)||'untitled'}-${inst}`;
+  tr.sidAt=d.toISOString(); tr.sidHeard=dropState(tr); tr._dropSent=null; persist();
+  const wav=await dropWavB64(x,sr), meta=dropMeta(tr); tr._dropSent=JSON.stringify(meta.now);
+  const ok=await dropPost({sid:tr.sid, wav, meta}); if(!ok) toast('Couldn’t send that take. It’ll still work here.'); }
+let dropTimer=0;
+function dropSoon(){ if(!drop) return; clearTimeout(dropTimer); dropTimer=setTimeout(dropSync,8000); }
+function dropSync(){ if(!drop) return; clearTimeout(dropTimer);
+  S.tracks.forEach(tr=>{ if(!tr.sid) return; const now=JSON.stringify(dropState(tr)); if(now===tr._dropSent) return; tr._dropSent=now; dropPost({sid:tr.sid, meta:dropMeta(tr)}); }); }
+async function addTake(x, sr, inst, opt){ const r=await addTake0(x, sr, inst, opt); try{ dropTake(x, sr, inst); }catch(e){} return r; }
+async function addTake0(x, sr, inst, opt){
   opt.first = !anyContent();   // is this the first real recording? (the example parts make way for it)
   if(inst==='vox') return addVocalTake(x, sr, opt);
   const busy=showBusy('Listening to your take…');
