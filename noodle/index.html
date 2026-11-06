@@ -2176,7 +2176,7 @@ function wireEnv(tr,el){ const pan=el.querySelector('.envpanel'); if(!pan) retur
 /* ---- part tools: length, repeat, duplicate, change instrument ---- */
 function instSwap(tr){ const fam=INST[tr.inst].kind==='pitched'?PICK_GROUPS[1][1]:INST[tr.inst].kind==='audio'?[]:PICK_GROUPS[0][1];
   if(!fam.length) return ''; return `<section class="isec"><h4>Instrument</h4><div class="pk-row pswap">${fam.map(k=>`<button class="chip swap${k===tr.inst?' on':''}" data-k="${k}" style="--c:${INST[k].color}" aria-pressed="${k===tr.inst}"><i></i>${INST[k].label}</button>`).join('')}</div></section>`; }
-function deletePart(tr){ const nm=partName(tr); disposeTrack(tr); S.tracks=S.tracks.filter(t=>t!==tr); if(editId===tr.id) editId=null; takeBar=null; keyChanged(); save(); renderTracks(); scheduleRender(); toast('Deleted '+nm+'. Tap Undo to bring it back.'); }
+function deletePart(tr){ const nm=partName(tr); disposeTrack(tr); S.tracks=S.tracks.filter(t=>t!==tr); if(editId===tr.id) editId=null; takeBar=null; keyChanged(); save(); applyAllMix(); renderTracks(); scheduleRender(); toast('Deleted '+nm+'. Tap Undo to bring it back.'); }
 /* legato: every note lasts until the next note starts; the last one runs to the end of the part's loop */
 function fillGaps(tr){ const n=pSteps(tr), ns=tr.notes.filter(x=>x.s<n); if(!ns.length) return;
   const starts=[...new Set(ns.map(x=>x.s))].sort((a,b)=>a-b); let changed=0;
