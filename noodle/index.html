@@ -419,6 +419,11 @@ input[type=range]::-moz-range-thumb{width:10px;height:18px;border-radius:1px;bac
 .hptip svg{flex:none;color:var(--lcd-ink);margin-top:1px}
 .hptip p{margin:0;font-size:12.5px;line-height:1.4;color:var(--muted)}
 .hptip b{color:var(--ink);font-weight:600}
+.guided{margin:8px 0 4px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--panel)}
+.guided .g-top{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.guided .g-top b{font-size:14px}.guided .g-top .g-n{color:var(--muted);font-size:13px;margin-right:auto}
+.guided select{flex:1;min-width:0;max-width:100%;padding:6px;border-radius:8px;border:1px solid var(--line);background:var(--pad);color:var(--ink);font:500 14px var(--f-body)}
+.guided .g-how{margin:8px 0 0;font-size:14px;color:var(--ink)}.guided .g-how small{display:block;color:var(--muted);margin-top:2px}
+.guided .g-row{display:flex;gap:8px;margin-top:8px;align-items:center}.guided .g-go{background:var(--accent,#f1c75b);border-color:transparent;color:#15171c}
 .namerow{display:flex;align-items:center;gap:10px}.namerow .songname{flex:1;min-width:0}
 .newsong{flex:none;padding:5px 11px;border:1px solid var(--line,#3a3f48);border-radius:999px;background:transparent;color:var(--muted,#9aa1ad);font:600 13px var(--f-body);cursor:pointer}
 .newsong:active{opacity:.6}
@@ -555,6 +560,7 @@ button.card-head{margin:0;width:100%;padding:10px 14px;border-radius:0;backgroun
   <input class="songname" id="songName" type="text" maxlength="60" placeholder="Untitled song" aria-label="Song name" autocomplete="off" spellcheck="false">
     <button class="newsong" id="newSong" title="Start a new song">New song</button>
   </div>
+  <div class="guided" id="guided" hidden></div>
 
   <section class="card onb" id="onb" hidden aria-labelledby="onbh">
     <h2 id="onbh">How it works</h2>
@@ -763,7 +769,7 @@ async function restoreSnap(sn){
   const keep={ui:S.ui, inst:S.inst}; const o=JSON.parse(sn.json); S=Object.assign(defaultState(),o,keep); S.master=Object.assign(defaultState().master,o.master||{});
   S.tracks.forEach(t=>{ const r=sn.rt.get(t.id); if(r) Object.assign(t,r); if(view.get(t.id)!=null) t._scrollX=view.get(t.id); t._dirty=true; });
   keyCache=null; scaleCache=null; persist(); hist.busy=false;
-  syncTransport(); syncAllInputs(); buildPads(); renderTracks(); updateKeyInfo();
+  syncTransport(); syncAllInputs(); buildPads(); renderTracks(); updateKeyInfo(); try{ guidedUI(); const sn=$('songName'); if(sn) sn.value=S.title||''; }catch(e){}
   if(ctx){ await renderDirty(); if(wasPlaying){ startAll(ctx.currentTime+0.05, ph*loopLen()); } }
 }
 /* New song: an empty song with default tempo, key and mix. Your setup stays (taught drum sounds, mic timing,
@@ -1718,7 +1724,7 @@ async function startRecord(calib=false, teach=null){
   // vocal takes pre-roll: the song's last bar plays under the count-in, so you hear the groove coming in, echo cancellation adapts
   // before you sing, and the count-in gives a clean stretch to measure this take's real delay
   const preroll = along && !calib && !teach && S.inst==='vox', SL=loopLen(), poff=((SL-bar)%SL+SL)%SL;
-  if(along) S.tracks.forEach(tr=>{ if(tr._buf){ ensureNodes(tr); tr._src=preroll?startSrc(tr._buf,tr._g,when,poff):startSrc(tr._buf,tr._g,when+bar,0); } });
+  if(along) S.tracks.forEach(tr=>{ if(tr._buf && !tr.guide){ ensureNodes(tr); tr._src=preroll?startSrc(tr._buf,tr._g,when,poff):startSrc(tr._buf,tr._g,when+bar,0); } });
   if(!metroGain){ metroGain=ctx.createGain(); metroGain.connect(ctx.destination); }
   metroGain.gain.value=0.75; metroSrc=startSrc(metroBuf,metroGain,when,0); gateOpen(when);
   recState={calib, teach, inst:S.inst, countStart:when, start:when+bar, end:when+bar+L, preroll, poff, along, lat:calib?0:(!teach&&S.inst==='vox'&&S.vocLat!=null?S.vocLat:latency()), chunks:[]};
@@ -1959,7 +1965,7 @@ let drop=null; try{ drop=JSON.parse(localStorage.getItem(DROP_KEY)||'null'); }ca
   if(q.get('drop')==='off'){ drop=null; localStorage.removeItem(DROP_KEY); }
   else { drop={url:q.get('drop'), k:q.get('k')||'', who:q.get('who')||''}; localStorage.setItem(DROP_KEY,JSON.stringify(drop)); }
   history.replaceState(null,'',location.pathname); } }catch(e){} })();
-function dropLineUI(){ const el=$('dropLine'); if(!el) return; el.hidden=!drop; if(!drop) return;
+function dropLineUI(){ const el=$('dropLine'); if(!el) return; try{ guidedUI(); }catch(e){} el.hidden=!drop; if(!drop) return;
   el.innerHTML='Sharing your takes to help improve Noodle. <a href="#" id="dropOff">Stop</a>';
   $('dropOff').onclick=e=>{ e.preventDefault(); drop=null; try{ localStorage.removeItem(DROP_KEY); }catch(_){} dropLineUI(); toast('Takes are no longer shared.'); }; }
 document.addEventListener('DOMContentLoaded',dropLineUI); setTimeout(dropLineUI,0);
@@ -1975,18 +1981,67 @@ function dropWavB64(x,sr){ const R=24000, n=Math.floor((x.length-1)*R/sr), y=new
 const slug=t=>String(t||'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,40);
 function dropState(tr){ return {notes:tr.notes?tr.notes.map(n=>({s:n.s,l:n.l,p:pitchOf(n),raw:+(+n.p).toFixed(3),v:n.v,x:!!n.x})):undefined, hits:tr.hits?tr.hits.map(h=>({s:h.s,d:h.d,v:h.v})):undefined, va:tr.va, sound:tr.sound}; }
 function dropMeta(tr){ return {sid:tr.sid, song:S.title||'', inst:tr.inst, bpm:S.bpm, bars:S.bars, quant:S.quant, key:S.key, scale:S.scale, snapStr:S.snapStr??100, sens:tr.sens??S.sens, latMs:S.latMs, who:drop&&drop.who||'',
-  recordedAt:tr.sidAt, updatedAt:new Date().toISOString(), heard:tr.sidHeard, now:dropState(tr), ua:navigator.userAgent.slice(0,120)}; }
+  recordedAt:tr.sidAt, updatedAt:new Date().toISOString(), heard:tr.sidHeard, now:dropState(tr), prompt:S.prompt||null, guide:(()=>{ const g=S.tracks.find(t=>t.guide); return g?dropState(g):null; })(), playAlong:!!S.playAlong, ua:navigator.userAgent.slice(0,120)}; }
 async function dropTake(x, sr, inst){ if(!drop) return;
   const tr=S.tracks.find(t=>(t._raw&&t._raw.x===x)||(t._takes||[]).some(k=>k.raw&&k.raw.x===x)); if(!tr) return;
   const d=new Date(), pad=v=>String(v).padStart(2,'0');
   tr.sid=`${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}-${slug(S.title)||'untitled'}-${inst}`;
   tr.sidAt=d.toISOString(); tr.sidHeard=dropState(tr); tr._dropSent=null; persist();
+  if(S.prompt && !tr.guide){ guidedDone.add(S.prompt); try{ localStorage.setItem('noodle.guided',JSON.stringify([...guidedDone])); }catch(e){} guidedUI(); }
   const wav=await dropWavB64(x,sr), meta=dropMeta(tr); tr._dropSent=JSON.stringify(meta.now);
   const ok=await dropPost({sid:tr.sid, wav, meta}); if(!ok) toast('Couldn’t send that take. It’ll still work here.'); }
 let dropTimer=0;
 function dropSoon(){ if(!drop) return; clearTimeout(dropTimer); dropTimer=setTimeout(dropSync,8000); }
 function dropSync(){ if(!drop) return; clearTimeout(dropTimer);
   S.tracks.forEach(tr=>{ if(!tr.sid) return; const now=JSON.stringify(dropState(tr)); if(now===tr._dropSent) return; tr._dropSent=now; dropPost({sid:tr.sid, meta:dropMeta(tr)}); }); }
+/* ---- Guided takes (only while sharing is on): a 4-bar guide to listen to, then you record the same thing ---- */
+const G_MEL={   // [midi, steps] (16 steps a bar, 4 bars)
+  scale:   [[60,4],[62,4],[64,4],[65,4],[67,4],[69,4],[71,4],[72,4],[71,4],[69,4],[67,4],[65,4],[64,4],[62,4],[60,8]],
+  twinkle: [[62,4],[62,4],[69,4],[69,4],[71,4],[71,4],[69,8],[67,4],[67,4],[66,4],[66,4],[64,4],[64,4],[62,8]],
+  mary:    [[64,4],[62,4],[60,4],[62,4],[64,4],[64,4],[64,8],[62,4],[62,4],[62,8],[64,4],[67,4],[67,8]],
+  ode:     [[69,4],[69,4],[70,4],[72,4],[72,4],[70,4],[69,4],[67,4],[65,4],[65,4],[67,4],[69,4],[69,6],[67,2],[67,8]],
+  jingle:  [[59,4],[59,4],[59,8],[59,4],[59,4],[59,8],[59,4],[62,4],[55,6],[57,2],[59,16]],
+  frere:   [[65,4],[67,4],[69,4],[65,4],[65,4],[67,4],[69,4],[65,4],[69,4],[70,4],[72,8],[69,4],[70,4],[72,8]],
+  birthday:[[55,3],[55,1],[57,4],[55,4],[60,4],[59,8],[null,8],[55,3],[55,1],[57,4],[55,4],[62,4],[60,8],[null,8]],
+  long:    [[62,64]],
+};
+const G_DRUM={
+  beat: (()=>{ const h=[]; for(let b=0;b<4;b++){ const o=b*16; h.push([o,'kick'],[o+8,'kick'],[o+4,'snare'],[o+12,'snare']); for(let k=0;k<16;k+=2) h.push([o+k,'hat']); } return h; })(),
+  each: [[0,'kick'],[4,'kick'],[8,'kick'],[12,'kick'],[16,'snare'],[20,'snare'],[24,'snare'],[28,'snare'],[32,'hat'],[36,'hat'],[40,'hat'],[44,'hat'],[48,'kick'],[52,'snare'],[56,'hat'],[60,'hat']],
+};
+const GUIDED=[
+  ['scale-hum','scale','Hum it: “mm”'], ['scale-la','scale','Sing it on “la”'],
+  ['twinkle-hum','twinkle','Hum it: “mm”'], ['twinkle-words','twinkle','Sing the words (Twinkle twinkle little star…)'], ['twinkle-whistle','twinkle','Whistle it'],
+  ['twinkle-da','twinkle','Sing “da” on every note'], ['twinkle-soft','twinkle','Sing it quietly and breathily'], ['twinkle-scoops','twinkle','Slide up into each note'],
+  ['twinkle-fast','twinkle','Hum it, faster','',130],
+  ['mary-words','mary','Sing the words (Mary had a little lamb)'], ['mary-hum','mary','Hum it smoothly, no breaks between notes'],
+  ['jingle-words','jingle','Sing the words (Jingle bells…)'], ['jingle-da','jingle','Sing “da” on every note'],
+  ['ode-hum','ode','Hum it smoothly (Ode to Joy)'], ['ode-whistle','ode','Whistle it'],
+  ['frere-la','frere','Sing it on “la” (Frère Jacques)'], ['birthday-words','birthday','Sing the words (Happy birthday to you…)'],
+  ['long-vowels','long','One long note: slowly “ooo → aaa → eee → ooo”'], ['long-swell','long','One long note: quiet → loud → quiet'],
+  ['long-bend','long','One long note with vibrato, then bend up and back down'],
+  ['beat','beat','Beatbox it: kick, snare, hats','kit'], ['drums-each','each','Beatbox each sound as shown: kicks, snares, then hats','kit'],
+];
+let guidedDone=new Set(); try{ guidedDone=new Set(JSON.parse(localStorage.getItem('noodle.guided')||'[]')); }catch(e){}
+function guidedUI(){ const el=$('guided'); if(!el) return; el.hidden=!drop; if(!drop) return;
+  const cur=GUIDED.find(g=>g[0]===S.prompt), next=GUIDED.find(g=>!guidedDone.has(g[0]) && g[0]!==S.prompt)||GUIDED.find(g=>!guidedDone.has(g[0]));
+  el.innerHTML=`<div class="g-top"><b>Guided takes</b><span class="g-n">${guidedDone.size} of ${GUIDED.length} done</span></div>
+    <div class="g-row"><select id="gPick" aria-label="Pick a guided take">${GUIDED.map(g=>`<option value="${g[0]}" ${(cur?cur[0]:next&&next[0])===g[0]?'selected':''}>${guidedDone.has(g[0])?'✓ ':''}${g[0]}</option>`).join('')}</select>
+    <button class="newsong" id="gSet">${cur?'Restart':'Set up'}</button></div>
+    ${cur?`<p class="g-how">${cur[2]}<small>Play to hear the Guide, then record into Your take.</small></p>${next&&next[0]!==cur[0]?`<div class="g-row"><button class="newsong${guidedDone.has(cur[0])?' g-go':''}" id="gNext">Next: ${next[0]}</button></div>`:''}`:''}`;
+  $('gSet').onclick=()=>guidedSetup($('gPick').value); const nb=$('gNext'); if(nb) nb.onclick=()=>guidedSetup(next[0]); }
+async function guidedSetup(id){ const g=GUIDED.find(x=>x[0]===id); if(!g) return; const [,mel,how,inst0,bpm]=g, kit=inst0==='kit';
+  flushSave(); if(playing){ stopAll(); playing=false; updatePlayBtn(); }
+  const keepKeys=['kit','calibrated','latAuto','latMs','ec','sens','snapStr','detailBias','vocLat','mergeDrums','replaceTonal','mig2','mig3','playAlong'];
+  const o=defaultState(); keepKeys.forEach(k=>{ if(k in S) o[k]=S[k]; });
+  o.title=id; o.prompt=id; o.bpm=bpm||90; o.bars=4; o.loops=2; let nid=S.nextId;
+  let guide, take;
+  if(kit){ guide=mkTrack('kit',{id:nid++, name:'Guide', hits:G_DRUM[mel].map(([s,d])=>({s,d,v:d==='hat'?0.6:0.9})), vol:70}); take=mkTrack('kit',{id:nid++, name:'Your take'}); }
+  else { let t=0; const notes=[]; G_MEL[mel].forEach(([p,l])=>{ if(p!=null) notes.push({s:t,l,p,v:0.8,x:true}); t+=l; });
+    guide=mkTrack('lead',{id:nid++, name:'Guide', notes, sound:'Square', vol:60, send:10}); take=mkTrack('lead',{id:nid++, name:'Your take'}); }
+  guide.guide=true; o.tracks=[guide,take]; o.nextId=nid; o.activeId=take.id;
+  takeBar=null; await restoreSnap({json:JSON.stringify(o), rt:new Map()}); S.activeId=take.id; S.inst=take.inst; updateDock(); save(); flushSave();
+  guidedUI(); window.scrollTo({top:0}); toast(how); }
 async function addTake(x, sr, inst, opt){ const r=await addTake0(x, sr, inst, opt); try{ dropTake(x, sr, inst); }catch(e){} return r; }
 async function addTake0(x, sr, inst, opt){
   opt.first = !anyContent();   // is this the first real recording? (the example parts make way for it)
