@@ -751,9 +751,10 @@ function flushSave(){ if(saveTimer){ clearTimeout(saveTimer); saveTimer=0; persi
 function updateHistBtns(){ const u=$('undoBtn'), r=$('redoBtn'); if(u) u.disabled=!hist.undo.length; if(r) r.disabled=!hist.redo.length; }
 async function restoreSnap(sn){
   hist.busy=true; const wasPlaying=playing, ph=(playing&&ctx)?(((ctx.currentTime-t0)/loopLen())%1+1)%1:0;
+  const view=new Map(S.tracks.map(t=>[t.id,t._scrollX]));   // undo changes the song, not where you're looking
   S.tracks.forEach(disposeTrack);
   const keep={ui:S.ui, inst:S.inst}; const o=JSON.parse(sn.json); S=Object.assign(defaultState(),o,keep); S.master=Object.assign(defaultState().master,o.master||{});
-  S.tracks.forEach(t=>{ const r=sn.rt.get(t.id); if(r) Object.assign(t,r); t._dirty=true; });
+  S.tracks.forEach(t=>{ const r=sn.rt.get(t.id); if(r) Object.assign(t,r); if(view.get(t.id)!=null) t._scrollX=view.get(t.id); t._dirty=true; });
   keyCache=null; scaleCache=null; persist(); hist.busy=false;
   syncTransport(); syncAllInputs(); buildPads(); renderTracks(); updateKeyInfo();
   if(ctx){ await renderDirty(); if(wasPlaying){ startAll(ctx.currentTime+0.05, ph*loopLen()); } }
@@ -2786,7 +2787,7 @@ async function recordVideo(mix, onProgress){
   const mime=['video/mp4;codecs=avc1.42E01E,mp4a.40.2','video/mp4','video/webm;codecs=vp9,opus','video/webm'].find(m=>window.MediaRecorder && MediaRecorder.isTypeSupported(m));
   if(!mime) throw new Error('this browser can’t record video');
   const W=720,H=1280, cv=document.createElement('canvas'); cv.width=W; cv.height=H; const g=cv.getContext('2d');
-  const dest=ctx.createMediaStreamDestination(), src=ctx.createBufferSource(), mon=ctx.createGain(); src.buffer=mix; src.connect(dest); mon.gain.value=0.6; src.connect(mon); mon.connect(ctx.destination);
+  const dest=ctx.createMediaStreamDestination(), src=ctx.createBufferSource(), mon=ctx.createGain(); src.buffer=mix; src.connect(dest); mon.gain.value=0; src.connect(mon); mon.connect(ctx.destination);   // silent: keeps the graph running, nothing plays out loud
   const stream=new MediaStream([...cv.captureStream(30).getVideoTracks(), ...dest.stream.getAudioTracks()]);
   const rec=new MediaRecorder(stream,{mimeType:mime, videoBitsPerSecond:3000000}); const chunks=[]; rec.ondataavailable=e=>{ if(e.data&&e.data.size) chunks.push(e.data); };
   const stopped=new Promise(r=>rec.onstop=r);
@@ -2796,7 +2797,7 @@ async function recordVideo(mix, onProgress){
     const pulse=Math.max(0,1-((tt%beat)/beat)*3); g.fillStyle=`rgba(241,199,91,${0.08+0.12*pulse})`; g.beginPath(); g.arc(W/2,H*0.2,150+40*pulse,0,7); g.fill();
     g.font='700 56px Unbounded, Arial Black, sans-serif'; g.textAlign='left'; const w1=g.measureText('N').width, w2=g.measureText('oo').width, w3=g.measureText('dle').width, tx=(W-w1-w2-w3)/2; g.fillStyle='#eceef2'; g.fillText('N',tx,H*0.2+20); g.fillText('dle',tx+w1+w2,H*0.2+20); g.fillStyle='#f1c75b'; g.fillText('oo',tx+w1,H*0.2+20); g.textAlign='center';
     g.fillStyle='#9aa1ad'; g.font='500 30px Figtree, sans-serif'; g.fillText(title,W/2,H*0.2+80);
-    const top=H*0.36, laneH=Math.min(130,(H*0.52)/Math.max(1,parts.length)), ph=((tt%L)+L)%L/L, n=steps(), x0=60, lw=W-120;
+    const top=H*0.36, laneH=Math.min(130,(H*0.52)/Math.max(1,parts.length)), songEnd=S.loops*L, ph=tt>=songEnd?1:((tt%L)+L)%L/L, n=steps(), x0=60, lw=W-120;
     parts.forEach((tr,i)=>{ const y=top+i*laneH, col=INST[tr.inst].color; g.fillStyle='#1b1e24'; g.fillRect(x0,y,lw,laneH-18);
       g.fillStyle=col; g.textAlign='left'; g.font='700 24px Figtree, sans-serif'; g.fillText(partName(tr),x0,y-6+0);
       const lit=x=>{ const d=ph*n-x; return d>=0&&d<1.2?1:0.45; };
