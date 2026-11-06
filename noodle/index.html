@@ -1749,7 +1749,7 @@ function showReview(){
   $('rsReady').hidden=true; $('rsReview').hidden=false; $('rsMsg').textContent=lastMsg||'';
   const keep=$('rsKeep'), retry=$('rsRetry'), disc=$('rsDiscard');
   if(rs.mode==='take'){
-    keep.textContent=changed?'Keep':'Close'; retry.hidden=false; disc.hidden=!changed; $('rsPlaying').hidden=!changed;
+    keep.textContent=changed?(drop&&S.prompt&&guidedNext()?'Keep · next take':'Keep'):'Close'; retry.hidden=false; disc.hidden=!changed; $('rsPlaying').hidden=!changed;
     const tr=changed ? (()=>{ const before=new Map(JSON.parse(rs.pre.json).tracks.map(t=>[t.id,JSON.stringify(t)])); return S.tracks.find(t=>before.get(t.id)!==JSON.stringify(t,(k,v)=>k[0]==='_'?undefined:v)); })() : null;
     $('rsPrev').parentElement.hidden=!tr; if(tr) requestAnimationFrame(()=>drawMini(tr,$('rsPrev')));
   } else { keep.textContent='Done'; retry.hidden=rs.mode!=='calib'; disc.hidden=true; $('rsPlaying').hidden=true; $('rsPrev').parentElement.hidden=true; }
@@ -2022,6 +2022,7 @@ const GUIDED=[
   ['long-bend','long','One long note with vibrato, then bend up and back down'],
   ['beat','beat','Beatbox it: kick, snare, hats','kit'], ['drums-each','each','Beatbox each sound as shown: kicks, snares, then hats','kit'],
 ];
+const guidedNext=()=>GUIDED.find(g=>!guidedDone.has(g[0]) && g[0]!==S.prompt);
 let guidedDone=new Set(); try{ guidedDone=new Set(JSON.parse(localStorage.getItem('noodle.guided')||'[]')); }catch(e){}
 function guidedUI(){ const el=$('guided'); if(!el) return; el.hidden=!drop; if(!drop) return;
   const cur=GUIDED.find(g=>g[0]===S.prompt), next=GUIDED.find(g=>!guidedDone.has(g[0]) && g[0]!==S.prompt)||GUIDED.find(g=>!guidedDone.has(g[0]));
@@ -2041,7 +2042,7 @@ async function guidedSetup(id){ const g=GUIDED.find(x=>x[0]===id); if(!g) return
     guide=mkTrack('lead',{id:nid++, name:'Guide', notes, sound:'Square', vol:60, send:10}); take=mkTrack('lead',{id:nid++, name:'Your take'}); }
   guide.guide=true; o.tracks=[guide,take]; o.nextId=nid; o.activeId=take.id;
   takeBar=null; await restoreSnap({json:JSON.stringify(o), rt:new Map()}); S.activeId=take.id; S.inst=take.inst; updateDock(); save(); flushSave();
-  guidedUI(); window.scrollTo({top:0}); toast(how); }
+  guidedUI(); window.scrollTo({top:0}); toast(`${id}: ${how}`); }
 async function addTake(x, sr, inst, opt){ const r=await addTake0(x, sr, inst, opt); try{ dropTake(x, sr, inst); }catch(e){} return r; }
 async function addTake0(x, sr, inst, opt){
   opt.first = !anyContent();   // is this the first real recording? (the example parts make way for it)
@@ -2714,7 +2715,8 @@ function init(){
   $('undoBtn').onclick=()=>{ takeBar=null; undo(); }; $('redoBtn').onclick=()=>{ takeBar=null; redo(); };
   $('dockRec').onclick=()=>{ if(recState){ if(rs.mode==='take') cancelRecord(); return; } if(!$('recSheet').hidden) return; const t=activePart(); if(t) recordInto(t.id); else openPicker('new'); };
   $('rsClose').onclick=closeRec;
-  $('rsKeep').onclick=()=>closeRec();
+  $('rsKeep').onclick=()=>{ const g=drop&&S.prompt&&$('rsKeep').textContent!=='Close', nx=g&&guidedNext(); closeRec();
+    if(nx) guidedSetup(nx[0]); else if(g){ guidedUI(); window.scrollTo({top:0,behavior:'smooth'}); toast(guidedDone.size>=GUIDED.length?'All guided takes done. Thank you!':'Saved.'); } };
   $('rsDiscard').onclick=async()=>{ await discardTake(); closeRec(); toast('Take discarded'); };
   $('rsRetry').onclick=async()=>{ if(rs.mode==='calib'){ showRetryReady(); startRecord(true); return; } await discardTake(); showRetryReady(); if($('recBtn').hidden) $('fileIn').click(); else startRecord(false); };
   window.showRetryReady=()=>{ $('rsReview').hidden=true; $('rsReady').hidden=false; };
