@@ -1376,10 +1376,31 @@ function intendedPitches(r, dur, key, opts={}){
   if(!r.length) return [];
   r=ipFixOctaves(r); const md=[...dur].sort((a,b)=>a-b)[Math.floor(dur.length/2)]||1, w=dur.map(d=>Math.min(2,Math.max(0.5,d/md)));
   const inKey=q=>key.set.includes(((q-key.tonic)%12+12)%12), ook=opts.ook??2;
-  if(!opts.squeeze) return ipDecodeKey(r,w,inKey,1,1,ook,false).q;
+  if(!opts.squeeze){ const b=ipDecodeKey(r,w,inKey,1,1,ook,false); return opts.withScore?b:b.q; }
   let best={sc:-Infinity,q:null};
   for(let u=0.55;u<1.16;u+=0.05) for(let d=0.7;d<1.16;d+=0.05){ const b=ipDecodeKey(r,w,inKey,u,d,ook,true), sc=b.sc-(((u-1)**2)+((d-1)**2))/(2*0.15*0.15); if(sc>best.sc) best={sc,q:b.q}; }
-  return best.q; }
+  return opts.withScore?best:best.q; }
+/* Other versions of a take: the most likely readings in other scales, and with wider jumps (for people who squeeze them),
+   that make a different melody from what Noodle chose. Tapping through them lets you keep the one you meant. */
+function takeVersions(tr){
+  const rec=tr.notes.filter(n=>!n.x).sort((a,b)=>a.s-b.s); if(rec.length<3) return [];
+  const r=rec.map(n=>+n.p), du=rec.map(n=>n.l||1), ook=ookCost(), cands=[];
+  for(let t=0;t<12;t++) for(const sc of ['major','minor']){ const b=intendedPitches(r,du,{tonic:t,set:SCALES[sc]},{ook,withScore:true}); cands.push({sc:b.sc,q:b.q,tonic:t,scale:sc,squeeze:false}); }
+  cands.sort((a,b)=>b.sc-a.sc);
+  for(const c of cands.slice(0,4)){ const b=intendedPitches(r,du,{tonic:c.tonic,set:SCALES[c.scale]},{ook,squeeze:true,withScore:true}); cands.push({sc:b.sc,q:b.q,tonic:c.tonic,scale:c.scale,squeeze:true}); }
+  cands.sort((a,b)=>b.sc-a.sc);
+  const cur=rec.map(n=>n.qk==='V'?Math.round(n.p):pitchOf(n));
+  const diff=(a,b)=>{ let d=0; for(let i=1;i<a.length;i++) if(a[i]-a[i-1]!==b[i]-b[i-1]) d++; return d; };   /* how many steps of the melody differ */
+  const out=[{q:null,label:'as heard'}], kept=[cur];
+  for(const c of cands){ if(kept.some(k=>diff(k,c.q)<2)) continue; kept.push(c.q); out.push(c); if(out.length>=4) break; }
+  return out; }
+function applyVersion(tr, i){
+  const V=tr._versions; if(!V||!V[i]) return; tr._vi=i; const v=V[i], rec=tr.notes.filter(n=>!n.x).sort((a,b)=>a.s-b.s);
+  if(v.q){ rec.forEach((n,k)=>{ n.q=v.q[k]; n.qk='V'; }); tr.reading={tonic:v.tonic,scale:v.scale,squeeze:v.squeeze};
+    if(S.key==='auto' || S.keyByVersion===tr.id){ S.key=String(v.tonic); S.scale=v.scale; S.keyByVersion=tr.id; } }   /* the song keeps this scale for later takes */
+  else { rec.forEach(n=>{ delete n.q; delete n.qk; }); tr.reading=null; if(S.keyByVersion===tr.id){ S.key='auto'; S.scale='auto'; S.keyByVersion=null; } }
+  keyCache=null; tr._dirty=true; keyChanged(); syncAllInputs(); updateKeyInfo(); save(); renderTracks(); scheduleRender();
+  if(!playing) $('play').click(); }
 /* Personal interval width, measured on guided takes (sung vs the Guide). The squeeze is only allowed for someone whose
    own takes show it, so people who sing intervals accurately are never "corrected". */
 function squeezeOn(){ const q=S.sq; if(!q||q.nu<10) return false; return q.xyu/q.xxu<0.9; }
@@ -1397,6 +1418,7 @@ function decodePart(tr, sig){ const K=currentKey(), rec=tr.notes.filter(n=>!n.x)
   const q=intendedPitches(rec.map(n=>+n.p), rec.map(n=>n.l||1), {tonic:K.tonic,set:K.set}, {ook:ookCost(), squeeze:squeezeOn()});
   rec.forEach((n,i)=>{ n.q=q[i]; n.qk=sig; }); }
 function pitchOf(n){ if(n.x) return Math.round(n.p);
+  if(n.qk==='V' && n.q!=null) return n.q;   /* a version you picked */
   // people who sing intervals as meant keep today's key snapping exactly; the whole-line reading is for those whose takes show a squeeze
   if(!squeezeOn()) return snap(n.p, n.l!=null?n.l*stepDur():null);
   const sig=decSig(); if(sig==='none') return Math.round(n.p);
@@ -2048,7 +2070,7 @@ function dropWavB64(x,sr){ const R=24000, n=Math.floor((x.length-1)*R/sr), y=new
 const slug=t=>String(t||'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,40);
 function dropState(tr){ return {notes:tr.notes?tr.notes.map(n=>({s:n.s,l:n.l,p:pitchOf(n),raw:+(+n.p).toFixed(3),v:n.v,x:!!n.x})):undefined, hits:tr.hits?tr.hits.map(h=>({s:h.s,d:h.d,v:h.v})):undefined, va:tr.va, sound:tr.sound}; }
 function dropMeta(tr){ return {sid:tr.sid, song:S.title||'', inst:tr.inst, bpm:S.bpm, bars:S.bars, quant:S.quant, key:S.key, scale:S.scale, snapStr:S.snapStr??100, sens:tr.sens??S.sens, latMs:S.latMs, who:drop&&drop.who||'',
-  recordedAt:tr.sidAt, updatedAt:new Date().toISOString(), heard:tr.sidHeard, now:dropState(tr), prompt:S.prompt||null, guide:(()=>{ const g=S.tracks.find(t=>t.guide); return g?dropState(g):null; })(), playAlong:!!S.playAlong, ua:navigator.userAgent.slice(0,120)}; }
+  recordedAt:tr.sidAt, updatedAt:new Date().toISOString(), heard:tr.sidHeard, now:dropState(tr), reading:tr.reading||null, prompt:S.prompt||null, guide:(()=>{ const g=S.tracks.find(t=>t.guide); return g?dropState(g):null; })(), playAlong:!!S.playAlong, ua:navigator.userAgent.slice(0,120)}; }
 async function dropTake(x, sr, inst){ if(!drop) return;
   const tr=S.tracks.find(t=>(t._raw&&t._raw.x===x)||(t._takes||[]).some(k=>k.raw&&k.raw.x===x));
   if(!tr){ // nothing was heard: still worth sending, it shows what Noodle misses
@@ -2114,7 +2136,7 @@ async function guidedSetup(id){ const g=GUIDED.find(x=>x[0]===id); if(!g) return
   guide.guide=true; o.tracks=[guide,take]; o.nextId=nid; o.activeId=take.id;
   takeBar=null; await restoreSnap({json:JSON.stringify(o), rt:new Map()}); S.activeId=take.id; S.inst=take.inst; updateDock(); save(); flushSave();
   guidedUI(); window.scrollTo({top:0}); toast(`${id}: ${how}`); }
-async function addTake(x, sr, inst, opt){ const r=await addTake0(x, sr, inst, opt); try{ dropTake(x, sr, inst); }catch(e){} try{ repeatTip(x); }catch(e){} return r; }
+async function addTake(x, sr, inst, opt){ const r=await addTake0(x, sr, inst, opt); S.tracks.forEach(t=>{ if(t._raw&&t._raw.x===x){ t._versions=null; t._vi=0; t.reading=null; } }); try{ dropTake(x, sr, inst); }catch(e){} try{ repeatTip(x); }catch(e){} return r; }
 /* once: after the first melody take with a long held note, a tip for repeated notes */
 function repeatTip(x){ if(localStorage.getItem('noodle.tipRepeat')) return;
   const tr=S.tracks.find(t=>(t._raw&&t._raw.x===x)); if(!tr||INST[tr.inst].kind!=='pitched'||!tr.notes) return;
@@ -2414,7 +2436,7 @@ function renderTracks(){
       ${empty&&!open&&!recHere&&!picking?`<p class="prow-hint">${d.hint.split(/(?<=\.) /)[0]} <b>${d.say||''}</b></p>`:''}
       ${calTip?'<div class="note calnote"><p><b>First time?</b> Calibrate once (10 seconds of clapping) so your hits land on time.</p><span class="recrow" style="gap:8px"><button class="btn cal-now">Calibrate</button><button class="btn cal-later">Not now</button></span></div>':''}
       ${empty&&!open&&!recHere&&!picking?`<div class="prow-cta">${micOff?`<button class="rec-btn cta-imp"><span class="dot"></span>Import ${d.label}</button>`:`<button class="rec-btn cta-rec"><span class="dot"></span>Record ${d.label}</button>`}${tr.inst==='vox'?'':`<button class="btn cta-draw">Draw</button>`}${micOff?'':'<button class="btn cta-imp">Import</button>'}<button class="btn del cta-del" aria-label="Delete ${partName(tr)}" title="Delete part"><svg viewBox="0 0 20 20" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 5.5h13M8 5.5V3.5h4v2M5.5 5.5l.8 11h7.4l.8-11M8.5 8.5v5M11.5 8.5v5"/></svg></button></div>`:''}
-      ${open&&takeBar&&takeBar.id===tr.id&&!recHere?'<div class="prow-take"><span>New take</span><button class="btn tb-redo">Retake</button><button class="btn tb-del">Discard</button><button class="btn primary tb-ok">'+(drop&&S.prompt&&guidedNext()?'Keep · next take':'Keep')+'</button>'+(INST[tr.inst].kind==='pitched'&&tr._raw?'<label class="tb-det"><span>Notes</span><span class="tb-end">Fewer</span><input type="range" class="pdet" min="-50" max="50" step="10" value="'+(tr.detail||0)+'" aria-label="Fewer or more notes"><span class="tb-end">More</span></label>':'')+(takeBar.hint?'<p class="tb-hint">Some of the beat leaked into the mic. Wired headphones avoid this.</p>':'')+'</div>':''}
+      ${open&&takeBar&&takeBar.id===tr.id&&!recHere?'<div class="prow-take"><span>New take</span><button class="btn tb-redo">Retake</button><button class="btn tb-del">Discard</button><button class="btn primary tb-ok">'+(drop&&S.prompt&&guidedNext()?'Keep · next take':'Keep')+'</button>'+(INST[tr.inst].kind==='pitched'&&tr._raw?'<button class="btn tb-ver">'+(tr._vi?'Version '+(tr._vi+1)+' of '+tr._versions.length:'Other versions')+' ⟳</button>':'')+(INST[tr.inst].kind==='pitched'&&tr._raw?'<label class="tb-det"><span>Notes</span><span class="tb-end">Fewer</span><input type="range" class="pdet" min="-50" max="50" step="10" value="'+(tr.detail||0)+'" aria-label="Fewer or more notes"><span class="tb-end">More</span></label>':'')+(takeBar.hint?'<p class="tb-hint">Some of the beat leaked into the mic. Wired headphones avoid this.</p>':'')+'</div>':''}
       ${open?'<div class="prow-edit"></div>':''}
       <input type="range" class="prow-vol" min="0" max="100" value="${tr.vol}" aria-label="${partName(tr)} volume">`;
     box.appendChild(row);
@@ -2422,7 +2444,7 @@ function renderTracks(){
     row.querySelector('.rec').onclick=()=>recordInto(tr.guide?(S.tracks.find(t=>!t.guide&&t.inst===tr.inst)||tr).id:tr.id); if(tr.guide) row.querySelector('.rec').hidden=true;
     const cr=row.querySelector('.cta-rec'); if(cr) cr.onclick=()=>recordInto(tr.id);
     row.querySelectorAll('.cta-imp').forEach(b=>b.onclick=()=>importInto(tr.id));
-    row.addEventListener('input',e=>{ const inp=e.target; if(!inp.classList||!inp.classList.contains('pdet')) return; tr.detail=+inp.value; row.querySelectorAll('.pdet').forEach(o=>{ if(o!==inp) o.value=inp.value; }); clearTimeout(tr._detT); tr._detT=setTimeout(()=>{ reanalyze(tr); redrawTrack(tr); },160); });
+    row.addEventListener('input',e=>{ const inp=e.target; if(!inp.classList||!inp.classList.contains('pdet')) return; tr.detail=+inp.value; tr._versions=null; tr._vi=0; row.querySelectorAll('.pdet').forEach(o=>{ if(o!==inp) o.value=inp.value; }); clearTimeout(tr._detT); tr._detT=setTimeout(()=>{ reanalyze(tr); redrawTrack(tr); },160); });
     const cdel=row.querySelector('.cta-del'); if(cdel) cdel.onclick=()=>deletePart(tr);
     const cd=row.querySelector('.cta-draw'); if(cd) cd.onclick=()=>{ S.activeId=tr.id; tr._draw=true; openEditor(tr); };
     row.querySelectorAll('.chip[data-k]').forEach(b=>b.onclick=()=>pickInstrument(b.dataset.k));
@@ -2433,6 +2455,7 @@ function renderTracks(){
     const tb=k=>row.querySelector(k);
     if(tb('.tb-ok')){ tb('.tb-ok').onclick=()=>{ takeBar=null; const nx=drop&&S.prompt&&guidedNext(); if(nx){ guidedSetup(nx[0]); return; } renderTracks(); if(drop&&S.prompt){ guidedUI(); window.scrollTo({top:0,behavior:'smooth'}); toast(guidedDone.size>=GUIDED.length?'All guided takes done. Thank you!':'Saved.'); } };
       tb('.tb-del').onclick=async()=>{ const p=takeBar; takeBar=null; await discardTake(p); renderTracks(); toast('Take discarded'); };
+      if(tb('.tb-ver')) tb('.tb-ver').onclick=()=>{ if(!tr._versions) tr._versions=takeVersions(tr); if(tr._versions.length<2){ toast('No other likely versions of this take.'); return; } applyVersion(tr,((tr._vi||0)+1)%tr._versions.length); };
       tb('.tb-redo').onclick=async()=>{ const p=takeBar; takeBar=null; flushSave(); const snap=hist.cur; await discardTake(p); recordInto(p.id,{snap,bar:p}); }; }
     if(open){ const ed=row.querySelector('.prow-edit'); ed.appendChild(buildCard(tr)); requestAnimationFrame(()=>{ if(tr._cv&&tr._cv.isConnected){ drawGrid(tr); const w=tr._cv.parentElement.parentElement; if(tr._scrollX){ tr._autoScroll=true; w.scrollLeft=tr._scrollX; } } }); }
     const mb=row.querySelector('.m'), sb=row.querySelector('.s');
