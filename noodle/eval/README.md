@@ -90,3 +90,25 @@ singers) and HumTrans (humming, never trained on), key-free note F1, plus the ow
 
 `NT.model` = `'combine'` (default), `true` (model alone) or `false` (rules); `NT.splitThr` sets how sure the model
 must be to split a rule note. Whistles always use the rules (the model never saw whistling).
+
+### North Star groundwork (Nov 6)
+New scripts: `edits.py` (edits to fix), `synth.py` (synthetic takes), `onset_syn.py`, `intent_net.py` (learned note reader: log-mel + the app's pitch, conv + GRU).
+
+**Edits to fix**: add / delete / fix pitch / move start (lengths reported separately); notes aligned by an order-preserving match. Lower is better.
+
+| held-out, edits per 10 notes | humming (HumTrans) | singing (Vocadito even) |
+|---|---|---|
+| live app (rules + learned starts) | 4.81 | 5.69 |
+| small start model alone (real data) | 4.37 | 4.86 |
+| conv+GRU note reader, real data only | 4.33 | 6.10 |
+| conv+GRU, **synthetic only** (never heard a real voice) | 4.59 | 5.95 |
+| conv+GRU, real + synthetic | 4.39 | 6.03 |
+
+Your 5 takes: 10 edits per 40 notes (2.5 per 10).
+Where the edits go: wrong pitch is 30–40%, missed notes 20–55% (singing), extra notes 10–35%.
+
+**Synthetic takes** (`synth.py`, everything generated, no samples, no license limits): procedural melodies, a source-filter voice (hum / sung syllables with consonants / "da" / "oo" / whistle), scoops, glides, vibrato, drift, out-of-tune notes, timing jitter, a room and a phone mic.
+- The live app scores about the same on them as on real humming (3–6.5 edits per 10 notes by voice).
+- A model trained only on them matches one trained on all our real CC BY takes.
+
+What this says: the note-start detector is no longer the bottleneck. Next targets: the pitch each note was meant to be (scoops, drift, key context) and notes lost at the voicing gate.

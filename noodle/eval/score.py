@@ -20,7 +20,12 @@ def gt_vocalset(f):
             try: iv.append([float(r[1]),float(r[2])]); ps.append(float(r[14]))
             except ValueError: pass
     return np.array(iv), 440*2**((np.array(ps)-69)/12)
-def gt(f): return gt_vocadito(f) if 'vocadito' in f else gt_vocalset(f) if 'vocalset' in f else gt_humtrans(f)
+_SYN={}
+def gt_synth(f):
+    d=os.path.dirname(f); k=os.path.basename(f)[:-4]
+    if d not in _SYN: _SYN[d]=json.load(open(f'{S}/{d}/labels.json'))
+    n=np.array(_SYN[d][k]['notes'],dtype=float); return n[:,:2], 440*2**((n[:,2]-69)/12)
+def gt(f): return gt_synth(f) if '/synth' in f else gt_vocadito(f) if 'vocadito' in f else gt_vocalset(f) if 'vocalset' in f else gt_humtrans(f)
 def score(ref_iv,ref_hz,est,shift=0.0, offs=False):
     if not len(est): return 0,0,0
     e=np.array(est); est_iv=e[:,:2]; est_hz=440*2**((np.round(e[:,2])+shift-69)/12)
