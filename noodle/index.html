@@ -419,6 +419,9 @@ input[type=range]::-moz-range-thumb{width:10px;height:18px;border-radius:1px;bac
 .hptip svg{flex:none;color:var(--lcd-ink);margin-top:1px}
 .hptip p{margin:0;font-size:12.5px;line-height:1.4;color:var(--muted)}
 .hptip b{color:var(--ink);font-weight:600}
+.namerow{display:flex;align-items:center;gap:10px}.namerow .songname{flex:1;min-width:0}
+.newsong{flex:none;padding:5px 11px;border:1px solid var(--line,#3a3f48);border-radius:999px;background:transparent;color:var(--muted,#9aa1ad);font:600 13px var(--f-body);cursor:pointer}
+.newsong:active{opacity:.6}
 .songname{display:block;width:100%;margin:0;padding:6px 0 2px;border:0;border-bottom:1px solid transparent;background:transparent;color:var(--ink);font:700 17px var(--f-body);letter-spacing:-.01em;border-radius:0}
 .songname::placeholder{color:var(--muted);font-weight:600}
 .songname:focus{outline:none;border-bottom-color:var(--lcd-ink)}
@@ -548,7 +551,10 @@ button.card-head{margin:0;width:100%;padding:10px 14px;border-radius:0;backgroun
 </header>
 
 <main class="wrap">
+  <div class="namerow">
   <input class="songname" id="songName" type="text" maxlength="60" placeholder="Untitled song" aria-label="Song name" autocomplete="off" spellcheck="false">
+    <button class="newsong" id="newSong" title="Start a new song">New song</button>
+  </div>
 
   <section class="card onb" id="onb" hidden aria-labelledby="onbh">
     <h2 id="onbh">How it works</h2>
@@ -759,6 +765,15 @@ async function restoreSnap(sn){
   syncTransport(); syncAllInputs(); buildPads(); renderTracks(); updateKeyInfo();
   if(ctx){ await renderDirty(); if(wasPlaying){ startAll(ctx.currentTime+0.05, ph*loopLen()); } }
 }
+/* New song: an empty song with default tempo, key and mix. Your setup stays (taught drum sounds, mic timing,
+   learned preferences). Undo brings the old song back. */
+async function newSong(){
+  if(!S.tracks.length && !S.title) return;
+  flushSave(); if(playing){ stopAll(); playing=false; updatePlayBtn(); }
+  const keepKeys=['kit','calibrated','latAuto','latMs','ec','sens','snapStr','detailBias','vocLat','mergeDrums','replaceTonal','mig2','mig3'];
+  const o=defaultState(); keepKeys.forEach(k=>{ if(k in S) o[k]=S[k]; }); o.tracks=[]; o.nextId=S.nextId;
+  takeBar=null; await restoreSnap({json:JSON.stringify(o), rt:new Map()}); save(); flushSave();
+  window.scrollTo({top:0}); toast('New song. Undo brings the last one back.'); }
 async function undo(){ flushSave(); if(!hist.undo.length) return; hist.redo.push(hist.cur); hist.cur=hist.undo.pop(); updateHistBtns(); await restoreSnap(hist.cur); toast('Undone'); }
 async function redo(){ flushSave(); if(!hist.redo.length) return; hist.undo.push(hist.cur); hist.cur=hist.redo.pop(); updateHistBtns(); await restoreSnap(hist.cur); toast('Redone'); }
 function syncAllInputs(){
@@ -2599,6 +2614,7 @@ function init(){
   { const sn=$('songName'); sn.value=S.title||''; const setT=()=>{ document.title=(S.title?S.title+' · ':'')+'Noodle'; }; setT();
     sn.addEventListener('input',()=>{ S.title=sn.value.trim().slice(0,60)||undefined; setT(); save(); }); sn.addEventListener('keydown',e=>{ if(e.key==='Enter') sn.blur(); }); }
   $('play').addEventListener('pointerdown',e=>{ if(e.button) return; e.preventDefault(); togglePlay(); }); $('play').onclick=e=>{ if(e.detail===0) togglePlay(); }; updatePlayBtn();
+  $('newSong').onclick=newSong;
   $('undoBtn').onclick=()=>{ takeBar=null; undo(); }; $('redoBtn').onclick=()=>{ takeBar=null; redo(); };
   $('dockRec').onclick=()=>{ if(recState){ if(rs.mode==='take') cancelRecord(); return; } if(!$('recSheet').hidden) return; const t=activePart(); if(t) recordInto(t.id); else openPicker('new'); };
   $('rsClose').onclick=closeRec;
