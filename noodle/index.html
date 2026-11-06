@@ -474,6 +474,7 @@ input[type=range]::-moz-range-thumb{width:10px;height:18px;border-radius:1px;bac
 .insp .envpanel{margin-top:4px}
 
 .ndel{position:absolute;z-index:3;width:24px;height:24px;padding:0;border:1px solid #000;border-radius:var(--rad);background:var(--rec);color:#fff;font:700 12px var(--f-body);display:grid;place-items:center;line-height:1}
+.selbar{display:flex;align-items:center;gap:8px;margin-top:6px}.selbar[hidden]{display:none}.selbar .sb-n{font:600 13px var(--f-mono);color:var(--muted);margin-right:auto}.selbar .btn{padding:6px 14px;min-height:34px}
 .envpanel{display:flex;flex-direction:column;gap:6px}
 .envpanel canvas{width:100%;height:130px;display:block;touch-action:none;border-radius:var(--rad);box-shadow:inset 0 0 0 1px var(--line)}
 .envrow{display:flex;align-items:center;gap:8px;justify-content:space-between}
@@ -2113,7 +2114,13 @@ async function guidedSetup(id){ const g=GUIDED.find(x=>x[0]===id); if(!g) return
   guide.guide=true; o.tracks=[guide,take]; o.nextId=nid; o.activeId=take.id;
   takeBar=null; await restoreSnap({json:JSON.stringify(o), rt:new Map()}); S.activeId=take.id; S.inst=take.inst; updateDock(); save(); flushSave();
   guidedUI(); window.scrollTo({top:0}); toast(`${id}: ${how}`); }
-async function addTake(x, sr, inst, opt){ const r=await addTake0(x, sr, inst, opt); try{ dropTake(x, sr, inst); }catch(e){} return r; }
+async function addTake(x, sr, inst, opt){ const r=await addTake0(x, sr, inst, opt); try{ dropTake(x, sr, inst); }catch(e){} try{ repeatTip(x); }catch(e){} return r; }
+/* once: after the first melody take with a long held note, a tip for repeated notes */
+function repeatTip(x){ if(localStorage.getItem('noodle.tipRepeat')) return;
+  const tr=S.tracks.find(t=>(t._raw&&t._raw.x===x)); if(!tr||INST[tr.inst].kind!=='pitched'||!tr.notes) return;
+  if(!tr.notes.some(n=>!n.x && n.l>=8)) return;
+  localStorage.setItem('noodle.tipRepeat','1');
+  setTimeout(()=>toast('Tip: for repeated notes, add a tiny break (“da da” or “mm-mm”). To split a long note, double-tap it.',7000),2500); }
 async function addTake0(x, sr, inst, opt){
   opt.first = !anyContent();   // is this the first real recording? (the example parts make way for it)
   if(inst==='vox') return addVocalTake(x, sr, opt);
@@ -2221,7 +2228,7 @@ async function importFile(file){
 
 /* ============================== UI ============================== */
 let lastMsg='';
-function toast(msg){ lastMsg=msg; const t=$('toast'); t.textContent=msg; t.classList.add('on'); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('on'),4200); }
+function toast(msg,ms=4200){ lastMsg=msg; const t=$('toast'); t.textContent=msg; t.classList.add('on'); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('on'),ms); }
 function showBusy(msg){ const t=$('toast'); t.textContent=msg; t.classList.add('on'); clearTimeout(t._h); return ()=>{}; }
 function updateDock(){ const di=$('dockInst'), t=activePart(); if(di) di.textContent= t ? partName(t) : 'New part'; }
 function buildPads(){ updateDock(); }
@@ -2475,7 +2482,7 @@ function buildCard(tr){
     const el=document.createElement('article'); el.className='track'; el.style.setProperty('--c',d.color); tr._el=el;
     const pitched=d.kind==='pitched';
     const cOpen=isOpen('c'+tr.id,false);
-    el.innerHTML=`${tr.inst==='vox'?'<div class="spotbar" title="Spotlight: tap or drag here to mark a moment where only the vocal starts new sounds"><span class="spot-hint">Spotlight · tap or drag to mark an a cappella moment</span></div>':''}<div class="gridbox"><div class="gridwrap"><div class="gridin"><canvas></canvas><div class="ph"></div><div class="nsel" hidden></div><button class="ndel" hidden aria-label="Delete note" title="Delete note">✕</button></div></div><div class="glabels"></div></div><div class="ovrow"><div class="ovw" hidden aria-hidden="true"><canvas></canvas><div class="ovw-win"></div></div>${d.kind==='audio'?'':'<span class="zoom"><button class="ibtn zo" aria-label="Zoom out">−</button><button class="ibtn zi" aria-label="Zoom in">+</button></span>'}</div>
+    el.innerHTML=`${tr.inst==='vox'?'<div class="spotbar" title="Spotlight: tap or drag here to mark a moment where only the vocal starts new sounds"><span class="spot-hint">Spotlight · tap or drag to mark an a cappella moment</span></div>':''}<div class="gridbox"><div class="gridwrap"><div class="gridin"><canvas></canvas><div class="ph"></div><div class="nsel" hidden></div></div></div><div class="glabels"></div></div><div class="selbar" hidden><span class="sb-n"></span><button class="btn sb-split" title="Split in two (or double-tap the note)">Split</button><button class="btn sb-del">Delete</button></div><div class="ovrow"><div class="ovw" hidden aria-hidden="true"><canvas></canvas><div class="ovw-win"></div></div>${d.kind==='audio'?'':'<span class="zoom"><button class="ibtn zo" aria-label="Zoom out">−</button><button class="ibtn zi" aria-label="Zoom in">+</button></span>'}</div>
       <div class="tquick"><select class="sel snd" id="snd${tr.id}" aria-label="Sound">${d.sounds.map(s=>`<option ${s===tr.sound?'selected':''}>${s}</option>`).join('')}</select><button class="ibtn ctlbtn" aria-expanded="${cOpen}">More ${CHEV}</button>${pitched?'<button class="ibtn pfill" title="Stretch each note to the next one so there are no gaps">Fill gaps</button>':''}<button class="ibtn pclear" title="Clear all notes in this part">Clear</button><button class="ibtn del pdel" title="Delete part" aria-label="Delete part"><svg viewBox="0 0 20 20" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 5.5h13M8 5.5V3.5h4v2M5.5 5.5l.8 11h7.4l.8-11M8.5 8.5v5M11.5 8.5v5"/></svg></button></div>
       <div class="ctl insp" ${cOpen?'':'hidden'}>
         ${d.kind==='drums'?'<section class="isec"><div class="kitpanel" id="kitPanel"></div></section>':''}
@@ -2542,7 +2549,9 @@ function buildCard(tr){
     const st2=el.querySelector('.savetake'); if(st2) st2.onclick=()=>saveTake(tr);
     const ub=el.querySelector('.undo'); if(ub) ub.onclick=()=>undoTake(tr);
     const cv=el.querySelector('canvas');
-    const hs=el.querySelector('.nsel'); tr._nsel=hs; tr._ndel=el.querySelector('.ndel');
+    const hs=el.querySelector('.nsel'); tr._nsel=hs; 
+    tr._selbar=el.querySelector('.selbar'); tr._ndel=null; tr._nsplit=null;
+    if(tr._selbar){ tr._selbar.querySelector('.sb-del').onclick=()=>deleteSelNote(tr); tr._selbar.querySelector('.sb-split').onclick=()=>splitSelNote(tr); }
     if(tr._ndel){ tr._ndel.addEventListener('pointerdown',e=>e.stopPropagation()); tr._ndel.onclick=e=>{ e.stopPropagation(); deleteSelNote(tr); }; }
     if(hs){ hs.addEventListener('pointerdown',e=>{ e.stopPropagation(); noteDown(tr,e,true); }); hs.addEventListener('pointermove',e=>noteMove(tr,e)); hs.addEventListener('pointerup',e=>noteUp(tr,e)); hs.addEventListener('pointercancel',e=>noteUp(tr,e,true)); }
     if(pitched){ cv.style.touchAction='pan-x pan-y'; cv.addEventListener('pointerdown',e=>noteDown(tr,e)); cv.addEventListener('pointermove',e=>noteMove(tr,e)); cv.addEventListener('pointerup',e=>noteUp(tr,e)); cv.addEventListener('pointercancel',e=>noteUp(tr,e,true)); }
@@ -2692,10 +2701,15 @@ function recordedDeleted(tr,n){ const now=Date.now(); tr._recent=(tr._recent||[]
   const short=n.l<=2, rec={kind:'del',s:n.s,l:n.l,p:pitchOf(n),at:now};
   rec.timer=setTimeout(()=>{ tr._recent=(tr._recent||[]).filter(r=>r!==rec); if(short) learnDetail(-2); },REPLACE_MS);   // no replacement drawn: it really was an extra note
   tr._recent.push(rec); }
+/* Split: a held note becomes two on the same pitch (cut on a beat when it spans one, else in half) - for repeated notes sung as one */
+function splitSelNote(tr,at){ const n=tr._sel, q=S.quant==8?2:1; if(!n||!tr.notes.includes(n)||n.l<2*q) return;
+  const mid=n.s+n.l/2; let cut=at!=null?Math.round(at/q)*q:Math.round(mid/4)*4; if(cut<=n.s||cut>=n.s+n.l) cut=n.s+Math.max(q,Math.round(n.l/2/q)*q);
+  const b={...n, s:cut, l:n.s+n.l-cut}; n.l=cut-n.s; delete b.g; tr.notes.push(b); tr._sel=b; keyCache=null; noteChanged(tr); }
 function deleteSelNote(tr){ const n=tr._sel; if(!n||!tr.notes.includes(n)) return; if(!n.x) recordedDeleted(tr,n); tr.notes.splice(tr.notes.indexOf(n),1); tr._sel=null; keyCache=null; noteChanged(tr); }
 function placeHandle(tr){ const h=tr._nsel, G=tr._grid, n=tr._sel, x=tr._ndel; if(!h) return;
-  const i=(n&&G)?G.rows.indexOf(pitchOf(n)):-1; if(i<0||!tr.notes.includes(n)){ h.hidden=true; if(x) x.hidden=true; return; }
+  const i=(n&&G)?G.rows.indexOf(pitchOf(n)):-1; if(i<0||!tr.notes.includes(n)){ h.hidden=true; if(x) x.hidden=true; if(tr._nsplit) tr._nsplit.hidden=true; return; }
   if(x){ const top=1+i*G.rh, above=top>=26; x.hidden=false; x.style.left=Math.max(0,G.gut+(n.s+n.l)*G.cw-12)+'px'; x.style.top=(above?top-26:top+G.rh+2)+'px'; }
+  const sp=tr._nsplit; if(sp){ const q=S.quant==8?2:1, top=1+i*G.rh, above=top>=26; sp.hidden=n.l<2*q; sp.style.left=Math.max(0,G.gut+(n.s+n.l)*G.cw-40)+'px'; sp.style.top=(above?top-26:top+G.rh+2)+'px'; }
   const pad=8; h.hidden=false; h.style.left=(G.gut+n.s*G.cw-pad)+'px'; h.style.top=Math.max(0,1+i*G.rh-pad)+'px'; h.style.width=(n.l*G.cw+pad*2)+'px'; h.style.height=(G.rh+pad*2)+'px'; }
 function noteDown(tr,e,onSel){
   const q=S.quant==8?2:1; tr._touchT=Date.now();
@@ -2723,15 +2737,22 @@ function noteMove(tr,e){
 function noteUp(tr,e,cancel){
   const d=tr._drag; if(!d) return; tr._drag=null;
   if(d.pending){ if(cancel) return;
-    if(d.hit){ selectNote(tr,d.hit); previewNote(tr,pitchOf(d.hit)); }
+    if(d.hit){ const lt=tr._lastTap, now=Date.now(); tr._lastTap={n:d.hit,t:now};
+      if(lt && lt.n===d.hit && now-lt.t<400){ tr._sel=d.hit; tr._lastTap=null; splitSelNote(tr, d.c?d.c.s:null); return; }   /* double-tap: split where tapped */
+      selectNote(tr,d.hit); previewNote(tr,pitchOf(d.hit)); }
     else if(tr._sel) selectNote(tr,null);
     else { startNewNote(tr,d.c); tr._drag=null; noteChanged(tr); }
     return; }
   if(d.moved && d.rec && d.mode==='move') learnFromPitchFix(d.np, pitchOf(d.note));
   if(d.created) noteDrawn(tr,d.note);
-  if(d.moved||d.created) noteChanged(tr); else { drawGrid(tr); renderNoteBar(tr); }
+  if(d.moved||d.created) noteChanged(tr);
+  else { const lt=tr._lastTap, now=Date.now();   /* a second tap on the selected note: split it there */
+    if(d.note && lt && lt.n===d.note && now-lt.t<400){ tr._lastTap=null; splitSelNote(tr,d.s0); return; }
+    tr._lastTap={n:d.note,t:now}; drawGrid(tr); renderNoteBar(tr); }
 }
 function renderNoteBar(tr){
+  const sb=tr._selbar; if(sb){ const n=tr._sel, on=!!(n&&tr.notes&&tr.notes.includes(n)); sb.hidden=!on;
+    if(on){ const nm=m=>NOTE_NAMES[((m%12)+12)%12]+(Math.floor(m/12)-1); sb.querySelector('.sb-n').textContent=nm(pitchOf(n)+12*(tr.oct||0)); sb.querySelector('.sb-split').hidden=n.l<2*(S.quant==8?2:1); } }
   const bar=tr._el&&tr._el.querySelector('.notebar'); if(!bar) return; const n=tr._sel;
   if(!n || !tr.notes.includes(n)){ bar.hidden=true; tr._sel=null; return; }
   bar.hidden=false; const nm=m=>NOTE_NAMES[((m%12)+12)%12]+(Math.floor(m/12)-1);
