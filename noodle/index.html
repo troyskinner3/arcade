@@ -1193,7 +1193,8 @@ function trackNotes(x, sr, onsets, sens){
   let whistled=false;
   if(wv>=8 && wv>hv*0.7 && median(wvF.map(f=>f.hz))>950){ frames.length=0; frames.push(...wf); whistled=true; }
   if(!frames.length) return [];
-  const dbs=frames.map(f=>f.db), floor=percentile(dbs,0.15), top=percentile(dbs,0.99);
+  // the quiet level comes from the take's gaps; a take that is one long sound has none, so assume a floor 35 dB below the peak
+  const dbs=frames.map(f=>f.db), top=percentile(dbs,0.99), floor0=percentile(dbs,0.15), floor=top-floor0<12?top-35:floor0;
   const gate=floor+Math.max(8,(top-floor)*(NT.gateA-NT.gateB*sN)), cth=NT.confA+NT.confB*sN;
   const voiced=frames.map(f=>f.db>gate && f.conf<cth && f.m>28 && f.m<(whistled?112:96));
   const build=()=>{
@@ -1300,7 +1301,7 @@ function quantizeTrack(tr){
     tr.hits=[...map.values()].sort((a,b)=>a.s-b.s);
   } else {
     let ns=[];
-    for(const nt of an.notes){ const r=raw(nt.t0); if(r<-0.5*q) continue; const s=Math.max(0,Math.round(r/q)*q); if(s>=n) continue;
+    for(const nt of an.notes){ const r=raw(nt.t0); if(r<-0.5*q && raw(nt.t1)<1.5*q) continue; /* a note begun a moment before bar 1 keeps its part from bar 1 */ const s=Math.max(0,Math.round(r/q)*q); if(s>=n) continue;
       const e=Math.round(raw(nt.t1)/q+0.3)*q; ns.push({s,l:clamp(e-s,q,n-s),p:+nt.p.toFixed(2),v:+nt.v.toFixed(2),...(nt.g?{g:1}:{})}); }
     ns.sort((a,b)=>a.s-b.s||b.l-a.l);
     const out=[]; for(const nt of ns){ const last=out[out.length-1]; if(last&&last.s===nt.s) continue; if(last&&last.s+last.l>nt.s) last.l=nt.s-last.s; out.push(nt); }
@@ -1988,7 +1989,10 @@ function dropState(tr){ return {notes:tr.notes?tr.notes.map(n=>({s:n.s,l:n.l,p:p
 function dropMeta(tr){ return {sid:tr.sid, song:S.title||'', inst:tr.inst, bpm:S.bpm, bars:S.bars, quant:S.quant, key:S.key, scale:S.scale, snapStr:S.snapStr??100, sens:tr.sens??S.sens, latMs:S.latMs, who:drop&&drop.who||'',
   recordedAt:tr.sidAt, updatedAt:new Date().toISOString(), heard:tr.sidHeard, now:dropState(tr), prompt:S.prompt||null, guide:(()=>{ const g=S.tracks.find(t=>t.guide); return g?dropState(g):null; })(), playAlong:!!S.playAlong, ua:navigator.userAgent.slice(0,120)}; }
 async function dropTake(x, sr, inst){ if(!drop) return;
-  const tr=S.tracks.find(t=>(t._raw&&t._raw.x===x)||(t._takes||[]).some(k=>k.raw&&k.raw.x===x)); if(!tr) return;
+  const tr=S.tracks.find(t=>(t._raw&&t._raw.x===x)||(t._takes||[]).some(k=>k.raw&&k.raw.x===x));
+  if(!tr){ // nothing was heard: still worth sending, it shows what Noodle misses
+    const d=new Date(), sid=`${d.toISOString().replace(/[-:]/g,'').slice(0,15)}-${slug(S.title)||'untitled'}-${inst}-nothing-heard`;
+    dropPost({sid, wav:await dropWavB64(x,sr), meta:{sid, song:S.title||'', inst, bpm:S.bpm, prompt:S.prompt||null, heard:null, recordedAt:d.toISOString(), who:drop.who||'', ua:navigator.userAgent.slice(0,120)}}); return; }
   const d=new Date(), pad=v=>String(v).padStart(2,'0');
   tr.sid=`${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}-${slug(S.title)||'untitled'}-${inst}`;
   tr.sidAt=d.toISOString(); tr.sidHeard=dropState(tr); tr._dropSent=null; persist();
