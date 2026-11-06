@@ -1969,6 +1969,11 @@ function dropLineUI(){ const el=$('dropLine'); if(!el) return; try{ guidedUI(); 
   el.innerHTML='Sharing your takes to help improve Noodle. <a href="#" id="dropOff">Stop</a>';
   $('dropOff').onclick=e=>{ e.preventDefault(); drop=null; try{ localStorage.removeItem(DROP_KEY); }catch(_){} dropLineUI(); toast('Takes are no longer shared.'); }; }
 document.addEventListener('DOMContentLoaded',dropLineUI); setTimeout(dropLineUI,0);
+// once a day while sharing: which video tools this phone has (decides how videos get made)
+setTimeout(async()=>{ if(!drop) return; const day=new Date().toISOString().slice(0,10); try{ if(localStorage.getItem('noodle.diag')===day) return; localStorage.setItem('noodle.diag',day); }catch(e){}
+  const r={ua:navigator.userAgent, VE:typeof VideoEncoder, AE:typeof AudioEncoder, MR:typeof MediaRecorder};
+  try{ for(const sr of [44100,48000]) r['aac'+sr]=!!(await videoEncodeConfig(sr)); }catch(e){ r.err=String(e); }
+  dropPost({sid:'diag-'+day+'-'+(slug(drop.who)||'me'), meta:r}); },4000);
 async function dropPost(body){ if(!drop) return; const data=JSON.stringify({k:drop.k, ...body});
   for(let i=0;i<3;i++){ try{ await fetch(drop.url,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:data,keepalive:data.length<60000}); return true; }catch(e){ await new Promise(r=>setTimeout(r,2000*(i+1))); } }
   return false; }
@@ -2934,14 +2939,36 @@ async function prepareShare(kind){
 }
 async function shareNow(){ if(!shareFile) return; try{ await navigator.share({files:[shareFile], title:songTitle(), text:'Made with Noodle'}); } catch(e){ if(e&&e.name!=='AbortError') toast('Sharing didn’t open. Tap Save to Files instead.'); } }
 /* real-time render of a 720x1280 clip: the parts as lanes with a moving playhead, pulsing on each beat */
+/* Video export. Preferred: encode frame by frame (WebCodecs) into a regular MP4: faster than real time, silent, and the
+   file has a correct length everywhere (Photos included). Fallback: record the canvas and audio in real time (MediaRecorder). */
+async function videoEncodeConfig(sr){
+  if(!window.VideoEncoder||!window.AudioEncoder||!window.VideoFrame||!window.AudioData) return null;
+  try{ const v={codec:'avc1.42001f',width:720,height:1280,bitrate:3000000,framerate:30}, a={codec:'mp4a.40.2',sampleRate:sr,numberOfChannels:2,bitrate:160000};
+    if(!(await VideoEncoder.isConfigSupported(v)).supported || !(await AudioEncoder.isConfigSupported(a)).supported) return null; return {v,a}; }catch(e){ return null; } }
+let muxerLoad=null;
+function loadMuxer(){ return muxerLoad||(muxerLoad=new Promise((res,rej)=>{ if(window.Mp4Muxer) return res(); const sc=document.createElement('script'); sc.src='https://cdn.jsdelivr.net/npm/mp4-muxer@5.1.3/build/mp4-muxer.min.js'; sc.onload=res; sc.onerror=()=>{ muxerLoad=null; rej(new Error('couldn’t load the video maker')); }; document.head.appendChild(sc); })); }
+async function encodeVideo(mix, cfg, onProgress){
+  await loadMuxer(); const FPS=30, sr=mix.sampleRate, {cv,draw,W,H}=videoPainter(mix);
+  const muxer=new Mp4Muxer.Muxer({target:new Mp4Muxer.ArrayBufferTarget(), video:{codec:'avc',width:W,height:H,frameRate:FPS}, audio:{codec:cfg.a.codec.startsWith('mp4a')?'aac':'opus',sampleRate:sr,numberOfChannels:2}, fastStart:'in-memory', firstTimestampBehavior:'offset'});
+  let err=null; const fail=e=>{ err=err||e; };
+  const ve=new VideoEncoder({output:(c,m)=>muxer.addVideoChunk(c,m), error:fail}); ve.configure(cfg.v);
+  const ae=new AudioEncoder({output:(c,m)=>muxer.addAudioChunk(c,m), error:fail}); ae.configure(cfg.a);
+  const L=mix.getChannelData(0), R=mix.numberOfChannels>1?mix.getChannelData(1):L, N=mix.length, B=1024;
+  for(let i=0;i<N;i+=B){ const n=Math.min(B,N-i), d=new Float32Array(n*2); d.set(L.subarray(i,i+n),0); d.set(R.subarray(i,i+n),n);
+    const ad=new AudioData({format:'f32-planar',sampleRate:sr,numberOfFrames:n,numberOfChannels:2,timestamp:Math.round(i*1e6/sr),data:d}); ae.encode(ad); ad.close(); }
+  const frames=Math.ceil(mix.duration*FPS);
+  for(let f=0;f<frames;f++){ if(err) throw err; draw(f/FPS); const vf=new VideoFrame(cv,{timestamp:Math.round(f*1e6/FPS),duration:Math.round(1e6/FPS)});
+    ve.encode(vf,{keyFrame:f%60===0}); vf.close();
+    if(ve.encodeQueueSize>8 || f%15===0){ onProgress&&onProgress((frames-f)/FPS); await new Promise(r=>setTimeout(r,0)); } }
+  await ve.flush(); await ae.flush(); if(err) throw err; ve.close(); ae.close(); muxer.finalize();
+  return new Blob([muxer.target.buffer],{type:'video/mp4'}); }
 async function recordVideo(mix, onProgress){
-  const mime=['video/mp4;codecs=avc1.42E01E,mp4a.40.2','video/mp4','video/webm;codecs=vp9,opus','video/webm'].find(m=>window.MediaRecorder && MediaRecorder.isTypeSupported(m));
-  if(!mime) throw new Error('this browser can’t record video');
+  const cfg=await videoEncodeConfig(mix.sampleRate);
+  if(cfg){ try{ return await encodeVideo(mix,cfg,onProgress); }catch(e){ console.warn('frame-by-frame video failed, recording in real time instead',e); } }
+  return recordVideoRT(mix,onProgress); }
+/* the video's picture at time tt: the parts as lanes with a moving playhead, pulsing on each beat */
+function videoPainter(mix){
   const W=720,H=1280, cv=document.createElement('canvas'); cv.width=W; cv.height=H; const g=cv.getContext('2d');
-  const dest=ctx.createMediaStreamDestination(), src=ctx.createBufferSource(), mon=ctx.createGain(); src.buffer=mix; src.connect(dest); mon.gain.value=0; src.connect(mon); mon.connect(ctx.destination);   // silent: keeps the graph running, nothing plays out loud
-  const stream=new MediaStream([...cv.captureStream(30).getVideoTracks(), ...dest.stream.getAudioTracks()]);
-  const rec=new MediaRecorder(stream,{mimeType:mime, videoBitsPerSecond:3000000}); const chunks=[]; rec.ondataavailable=e=>{ if(e.data&&e.data.size) chunks.push(e.data); };
-  const stopped=new Promise(r=>rec.onstop=r);
   const parts=S.tracks.filter(t=>t._buf), L=loopLen(), beat=60/S.bpm, title=S.title?S.title:songTitle().replace('Noodle ','');
   const draw=tt=>{
     g.fillStyle='#121418'; g.fillRect(0,0,W,H);
@@ -2960,6 +2987,16 @@ async function recordVideo(mix, onProgress){
     g.fillStyle='#2f343d'; g.fillRect(x0,H-120,lw,6); g.fillStyle='#ef4a3c'; g.fillRect(x0,H-120,lw*Math.min(1,tt/mix.duration),6);
     g.fillStyle='#5d6470'; g.font='500 24px Figtree, sans-serif'; g.textAlign='center'; g.fillText('made with Noodle',W/2,H-60);
   };
+  return {cv,draw,W,H};
+}
+async function recordVideoRT(mix, onProgress){
+  const mime=['video/mp4;codecs=avc1.42E01E,mp4a.40.2','video/mp4','video/webm;codecs=vp9,opus','video/webm'].find(m=>window.MediaRecorder && MediaRecorder.isTypeSupported(m));
+  if(!mime) throw new Error('this browser can’t record video');
+  const {cv,draw}=videoPainter(mix);
+  const dest=ctx.createMediaStreamDestination(), src=ctx.createBufferSource(), mon=ctx.createGain(); src.buffer=mix; src.connect(dest); mon.gain.value=0; src.connect(mon); mon.connect(ctx.destination);   // silent: keeps the graph running, nothing plays out loud
+  const stream=new MediaStream([...cv.captureStream(30).getVideoTracks(), ...dest.stream.getAudioTracks()]);
+  const rec=new MediaRecorder(stream,{mimeType:mime, videoBitsPerSecond:3000000}); const chunks=[]; rec.ondataavailable=e=>{ if(e.data&&e.data.size) chunks.push(e.data); };
+  const stopped=new Promise(r=>rec.onstop=r);
   draw(0); rec.start(250); const startAt=ctx.currentTime+0.15; src.start(startAt);
   await new Promise(res=>{ const step=()=>{ const tt=ctx.currentTime-startAt; draw(Math.max(0,tt)); onProgress&&onProgress(Math.max(0,mix.duration-tt)); if(tt>=mix.duration+0.15){ res(); return; } requestAnimationFrame(step); }; requestAnimationFrame(step); });
   rec.stop(); await stopped; try{ mon.disconnect(); }catch(e){}
