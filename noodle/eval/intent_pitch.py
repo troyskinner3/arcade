@@ -3,7 +3,13 @@
 import numpy as np
 MAJ=[0,2,4,5,7,9,11]; MIN=[0,2,3,5,7,8,10]
 STEP_PRIOR={0:.16,1:.14,2:.30,3:.13,4:.08,5:.07,7:.05,6:.01,8:.02,9:.015,10:.01,11:.005,12:.01}
-def lp_step(d): return np.log(STEP_PRIOR.get(abs(d),0.002)/(1 if d==0 else 2))
+import json as _j, os as _o
+PRIOR=_o.environ.get('PRIOR','hand'); DEGW=float(_o.environ.get('DEGW','0'))
+_MP=_j.load(open(_o.path.join(_o.path.dirname(__file__),'..','results','melody_prior.json')))
+_UNI={int(k):v for k,v in _MP['uni'].items()}; _DEG=_MP['deg']
+def lp_step(d):
+    if PRIOR=='corpus': return np.log(_UNI[max(-13,min(13,d))])
+    return np.log(STEP_PRIOR.get(abs(d),0.002)/(1 if d==0 else 2))
 OOK=float(__import__('os').environ.get('OOK','3.0'))
 S_ABS=float(__import__('os').environ.get('SABS','0.6'))
 def decode_key(r, w, scale_set, tonic, alpha, s_int=0.45, s_pos=1.6, profile=None):
@@ -15,6 +21,7 @@ def decode_key(r, w, scale_set, tonic, alpha, s_int=0.45, s_pos=1.6, profile=Non
     for q0 in q0s:
         lo=q0+int(np.floor((r.min()-r0)/alpha))-3; hi=q0+int(np.ceil((r.max()-r0)/alpha))+3
         S=np.arange(lo,hi+1); m=len(S); ink=np.array([(q-tonic)%12 in scale_set for q in S]); kp=np.where(ink,0.0,-OOK)
+        if DEGW: dg=_DEG['major' if 4 in scale_set else 'minor']; kp=kp+DEGW*np.log(np.array([dg[(q-tonic)%12] for q in S])*12)
         if au==1 and ad==1 and not profile: pos=lambda i: -((r[i]-S)**2)/(2*S_ABS**2)*w[i]
         else: pos=lambda i: -((r[i]-r0)-alpha*(S-q0))**2/(2*s_pos**2)*w[i]
         V=np.where(S==q0,0.0,-1e18)+pos(0)+kp*w[0]; B=[]
