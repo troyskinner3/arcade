@@ -1368,7 +1368,24 @@ function keyChanged(){ keyCache=null; S.tracks.forEach(t=>{ if(INST[t.inst].kind
 
 /* ============================== audio engine ============================== */
 let ctx=null, chain=null, playing=false, t0=0, metroBuf=null, metroDirty=true, irBuf=null, irSize=-1, renderedLen=0;
+/* iPhone silent switch: web audio counts as "ambient" sound and the switch mutes it. Declaring the page as media
+   playback (Audio Session API where the browser has it, otherwise a silent looping <audio> element, started from a tap)
+   makes Noodle play like a music app. The silent element pauses while the mic is held and when the page is hidden. */
+const IOS=/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+let unmuteEl=null;
+function silentWavURL(){ const n=4000, b=new DataView(new ArrayBuffer(44+n)), w=(o,t)=>{ for(let i=0;i<t.length;i++) b.setUint8(o+i,t.charCodeAt(i)); };
+  w(0,'RIFF'); b.setUint32(4,36+n,true); w(8,'WAVE'); w(12,'fmt '); b.setUint32(16,16,true); b.setUint16(20,1,true); b.setUint16(22,1,true); b.setUint32(24,8000,true); b.setUint32(28,8000,true); b.setUint16(32,1,true); b.setUint16(34,8,true); w(36,'data'); b.setUint32(40,n,true);
+  for(let i=0;i<n;i++) b.setUint8(44+i,128); return URL.createObjectURL(new Blob([b.buffer],{type:'audio/wav'})); }
+function playThroughSilentSwitch(){
+  try{ if(navigator.audioSession && !mic) navigator.audioSession.type='playback'; }catch(e){}
+  if(!IOS || mic || document.hidden) return;
+  if(!unmuteEl){ unmuteEl=document.createElement('audio'); unmuteEl.setAttribute('x-webkit-airplay','deny'); unmuteEl.preload='auto'; unmuteEl.loop=true; unmuteEl.src=silentWavURL(); unmuteEl.disableRemotePlayback=true; }
+  if(unmuteEl.paused){ const p=unmuteEl.play(); if(p&&p.catch) p.catch(()=>{}); }
+}
+function pauseSilentSwitch(){ if(unmuteEl && !unmuteEl.paused) unmuteEl.pause(); }
+if(IOS) ['touchend','click'].forEach(ev=>document.addEventListener(ev,()=>{ if(typeof mic!=='undefined') playThroughSilentSwitch(); },{passive:true,capture:true}));
 function ensureCtx(){
+  playThroughSilentSwitch();
   if(!ctx){
     const AC=window.AudioContext||window.webkitAudioContext; ctx=new AC({latencyHint:'interactive'});
     chain=buildChain(ctx, true); applyMaster();
@@ -1628,6 +1645,7 @@ process(inputs){const ch=inputs[0]&&inputs[0][0];if(ch){if(this.n===0)this.t=cur
 registerProcessor('mm-cap',Cap);`;
 async function ensureMic(ec=S.ec){
   if(mic && mic.ec===ec) return true; if(mic) dropMic();
+  pauseSilentSwitch();
   try{ if(navigator.audioSession) navigator.audioSession.type='play-and-record'; }catch(e){}
   let stream;
   try{ stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:ec,noiseSuppression:false,autoGainControl:false,channelCount:1}}); }
@@ -1650,8 +1668,10 @@ async function ensureMic(ec=S.ec){
 function dropMic(){
   if(mic){ mic.stream.getTracks().forEach(t=>t.stop()); try{mic.src.disconnect(); mic.node.disconnect();}catch(e){} mic=null; }
   try{ if(navigator.audioSession) navigator.audioSession.type='playback'; }catch(e){}
+  playThroughSilentSwitch();
 }
 function onHide(){
+  pauseSilentSwitch();
   if(recState){ capturing=false; recState=null; setRecUI(false); teachQueue=null; if(!$('recSheet').hidden){ $('recSheet').hidden=true; document.body.style.overflow=''; } if(rs.mode){ const r=rs.resume; rs.mode=null; S.target=null; if(r) restoreSnap(r.snap).then(()=>{ hist.cur=r.snap; updateHistBtns(); takeBar=r.bar; editId=r.bar.id; renderTracks(); }); else renderTracks(); } }
   if(ctx){ stopAll(); if(origSrc){ try{origSrc.stop();}catch(e){} origSrc=null; } playing=false; updatePlayBtn(); try{ ctx.suspend(); }catch(e){} }
   dropMic();
@@ -2474,7 +2494,23 @@ function learnFromPitchFix(a,b){ const K=currentKey(); if(K.none||a===b||Math.ab
   S.snapStr=clamp((S.snapStr??100)+d,0,100); const ss=$('snapStr'); if(ss){ ss.value=S.snapStr; ss.dispatchEvent(new Event('input')); } save();
   learnNote(d>0?'Noted: recorded notes will snap a little more to the key (Snap strength, under Mix & global FX).':'Noted: recorded notes will keep a little more of what you sang (Snap strength, under Mix & global FX).'); }
 function learnDetail(d){ S.detailBias=clamp((S.detailBias||0)+d,-30,30); save(); if(S.detailBias<=-6) learnNote('Noted: future takes will lean toward fewer, longer notes. Change it any time with Notes on a take.'); }
-function deleteSelNote(tr){ const n=tr._sel; if(!n||!tr.notes.includes(n)) return; if(!n.x && n.l<=2) learnDetail(-2); tr.notes.splice(tr.notes.indexOf(n),1); tr._sel=null; keyCache=null; noteChanged(tr); }
+/* Replacing a wrong note is often easier as "draw the right one, delete the old one" (either order) than dragging it.
+   Within 30 s, a deleted recorded note and a drawn note over the same spot count as one fix (learned like a drag),
+   not as "too many notes". */
+const REPLACE_MS=30000;
+const overlaps=(a,b)=>a.s<b.s+b.l+1 && b.s<a.s+a.l+1;
+function learnReplace(oldP,newP){ learnFromPitchFix(oldP,newP); }
+function noteDrawn(tr,nt){ const now=Date.now(); tr._recent=(tr._recent||[]).filter(r=>now-r.at<REPLACE_MS);
+  const i=tr._recent.findIndex(r=>r.kind==='del' && overlaps(r,nt));
+  if(i>=0){ const r=tr._recent.splice(i,1)[0]; clearTimeout(r.timer); learnReplace(r.p,pitchOf(nt)); return; }
+  tr._recent.push({kind:'add',s:nt.s,l:nt.l,p:pitchOf(nt),at:now,note:nt}); }
+function recordedDeleted(tr,n){ const now=Date.now(); tr._recent=(tr._recent||[]).filter(r=>now-r.at<REPLACE_MS);
+  const i=tr._recent.findIndex(r=>r.kind==='add' && tr.notes.includes(r.note) && overlaps(r.note,n));
+  if(i>=0){ const r=tr._recent.splice(i,1)[0]; learnReplace(pitchOf(n),pitchOf(r.note)); return; }
+  const short=n.l<=2, rec={kind:'del',s:n.s,l:n.l,p:pitchOf(n),at:now};
+  rec.timer=setTimeout(()=>{ tr._recent=(tr._recent||[]).filter(r=>r!==rec); if(short) learnDetail(-2); },REPLACE_MS);   // no replacement drawn: it really was an extra note
+  tr._recent.push(rec); }
+function deleteSelNote(tr){ const n=tr._sel; if(!n||!tr.notes.includes(n)) return; if(!n.x) recordedDeleted(tr,n); tr.notes.splice(tr.notes.indexOf(n),1); tr._sel=null; keyCache=null; noteChanged(tr); }
 function placeHandle(tr){ const h=tr._nsel, G=tr._grid, n=tr._sel, x=tr._ndel; if(!h) return;
   const i=(n&&G)?G.rows.indexOf(pitchOf(n)):-1; if(i<0||!tr.notes.includes(n)){ h.hidden=true; if(x) x.hidden=true; return; }
   if(x){ const top=1+i*G.rh, above=top>=26; x.hidden=false; x.style.left=Math.max(0,G.gut+(n.s+n.l)*G.cw-12)+'px'; x.style.top=(above?top-26:top+G.rh+2)+'px'; }
@@ -2510,6 +2546,7 @@ function noteUp(tr,e,cancel){
     else { startNewNote(tr,d.c); tr._drag=null; noteChanged(tr); }
     return; }
   if(d.moved && d.rec && d.mode==='move') learnFromPitchFix(d.np, pitchOf(d.note));
+  if(d.created) noteDrawn(tr,d.note);
   if(d.moved||d.created) noteChanged(tr); else { drawGrid(tr); renderNoteBar(tr); }
 }
 function renderNoteBar(tr){
@@ -2538,7 +2575,7 @@ function gridTap(tr,e){
   const row=G.rows[i];
   if(INST[tr.inst].kind==='pitched'){
     const hit=tr.notes.findIndex(n=>pitchOf(n)===row && s>=n.s && s<n.s+n.l);
-    if(hit>=0) tr.notes.splice(hit,1); else { tr.notes=tr.notes.filter(n=>!(s>=n.s&&s<n.s+n.l)); tr.notes.push({s,l:S.quant==8?2:1,p:row,v:0.85,x:true}); tr.notes.sort((a,b)=>a.s-b.s); }
+    if(hit>=0) tr.notes.splice(hit,1); else { const gone=tr.notes.filter(n=>s>=n.s&&s<n.s+n.l&&!n.x); tr.notes=tr.notes.filter(n=>!(s>=n.s&&s<n.s+n.l)); tr.notes.push({s,l:S.quant==8?2:1,p:row,v:0.85,x:true}); tr.notes.sort((a,b)=>a.s-b.s); if(gone.length===1) learnReplace(pitchOf(gone[0]),row); }
     keyCache=null;
   } else {
     const k=tr.hits.findIndex(h=>h.s===s&&h.d===row);
