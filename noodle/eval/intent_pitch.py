@@ -12,7 +12,8 @@ def lp_step(d):
     return np.log(STEP_PRIOR.get(abs(d),0.002)/(1 if d==0 else 2))
 OOK=float(__import__('os').environ.get('OOK','3.0'))
 S_ABS=float(__import__('os').environ.get('SABS','0.6'))
-def decode_key(r, w, scale_set, tonic, alpha, s_int=0.45, s_pos=1.6, profile=None):
+HARM=float(_o.environ.get('HARM','0'))
+def decode_key(r, w, scale_set, tonic, alpha, s_int=0.45, s_pos=1.6, profile=None, chords=None):
     au,ad=(alpha if isinstance(alpha,tuple) else (alpha,alpha)); alpha=(au+ad)/2
     """Viterbi over in-key pitches. r: sung pitches, w: weights (longer notes count more). returns (score, pitches)"""
     r=np.asarray(r,float); n=len(r); r0=r[0]
@@ -24,6 +25,9 @@ def decode_key(r, w, scale_set, tonic, alpha, s_int=0.45, s_pos=1.6, profile=Non
         if DEGW: dg=_DEG['major' if 4 in scale_set else 'minor']; kp=kp+DEGW*np.log(np.array([dg[(q-tonic)%12] for q in S])*12)
         if au==1 and ad==1 and not profile: pos=lambda i: -((r[i]-S)**2)/(2*S_ABS**2)*w[i]
         else: pos=lambda i: -((r[i]-r0)-alpha*(S-q0))**2/(2*s_pos**2)*w[i]
+        if chords is not None and HARM:
+            CB=[np.array([HARM*c[1] if (c and c[0] is not None and (q%12) in c[0]) else 0.0 for q in S]) for c in chords]
+            _pos=pos; pos=lambda i,_p=_pos: _p(i)+CB[i]
         V=np.where(S==q0,0.0,-1e18)+pos(0)+kp*w[0]; B=[]
         D=S[None,:]-S[:,None]   # D[a,b]=S[b]-S[a]
         prior=np.vectorize(lp_step)(D)
@@ -47,7 +51,7 @@ def fix_octaves(r):
         for k in (12,-12):
             if abs(r[i]+k-ref) < abs(r[i]-ref)-6: r[i]+=k; break
     return r
-def decode(r, dur, alpha=None, profile=None, key=None, alphas=[(u,d) for u in np.arange(0.55,1.16,0.05) for d in np.arange(0.7,1.16,0.05)], alpha_sd=0.15, s_pos=1.6):
+def decode(r, dur, alpha=None, profile=None, key=None, chords=None, alphas=[(u,d) for u in np.arange(0.55,1.16,0.05) for d in np.arange(0.7,1.16,0.05)], alpha_sd=0.15, s_pos=1.6):
     """alpha None: search it (with a prior around 1). returns pitches, alpha, (tonic, mode)"""
     if len(r)==0: return [],1.0,None
     r=fix_octaves(r)
@@ -57,7 +61,7 @@ def decode(r, dur, alpha=None, profile=None, key=None, alphas=[(u,d) for u in np
         pa=0 if (alpha or profile) else -(((al[0]-1)**2)+((al[1]-1)**2))/(2*alpha_sd**2)
         for tonic in (range(12) if key is None else [key[0]]):
             for mode,ss in ((('major',MAJ),('minor',MIN)) if key is None else [(key[1],MAJ if key[1]=='major' else MIN)]):
-                sc,q=decode_key(r,w,set(ss),tonic,al if al else 1.0,s_pos=s_pos,profile=profile); sc+=pa
+                sc,q=decode_key(r,w,set(ss),tonic,al if al else 1.0,s_pos=s_pos,profile=profile,chords=chords); sc+=pa
                 if sc>best[0]: best=(sc,q,al,(tonic,mode))
     return best[1],best[2],best[3]
 def snap_key(r, dur, with_key=False):
