@@ -1934,7 +1934,7 @@ function takeTimes(an,inst){ return INST[inst].kind==='pitched'? an.notes.map(n=
 function userTracks(){ return S.tracks.filter(t=>!t.ex); }
 const hasContent=t=>!!((t.hits&&t.hits.length)||(t.notes&&t.notes.length)||t._raw||(t.inst==='vox'&&t.va!=null));
 const anyContent=()=>userTracks().some(hasContent);
-const activePart=()=>S.tracks.find(t=>t.id===S.activeId) || [...userTracks()].reverse()[0] || null;
+const activePart=()=>{ const a=S.tracks.find(t=>t.id===S.activeId); if(a&&!a.guide) return a; return S.tracks.find(t=>!t.guide&&(!a||t.inst===a.inst)) || [...userTracks()].reverse()[0] || null; };
 let pendingNew=false, pickFor=null;
 function dropExamples(keep){ if(keep) keep.ex=false; S.tracks.filter(t=>t.ex).forEach(disposeTrack); S.tracks=S.tracks.filter(t=>!t.ex); }
 async function addVocalTake(x, sr, opt){
@@ -2076,12 +2076,12 @@ async function addTake0(x, sr, inst, opt){
       guessFix = (an.guessed||0)*stepDur();   // remember only the beat-one shift, never the fine-tuning (it used to pile up)
     }
     const isDrum = kind!=='pitched';
-    const tg=S.tracks.find(t=>t.id===S.target);
+    let tg=S.tracks.find(t=>t.id===S.target); if(tg&&tg.guide) tg=S.tracks.find(t=>!t.guide&&t.inst===tg.inst)||null; if(!tg&&S.prompt) tg=S.tracks.find(t=>!t.guide&&t.inst===inst)||null;   // never record over a guided take's Guide
     if(detBars){ tr.len=detBars; if(tg) tg.len=detBars; }
     const tgFits = tg && (isDrum ? INST[tg.inst].kind!=='pitched' && INST[tg.inst].kind!=='audio' : tg.inst===inst);
     if(tgFits && !hasContent(tg)){ tr=tg; tr.sens=S.sens; }               // an empty part: this take fills it
     if(tg && tg.ex && tgFits){ tg.ex=false; }
-    const tgtTonal = !isDrum ? (tgFits ? (hasContent(tg)?tg:null) : (S.replaceTonal && !tg ? [...userTracks()].reverse().find(t=>t.inst===inst&&hasContent(t)) : null)) : null;
+    const tgtTonal = !isDrum ? (tgFits ? (hasContent(tg)?tg:null) : (S.replaceTonal && !tg ? [...userTracks()].reverse().find(t=>t.inst===inst&&hasContent(t)&&!t.guide) : null)) : null;
     if(tgtTonal){
       tgtTonal._range=null; tgtTonal._an=an; tgtTonal._raw={x,sr}; tgtTonal.takeN=1; tgtTonal._takes=[{id:1,inst,an,raw:{x,sr}}]; tgtTonal.sens=tr.sens;
       if(opt.first||tgtTonal.ex) dropExamples(tgtTonal); S.activeId=tgtTonal.id; quantizeTrack(tgtTonal); keyChanged(); save(); renderTracks(); updateKeyInfo();
@@ -2342,7 +2342,7 @@ function renderTracks(){
       <input type="range" class="prow-vol" min="0" max="100" value="${tr.vol}" aria-label="${partName(tr)} volume">`;
     box.appendChild(row);
     row.querySelector('.prow-main').onclick=()=>{ S.activeId=tr.id; updateDock(); if(recHere) return; if(empty&&!open){ pickFor=picking?null:tr.id; renderTracks(); } else if(open) closeEditor(); else openEditor(tr); };
-    row.querySelector('.rec').onclick=()=>recordInto(tr.id);
+    row.querySelector('.rec').onclick=()=>recordInto(tr.guide?(S.tracks.find(t=>!t.guide&&t.inst===tr.inst)||tr).id:tr.id); if(tr.guide) row.querySelector('.rec').hidden=true;
     const cr=row.querySelector('.cta-rec'); if(cr) cr.onclick=()=>recordInto(tr.id);
     row.querySelectorAll('.cta-imp').forEach(b=>b.onclick=()=>importInto(tr.id));
     row.addEventListener('input',e=>{ const inp=e.target; if(!inp.classList||!inp.classList.contains('pdet')) return; tr.detail=+inp.value; row.querySelectorAll('.pdet').forEach(o=>{ if(o!==inp) o.value=inp.value; }); clearTimeout(tr._detT); tr._detT=setTimeout(()=>{ reanalyze(tr); redrawTrack(tr); },160); });
