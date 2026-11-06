@@ -40,7 +40,7 @@ def score_file(f, est, lengths=False):
     ref=ref_notes(f)
     if 'humtrans' in f:   # sung in any key: the best single transposition
         ref=align_humtrans(ref,est)
-        return min((edits([[a,b,p+s] for a,b,p in est],ref,lengths)+(s,) for s in range(-12,13)), key=lambda x:x[0])[:2]+(len(ref),)
+        return min((edits([[a,b,p+s] for a,b,p in est],ref,lengths)+(s,) for s in range(-24,25)), key=lambda x:x[0])[:2]+(len(ref),)
     if '/synth' in f and SYNV(f)=='whistle':   # whistles land in any octave
         return min((edits([[a,b,p+s] for a,b,p in est],ref,lengths)+(s,) for s in (-24,-12,0,12,24)), key=lambda x:x[0])[:2]+(len(ref),)
     return edits(est,ref,lengths)+(len(ref),)

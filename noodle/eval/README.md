@@ -112,3 +112,19 @@ Where the edits go: wrong pitch is 30–40%, missed notes 20–55% (singing), ex
 - A model trained only on them matches one trained on all our real CC BY takes.
 
 What this says: the note-start detector is no longer the bottleneck. Next targets: the pitch each note was meant to be (scoops, drift, key context) and notes lost at the voicing gate.
+
+### Interval squeeze and the whole-line pitch reading (Nov 6)
+Guided takes (`pull_takes.py` with NOODLE_DROP_URL / NOODLE_DROP_KEY set, `score_user.py`, `replay_user.js`): the owner sings upward jumps narrower than meant (+7 sung as about +4, +2 as +1.6); downward ones are close.
+HumTrans hummers mostly sing intervals as meant (median 0.98), but about 1 in 10 squeeze to 0.74 or less (`interval_study.py`).
+
+`intent_pitch.py` (ported into the app as `intendedPitches`): Viterbi over the key's notes, scoring each reading by fit to the sung intervals (allowing a per-person up/down squeeze),
+closeness to the sung pitch, and how common each step is in melodies; out-of-key notes allowed at a cost tied to Snap strength (Tight = in key only).
+
+| edits per 10 notes | today | whole-line reading |
+|---|---|---|
+| owner's guided takes, replayed in the app (squeeze learned from earlier takes) | 4.18 | **3.71** |
+| HumTrans, no squeeze | 3.88 | 3.80 |
+| Vocadito, no squeeze | 6.37 | 6.46 |
+
+Shipped only for people whose guided takes show a squeeze (up-interval ratio < 0.9 over 10+ intervals); everyone else keeps today's key snapping exactly.
+Scoring fix: hummed takes may sit up to two octaves from the written tune (was one), which moved HumTrans "round" from 4.81 to 4.58.

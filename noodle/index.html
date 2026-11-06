@@ -777,7 +777,7 @@ async function restoreSnap(sn){
 async function newSong(){
   if(!S.tracks.length && !S.title) return;
   flushSave(); if(playing){ stopAll(); playing=false; updatePlayBtn(); }
-  const keepKeys=['kit','calibrated','latAuto','latMs','ec','sens','snapStr','detailBias','vocLat','mergeDrums','replaceTonal','mig2','mig3'];
+  const keepKeys=['kit','calibrated','latAuto','latMs','ec','sens','snapStr','detailBias','vocLat','mergeDrums','replaceTonal','mig2','mig3','sq'];
   const o=defaultState(); keepKeys.forEach(k=>{ if(k in S) o[k]=S[k]; }); o.tracks=[]; o.nextId=S.nextId;
   takeBar=null; await restoreSnap({json:JSON.stringify(o), rt:new Map()}); save(); flushSave();
   window.scrollTo({top:0}); toast('New song. Undo brings the last one back.'); }
@@ -1341,8 +1341,68 @@ const snapTol=()=>{ const v=S.snapStr??100; return v>=100?0:0.5*Math.pow(1-v/100
 function snap(p,len){ const K=currentKey(); if(K.none) return Math.round(p); const r=Math.round(p), ink=m=>K.set.includes(((m-K.tonic)%12+12)%12);
   if(ink(r) || (Math.abs(p-r)<snapTol() && (len==null || len>=0.15))) return r;
   let bm=r, bd=1e9; for(let m=r-3;m<=r+3;m++){ if(ink(m)){ const d=Math.abs(m-p); if(d<bd-1e-9){bd=d;bm=m;} } } return bm; }
-/* a note you drew by hand (x:true) stays exactly where you put it; recorded notes snap to the key */
-const pitchOf=n=>n.x?Math.round(n.p):snap(n.p, n.l!=null?n.l*stepDur():null);
+/* Intended notes from a sung line: of all readings in the song's key, pick the one that best explains the whole
+   shape you sang, preferring the steps real melodies use. Out-of-key notes are allowed at a cost (lower with a looser
+   Snap strength). If your guided takes show you sing upward/downward jumps narrower than meant, the reading allows for it. */
+const IP_STEP={0:.16,1:.14,2:.30,3:.13,4:.08,5:.07,7:.05,6:.01,8:.02,9:.015,10:.01,11:.005,12:.01};
+const ipStep=d=>Math.log((IP_STEP[Math.abs(d)]??0.002)/(d===0?1:2));
+function ipFixOctaves(r){ r=r.slice();
+  for(let i=0;i<r.length;i++){ const nb=[r[i-1],r[i+1]].filter(v=>v!=null); if(!nb.length) continue; const ref=nb.length===2?(nb[0]+nb[1])/2:nb[0];
+    for(const k of [12,-12]) if(Math.abs(r[i]+k-ref) < Math.abs(r[i]-ref)-6){ r[i]+=k; break; } }
+  return r; }
+function ipDecodeKey(r,w,inKey,au,ad,ook,squeeze){
+  const SINT=0.45, SPOS=1.6, SABS=0.6, n=r.length, r0=r[0], alpha=(au+ad)/2; let best={sc:-Infinity,q:null};
+  const rmin=Math.min(...r), rmax=Math.max(...r);
+  for(let q0=Math.round(r0)-2;q0<=Math.round(r0)+2;q0++){ if(!inKey(q0)) continue;
+    const lo=q0+Math.floor((rmin-r0)/alpha)-3, hi=q0+Math.ceil((rmax-r0)/alpha)+3, m=hi-lo+1;
+    const S=new Int32Array(m), kp=new Float64Array(m); for(let k=0;k<m;k++){ S[k]=lo+k; kp[k]=inKey(lo+k)?0:-ook; }
+    const pos=(i,k)=> squeeze ? -(((r[i]-r0)-alpha*(S[k]-q0))**2)/(2*SPOS*SPOS)*w[i] : -((r[i]-S[k])**2)/(2*SABS*SABS)*w[i];
+    const pri=new Float64Array(m*m), ex=new Float64Array(m*m);
+    for(let a=0;a<m;a++) for(let b=0;b<m;b++){ const d=S[b]-S[a]; pri[a*m+b]=ipStep(d); ex[a*m+b]=(d>0?au:ad)*d; }
+    let V=new Float64Array(m); for(let k=0;k<m;k++) V[k]=(S[k]===q0?0:-1e18)+pos(0,k)+kp[k]*w[0];
+    const B=[];
+    for(let i=1;i<n;i++){ const dr=r[i]-r[i-1], ws=Math.min(w[i],w[i-1]), V2=new Float64Array(m), bk=new Int32Array(m);
+      for(let b=0;b<m;b++){ let bv=-Infinity, ba=0; for(let a=0;a<m;a++){ const e=dr-ex[a*m+b], v=V[a]+pri[a*m+b]-e*e/(2*SINT*SINT)*ws; if(v>bv){ bv=v; ba=a; } }
+        V2[b]=bv+pos(i,b)+kp[b]*w[i]; bk[b]=ba; }
+      B.push(bk); V=V2; }
+    let k=0; for(let j=1;j<m;j++) if(V[j]>V[k]) k=j; const sc=V[k], path=[k];
+    for(let i=B.length-1;i>=0;i--){ k=B[i][k]; path.push(k); }
+    if(sc>best.sc) best={sc,q:path.reverse().map(k=>S[k])};
+  }
+  return best; }
+/* r: sung pitches (semitones), dur: lengths, key: {tonic,set}; opts: {ook, squeeze} */
+function intendedPitches(r, dur, key, opts={}){
+  if(!r.length) return [];
+  r=ipFixOctaves(r); const md=[...dur].sort((a,b)=>a-b)[Math.floor(dur.length/2)]||1, w=dur.map(d=>Math.min(2,Math.max(0.5,d/md)));
+  const inKey=q=>key.set.includes(((q-key.tonic)%12+12)%12), ook=opts.ook??2;
+  if(!opts.squeeze) return ipDecodeKey(r,w,inKey,1,1,ook,false).q;
+  let best={sc:-Infinity,q:null};
+  for(let u=0.55;u<1.16;u+=0.05) for(let d=0.7;d<1.16;d+=0.05){ const b=ipDecodeKey(r,w,inKey,u,d,ook,true), sc=b.sc-(((u-1)**2)+((d-1)**2))/(2*0.15*0.15); if(sc>best.sc) best={sc,q:b.q}; }
+  return best.q; }
+/* Personal interval width, measured on guided takes (sung vs the Guide). The squeeze is only allowed for someone whose
+   own takes show it, so people who sing intervals accurately are never "corrected". */
+function squeezeOn(){ const q=S.sq; if(!q||q.nu<10) return false; return q.xyu/q.xxu<0.9; }
+function learnSqueeze(tr){ const g=S.tracks.find(t=>t.guide); if(!g||!tr.notes) return;
+  const pairs=tr.notes.filter(n=>!n.x).map(n=>[n,g.notes.reduce((b,x)=>Math.abs(x.s-n.s)<Math.abs(b.s-n.s)?x:b,g.notes[0])]).filter(([n,x])=>Math.abs(n.s-x.s)<=1);
+  const q=S.sq||(S.sq={nu:0,xxu:0,xyu:0,nd:0,xxd:0,xyd:0});
+  for(let i=1;i<pairs.length;i++){ const [a,ga]=pairs[i-1], [b,gb]=pairs[i]; if(ga===gb) continue; const d=Math.round(gb.p)-Math.round(ga.p), y=b.p-a.p; if(!d) continue;
+    if(d>0){ q.nu++; q.xxu+=d*d; q.xyu+=d*y; } else { q.nd++; q.xxd+=d*d; q.xyd+=d*y; } } }
+/* Each recorded note's pitch is worked out once for its whole part and kept; it is worked out again only when the key,
+   Snap strength or your interval profile changes (so editing one note never moves the others). */
+/* Snap strength: Tight keeps every recorded note in the key; looser lets clearly sung out-of-key notes through */
+const ookCost=()=>{ const v=S.snapStr??100; return v>=100?50:0.3+2.7*(v/100)**2; };
+function decSig(){ const K=currentKey(); return K.none?'none':`${K.tonic}|${K.scale}|${S.snapStr??100}|${squeezeOn()?1:0}`; }
+function decodePart(tr, sig){ const K=currentKey(), rec=tr.notes.filter(n=>!n.x).sort((a,b)=>a.s-b.s);
+  const q=intendedPitches(rec.map(n=>+n.p), rec.map(n=>n.l||1), {tonic:K.tonic,set:K.set}, {ook:ookCost(), squeeze:squeezeOn()});
+  rec.forEach((n,i)=>{ n.q=q[i]; n.qk=sig; }); }
+function pitchOf(n){ if(n.x) return Math.round(n.p);
+  // people who sing intervals as meant keep today's key snapping exactly; the whole-line reading is for those whose takes show a squeeze
+  if(!squeezeOn()) return snap(n.p, n.l!=null?n.l*stepDur():null);
+  const sig=decSig(); if(sig==='none') return Math.round(n.p);
+  if(n.q!=null && n.qk===sig) return n.q;
+  const tr=S.tracks.find(t=>t.notes&&t.notes.includes(n)&&INST[t.inst].kind==='pitched');
+  if(!tr) return snap(n.p, n.l!=null?n.l*stepDur():null);
+  decodePart(tr,sig); return n.q; }
 /* Auto-chords: the note you played is the root; the 3rd and 5th come from the song's key (stacked scale steps),
    so in A minor an A plays A minor, a C plays C major, a B plays B diminished. Pentatonic and blues keys use their
    parent 7-note scale; notes outside the key (or "any note") get a major triad. */
@@ -1996,6 +2056,7 @@ async function dropTake(x, sr, inst){ if(!drop) return;
   const d=new Date(), pad=v=>String(v).padStart(2,'0');
   tr.sid=`${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}-${slug(S.title)||'untitled'}-${inst}`;
   tr.sidAt=d.toISOString(); tr.sidHeard=dropState(tr); tr._dropSent=null; persist();
+  if(S.prompt && !tr.guide && INST[tr.inst].kind==='pitched'){ learnSqueeze(tr); persist(); }
   if(S.prompt && !tr.guide){ guidedDone.add(S.prompt); try{ localStorage.setItem('noodle.guided',JSON.stringify([...guidedDone])); }catch(e){} guidedUI(); }
   const wav=await dropWavB64(x,sr), meta=dropMeta(tr); tr._dropSent=JSON.stringify(meta.now);
   const ok=await dropPost({sid:tr.sid, wav, meta}); if(!ok) toast('Couldn’t send that take. It’ll still work here.'); }
@@ -2042,7 +2103,7 @@ function guidedUI(){ const el=$('guided'); if(!el) return; el.hidden=!drop; if(!
   $('gSet').onclick=()=>guidedSetup($('gPick').value); const nb=$('gNext'); if(nb) nb.onclick=()=>guidedSetup(next[0]); }
 async function guidedSetup(id){ const g=GUIDED.find(x=>x[0]===id); if(!g) return; const [,mel,how,inst0,bpm]=g, kit=inst0==='kit';
   flushSave(); if(playing){ stopAll(); playing=false; updatePlayBtn(); }
-  const keepKeys=['kit','calibrated','latAuto','latMs','ec','sens','snapStr','detailBias','vocLat','mergeDrums','replaceTonal','mig2','mig3','playAlong'];
+  const keepKeys=['kit','calibrated','latAuto','latMs','ec','sens','snapStr','detailBias','vocLat','mergeDrums','replaceTonal','mig2','mig3','sq','playAlong'];
   const o=defaultState(); keepKeys.forEach(k=>{ if(k in S) o[k]=S[k]; });
   o.title=id; o.prompt=id; o.bpm=bpm||90; o.bars=4; o.loops=2; let nid=S.nextId;
   let guide, take;
