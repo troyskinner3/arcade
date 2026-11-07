@@ -2128,7 +2128,13 @@ let drop=null; try{ drop=JSON.parse(localStorage.getItem(DROP_KEY)||'null'); }ca
   if(q.get('drop')==='off'){ drop=null; localStorage.removeItem(DROP_KEY); }
   else { drop={url:q.get('drop'), k:q.get('k')||'', who:q.get('who')||''}; localStorage.setItem(DROP_KEY,JSON.stringify(drop)); }
   history.replaceState(null,'',location.pathname); } }catch(e){} })();
-function dropLineUI(){ const el=$('dropLine'); if(!el) return; try{ guidedUI(); }catch(e){} el.hidden=!drop; if(!drop) return;
+function dropLineUI(){ const el=$('dropLine'); if(!el) return; try{ guidedUI(); }catch(e){}
+  if(!drop && /NoodleApp/.test(navigator.userAgent)){   /* inside the iPhone app (its own storage): paste the sharing link once */
+    el.hidden=false; el.innerHTML='<input id="dropPaste" type="url" placeholder="Paste your sharing link" style="width:100%;margin:4px 0" autocomplete="off"> <button class="btn" id="dropGo">Share my takes</button>';
+    $('dropGo').onclick=()=>{ try{ const q=new URL($('dropPaste').value.trim()).searchParams; if(!q.get('drop')) throw 0;
+      drop={url:q.get('drop'),k:q.get('k')||'',who:q.get('who')||''}; localStorage.setItem(DROP_KEY,JSON.stringify(drop)); dropLineUI(); toast('Takes will be shared.'); }catch(e){ toast('That link doesn’t look right.'); } };
+    return; }
+  el.hidden=!drop; if(!drop) return;
   el.innerHTML='Sharing your takes to help improve Noodle. <a href="#" id="dropOff">Stop</a>';
   $('dropOff').onclick=e=>{ e.preventDefault(); drop=null; try{ localStorage.removeItem(DROP_KEY); }catch(_){} dropLineUI(); toast('Takes are no longer shared.'); }; }
 document.addEventListener('DOMContentLoaded',dropLineUI); setTimeout(dropLineUI,0);
@@ -2176,6 +2182,13 @@ const G_MEL={   // [midi, steps] (16 steps a bar, 4 bars)
   frere:   [[65,4],[67,4],[69,4],[65,4],[65,4],[67,4],[69,4],[65,4],[69,4],[70,4],[72,8],[69,4],[70,4],[72,8]],
   birthday:[[55,3],[55,1],[57,4],[55,4],[60,4],[59,8],[null,8],[55,3],[55,1],[57,4],[55,4],[62,4],[60,8],[null,8]],
   long:    [[62,64]],
+  row:     [[60,4],[60,4],[60,3],[62,1],[64,4],[64,3],[62,1],[64,3],[65,1],[67,8],[72,2],[72,2],[67,2],[67,2],[64,2],[64,2],[60,2],[60,2],[67,3],[65,1],[64,3],[62,1],[60,8]],
+  london:  [[67,3],[69,1],[67,2],[65,2],[64,2],[65,2],[67,4],[62,2],[64,2],[65,4],[64,2],[65,2],[67,4],[67,3],[69,1],[67,2],[65,2],[64,2],[65,2],[67,4],[62,4],[67,4],[64,2],[60,6]],
+  yankee:  [[60,2],[60,2],[62,2],[64,2],[60,2],[64,2],[62,2],[55,2],[60,2],[60,2],[62,2],[64,2],[60,4],[59,4],[60,2],[60,2],[62,2],[64,2],[65,2],[64,2],[62,2],[60,2],[59,2],[55,2],[57,2],[59,2],[60,4],[60,4]],
+  saints:  [[60,2],[64,2],[65,2],[67,10],[60,2],[64,2],[65,2],[67,10],[60,2],[64,2],[65,2],[67,4],[64,4],[60,2],[64,4],[62,12]],
+  farm:    [[60,4],[60,4],[60,4],[55,4],[57,4],[57,4],[55,8],[64,4],[64,4],[62,4],[62,4],[60,12],[null,4]],
+  buns:    [[64,4],[62,4],[60,8],[64,4],[62,4],[60,8],[60,2],[60,2],[60,2],[60,2],[62,2],[62,2],[62,2],[62,2],[64,4],[62,4],[60,8]],
+  joy:     [[72,4],[71,3],[69,1],[67,6],[65,2],[64,4],[62,4],[60,8],[67,2],[69,6],[69,2],[71,6],[71,2],[72,14]],
 };
 const G_DRUM={
   beat: (()=>{ const h=[]; for(let b=0;b<4;b++){ const o=b*16; h.push([o,'kick'],[o+8,'kick'],[o+4,'snare'],[o+12,'snare']); for(let k=0;k<16;k+=2) h.push([o+k,'hat']); } return h; })(),
@@ -2185,13 +2198,20 @@ const GUIDED=[
   ['scale-hum','scale','Hum it: “mm”'], ['scale-la','scale','Sing it on “la”'],
   ['twinkle-hum','twinkle','Hum it: “mm”'], ['twinkle-words','twinkle','Sing the words (Twinkle twinkle little star…)'], ['twinkle-whistle','twinkle','Whistle it'],
   ['twinkle-da','twinkle','Sing “da” on every note'], ['twinkle-soft','twinkle','Sing it quietly and breathily'], ['twinkle-scoops','twinkle','Slide up into each note'],
-  ['twinkle-fast','twinkle','Hum it, faster','',130],
+  ['twinkle-fast','twinkle','Hum it, faster','',140],
   ['mary-words','mary','Sing the words (Mary had a little lamb)'], ['mary-hum','mary','Hum it smoothly, no breaks between notes'],
   ['jingle-words','jingle','Sing the words (Jingle bells…)'], ['jingle-da','jingle','Sing “da” on every note'],
   ['ode-hum','ode','Hum it smoothly (Ode to Joy)'], ['ode-whistle','ode','Whistle it'],
   ['frere-la','frere','Sing it on “la” (Frère Jacques)'], ['birthday-words','birthday','Sing the words (Happy birthday to you…)'],
   ['long-vowels','long','One long note: slowly “ooo → aaa → eee → ooo”'], ['long-swell','long','One long note: quiet → loud → quiet'],
   ['long-bend','long','One long note with vibrato, then bend up and back down'],
+  ['row-words','row','Sing the words (Row, row, row your boat…)'], ['row-hum','row','Hum it smoothly'],
+  ['london-words','london','Sing the words (London Bridge is falling down…)'], ['london-da','london','Sing “da” on every note'],
+  ['yankee-words','yankee','Sing the words (Yankee Doodle went to town…)'], ['yankee-hum','yankee','Hum it'],
+  ['saints-words','saints','Sing the words (Oh when the saints…)'], ['saints-whistle','saints','Whistle it'],
+  ['farm-words','farm','Sing the words (Old MacDonald had a farm…)'], ['farm-hum','farm','Hum it smoothly'],
+  ['buns-words','buns','Sing the words (Hot cross buns…)'], ['buns-mm','buns','Hum it, with a tiny break on repeated notes (“mm-mm”)'],
+  ['joy-words','joy','Sing the words (Joy to the world…)'], ['joy-la','joy','Sing it on “la”'],
   ['beat','beat','Beatbox it: kick, snare, hats','kit'], ['drums-each','each','Beatbox each sound as shown: kicks, snares, then hats','kit'],
 ];
 const guidedNext=()=>GUIDED.find(g=>!guidedDone.has(g[0]) && g[0]!==S.prompt);
@@ -2207,7 +2227,7 @@ async function guidedSetup(id){ const g=GUIDED.find(x=>x[0]===id); if(!g) return
   flushSave(); if(playing){ stopAll(); playing=false; updatePlayBtn(); }
   const keepKeys=['kit','calibrated','latAuto','latMs','ec','sens','snapStr','detailBias','vocLat','mergeDrums','replaceTonal','mig2','mig3','sq','playAlong'];
   const o=defaultState(); keepKeys.forEach(k=>{ if(k in S) o[k]=S[k]; });
-  o.title=id; o.prompt=id; o.bpm=bpm||90; o.bars=4; o.loops=2; let nid=S.nextId;
+  o.title=id; o.prompt=id; o.bpm=bpm||110; o.bars=4; o.loops=2; let nid=S.nextId;
   let guide, take;
   if(kit){ guide=mkTrack('kit',{id:nid++, name:'Guide', hits:G_DRUM[mel].map(([s,d])=>({s,d,v:d==='hat'?0.6:0.9})), vol:70}); take=mkTrack('kit',{id:nid++, name:'Your take'}); }
   else { let t=0; const notes=[]; G_MEL[mel].forEach(([p,l])=>{ if(p!=null) notes.push({s:t,l,p,v:0.8,x:true}); t+=l; });
