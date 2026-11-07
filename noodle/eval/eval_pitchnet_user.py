@@ -5,7 +5,9 @@ from intent_pitch import snap_key
 REP={json.load(open(f))['prompt']:json.load(open(f)) for f in glob.glob(sys.argv[1]+'/2-*.json')}; G=SU.guides(REP)
 net=PNet(); net.load_state_dict(torch.load(sys.argv[2] if len(sys.argv)>2 else 'results/pitchnet.pt')); net.eval()
 res=collections.defaultdict(lambda:[0,collections.Counter()]); N=0; per=[]
+import re as _re; ONLY=os.environ.get('ONLY')
 for pr,m in sorted(REP.items()):
+    if ONLY and not _re.search(ONLY,pr): continue
     g=G.get(pr.split('-')[0]); est=[n for n in m['heard']['notes'] if not n['x']]
     if not g or len(est)<3: continue
     N+=len(g); sd=60/float(m.get('bpm',90))/4

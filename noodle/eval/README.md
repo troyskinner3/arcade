@@ -171,3 +171,12 @@ Guided melodies replayed in the app (with the new scale-la take): no reader 3.62
 - **Intended-note model (not shipped):** a phrase-level GRU over Noodle's detected notes (sung pitch, jumps, length, beat position), trained on 2,000 synthetic v2 takes.
   Predicting each note's absolute offset or each jump's correction did not beat "no correction" even on unseen synthetic singers (jumps 0.718 vs 0.718 with early stopping);
   on the owner's takes it was worse than today (5.3–5.6 vs 3.94). The synthetic squeeze, softened by the pull back toward the tune and by out-of-tune noise, gives no learnable signal beyond the rules.
+
+### Re-sung takes, FCPE, and the note reader on new tunes (Nov 8)
+- **Re-singing (`transplant.py`, WORLD vocoder, MIT):** each guided take re-sung into 20 new melodies (intervals from the folk tunes, the owner's
+  measured squeeze applied, notes placed where the voice actually changes pitch, kept inside the sung range): 620 labelled takes in the owner's voice.
+- **Jump-correction model trained on them (`pitch_xval.py`):** worse than today on the owner's real takes of the other tune group (5.97 vs 4.40, 6.12 vs 3.41). Dropped.
+- **Note reader fine-tuned on them (`finetune_tp.py`):** worse on the other group (4.44 vs 4.03, 4.01 vs 3.88), likely because merged repeats stay merged in the audio while the labels split them.
+- **The shipped reader generalises to unseen tunes:** real takes of the new tunes 4.37 → 4.03, of the first tunes 4.09 → 3.88 (offline, same pitch rule).
+- **FCPE pitch (MIT, 48 MB ONNX) in place of YIN (`fcpe_extract.py`, `run_detector_fcpe.js`):** HumTrans 4.58 → 4.30, Vocadito 5.69 → 5.97. Mixed; not adopted for the web app.
+- SOME (openvpi, MIT code) not tested: weights' license unclear and the release files aren't reachable from this environment.

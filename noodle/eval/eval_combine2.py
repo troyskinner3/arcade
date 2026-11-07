@@ -1,7 +1,7 @@
 # App notes + v2 reader: split an app note where the reader is confident a new (same-pitch) note starts inside it.
 import sys,json,glob,os,numpy as np,torch,collections; sys.path.insert(0,os.path.dirname(__file__))
 from intent_net2 import featurize, Net; import score_user_lib as SU; import onset_model as O; from intent_pitch import snap_key
-FR=json.load(open('results/user_frames.json')); REP={json.load(open(f))['prompt']:json.load(open(f)) for f in glob.glob('results/replay_new/2-*.json')}
+FR=json.load(open('results/user_frames.json')); REP={json.load(open(f))['prompt']:json.load(open(f)) for f in glob.glob(os.environ.get('REPDIR','results/replay_new')+'/2-*.json')}
 src={}
 for f in sorted(glob.glob('data/user/2*.json')):
     m=json.load(open(f))
