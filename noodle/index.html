@@ -1316,7 +1316,15 @@ async function readerSplit(an, x, sr){
   const fr=an.notes.frames; if(!fr||!fr.length||an.notes.whistled) return;
   const R=await loadReader(); if(!R) return;
   const {P,pm}=readerOnsets(x,sr,fr,{bpm:S.bpm,t0:an.align}), T0=fr[0].t, tune=an.notes.tune||0, out=[];
-  const peaks=[]; for(let i=1;i<P.length-1;i++) if(P[i]>=0.6&&P[i]>=P[i-1]&&P[i]>=P[i+1]) peaks.push(fr[i].t);
+  /* a split needs the model to be confident AND some hint in the sound itself (a small loudness dip or pitch sag), so one held
+     note that simply lasts across beats stays one note */
+  const RT=window.READER_THR??0.6, RD=window.READER_DIP??1.0, RS=window.READER_SAG??0.2;
+  const cue=i=>{ if(RD>=99) return true; let L=-1e9,Rm=-1e9; for(let j=Math.max(0,i-8);j<i;j++) L=Math.max(L,fr[j].db); for(let j=i+1;j<=Math.min(fr.length-1,i+8);j++) Rm=Math.max(Rm,fr[j].db);
+    let lo=1e9; for(let j=Math.max(0,i-3);j<=Math.min(fr.length-1,i+3);j++) lo=Math.min(lo,fr[j].db); const dip=Math.min(L,Rm)-lo;
+    const side=[]; for(const j of [i-8,i-7,i-6,i+6,i+7,i+8]) if(j>=0&&j<pm.length&&!isNaN(pm[j])) side.push(pm[j]); let sag=0;
+    if(side.length){ side.sort((a,b)=>a-b); let mn=1e9; for(let j=Math.max(0,i-3);j<=Math.min(pm.length-1,i+3);j++) if(!isNaN(pm[j])) mn=Math.min(mn,pm[j]); sag=side[side.length>>1]-mn; }
+    return dip>=RD || sag>=RS; };
+  const peaks=[]; for(let i=1;i<P.length-1;i++) if(P[i]>=RT&&P[i]>=P[i-1]&&P[i]>=P[i+1]&&cue(i)) peaks.push(fr[i].t);
   for(const nt of an.notes){ const cuts=peaks.filter(t=>t>=nt.t0+0.15&&t<=nt.t1-0.15); if(!cuts.length){ out.push(nt); continue; }
     const b=[nt.t0,...cuts,nt.t1];
     for(let k=0;k<b.length-1;k++){ const i0=Math.max(0,Math.round((b[k]-T0)/0.01)), i1=Math.min(pm.length,Math.round((b[k+1]-T0)/0.01));
