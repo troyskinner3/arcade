@@ -2189,6 +2189,13 @@ const G_MEL={   // [midi, steps] (16 steps a bar, 4 bars)
   farm:    [[60,4],[60,4],[60,4],[55,4],[57,4],[57,4],[55,8],[64,4],[64,4],[62,4],[62,4],[60,12],[null,4]],
   buns:    [[64,4],[62,4],[60,8],[64,4],[62,4],[60,8],[60,2],[60,2],[60,2],[60,2],[62,2],[62,2],[62,2],[62,2],[64,4],[62,4],[60,8]],
   joy:     [[72,4],[71,3],[69,1],[67,6],[65,2],[64,4],[62,4],[60,8],[67,2],[69,6],[69,2],[71,6],[71,2],[72,14]],
+  birthday2:[[55,3],[55,1],[67,4],[64,4],[60,4],[59,4],[57,8],[null,4],[65,3],[65,1],[64,4],[60,4],[62,4],[60,12],[null,4]],
+  susanna: [[60,2],[62,2],[64,4],[67,4],[67,3],[69,1],[67,4],[64,4],[60,6],[62,2],[64,4],[64,4],[62,4],[60,4],[62,12],[null,4]],
+  taps:    [[55,3],[55,1],[60,12],[55,3],[60,1],[64,12],[55,3],[60,1],[64,8],[55,3],[60,1],[64,16]],
+  kumbaya: [[60,2],[64,2],[67,6],[67,2],[69,2],[69,2],[67,8],[60,2],[64,2],[67,4],[67,6],[65,2],[64,4],[62,4],[60,12],[null,4]],
+  michael: [[60,4],[64,4],[67,6],[64,2],[67,4],[69,4],[67,8],[64,4],[67,4],[69,4],[67,4],[64,4],[62,4],[60,8]],
+  arpeggio:[[60,4],[64,4],[67,4],[72,4],[67,4],[64,4],[60,8],[62,4],[65,4],[69,4],[74,4],[69,4],[65,4],[62,8]],
+  jumps:   [[60,4],[67,4],[60,4],[69,4],[60,4],[72,4],[60,4],[64,4],[60,4],[65,4],[60,4],[71,4],[60,4],[67,4],[72,8]],
 };
 const G_DRUM={
   beat: (()=>{ const h=[]; for(let b=0;b<4;b++){ const o=b*16; h.push([o,'kick'],[o+8,'kick'],[o+4,'snare'],[o+12,'snare']); for(let k=0;k<16;k+=2) h.push([o+k,'hat']); } return h; })(),
@@ -2212,6 +2219,13 @@ const GUIDED=[
   ['farm-words','farm','Sing the words (Old MacDonald had a farm…)'], ['farm-hum','farm','Hum it smoothly'],
   ['buns-words','buns','Sing the words (Hot cross buns…)'], ['buns-mm','buns','Hum it, with a tiny break on repeated notes (“mm-mm”)'],
   ['joy-words','joy','Sing the words (Joy to the world…)'], ['joy-la','joy','Sing it on “la”'],
+  ['birthday2-words','birthday2','Sing: Happy birthday dear (any name), happy birthday to you'], ['birthday2-hum','birthday2','Hum it'],
+  ['susanna-words','susanna','Sing the words (Oh I come from Alabama…)'], ['susanna-hum','susanna','Hum it'],
+  ['taps-hum','taps','Hum it (Taps, the bugle call)'], ['taps-la','taps','Sing it on “la”'],
+  ['kumbaya-words','kumbaya','Sing the words (Kumbaya, my Lord…)'], ['kumbaya-hum','kumbaya','Hum it'],
+  ['michael-words','michael','Sing the words (Michael, row the boat ashore, hallelujah)'], ['michael-hum','michael','Hum it'],
+  ['arpeggio-la','arpeggio','Sing it on “la”: up and down the chord'], ['arpeggio-hum','arpeggio','Hum it'],
+  ['jumps-la','jumps','Sing it on “la”: big jumps away from the home note and back'], ['jumps-whistle','jumps','Whistle it'],
   ['beat','beat','Beatbox it: kick, snare, hats','kit'], ['drums-each','each','Beatbox each sound as shown: kicks, snares, then hats','kit'],
 ];
 const guidedNext=()=>GUIDED.find(g=>!guidedDone.has(g[0]) && g[0]!==S.prompt);
