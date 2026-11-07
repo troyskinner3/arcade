@@ -1249,10 +1249,81 @@ function trackNotes(x, sr, onsets, sens){
   const notes=(!NT.model || whistled) ? build() : NT.model==='combine' ? combineNotes(frames, voiced, build()) : modelNotes(frames, voiced);
   const maxDb=notes.reduce((m,n)=>Math.max(m,n.db),-200);
   notes.forEach(n=>n.v=clamp(0.45+0.55*(n.db-(maxDb-20))/20,0.45,1));
-  notes.whistled=whistled; notes.tune=tune;
+  notes.whistled=whistled; notes.tune=tune; notes.frames=frames;
   return notes;
 }
 function mono(ab){ const n=ab.length, out=new Float32Array(n); const c=ab.numberOfChannels; for(let ch=0;ch<c;ch++){ const d=ab.getChannelData(ch); for(let i=0;i<n;i++) out[i]+=d[i]/c; } return out; }
+/* ---- Learned note reader (v2): finds new notes inside long held notes (repeats hummed as one sound).
+   Inputs every 10 ms: the sound (48 mel bands), the pitch reader's loudness/confidence/pitch, and where the moment sits on
+   the beat. Trained on synthetic singers performing ~7,000 real folk-tune excerpts. Weights load on first use (noodle/reader.json). */
+let READER=null, readerLoad=null;
+function loadReader(){ return readerLoad||(readerLoad=fetch(new URL('reader.json',location.href)).then(r=>r.ok?r.json():null).then(j=>{ if(!j) return null;
+  const f16=h=>{ const s=h&0x8000?-1:1, e=(h>>10)&31, m=h&1023; return e===0?s*m*2**-24:e===31?(m?NaN:s*Infinity):s*(1+m/1024)*2**(e-15); };
+  const dec=b=>{ const s=atob(b), u=new Uint8Array(s.length); for(let i=0;i<s.length;i++) u[i]=s.charCodeAt(i);
+    if(j.fmt!=='f16') return new Float32Array(u.buffer); const h=new Uint16Array(u.buffer), out=new Float32Array(h.length); for(let i=0;i<h.length;i++) out[i]=f16(h[i]); return out; };
+  const W={}; for(const [k,v] of Object.entries(j.w)) W[k]={shape:v.shape,d:dec(v.b)}; READER={W,hid:j.hid,lay:j.lay,fb:null}; return READER; }).catch(()=>null)); }
+function npPercentile(a,q){ const s=[...a].sort((x,y)=>x-y), pos=(s.length-1)*q, lo=Math.floor(pos), hi=Math.ceil(pos); return s[lo]+(s[hi]-s[lo])*(pos-lo); }
+function readerMelFB(){ const SR=16000,NM=48,hz=m=>700*(10**(m/2595)-1), m0=2595*Math.log10(1+60/700), m1=2595*Math.log10(1+7600/700), fb=[];
+  const pts=[]; for(let i=0;i<NM+2;i++) pts.push(hz(m0+(m1-m0)*i/(NM+1))/SR*512);
+  for(let i=0;i<NM;i++){ const [a,b,c]=[pts[i],pts[i+1],pts[i+2]], row=new Float32Array(257); for(let k=0;k<257;k++) row[k]=Math.max(0,Math.min((k-a)/(b-a),(c-k)/(c-b))); fb.push(row); }
+  return fb; }
+function readerFeatures(x, sr, frames, grid){
+  const SR=16000, n=frames.length, NM=48, F=NM+5+5, X=new Float32Array(n*F);
+  // sound: peak-normalised, 7 kHz low-pass, 16 kHz, Hann 512 around each frame time, mel power in log10, minus the take's max, /4
+  let pk=1e-9; for(let i=0;i<x.length;i++) pk=Math.max(pk,Math.abs(x[i]));
+  let y=new Float32Array(x.length); for(let i=0;i<x.length;i++) y[i]=x[i]/pk;
+  if(sr!==SR){ y=biquad(biquad(y,'lp',7000,0.707,sr),'lp',7000,0.707,sr); const m=Math.floor((y.length-1)*SR/sr), z=new Float32Array(m); for(let i=0;i<m;i++){ const p=i*sr/SR, i0=Math.floor(p), fr=p-i0; z[i]=y[i0]*(1-fr)+y[i0+1]*fr; } y=z; }
+  const fb=READER.fb||(READER.fb=readerMelFB()), win=new Float32Array(512); for(let i=0;i<512;i++) win[i]=0.5-0.5*Math.cos(2*Math.PI*i/511);
+  const re=new Float64Array(512), im=new Float64Array(512), L=new Float32Array(n*NM); let Lmax=-1e9;
+  for(let f=0;f<n;f++){ const c=Math.max(0,Math.min(y.length+512-513,Math.floor(frames[f].t*SR)))-256;
+    for(let i=0;i<512;i++){ const j=c+i; re[i]=(j>=0&&j<y.length?y[j]:0)*win[i]; im[i]=0; }
+    readerFFT(re,im); const P=new Float64Array(257); for(let k=0;k<257;k++) P[k]=re[k]*re[k]+im[k]*im[k];
+    for(let b=0;b<NM;b++){ let s=0; const row=fb[b]; for(let k=0;k<257;k++) s+=row[k]*P[k]; const v=Math.log10(s+1e-8); L[f*NM+b]=v; if(v>Lmax) Lmax=v; } }
+  // the pitch reader's view (same gates as training)
+  const db=frames.map(f=>f.db), floor=npPercentile(db,0.15), top=npPercentile(db,0.99), sN=0.55, gate=floor+Math.max(8,(top-floor)*(0.42-0.25*sN)), cth=0.2+0.12*sN;
+  const v=frames.map(f=>f.db>gate&&f.conf<cth&&f.m>28&&f.m<96), pm=frames.map((f,i)=>{ if(!v[i]) return NaN; const w=[]; for(let j=Math.max(0,i-2);j<=Math.min(n-1,i+2);j++) if(v[j]) w.push(frames[j].m); w.sort((a,b)=>a-b); const h=w.length>>1; return w.length%2?w[h]:(w[h-1]+w[h])/2; });
+  const fin=pm.filter(x=>!isNaN(x)).sort((a,b)=>a-b), med=fin.length?(fin.length%2?fin[fin.length>>1]:(fin[fin.length/2-1]+fin[fin.length/2])/2):0;
+  for(let f=0;f<n;f++){ const o=f*F; for(let b=0;b<NM;b++) X[o+b]=(L[f*NM+b]-Lmax)/4;
+    const p0=isNaN(pm[f])?0:pm[f], pp=f?(isNaN(pm[f-1])?0:pm[f-1]):0;
+    X[o+NM]=Math.max(-60,Math.min(0,frames[f].db-top))/20; X[o+NM+1]=Math.max(0,Math.min(1,frames[f].conf)); X[o+NM+2]=v[f]?1:0;
+    X[o+NM+3]=isNaN(pm[f])?0:(pm[f]-med)/12; X[o+NM+4]=isNaN(pm[f])?0:Math.max(-3,Math.min(3,p0-pp))/3;
+    if(grid){ const beat=(frames[f].t-grid.t0)*grid.bpm/60, ph=2*Math.PI*(((beat%1)+1)%1), bph=2*Math.PI*((((beat/4)%1)+1)%1);
+      X[o+NM+5]=Math.sin(ph); X[o+NM+6]=Math.cos(ph); X[o+NM+7]=Math.sin(bph); X[o+NM+8]=Math.cos(bph); X[o+NM+9]=1; } }
+  return {X,F,pm}; }
+function readerFFT(re,im){ const n=re.length; for(let i=1,j=0;i<n;i++){ let bit=n>>1; for(;j&bit;bit>>=1) j^=bit; j|=bit; if(i<j){ [re[i],re[j]]=[re[j],re[i]]; [im[i],im[j]]=[im[j],im[i]]; } }
+  for(let len=2;len<=n;len<<=1){ const a=-2*Math.PI/len, wr=Math.cos(a), wi=Math.sin(a); for(let i=0;i<n;i+=len){ let cr=1,ci=0; for(let k=0;k<len/2;k++){ const p=i+k,q=p+len/2, tr=re[q]*cr-im[q]*ci, ti=re[q]*ci+im[q]*cr; re[q]=re[p]-tr; im[q]=im[p]-ti; re[p]+=tr; im[p]+=ti; const nr=cr*wr-ci*wi; ci=cr*wi+ci*wr; cr=nr; } } } }
+function readerConv(X,T,cin,W,b,cout,dil){ const Y=new Float32Array(T*cout), pad=2*dil;
+  for(let t=0;t<T;t++) for(let o=0;o<cout;o++){ let s=b[o]; for(let k=0;k<5;k++){ const tt=t+(k*dil)-pad; if(tt<0||tt>=T) continue; const xo=tt*cin, wo=o*cin*5+k; for(let c=0;c<cin;c++) s+=W[wo+c*5]*X[xo+c]; } Y[t*cout+o]=s>0?s:0; }
+  return Y; }
+function readerGRU(X,T,din,H,Wih,Whh,bih,bhh,rev){ const Y=new Float32Array(T*H); let h=new Float32Array(H); const gi=new Float32Array(3*H), gh=new Float32Array(3*H);
+  for(let s=0;s<T;s++){ const t=rev?T-1-s:s, xo=t*din;
+    for(let g=0;g<3*H;g++){ let a=bih[g], c=bhh[g]; const wi=g*din, wh=g*H; for(let j=0;j<din;j++) a+=Wih[wi+j]*X[xo+j]; for(let j=0;j<H;j++) c+=Whh[wh+j]*h[j]; gi[g]=a; gh[g]=c; }
+    const nh=new Float32Array(H); for(let j=0;j<H;j++){ const r=1/(1+Math.exp(-(gi[j]+gh[j]))), z=1/(1+Math.exp(-(gi[H+j]+gh[H+j]))), nn=Math.tanh(gi[2*H+j]+r*gh[2*H+j]); nh[j]=(1-z)*nn+z*h[j]; }
+    h=nh; Y.set(h,t*H); }
+  return Y; }
+/* note-start probability for every frame */
+function readerOnsets(x, sr, frames, grid){
+  const R=READER, W=R.W, T=frames.length, hid=R.hid, {X,F,pm}=readerFeatures(x,sr,frames,grid);
+  let h=readerConv(X,T,F,W['c.0.weight'].d,W['c.0.bias'].d,hid,1); h=readerConv(h,T,hid,W['c.2.weight'].d,W['c.2.bias'].d,hid,2); h=readerConv(h,T,hid,W['c.4.weight'].d,W['c.4.bias'].d,hid,4);
+  let din=hid; const H=hid/2;
+  for(let l=0;l<R.lay;l++){ const f=readerGRU(h,T,din,H,W[`g.weight_ih_l${l}`].d,W[`g.weight_hh_l${l}`].d,W[`g.bias_ih_l${l}`].d,W[`g.bias_hh_l${l}`].d,false),
+      b=readerGRU(h,T,din,H,W[`g.weight_ih_l${l}_reverse`].d,W[`g.weight_hh_l${l}_reverse`].d,W[`g.bias_ih_l${l}_reverse`].d,W[`g.bias_hh_l${l}_reverse`].d,true);
+    const o=new Float32Array(T*hid); for(let t=0;t<T;t++){ o.set(f.subarray(t*H,t*H+H),t*hid); o.set(b.subarray(t*H,t*H+H),t*hid+H); } h=o; din=hid; }
+  const Wo=W['o.weight'].d, bo=W['o.bias'].d, P=new Float32Array(T); for(let t=0;t<T;t++){ let s=bo[0]; for(let j=0;j<hid;j++) s+=Wo[j]*h[t*hid+j]; P[t]=1/(1+Math.exp(-s)); }
+  return {P,pm}; }
+/* split a held note where the reader is confident a new note starts (only well inside the note), each piece with its own pitch */
+async function readerSplit(an, x, sr){
+  const fr=an.notes.frames; if(!fr||!fr.length||an.notes.whistled) return;
+  const R=await loadReader(); if(!R) return;
+  const {P,pm}=readerOnsets(x,sr,fr,{bpm:S.bpm,t0:an.align}), T0=fr[0].t, tune=an.notes.tune||0, out=[];
+  const peaks=[]; for(let i=1;i<P.length-1;i++) if(P[i]>=0.6&&P[i]>=P[i-1]&&P[i]>=P[i+1]) peaks.push(fr[i].t);
+  for(const nt of an.notes){ const cuts=peaks.filter(t=>t>=nt.t0+0.15&&t<=nt.t1-0.15); if(!cuts.length){ out.push(nt); continue; }
+    const b=[nt.t0,...cuts,nt.t1];
+    for(let k=0;k<b.length-1;k++){ const i0=Math.max(0,Math.round((b[k]-T0)/0.01)), i1=Math.min(pm.length,Math.round((b[k+1]-T0)/0.01));
+      const seg=pm.slice(i0,i1).filter(v=>!isNaN(v)); let p=nt.p;
+      if(seg.length>=4){ const q=Math.floor(seg.length/4), mid=seg.slice(q,Math.max(q+1,Math.floor(3*seg.length/4))).sort((a,c)=>a-c), h=mid.length>>1; p=(mid.length%2?mid[h]:(mid[h-1]+mid[h])/2)-tune; }
+      out.push({...nt,t0:b[k],t1:b[k+1],p,g:k===0?nt.g:0}); } }
+  const keep={whistled:an.notes.whistled,tune:an.notes.tune,frames:fr}; an.notes.length=0; an.notes.push(...out); Object.assign(an.notes,keep); }
 /* full analysis of one take -> times in seconds (independent of tempo) */
 function analyzeTake(x, sr, inst, sens, notch){
   let y=biquad(x,'hp',45,0.707,sr); const yHp=y;
@@ -2167,6 +2238,7 @@ async function addTake0(x, sr, inst, opt){
     const preFit = an.align + (unCal && guessFix!=null && kind!=='pitched' ? guessFix : 0);
     an.align=fitAlign(takeTimes(an,inst), preFit); if(!opt.live) an.align=Math.min(an.align, first+0.02);
     // learn this phone's real delay from how far the take sat from the grid (only while not calibrated); it settles over a few takes
+    if(opt.live && kind==='pitched'){ try{ await readerSplit(an, x, sr); }catch(e){} }   /* repeats hummed as one sound */
     if(opt.live && S.latAuto){ const d=an.align-preFit; S.autoAdj=clamp(0.6*(S.autoAdj||0)+0.4*(d+(S.autoAdj||0)), -0.06, 0.2); }
     if(unCal && guessFix==null && kind!=='pitched'){   // drums only: a hummed note's soft start is too vague to anchor beat one
       // not calibrated yet: if the first sound lands 1–3 steps after the downbeat, it was most likely meant for beat one.

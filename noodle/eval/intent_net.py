@@ -3,7 +3,7 @@
 import json, sys, os, numpy as np, torch, torch.nn as nn, collections
 from scipy.io import wavfile; from scipy.signal import resample_poly
 sys.path.insert(0, os.path.dirname(__file__)); import onset_model as O; from score import gt; from edits import report
-torch.set_num_threads(4); SR=16000; NM=48
+torch.set_num_threads(int(os.environ.get("TH","4"))); SR=16000; NM=48
 _mel=None
 def melfb():
     global _mel
@@ -15,7 +15,12 @@ def melfb():
     return _mel
 def logmel(f,times):
     sr,x=wavfile.read(f); x=x.astype(np.float32); x=x.mean(1) if x.ndim>1 else x; x/=max(1e-9,np.abs(x).max())
-    if sr!=SR: g=np.gcd(sr,SR); x=resample_poly(x,SR//g,sr//g)
+    if sr!=SR:
+        if os.environ.get('LINRES'):   # what a phone browser does cheaply: two 7 kHz low-pass biquads, then straight-line resampling
+            from scipy.signal import lfilter
+            w=2*np.pi*7000/sr; cs,sn=np.cos(w),np.sin(w); al=sn/(2*0.707); b=np.array([(1-cs)/2,1-cs,(1-cs)/2])/(1+al); a=np.array([1,-2*cs/(1+al),(1-al)/(1+al)])
+            x=lfilter(b,a,lfilter(b,a,x)); n=int((len(x)-1)*SR/sr); pos=np.arange(n)*sr/SR; i0=pos.astype(int); fr=pos-i0; x=x[i0]*(1-fr)+x[i0+1]*fr
+        else: g=np.gcd(sr,SR); x=resample_poly(x,SR//g,sr//g)
     x=np.pad(x,256); c=(np.asarray(times)*SR).astype(int); c=np.clip(c,0,len(x)-513)
     W=np.hanning(512); fr=np.stack([x[i:i+512]*W for i in c]); S=np.abs(np.fft.rfft(fr,axis=1))**2
     L=np.log10(S@melfb().T+1e-8); return (L-L.max())/4   # level-free
@@ -56,9 +61,11 @@ if __name__=='__main__':
         D={f:featurize(f,F[f]) for f in real+syn+test}; np.savez(cache,D=np.array(D,dtype=object))
     T={f:targets(f,np.array(F[f])[:,0]) for f in real+syn}
     mode=sys.argv[1] if len(sys.argv)>1 else 'both'; train=dict(real=real,syn=syn,both=real+syn)[mode]
+    if os.environ.get('LOAD'): steps=0
     torch.manual_seed(0); r=np.random.RandomState(0); net=Net(D[train[0]].shape[1]); opt=torch.optim.Adam(net.parameters(),2e-3)
     W=torch.tensor([3.0,1.0]); L=400; steps=int(sys.argv[2]) if len(sys.argv)>2 else 3000
     wts=np.array([3.0 if f in real else 1.0 for f in train]); wts/=wts.sum()   # real takes count more
+    steps=steps if not os.environ.get('LOAD') else 0
     for st in range(steps):
         xb,yb=[],[]
         for _ in range(16):
@@ -69,7 +76,9 @@ if __name__=='__main__':
         out=net(torch.tensor(np.array(xb))); y=torch.tensor(np.array(yb))
         loss=(nn.functional.binary_cross_entropy_with_logits(out,y,reduction='none')*W).mean(); opt.zero_grad(); loss.backward(); opt.step()
         if st%500==0: print(st,round(loss.item(),4),flush=True)
-    net.eval(); torch.save(net.state_dict(),f'results/intent_{mode}.pt')
+    if os.environ.get('LOAD'): net.load_state_dict(torch.load(f'results/intent_{mode}.pt'))
+    else: torch.save(net.state_dict(),f'results/intent_{mode}.pt')
+    net.eval(); (lambda *a:None)(net.state_dict(),f'results/intent_{mode}.pt')
     with torch.no_grad(): PR={f:torch.sigmoid(net(torch.tensor(D[f][None])))[0].numpy() for f in test}
-    for thr in [0.3,0.4,0.5]:
+    for thr in [0.15,0.2,0.3]:
         R={f:decode(F[f],PR[f],thr) for f in test}; print(mode,'thr',thr,'note F1',O.evaluate(R,test)); report(R,f'{mode} thr {thr}')

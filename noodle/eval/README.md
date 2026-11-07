@@ -143,3 +143,19 @@ Scoring fix: hummed takes may sit up to two octaves from the written tune (was o
 ### Other versions (shipped Nov 6)
 After a melody take, "Other versions ⟳" on the take bar cycles through up to 3 alternative readings (other scales, and squeezed-interval readings), each differing from the others in at least 2 steps; picking one sets the song's scale for later takes.
 Owner's guided takes replayed in the app (`ver_replay.js`): Noodle's choice 3.71 edits per 10 notes; best of 2 versions 3.28, of 3 3.10, of 4 **3.06**. Another version was better in 8 of 17 takes.
+
+### Learned note reader v2 (shipped Nov 7: splits inside held notes)
+`synth2.py`: synthetic singers perform 4-bar excerpts of ~7,000 real folk tunes (labels = the tune, on a known beat grid), with
+squeezed upward jumps (half the singers) and repeated notes often hummed as one sound. `intent_net2.py`: conv + 2-layer biGRU
+(205k weights) on log-mel + the app's pitch/loudness/confidence + beat/bar phase (grid hidden 25% of the time in training).
+Alone it misses pitch changes the rules catch, so it only adds splits inside the app's notes (onset probability >= 0.6, 0.15 s from the edges; each piece gets its own pitch).
+
+| edits per 10 notes | app | + reader splits |
+|---|---|---|
+| owner's guided takes (offline, same pitch rule) | 4.22 | 3.97 |
+| owner's guided takes replayed in the app | 3.71 | **3.41** (missed notes 32 → 22) |
+| unseen synthetic singers with grid: accurate hum / other | 5.99 / 4.35 | 5.86 / 4.27 |
+| unseen synthetic singers with grid: squeezing hum / other | 7.67 / 7.19 | 7.54 / 7.16 |
+| HumTrans / Vocadito (no grid) | 4.58 / 5.69 | 4.60 / 5.69 |
+
+A 48-unit, 1-layer version kept little of the gain (4.18). The app loads `reader.json` (float16) on the first melody take; JS matches PyTorch to 0.004 mean onset probability.
