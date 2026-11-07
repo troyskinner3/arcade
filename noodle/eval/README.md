@@ -162,3 +162,12 @@ A 48-unit, 1-layer version kept little of the gain (4.18). The app loads `reader
 **Update (Nov 7): held notes.** The owner's long-note takes showed the reader splitting one sustained note on the beat (long-swell: 4 pieces).
 A split now also needs a hint in the sound: a loudness dip of at least 1 dB or a pitch sag of at least 0.2 semitones at that moment.
 Guided melodies replayed in the app (with the new scale-la take): no reader 3.62, reader 3.32 (but chops held notes), reader + sound hint **3.41** (held notes intact).
+
+### Data search and the intended-note model (Nov 7)
+- **Data found:** labelled singing datasets usable in a product are only Vocadito and Annotated-VocalSet; Choral Singing Dataset, Cantoría, Dagstuhl ChoirSet, GTSinger, VocalNotes and HumTrans are non-commercial; MLEnd Hums and Whistles has no license.
+  Unlabelled and usable: MTG-QBH (118 people singing known songs into laptops, CC BY; cut into clips and labelled by the app in `synthreal_qbh`) and ccMixter's 1,433 CC BY a cappellas (`ccmixter_list.py`; its file server refuses automated downloads, so not used).
+  Freesound (CC0/CC BY hums, singing, whistles) needs an API key; the API refused requests from this environment, so `freesound/fetch_freesound.py` runs on a personal computer instead.
+- **All 31 guided melody takes, replayed in the app at their recorded tempo:** 3.94 edits per 10 notes (500 notes): pitch 112, missed 60, extra 23, timing 2.
+- **Intended-note model (not shipped):** a phrase-level GRU over Noodle's detected notes (sung pitch, jumps, length, beat position), trained on 2,000 synthetic v2 takes.
+  Predicting each note's absolute offset or each jump's correction did not beat "no correction" even on unseen synthetic singers (jumps 0.718 vs 0.718 with early stopping);
+  on the owner's takes it was worse than today (5.3–5.6 vs 3.94). The synthetic squeeze, softened by the pull back toward the tune and by out-of-tune noise, gives no learnable signal beyond the rules.

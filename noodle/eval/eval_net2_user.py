@@ -12,12 +12,13 @@ G=SU.guides(REP); net=None
 def snapped(notes):
     q=snap_key([n['raw'] for n in notes],[n['l'] for n in notes]); return [{**n,'p':p} for n,p in zip(notes,q)]
 tot=collections.defaultdict(lambda:[0,collections.Counter()]); N=0
-sd=60/90/4
+sd=None
 THR=[float(x) for x in (sys.argv[2:] or ['0.3'])]
 for ti,thr in enumerate(THR):
   for pr,m in sorted(REP.items()):
+    sd=60/float(m.get('bpm',90))/4;
     g=G[pr.split('-')[0]]; wav=src[pr]; fr=FR[os.path.basename(wav)]; al=m['al']
-    X=featurize(wav,fr,90.0,al,4.0)
+    X=featurize(wav,fr,float(m.get('bpm',90)),al,4.0)
     if net is None: net=Net(X.shape[1]); net.load_state_dict(torch.load(sys.argv[1])); net.eval()
     with torch.no_grad(): P=torch.sigmoid(net(torch.tensor(X[None])))[0].numpy()
     ns=decode(fr,P,thr); mine=[]

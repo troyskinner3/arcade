@@ -5,13 +5,16 @@ FR=json.load(open('results/user_frames.json')); REP={json.load(open(f))['prompt'
 src={}
 for f in sorted(glob.glob('data/user/2*.json')):
     m=json.load(open(f))
-    if m.get('prompt') and m.get('heard'): src[m['prompt']]=f.replace('.json','.wav')
-G=SU.guides(REP); net=None; sd=60/90/4; res=collections.defaultdict(lambda:[0,collections.Counter()]); N=0
+    if m.get('prompt') and m.get('heard') and os.path.basename(f.replace('.json','.wav')) in FR: src[m['prompt']]=f.replace('.json','.wav')
+G=SU.guides(REP); net=None; sd=None; res=collections.defaultdict(lambda:[0,collections.Counter()]); N=0
 def snapped(notes):
     q=snap_key([n['raw'] for n in notes],[n['l'] for n in notes]); return [{**n,'p':p} for n,p in zip(notes,q)]
+ONLY=os.environ.get('ONLY'); ONLY=set(ONLY.split(',')) if ONLY else None
 for pr,m in sorted(REP.items()):
+    if ONLY and pr not in ONLY: continue
+    sd=60/float(m.get('bpm',90))/4;
     g=G[pr.split('-')[0]]; wav=src[pr]; fr=FR[os.path.basename(wav)]; al=m['al']; N+=len(g)
-    X=featurize(wav,fr,90.0,al,4.0)
+    X=featurize(wav,fr,float(m.get('bpm',90)),al,4.0)
     if net is None: net=Net(X.shape[1]); net.load_state_dict(torch.load(os.environ.get('MODEL','results/intent2.pt'))); net.eval()
     with torch.no_grad(): P=torch.sigmoid(net(torch.tensor(X[None])))[0].numpy()
     t=np.array(fr)[:,0]; on=P[:,0]; _,_,_,mm,vv,pm,_=O.prep(fr); tune=O.tune_of(mm,vv)
