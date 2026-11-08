@@ -185,3 +185,6 @@ Guided melodies replayed in the app (with the new scale-la take): no reader 3.62
 - **Count-in arpeggio:** optional (Timing & mic, off by default): the home chord 1-3-5-8, one note per count-in beat, melody takes only, only when the song already has a key. Effect on accuracy needs real takes recorded with it on.
 - **Repeated phrases agree (`repeat_consistency.py`):** take the clearer pitch for both renditions of a repeated bar and copy splits across. All 31 guided takes: 3.94 → 4.08–5.22 (loose matching forces one bar's notes onto a different melody); strict matching 3.96. Dropped.
 - **Rhythm split (`rhythm_split.py`):** split notes lasting 2 "pulses" when most notes are one pulse long: 3.94 → 3.98–4.08. Held half notes are as common as merged repeats. Dropped.
+- **Learned rhythm model (`rhythm_lm.py`, `rhythm_long.py`):** how long notes last at each spot in the bar, counted from the 4/4 folk tunes, combined with the note reader's
+  evidence at each possible split. All 31 guided takes: 3.94 → 4.04 (rhythm alone), 3.90 / 3.84 / 3.84 / 3.82 (audio weight 0.3 / 0.6 / 1 / 2), about 5 fewer fixes in 500 notes.
+  The same weights split the sustained long-vowels and long-swell takes (one held note) into 2–3 notes. Dropped: the small gain isn't worth chopping held notes.
