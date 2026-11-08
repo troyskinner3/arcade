@@ -1750,7 +1750,9 @@ function voice(c,out,sound,t,dur,m,v,T,fromM=null){
 }
 /* Follow my voice: for each note, curves from the moment of the take where it was sung - pitch bend (scoops, vibrato, bends,
    in cents around the note), loudness, and brightness (mouth shape: "ooo" darker, "aaa" brighter) as a filter. Amount 0-100. */
-function exprFrames(tr){ const an=tr._an, fr=an&&an.notes&&an.notes.frames; if(!fr||!tr._raw) return null;
+function exprFrames(tr){ let an=tr._an&&tr._an.notes&&tr._an.notes.frames?tr._an:tr._anX;
+  if(!an && tr._raw && tr.exprAlign!=null){ an=analyzeTake(tr._raw.x,tr._raw.sr,tr.inst,tr.sens??S.sens,true); an.align=tr.exprAlign; tr._anX=an; }   /* after a reload: from the saved take */
+  const fr=an&&an.notes&&an.notes.frames; if(!fr||!tr._raw) return null;
   if(an._expr) return an._expr;
   const {x,sr}=tr._raw, N=512, win=new Float64Array(N); for(let i=0;i<N;i++) win[i]=0.5-0.5*Math.cos(2*Math.PI*i/(N-1));
   const re=new Float64Array(N), im=new Float64Array(N), hop=sr/16000, cent=new Float32Array(fr.length);
@@ -2667,7 +2669,7 @@ function buildCard(tr){
           ${tr.inst==='bass'?'':`<div class="irow"><span class="ilab">Chord</span><div class="ictl"><select class="sel chdsel" aria-label="Chord size">${Object.entries(CHORD_TYPES).map(([k,v])=>`<option value="${k}" ${k===chordType(tr)?'selected':''}>${v}</option>`).join('')}</select></div></div>`}
           ${tr._raw&&tr._an?`<div class="irow"><span class="ilab">Detail</span><div class="ictl"><span class="tb-end">Fewer</span><input type="range" class="pdet" min="-50" max="50" step="10" value="${tr.detail||0}" aria-label="Fewer or more notes" style="flex:1;min-width:110px"><span class="tb-end">More</span></div></div>`:''}
           <div class="irow"><span class="ilab">Octave</span><div class="ictl seg"><button class="ibtn od" aria-label="Octave down">−</button><b class="ov">${tr.oct>0?'+':''}${tr.oct}</b><button class="ibtn ou" aria-label="Octave up">+</button></div></div>
-          ${tr._raw&&tr._an&&tr.inst!=='arp'?`<div class="irow"><span class="ilab">Follow my voice</span><div class="ictl"><span class="tb-end">Off</span><input type="range" class="pexpr" min="0" max="100" step="10" value="${tr.expr||0}" aria-label="How much the part follows your voice: bends, loudness, mouth shape" style="flex:1;min-width:110px"><span class="tb-end">Full</span></div></div>`:''}
+          ${tr._raw&&(tr._an||tr.exprAlign!=null)&&tr.inst!=='arp'?`<div class="irow"><span class="ilab">Follow my voice</span><div class="ictl"><span class="tb-end">Off</span><input type="range" class="pexpr" min="0" max="100" step="10" value="${tr.expr||0}" aria-label="How much the part follows your voice: bends, loudness, mouth shape" style="flex:1;min-width:110px"><span class="tb-end">Full</span></div></div>`:''}
           ${tr.inst!=='arp'?`<div class="irow"><span class="ilab">Slides</span><div class="ictl"><button class="ibtn tog sld" aria-pressed="${slidesOn(tr)}" title="Slide between notes where you slid">${slidesOn(tr)?'On':'Off'}</button></div></div>`:''}
           ${tr.inst==='arp'?(()=>{ const A=arpOf(tr), o=(cls,lab,opts,val)=>`<div class="irow"><span class="ilab">${lab}</span><div class="ictl"><select class="sel ${cls}" aria-label="${lab}">${opts.map(([k,v])=>`<option value="${k}" ${String(k)===String(val)?'selected':''}>${v}</option>`).join('')}</select></div></div>`;
             return o('apat','Pattern',[['up','Up'],['down','Down'],['updown','Up & down'],['random','Random']],A.pat)+o('arate','Rate',[[2,'1/8'],[1,'1/16'],[0.5,'1/32']],A.rate)+o('aoct','Range',[[1,'1 octave'],[2,'2 octaves'],[3,'3 octaves']],A.oct)+o('agate','Gate',[[0.3,'Short'],[0.6,'Medium'],[0.95,'Long']],A.gate); })():''}
@@ -2721,7 +2723,7 @@ function buildCard(tr){
     const cs2=el.querySelector('.chdsel'); if(cs2) cs2.onchange=e=>{ tr.chordType=e.target.value; delete tr.chords; tr._dirty=true; save(); drawGrid(tr); scheduleRender(); };
     [['apat','pat',v=>v],['arate','rate',Number],['aoct','oct',Number],['agate','gate',Number]].forEach(([cls,key,conv])=>{ const se=el.querySelector('.'+cls); if(se) se.onchange=e=>{ tr.arp=Object.assign(arpOf(tr),{[key]:conv(e.target.value)}); tr._dirty=true; save(); scheduleRender(); }; });
     if(tr._sel && !tr.notes.includes(tr._sel)) tr._sel=null;
-    const px=el.querySelector('.pexpr'); if(px) px.onchange=()=>{ tr.expr=+px.value; tr._dirty=true; save(); scheduleRender(); };
+    const px=el.querySelector('.pexpr'); if(px) px.onchange=()=>{ tr.expr=+px.value; if(tr.expr>0 && tr._raw){ if(tr._an) tr.exprAlign=tr._an.align; storeVox(tr); } tr._dirty=true; save(); scheduleRender(); };   /* keep the take so it still follows your voice after a reload */
     const sb2=el.querySelector('.sld'); if(sb2) sb2.onclick=()=>{ tr.slides=!slidesOn(tr); sb2.setAttribute('aria-pressed',tr.slides); sb2.textContent=tr.slides?'On':'Off'; tr._dirty=true; save(); scheduleRender(); };
     const st2=el.querySelector('.savetake'); if(st2) st2.onclick=()=>saveTake(tr);
     const ub=el.querySelector('.undo'); if(ub) ub.onclick=()=>undoTake(tr);
@@ -3043,7 +3045,7 @@ function init(){
   requestAnimationFrame(tick);
   hist.cur=snapNow(); updateHistBtns();
   // bring back vocal recordings saved in this browser
-  S.tracks.filter(t=>t.inst==='vox' && !t._raw && t.va!=null).forEach(tr=>loadVox(tr).then(ok=>{ if(!ok) return; redrawTrack(tr); if(tr._row) renderTracks(); if(ctx) scheduleRender(); }));
+  S.tracks.filter(t=>((t.inst==='vox' && t.va!=null) || (t.expr>0 && t.exprAlign!=null)) && !t._raw).forEach(tr=>loadVox(tr).then(ok=>{ if(!ok) return; redrawTrack(tr); if(tr._row) renderTracks(); if(ctx) scheduleRender(); }));
   // iOS only lets audio start on a finger lift (touchend/click), not on touch-down: unlock (or re-wake) on every such gesture while it's suspended
   const unlockAudio=()=>{ if(ctx && ctx.state!=='running' && !document.hidden){ try{ ctx.resume(); }catch(e){} } };
   ['touchend','click','keydown'].forEach(ev=>document.addEventListener(ev,unlockAudio,{capture:true,passive:true}));
