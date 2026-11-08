@@ -188,3 +188,5 @@ Guided melodies replayed in the app (with the new scale-la take): no reader 3.62
 - **Learned rhythm model (`rhythm_lm.py`, `rhythm_long.py`):** how long notes last at each spot in the bar, counted from the 4/4 folk tunes, combined with the note reader's
   evidence at each possible split. All 31 guided takes: 3.94 → 4.04 (rhythm alone), 3.90 / 3.84 / 3.84 / 3.82 (audio weight 0.3 / 0.6 / 1 / 2), about 5 fewer fixes in 500 notes.
   The same weights split the sustained long-vowels and long-swell takes (one held note) into 2–3 notes. Dropped: the small gain isn't worth chopping held notes.
+- **PESTO pitch (LGPL-3.0, `pesto_extract.py`) in place of YIN:** worse on both test sets, whether it replaces the app's pitch and voicing (HumTrans 4.58 → 4.92,
+  Vocadito 5.69 → 6.45) or only fills in pitch where the app hears voice (4.71, 5.76). Dropped. That covers every open pitch model with a usable license here.
