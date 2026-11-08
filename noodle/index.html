@@ -1710,6 +1710,7 @@ function drumHit(c,out,drumId,t,v,style,T){
     n.connect(f); f.connect(g); g.connect(out); n.start(t); n.stop(t+0.4);
   }
 }
+let EXPR_DET=null;   // Follow my voice: a pitch-bend curve (cents) every oscillator of the next voice follows
 let ENV_OVR=null, ENV_LAST=null;   // a part's own ADSR (replaces the sound's), and the last envelope a sound asked for
 function voice(c,out,sound,t,dur,m,v,T,fromM=null){
   const f=mtof(m), g=c.createGain(); g.connect(out); const oscs=[];
@@ -1744,8 +1745,29 @@ function voice(c,out,sound,t,dur,m,v,T,fromM=null){
   if(fromM!==null && fromM!==m){ // portamento: every pitched oscillator starts at the previous note and slides here
     const ratio=Math.pow(2,(fromM-m)/12), gt=Math.min(0.09,Math.max(0.03,dur*0.35));
     oscs.forEach(o=>{ if(o._lfo) return; const f0=o.frequency.value; o.frequency.setValueAtTime(f0*ratio,t); o.frequency.exponentialRampToValueAtTime(f0,t+gt); }); }
+  if(EXPR_DET) oscs.forEach(o=>{ if(!o._lfo) EXPR_DET.connect(o.detune); });
   oscs.forEach(o=>{ o.start(t); o.stop(end); });
 }
+/* Follow my voice: for each note, curves from the moment of the take where it was sung - pitch bend (scoops, vibrato, bends,
+   in cents around the note), loudness, and brightness (mouth shape: "ooo" darker, "aaa" brighter) as a filter. Amount 0-100. */
+function exprFrames(tr){ const an=tr._an, fr=an&&an.notes&&an.notes.frames; if(!fr||!tr._raw) return null;
+  if(an._expr) return an._expr;
+  const {x,sr}=tr._raw, N=512, win=new Float64Array(N); for(let i=0;i<N;i++) win[i]=0.5-0.5*Math.cos(2*Math.PI*i/(N-1));
+  const re=new Float64Array(N), im=new Float64Array(N), hop=sr/16000, cent=new Float32Array(fr.length);
+  for(let f=0;f<fr.length;f++){ const c=Math.round(fr[f].t*sr)-N/2*hop;
+    for(let i=0;i<N;i++){ const j=Math.round(c+i*hop); re[i]=(j>=0&&j<x.length?x[j]:0)*win[i]; im[i]=0; }
+    readerFFT(re,im); let num=0,den=1e-9; for(let k=2;k<N/2;k++){ const a=Math.hypot(re[k],im[k]), hz=k*16000/N; num+=a*hz; den+=a; } cent[f]=num/den; }
+  return an._expr={fr,cent,tune:an.notes.tune||0,align:an.align}; }
+function exprCurves(tr, nt, dur, target){ const E=exprFrames(tr); if(!E) return null; const a=(tr.expr||0)/100; if(a<=0) return null;
+  const sd=stepDur(), t0=E.align+(nt.s%pSteps(tr))*sd, T0=E.fr[0].t, n=Math.max(2,Math.round(dur/0.01)), bend=new Float32Array(n), gain=new Float32Array(n), cut=new Float32Array(n);
+  let lastB=0, mx=-200; const idx=k=>Math.max(0,Math.min(E.fr.length-1,Math.round((t0+k*0.01-T0)/0.01)));
+  for(let k=0;k<n;k++) mx=Math.max(mx,E.fr[idx(k)].db);
+  for(let k=0;k<n;k++){ const f=E.fr[idx(k)], voiced=f.conf<0.2&&f.db>mx-25;
+    if(voiced) lastB=Math.max(-250,Math.min(250,(f.m-E.tune-target)*100)); bend[k]=a*lastB;
+    const g=Math.max(0.12,Math.min(1,Math.pow(10,(f.db-mx)/20))); gain[k]=1-a*(1-g);
+    const c=Math.max(250,Math.min(4000,E.cent[idx(k)])), open=Math.log(c/250)/Math.log(16); cut[k]=Math.exp(Math.log(20000)*(1-a)+Math.log(900*Math.pow(14,open))*a); }
+  const sm=(A,w)=>{ const B=A.slice(); for(let k=0;k<A.length;k++){ let s=0,c=0; for(let j=Math.max(0,k-w);j<=Math.min(A.length-1,k+w);j++){ s+=A[j]; c++; } B[k]=s/c; } return B; };
+  return {bend:sm(bend,2),gain:sm(gain,2),cut:sm(cut,3)}; }
 function stepTime(s){ const sd=stepDur(); return (s + (s%2===1 ? (S.swing/100)*0.5 : 0))*sd; }
 async function renderStem(tr){
   if(tr.inst==='vox') return renderVox(tr);
@@ -1759,7 +1781,11 @@ async function renderStem(tr){
   const NL=(!tr.notes?[]:FULL?songEvents(tr,tr.notes):tr.notes.filter(x=>x.s<PN)).filter(x=>keep(x.s)).map(x=>SP.length?spotClip(x,SP):x);
   if(d.kind==='pitched' && tr.inst==='arp'){ for(const e of (FULL?songEvents(tr,arpEvents(tr)):arpEvents(tr).filter(e=>e.x<PN)).filter(e=>keep(e.x)).map(e=>SP.length?spotClip(e,SP,'x'):e)) voice(oc,out,tr.sound,tAt(e.x)+0.002,Math.max(0.03,e.l*stepDur()),e.p+12*tr.oct,e.v,T); }
   else if(d.kind==='pitched'){ for(const nt of NL){ const ts=stepTime(nt.s), dur=Math.max(0.05,nt.l*stepDur()-0.012); const ps=notePitches(tr,nt); const pv=slidesOn(tr)&&nt.g ? NL.find(o=>o!==nt && o.s+o.l===nt.s) : null; const pps=pv?notePitches(tr,pv):null;
-    ps.forEach((pp,j)=>voice(oc,out,tr.sound,ts+0.002,dur,pp+12*tr.oct,nt.v*(ps.length>1?1.1/Math.sqrt(ps.length+0.2):1),T, pps?pps[Math.min(j,pps.length-1)]+12*tr.oct:null)); } }
+    const X=tr.expr>0 && !nt.x ? exprCurves(tr,nt,dur,pitchOf(nt)) : null; let nout=out;
+    if(X){ const g=oc.createGain(), lpf=oc.createBiquadFilter(); lpf.type='lowpass'; lpf.Q.value=0.8; g.connect(lpf); lpf.connect(out);
+      g.gain.setValueCurveAtTime(X.gain,ts+0.002,dur); lpf.frequency.setValueCurveAtTime(X.cut,ts+0.002,dur);
+      const cs=oc.createConstantSource(); cs.offset.value=0; cs.offset.setValueCurveAtTime(X.bend,ts+0.002,dur); cs.start(ts); cs.stop(ts+dur+1); EXPR_DET=cs; nout=g; }
+    ps.forEach((pp,j)=>voice(oc,nout,tr.sound,ts+0.002,dur,pp+12*tr.oct,nt.v*(ps.length>1?1.1/Math.sqrt(ps.length+0.2):1),T, pps?pps[Math.min(j,pps.length-1)]+12*tr.oct:null)); EXPR_DET=null; } }
   else { for(const h of (FULL?songEvents(tr,tr.hits):tr.hits.filter(h=>h.s<PN)).filter(h=>keep(h.s))) drumHit(oc,out,h.d,stepTime(h.s)+0.002,h.v,tr.sound,T); }
   ENV_OVR=null;
   const r=await oc.startRendering();
@@ -2641,6 +2667,7 @@ function buildCard(tr){
           ${tr.inst==='bass'?'':`<div class="irow"><span class="ilab">Chord</span><div class="ictl"><select class="sel chdsel" aria-label="Chord size">${Object.entries(CHORD_TYPES).map(([k,v])=>`<option value="${k}" ${k===chordType(tr)?'selected':''}>${v}</option>`).join('')}</select></div></div>`}
           ${tr._raw&&tr._an?`<div class="irow"><span class="ilab">Detail</span><div class="ictl"><span class="tb-end">Fewer</span><input type="range" class="pdet" min="-50" max="50" step="10" value="${tr.detail||0}" aria-label="Fewer or more notes" style="flex:1;min-width:110px"><span class="tb-end">More</span></div></div>`:''}
           <div class="irow"><span class="ilab">Octave</span><div class="ictl seg"><button class="ibtn od" aria-label="Octave down">−</button><b class="ov">${tr.oct>0?'+':''}${tr.oct}</b><button class="ibtn ou" aria-label="Octave up">+</button></div></div>
+          ${tr._raw&&tr._an&&tr.inst!=='arp'?`<div class="irow"><span class="ilab">Follow my voice</span><div class="ictl"><span class="tb-end">Off</span><input type="range" class="pexpr" min="0" max="100" step="10" value="${tr.expr||0}" aria-label="How much the part follows your voice: bends, loudness, mouth shape" style="flex:1;min-width:110px"><span class="tb-end">Full</span></div></div>`:''}
           ${tr.inst!=='arp'?`<div class="irow"><span class="ilab">Slides</span><div class="ictl"><button class="ibtn tog sld" aria-pressed="${slidesOn(tr)}" title="Slide between notes where you slid">${slidesOn(tr)?'On':'Off'}</button></div></div>`:''}
           ${tr.inst==='arp'?(()=>{ const A=arpOf(tr), o=(cls,lab,opts,val)=>`<div class="irow"><span class="ilab">${lab}</span><div class="ictl"><select class="sel ${cls}" aria-label="${lab}">${opts.map(([k,v])=>`<option value="${k}" ${String(k)===String(val)?'selected':''}>${v}</option>`).join('')}</select></div></div>`;
             return o('apat','Pattern',[['up','Up'],['down','Down'],['updown','Up & down'],['random','Random']],A.pat)+o('arate','Rate',[[2,'1/8'],[1,'1/16'],[0.5,'1/32']],A.rate)+o('aoct','Range',[[1,'1 octave'],[2,'2 octaves'],[3,'3 octaves']],A.oct)+o('agate','Gate',[[0.3,'Short'],[0.6,'Medium'],[0.95,'Long']],A.gate); })():''}
@@ -2694,6 +2721,7 @@ function buildCard(tr){
     const cs2=el.querySelector('.chdsel'); if(cs2) cs2.onchange=e=>{ tr.chordType=e.target.value; delete tr.chords; tr._dirty=true; save(); drawGrid(tr); scheduleRender(); };
     [['apat','pat',v=>v],['arate','rate',Number],['aoct','oct',Number],['agate','gate',Number]].forEach(([cls,key,conv])=>{ const se=el.querySelector('.'+cls); if(se) se.onchange=e=>{ tr.arp=Object.assign(arpOf(tr),{[key]:conv(e.target.value)}); tr._dirty=true; save(); scheduleRender(); }; });
     if(tr._sel && !tr.notes.includes(tr._sel)) tr._sel=null;
+    const px=el.querySelector('.pexpr'); if(px) px.onchange=()=>{ tr.expr=+px.value; tr._dirty=true; save(); scheduleRender(); };
     const sb2=el.querySelector('.sld'); if(sb2) sb2.onclick=()=>{ tr.slides=!slidesOn(tr); sb2.setAttribute('aria-pressed',tr.slides); sb2.textContent=tr.slides?'On':'Off'; tr._dirty=true; save(); scheduleRender(); };
     const st2=el.querySelector('.savetake'); if(st2) st2.onclick=()=>saveTake(tr);
     const ub=el.querySelector('.undo'); if(ub) ub.onclick=()=>undoTake(tr);
