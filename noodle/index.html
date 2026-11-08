@@ -614,6 +614,7 @@ button.card-head{margin:0;width:100%;padding:10px 14px;border-radius:0;backgroun
     <button class="card-head" data-sec="timing" aria-expanded="false" aria-controls="timingBody"><span class="hd"><h2 id="timh">Timing &amp; mic</h2></span><span class="hd"><svg class="chev" viewBox="0 0 20 20" aria-hidden="true"><path d="M7 5l5 5-5 5"/></svg></span></button>
     <div class="sec-body" id="timingBody">
     <div class="knobs" id="timingKnobs"></div>
+    <label class="chk"><input type="checkbox" id="keyRef"> <span>Play the home chord during the count-in, so melody takes start in key</span></label>
     <label class="chk" id="playAlongRow"><input type="checkbox" id="playAlong"> <span>Play the other parts while I record (wear headphones so the mic doesn’t hear them)</span></label>
     <label class="chk"><input type="checkbox" id="latAuto"> <span>Estimate the mic delay automatically</span></label>
     <p class="small" id="dropLine" hidden></p>
@@ -778,7 +779,7 @@ async function restoreSnap(sn){
 async function newSong(){
   if(!S.tracks.length && !S.title) return;
   flushSave(); if(playing){ stopAll(); playing=false; updatePlayBtn(); }
-  const keepKeys=['kit','calibrated','latAuto','latMs','ec','sens','snapStr','detailBias','vocLat','mergeDrums','replaceTonal','mig2','mig3','sq'];
+  const keepKeys=['kit','calibrated','latAuto','latMs','ec','sens','snapStr','detailBias','vocLat','mergeDrums','replaceTonal','mig2','mig3','sq','keyRef'];
   const o=defaultState(); keepKeys.forEach(k=>{ if(k in S) o[k]=S[k]; }); o.tracks=[]; o.nextId=S.nextId;
   takeBar=null; await restoreSnap({json:JSON.stringify(o), rt:new Map()}); save(); flushSave();
   window.scrollTo({top:0}); toast('New song. Undo brings the last one back.'); }
@@ -1395,6 +1396,16 @@ function quantizeTrack(tr){
 /* ============================== key & scale ============================== */
 function corr(a,b){ const ma=a.reduce((x,y)=>x+y)/12, mb=b.reduce((x,y)=>x+y)/12; let n=0,da=0,db=0; for(let i=0;i<12;i++){ n+=(a[i]-ma)*(b[i]-mb); da+=(a[i]-ma)**2; db+=(b[i]-mb)**2; } return da&&db?n/Math.sqrt(da*db):0; }
 let keyCache=null;
+/* Count-in arpeggio (optional, Timing & mic): the home chord, one note per count-in beat, so you start in the song's key.
+   Only when the song already has a key (a key you set, or notes in it); silent once you start singing. */
+function keyKnown(){ if(S.scale==='chromatic') return null;
+  const has=S.key!=='auto' || S.tracks.some(t=>(INST[t.inst].kind==='pitched'&&t.notes&&t.notes.length)||(t.inst==='vox'&&(t.vn||[]).length));
+  return has?currentKey():null; }
+function playKeyArp(K, when, bar){ const tonic=57+((K.tonic-57)%12+12)%12, third=K.set.includes(4)?4:3, beat=bar/4, out=ctx.createGain(); out.gain.value=0.16; out.connect(ctx.destination);
+  [0,third,7,12].forEach((iv,k)=>{ const t=when+k*beat, f=440*Math.pow(2,(tonic+iv-69)/12), o=ctx.createOscillator(), o2=ctx.createOscillator(), g=ctx.createGain();
+    o.type='triangle'; o2.type='sine'; o.frequency.value=f; o2.frequency.value=f*2; const g2=ctx.createGain(); g2.gain.value=0.25;
+    g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(1,t+0.012); g.gain.exponentialRampToValueAtTime(0.001,t+beat*0.9);
+    o.connect(g); o2.connect(g2); g2.connect(g); g.connect(out); o.start(t); o2.start(t); o.stop(t+beat); o2.stop(t+beat); }); }
 function currentKey(){
   if(keyCache) return keyCache;
   if(S.scale==='chromatic') return keyCache={none:true};
@@ -1890,6 +1901,7 @@ async function startRecord(calib=false, teach=null){
   if(along) S.tracks.forEach(tr=>{ if(tr._buf && !tr.guide){ ensureNodes(tr); tr._src=preroll?startSrc(tr._buf,tr._g,when,poff):startSrc(tr._buf,tr._g,when+bar,0); } });
   if(!metroGain){ metroGain=ctx.createGain(); metroGain.connect(ctx.destination); }
   metroGain.gain.value=0.75; metroSrc=startSrc(metroBuf,metroGain,when,0); gateOpen(when);
+  if(S.keyRef && !calib && !teach && INST[S.inst].kind==='pitched'){ const K=keyKnown(); if(K) playKeyArp(K, when, bar); }
   recState={calib, teach, inst:S.inst, countStart:when, start:when+bar, end:when+bar+L, preroll, poff, along, lat:calib?0:(!teach&&S.inst==='vox'&&S.vocLat!=null?S.vocLat:latency()), chunks:[]};
   if(!teach) teachQueue=null;
   capturing=true; setRecUI(true);
@@ -2239,7 +2251,7 @@ function guidedUI(){ const el=$('guided'); if(!el) return; el.hidden=!drop; if(!
   $('gSet').onclick=()=>guidedSetup($('gPick').value); const nb=$('gNext'); if(nb) nb.onclick=()=>guidedSetup(next[0]); }
 async function guidedSetup(id){ const g=GUIDED.find(x=>x[0]===id); if(!g) return; const [,mel,how,inst0,bpm]=g, kit=inst0==='kit';
   flushSave(); if(playing){ stopAll(); playing=false; updatePlayBtn(); }
-  const keepKeys=['kit','calibrated','latAuto','latMs','ec','sens','snapStr','detailBias','vocLat','mergeDrums','replaceTonal','mig2','mig3','sq','playAlong'];
+  const keepKeys=['kit','calibrated','latAuto','latMs','ec','sens','snapStr','detailBias','vocLat','mergeDrums','replaceTonal','mig2','mig3','sq','keyRef','playAlong'];
   const o=defaultState(); keepKeys.forEach(k=>{ if(k in S) o[k]=S[k]; });
   o.title=id; o.prompt=id; o.bpm=bpm||110; o.bars=4; o.loops=2; let nid=S.nextId;
   let guide, take;
@@ -2963,6 +2975,7 @@ function init(){
   $('replaceTonal').checked=S.replaceTonal; $('replaceTonal').onchange=e=>{ S.replaceTonal=e.target.checked; save(); };
   $('mergeDrums').checked=S.mergeDrums; $('mergeDrums').onchange=e=>{ S.mergeDrums=e.target.checked; save(); };
   $('playAlong').checked=S.playAlong; $('playAlong').onchange=e=>{ S.playAlong=e.target.checked; save(); };
+  $('keyRef').checked=!!S.keyRef; $('keyRef').onchange=e=>{ S.keyRef=e.target.checked; save(); };
   $('clearEx').onclick=()=>{ S.tracks.filter(t=>t.ex).forEach(disposeTrack); S.tracks=S.tracks.filter(t=>!t.ex); keyChanged(); save(); renderTracks(); toast('Example cleared. Tap Undo to bring it back.'); };
   const showCal=()=>{ $('calNote').hidden=!( !S.calibrated && !$('recBtn').hidden && !isOpen('calHide',false) ); }; showCal(); window._showCal=showCal;
   $('calLater').onclick=()=>{ setOpen('calHide',true); showCal(); toast('You can calibrate any time under Timing & mic'); };
