@@ -1290,7 +1290,7 @@ function readerFeatures(x, sr, frames, grid){
     X[o+NM+3]=isNaN(pm[f])?0:(pm[f]-med)/12; X[o+NM+4]=isNaN(pm[f])?0:Math.max(-3,Math.min(3,p0-pp))/3;
     if(grid){ const beat=(frames[f].t-grid.t0)*grid.bpm/60, ph=2*Math.PI*(((beat%1)+1)%1), bph=2*Math.PI*((((beat/4)%1)+1)%1);
       X[o+NM+5]=Math.sin(ph); X[o+NM+6]=Math.cos(ph); X[o+NM+7]=Math.sin(bph); X[o+NM+8]=Math.cos(bph); X[o+NM+9]=1; } }
-  return {X,F,pm}; }
+  return {X,F,pm,L,NM}; }
 function readerFFT(re,im){ const n=re.length; for(let i=1,j=0;i<n;i++){ let bit=n>>1; for(;j&bit;bit>>=1) j^=bit; j|=bit; if(i<j){ [re[i],re[j]]=[re[j],re[i]]; [im[i],im[j]]=[im[j],im[i]]; } }
   for(let len=2;len<=n;len<<=1){ const a=-2*Math.PI/len, wr=Math.cos(a), wi=Math.sin(a); for(let i=0;i<n;i+=len){ let cr=1,ci=0; for(let k=0;k<len/2;k++){ const p=i+k,q=p+len/2, tr=re[q]*cr-im[q]*ci, ti=re[q]*ci+im[q]*cr; re[q]=re[p]-tr; im[q]=im[p]-ti; re[p]+=tr; im[p]+=ti; const nr=cr*wr-ci*wi; ci=cr*wi+ci*wr; cr=nr; } } } }
 function readerConv(X,T,cin,W,b,cout,dil){ const Y=new Float32Array(T*cout), pad=2*dil;
@@ -1304,21 +1304,22 @@ function readerGRU(X,T,din,H,Wih,Whh,bih,bhh,rev){ const Y=new Float32Array(T*H)
   return Y; }
 /* note-start probability for every frame */
 function readerOnsets(x, sr, frames, grid){
-  const R=READER, W=R.W, T=frames.length, hid=R.hid, {X,F,pm}=readerFeatures(x,sr,frames,grid);
+  const R=READER, W=R.W, T=frames.length, hid=R.hid, {X,F,pm,L,NM}=readerFeatures(x,sr,frames,grid);
   let h=readerConv(X,T,F,W['c.0.weight'].d,W['c.0.bias'].d,hid,1); h=readerConv(h,T,hid,W['c.2.weight'].d,W['c.2.bias'].d,hid,2); h=readerConv(h,T,hid,W['c.4.weight'].d,W['c.4.bias'].d,hid,4);
   let din=hid; const H=hid/2;
   for(let l=0;l<R.lay;l++){ const f=readerGRU(h,T,din,H,W[`g.weight_ih_l${l}`].d,W[`g.weight_hh_l${l}`].d,W[`g.bias_ih_l${l}`].d,W[`g.bias_hh_l${l}`].d,false),
       b=readerGRU(h,T,din,H,W[`g.weight_ih_l${l}_reverse`].d,W[`g.weight_hh_l${l}_reverse`].d,W[`g.bias_ih_l${l}_reverse`].d,W[`g.bias_hh_l${l}_reverse`].d,true);
     const o=new Float32Array(T*hid); for(let t=0;t<T;t++){ o.set(f.subarray(t*H,t*H+H),t*hid); o.set(b.subarray(t*H,t*H+H),t*hid+H); } h=o; din=hid; }
   const Wo=W['o.weight'].d, bo=W['o.bias'].d, P=new Float32Array(T); for(let t=0;t<T;t++){ let s=bo[0]; for(let j=0;j<hid;j++) s+=Wo[j]*h[t*hid+j]; P[t]=1/(1+Math.exp(-s)); }
-  return {P,pm}; }
+  return {P,pm,L,NM}; }
 /* split a held note where the reader is confident a new note starts (only well inside the note), each piece with its own pitch */
 async function readerSplit(an, x, sr){
   const fr=an.notes.frames; if(!fr||!fr.length||an.notes.whistled) return;
   const R=await loadReader(); if(!R) return;
-  const {P,pm}=readerOnsets(x,sr,fr,{bpm:S.bpm,t0:an.align}), T0=fr[0].t, tune=an.notes.tune||0, out=[];
+  const {P,pm,L,NM}=readerOnsets(x,sr,fr,{bpm:S.bpm,t0:an.align}), T0=fr[0].t, tune=an.notes.tune||0, out=[];
   /* a split needs the model to be confident AND some hint in the sound itself (a small loudness dip or pitch sag), so one held
      note that simply lasts across beats stays one note */
+  an.cue={L,NM,T0};   /* the sound's colour per frame, for split hints */
   const RT=window.READER_THR??0.6, RD=window.READER_DIP??1.0, RS=window.READER_SAG??0.2;
   const cue=i=>{ if(RD>=99) return true; let L=-1e9,Rm=-1e9; for(let j=Math.max(0,i-8);j<i;j++) L=Math.max(L,fr[j].db); for(let j=i+1;j<=Math.min(fr.length-1,i+8);j++) Rm=Math.max(Rm,fr[j].db);
     let lo=1e9; for(let j=Math.max(0,i-3);j<=Math.min(fr.length-1,i+3);j++) lo=Math.min(lo,fr[j].db); const dip=Math.min(L,Rm)-lo;
@@ -1389,9 +1390,19 @@ function quantizeTrack(tr){
     // two back-to-back notes of one phrase that land on the same key (a held note that drifted) are one held note
     const keyed=[]; for(const nt of out){ const pv=keyed[keyed.length-1];
       if(pv && nt.g && pv.s+pv.l===nt.s && !nt.x && !pv.x && Math.abs(pv.p-nt.p)<0.5){ if(nt.l>pv.l) pv.p=nt.p; pv.l+=nt.l; } else keyed.push(nt); }
+    if(an.cue) keyed.forEach(nt=>{ const hs=splitHints(an,nt.s,nt.l,sd,q); if(hs.length) nt.hs=hs; });
     tr.notes=keyed;
   }
 }
+/* Split hints: inside a held note, the eighth-note points where the sound's colour clearly changes (a new syllable on the same pitch).
+   Shown as a faint seam; tapping it splits the note there. Offsets are from the note's start. */
+const HINT_THR=3.5;
+function splitCue(c,t){ const NM=c.NM, L=c.L, T=L.length/NM, i=Math.round((t-c.T0)/0.01); if(i-10<0||i+10>T) return 0;
+  const a=new Float64Array(NM), b=new Float64Array(NM); for(let f=i-10;f<i-2;f++) for(let k=0;k<NM;k++) a[k]+=L[f*NM+k]/8; for(let f=i+2;f<i+10;f++) for(let k=0;k<NM;k++) b[k]+=L[f*NM+k]/8;
+  let ma=0,mb=0; for(let k=0;k<NM;k++){ ma+=a[k]; mb+=b[k]; } ma/=NM; mb/=NM; let ss=0; for(let k=0;k<NM;k++){ const d=(a[k]-ma)-(b[k]-mb); ss+=d*d; } return Math.sqrt(ss); }
+function splitHints(an,s,l,sd,q){ const hs=[]; if(l<4||l>16) return hs;   /* up to a bar: longer is a note held on purpose */ const st=Math.max(2,q);
+  for(let o=st;o<=l-st;o+=st) if(splitCue(an.cue,an.align+(s+o)*sd)>=HINT_THR) hs.push(o);
+  return hs; }
 
 /* ============================== key & scale ============================== */
 function corr(a,b){ const ma=a.reduce((x,y)=>x+y)/12, mb=b.reduce((x,y)=>x+y)/12; let n=0,da=0,db=0; for(let i=0;i<12;i++){ n+=(a[i]-ma)*(b[i]-mb); da+=(a[i]-ma)**2; db+=(b[i]-mb)**2; } return da&&db?n/Math.sqrt(da*db):0; }
@@ -2197,7 +2208,7 @@ function dropWavB64(x,sr){ const R=24000, n=Math.floor((x.length-1)*R/sr), y=new
   w(0,'RIFF'); b.setUint32(4,36+n*2,true); w(8,'WAVE'); w(12,'fmt '); b.setUint32(16,16,true); b.setUint16(20,1,true); b.setUint16(22,1,true); b.setUint32(24,R,true); b.setUint32(28,R*2,true); b.setUint16(32,2,true); b.setUint16(34,16,true); w(36,'data'); b.setUint32(40,n*2,true);
   return new Promise(res=>{ const fr=new FileReader(); fr.onload=()=>res(String(fr.result).split(',')[1]); fr.readAsDataURL(new Blob([b.buffer,y.buffer])); }); }
 const slug=t=>String(t||'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,40);
-function dropState(tr){ return {notes:tr.notes?tr.notes.map(n=>({s:n.s,l:n.l,p:pitchOf(n),raw:+(+n.p).toFixed(3),v:n.v,x:!!n.x})):undefined, hits:tr.hits?tr.hits.map(h=>({s:h.s,d:h.d,v:h.v})):undefined, va:tr.va, sound:tr.sound}; }
+function dropState(tr){ return {notes:tr.notes?tr.notes.map(n=>({s:n.s,l:n.l,p:pitchOf(n),raw:+(+n.p).toFixed(3),v:n.v,x:!!n.x,...(n.hs?{hs:n.hs}:{})})):undefined, hits:tr.hits?tr.hits.map(h=>({s:h.s,d:h.d,v:h.v})):undefined, va:tr.va, sound:tr.sound}; }
 function dropMeta(tr){ return {sid:tr.sid, song:S.title||'', inst:tr.inst, bpm:S.bpm, bars:S.bars, quant:S.quant, key:S.key, scale:S.scale, snapStr:S.snapStr??100, sens:tr.sens??S.sens, latMs:S.latMs, who:drop&&drop.who||'',
   recordedAt:tr.sidAt, updatedAt:new Date().toISOString(), heard:tr.sidHeard, now:dropState(tr), reading:tr.reading||null, prompt:S.prompt||null, guide:(()=>{ const g=S.tracks.find(t=>t.guide); return g?dropState(g):null; })(), playAlong:!!S.playAlong, ua:navigator.userAgent.slice(0,120)}; }
 async function dropTake(x, sr, inst){ if(!drop) return;
@@ -2825,6 +2836,9 @@ function drawGrid(tr){
     const selN=tr._sel;
     tr.notes.forEach(nt=>{ const i=rows.indexOf(pitchOf(nt)); if(i<0) return; g.globalAlpha=nt===selN?1:0.45+0.55*nt.v; g.fillStyle=col;
       let s=nt.s, left=nt.l; while(left>0){ const room=sPL-(s%sPL), seg=Math.min(left,room); rr(g,X(s)+1,Y(s)+1+i*rh+0.5,Math.max(cw*seg-2,3),rh-1,1.5); g.fill(); s=(s+seg)%n; left-=seg; } });
+    /* split hints: a faint seam where a held note may be two notes (tap it to split) */
+    g.globalAlpha=0.55; g.fillStyle=cCell; tr.notes.forEach(nt=>{ if(!nt.hs) return; const i=rows.indexOf(pitchOf(nt)); if(i<0) return;
+      nt.hs.forEach(o=>{ if(o<=0||o>=nt.l) return; const s=(nt.s+o)%n; g.fillRect(X(s)-1,Y(s)+1+i*rh+2,2,Math.max(2,rh-5)); }); });
     g.globalAlpha=1;
     // chord name on each note (when chords are on): e.g. Am, C7, Fmaj7
     if(chordsOn(tr)){ g.font='700 '+Math.max(8,Math.min(10,rh-1))+'px '+mono; g.textBaseline='middle';
@@ -2887,7 +2901,9 @@ function recordedDeleted(tr,n){ const now=Date.now(); tr._recent=(tr._recent||[]
 /* Split: a held note becomes two on the same pitch (cut on a beat when it spans one, else in half) - for repeated notes sung as one */
 function splitSelNote(tr,at){ const n=tr._sel, q=S.quant==8?2:1; if(!n||!tr.notes.includes(n)||n.l<2*q) return;
   const mid=n.s+n.l/2; let cut=at!=null?Math.round(at/q)*q:Math.round(mid/4)*4; if(cut<=n.s||cut>=n.s+n.l) cut=n.s+Math.max(q,Math.round(n.l/2/q)*q);
-  const b={...n, s:cut, l:n.s+n.l-cut}; n.l=cut-n.s; delete b.g; tr.notes.push(b); tr._sel=b; keyCache=null; noteChanged(tr); }
+  const b={...n, s:cut, l:n.s+n.l-cut}; n.l=cut-n.s; delete b.g;
+  if(n.hs){ const o=cut-n.s, L=n.hs.filter(h=>h<o), R=n.hs.filter(h=>h>o).map(h=>h-o); if(L.length) n.hs=L; else delete n.hs; if(R.length) b.hs=R; else delete b.hs; }
+  tr.notes.push(b); tr._sel=b; keyCache=null; noteChanged(tr); }
 function deleteSelNote(tr){ const n=tr._sel; if(!n||!tr.notes.includes(n)) return; if(!n.x) recordedDeleted(tr,n); tr.notes.splice(tr.notes.indexOf(n),1); tr._sel=null; keyCache=null; noteChanged(tr); }
 function placeHandle(tr){ const h=tr._nsel, G=tr._grid, n=tr._sel, x=tr._ndel; if(!h) return;
   const i=(n&&G)?G.rows.indexOf(pitchOf(n)):-1; if(i<0||!tr.notes.includes(n)){ h.hidden=true; if(x) x.hidden=true; if(tr._nsplit) tr._nsplit.hidden=true; return; }
@@ -2920,6 +2936,8 @@ function noteMove(tr,e){
 function noteUp(tr,e,cancel){
   const d=tr._drag; if(!d) return; tr._drag=null;
   if(d.pending){ if(cancel) return;
+    if(d.hit && d.c && d.hit.hs && tr._sel!==d.hit){ const o=d.hit.hs.find(h=>d.c.s===d.hit.s+h||d.c.s===d.hit.s+h-1);
+      if(o!=null){ tr._sel=d.hit; tr._lastTap=null; splitSelNote(tr, d.hit.s+o); return; } }   /* tap a split hint: split there */
     if(d.hit){ const lt=tr._lastTap, now=Date.now(); tr._lastTap={n:d.hit,t:now};
       if(lt && lt.n===d.hit && now-lt.t<400){ tr._sel=d.hit; tr._lastTap=null; splitSelNote(tr, d.c?d.c.s:null); return; }   /* double-tap: split where tapped */
       selectNote(tr,d.hit); previewNote(tr,pitchOf(d.hit)); }

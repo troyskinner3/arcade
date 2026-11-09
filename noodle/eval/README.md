@@ -211,3 +211,10 @@ Guided melodies replayed in the app (with the new scale-la take): no reader 3.62
   - Width prior centred on the singer's measured width (0.74 up / 0.93 down) (`nbest_rerank.py`): 4.36–4.90 (width changes a lot between takes). Major-key bonus: 3.90 in-sample, 4.28 cross-validated.
 - **Missed notes (`missed.py`):** of 45 intended notes with nothing near them, 31 are same-pitch repeats heard as one held note (13 in words takes), 11 nothing heard, 3 merged into a pitch change.
 - **Sound-colour cue for those repeats (`timbre_cue.py`):** log-mel shape change across the boundary is 3.0 at missed repeats vs 1.5 in held-note middles; a threshold catching half the repeats also fires on 17% of held notes (222 held vs 31 repeats → ~38 false splits for 16 caught). Not usable alone.
+
+### Split hints (shipped) — Nov 9
+- A held note (4–16 steps) gets a faint seam at each eighth-note point where the sound's colour changes clearly (log-mel shape, 8 frames each side, ≥ 3.5;
+  `splitCue`/`splitHints`, same features as the note reader). Tapping the seam splits the note there. Nothing changes on its own: what Noodle hears is identical on all 31 takes.
+- All 31 guided takes (`replay_fast.js`, `hint_eval.py`): 23 seams; 14 sit on a real repeat, 9 stray (mostly a vowel change inside a held word).
+  Tapping the useful ones: 3.88 → 3.60. Notes longer than a bar get none (the sustained long-vowels / long-swell takes had 3 each before that limit).
+- Shared takes include each note's seams (`hs`), so real use can show how often they're right.
