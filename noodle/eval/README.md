@@ -200,3 +200,14 @@ Guided melodies replayed in the app (with the new scale-la take): no reader 3.62
   People without the squeeze profile keep today's snap exactly.
   - Without the 0.3 rule: 3.74, but 4 takes get 1 worse, including a perfect birthday-words. Reading the drift-corrected line again with the decoder: 4.24.
   - As a plain snap for everyone (`drift_ds.py`, held-out singers): HumTrans 3.89 → 3.82, Vocadito 6.41 → 6.46; gating by drift size removes the gain. Not used.
+
+### Where the remaining errors are, and re-ranking readings (Nov 9)
+- **Per-note pitch measurement is not the problem (`note_pitch_est.py`):** after fitting each take's squeeze, the app's note pitch is off by a median 0.30 semitones
+  (66% within 0.5), better than median / middle half / second half / mode / loudest half of the frames (0.33–0.74). Errors are a tail of notes 1–2 semitones off.
+- **The intended melody is often among the other readings (`nbest.py`):** readings over 24 keys × interval widths; best of the top 2 / 4 / 10 / 60:
+  3.66 / 3.38 / 2.88 / 2.56 (app 3.94). A perfect chooser among 10 would remove about a quarter of all fixes.
+- **Choosing among them — nothing found that picks the right one:**
+  - Folk-tune melody judge (`melody_lm.py`, scale-degree/interval trigram, 236 tunes matching a guide removed): best 3.98 vs 4.12 for the same decoder; 4.46 cross-validated by tune.
+  - Width prior centred on the singer's measured width (0.74 up / 0.93 down) (`nbest_rerank.py`): 4.36–4.90 (width changes a lot between takes). Major-key bonus: 3.90 in-sample, 4.28 cross-validated.
+- **Missed notes (`missed.py`):** of 45 intended notes with nothing near them, 31 are same-pitch repeats heard as one held note (13 in words takes), 11 nothing heard, 3 merged into a pitch change.
+- **Sound-colour cue for those repeats (`timbre_cue.py`):** log-mel shape change across the boundary is 3.0 at missed repeats vs 1.5 in held-note middles; a threshold catching half the repeats also fires on 17% of held notes (222 held vs 31 repeats → ~38 false splits for 16 caught). Not usable alone.
