@@ -190,3 +190,13 @@ Guided melodies replayed in the app (with the new scale-la take): no reader 3.62
   The same weights split the sustained long-vowels and long-swell takes (one held note) into 2–3 notes. Dropped: the small gain isn't worth chopping held notes.
 - **PESTO pitch (LGPL-3.0, `pesto_extract.py`) in place of YIN:** worse on both test sets, whether it replaces the app's pitch and voicing (HumTrans 4.58 → 4.92,
   Vocadito 5.69 → 6.45) or only fills in pitch where the app hears voice (4.71, 5.76). Dropped. That covers every open pitch model with a usable license here.
+
+### Pitch errors and tuning drift (Nov 9)
+- **What the pitch errors are (`pitch_errs.py`):** 66% of matched notes have the right pitch (the raw sung pitch rounded would get 34%). Misses are mostly one scale step
+  (±1–2 semitones: 111 of 147), most often after a leap (41–49% wrong vs 25–33% after a step). Each note's sung pitch scatters by about 2 semitones;
+  17 of 30 takes also drift by more than half a semitone between bar 1 and bar 4.
+- **Following the drift (shipped, squeeze profile only):** after the whole-line reading, each note is re-read against the tuning of the 8 notes on either side
+  and changed only when it then lands within 0.3 semitones of another note. Real app, all 31 guided takes: 3.94 → 3.88 (farm-hum, scale-la better; no take worse).
+  People without the squeeze profile keep today's snap exactly.
+  - Without the 0.3 rule: 3.74, but 4 takes get 1 worse, including a perfect birthday-words. Reading the drift-corrected line again with the decoder: 4.24.
+  - As a plain snap for everyone (`drift_ds.py`, held-out singers): HumTrans 3.89 → 3.82, Vocadito 6.41 → 6.46; gating by drift size removes the gain. Not used.

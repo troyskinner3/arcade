@@ -1506,7 +1506,11 @@ const ookCost=()=>{ const v=S.snapStr??100; return v>=100?50:0.3+2.7*(v/100)**2;
 function decSig(){ const K=currentKey(); return K.none?'none':`${K.tonic}|${K.scale}|${S.snapStr??100}|${squeezeOn()?1:0}`; }
 function decodePart(tr, sig){ const K=currentKey(), rec=tr.notes.filter(n=>!n.x).sort((a,b)=>a.s-b.s);
   const q=intendedPitches(rec.map(n=>+n.p), rec.map(n=>n.l||1), {tonic:K.tonic,set:K.set}, {ook:ookCost(), squeeze:squeezeOn()});
-  rec.forEach((n,i)=>{ n.q=q[i]; n.qk=sig; }); }
+  /* follow slow tuning drift: re-read each note against the tuning of the notes around it; change it only when it then lands clearly on another note */
+  const r=rec.map(n=>+n.p), inKey=p=>K.set.includes(((p-K.tonic)%12+12)%12);
+  const fq=q.map((p,i)=>{ const d=r.slice(Math.max(0,i-8),i+9).map((x,j)=>x-q[Math.max(0,i-8)+j]).sort((a,b)=>a-b), x=r[i]-d[d.length>>1];
+    let b=p; for(let c=Math.round(x)-3;c<=Math.round(x)+3;c++) if((inKey(c)||c===p) && Math.abs(c-x)<Math.abs(b-x)) b=c; return Math.abs(b-x)<=0.3 ? b : p; });
+  rec.forEach((n,i)=>{ n.q=fq[i]; n.qk=sig; }); }
 function pitchOf(n){ if(n.x) return Math.round(n.p);
   if(n.qk==='V' && n.q!=null) return n.q;   /* a version you picked */
   // people who sing intervals as meant keep today's key snapping exactly; the whole-line reading is for those whose takes show a squeeze
