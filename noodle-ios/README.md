@@ -31,6 +31,21 @@ exports (WAV, MIDI, video) go to the share sheet. Later builds move pitch readin
 6. Target → **Signing & Capabilities**: Automatically manage signing, your team.
 7. Plug in the iPhone, pick it as the run destination at the top, press ▶. (First time: on the phone, Settings → Privacy & Security → Developer Mode on; and Settings → General → VPN & Device Management → trust your developer certificate if asked.)
 
+### Bundled web app (for the App Store build)
+The app now carries the web app inside it (`NoodleWeb/web`, served at `noodle://app/`), so it works offline and each release is a fixed
+version. Fonts and the video maker are bundled too (nothing loads from other sites). If iOS won't let the bundled page use the
+microphone, the app quietly loads the live site instead. To check which one you got: Safari → Develop → your iPhone → the page address
+starts with `noodle://` (bundled) or `https://` (live).
+
+Update an existing Xcode project once:
+1. On the Mac: `git pull`, then in Terminal `arcade/noodle-ios/sync-web.sh` (copies the latest web app into `NoodleWeb/web`; run it before every release build).
+2. In Xcode's left sidebar, right-click the old `NoodleWebApp.swift` → **Delete** → **Move to Trash**. Then drag `noodle-ios/NoodleWeb/NoodleWebApp.swift`
+   from Finder into the sidebar and **untick** "Copy items if needed" (so later `git pull`s update it), target **Noodle** ticked → Finish.
+3. Drag the `noodle-ios/NoodleWeb/web` folder into the sidebar: **untick** "Copy items if needed", choose **Create folder references**
+   (it shows as a blue folder), target **Noodle** ticked → Finish.
+4. Drag `noodle-ios/NoodleWeb/PrivacyInfo.xcprivacy` into the sidebar the same way (target ticked). Apple requires this privacy manifest.
+5. ▶ Run on the iPhone.
+
 ### TestFlight
 1. https://appstoreconnect.apple.com → Apps → **+** → New App: platform iOS, name (e.g. "Noodle: Hum to Music" if "Noodle" is taken), the bundle ID from step 1, any SKU.
 2. Xcode: destination **Any iOS Device (arm64)** → Product → **Archive** → Distribute App → **App Store Connect** → Upload.
