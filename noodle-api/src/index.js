@@ -11,7 +11,7 @@
 //   GET    /v1/admin/get?key=               owner only
 const ORIGINS = ['noodle://app', 'https://troyskinner3.github.io'];
 const MAX_AUDIO = 3 * 1024 * 1024, MAX_META = 256 * 1024, MAX_TAKES_PER_DAY = 300;
-const ID = /^[A-Za-z0-9_-]{22,64}$/, TAKE = /^[A-Za-z0-9_-]{6,64}$/;
+const ID = /^[A-Za-z0-9_-]{22,64}$/, TAKE = /^[A-Za-z0-9_-]{6,96}$/;
 
 function cors(req) {
   const o = req.headers.get('Origin') || '';
@@ -26,6 +26,20 @@ async function readLimited(req, max) {
   if (len > max) return null;
   const buf = await req.arrayBuffer();
   return buf.byteLength > max ? null : buf;
+}
+// Storage: Cloudflare KV on the free plan (no card; when a daily or size limit is reached, writes are refused instead of billed).
+// The same four calls also fit an R2 bucket, if this ever outgrows KV: bind one as TAKES and it is used instead.
+function store(env) {
+  if (env.TAKES) return env.TAKES;
+  const kv = env.TAKES_KV;
+  return {
+    async put(k, v) { await kv.put(k, v, { metadata: { size: typeof v === 'string' ? v.length : v.byteLength, at: Date.now() } }); },
+    async get(k) { const v = await kv.get(k, { type: 'arrayBuffer' }); return v === null ? null : { body: v, async json() { return JSON.parse(new TextDecoder().decode(v)); } }; },
+    async head(k) { const r = await kv.getWithMetadata(k, { type: 'stream' }); if (r.value === null) return null; try { await r.value.cancel(); } catch {} return { key: k }; },
+    async delete(ks) { for (const k of [].concat(ks)) await kv.delete(k); },
+    async list({ prefix, cursor, limit }) { const r = await kv.list({ prefix, cursor, limit: Math.min(limit || 1000, 1000) });
+      return { objects: r.keys.map((x) => ({ key: x.name, size: x.metadata && x.metadata.size, uploaded: x.metadata && new Date(x.metadata.at) })), truncated: !r.list_complete, cursor: r.cursor }; },
+  };
 }
 function isWav(buf) {
   if (buf.byteLength < 44) return false;
@@ -52,7 +66,12 @@ async function underDailyCap(bucket, install, take) {
 
 export default {
   async fetch(req, env) {
-    const url = new URL(req.url), p = url.pathname.split('/').filter(Boolean), B = env.TAKES;
+    try { return await handle(req, env); } catch (e) { return json(req, 507, { error: 'storage unavailable' }); }
+  },
+};
+async function handle(req, env) {
+  {
+    const url = new URL(req.url), p = url.pathname.split('/').filter(Boolean), B = store(env);
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors(req) });
     if (p[0] !== 'v1') return json(req, 404, { error: 'not found' });
 
@@ -104,5 +123,5 @@ export default {
       }
     }
     return json(req, 404, { error: 'not found' });
-  },
-};
+  }
+}

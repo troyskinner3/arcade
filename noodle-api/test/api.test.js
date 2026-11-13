@@ -55,3 +55,20 @@ test('CORS answers the app and the site only', async () => {
   const a = await call(env, 'OPTIONS', `/v1/takes/${I}/take01/meta`, undefined, { Origin: 'noodle://app' }); assert.equal(a.headers.get('Access-Control-Allow-Origin'), 'noodle://app');
   const b = await call(env, 'OPTIONS', `/v1/takes/${I}/take01/meta`, undefined, { Origin: 'https://evil.example' }); assert.notEqual(b.headers.get('Access-Control-Allow-Origin'), 'https://evil.example');
 });
+test('works on KV storage too, and a storage refusal is a clean 507', async () => {
+  const m = new Map(), kv = {
+    async put(k, v, o) { m.set(k, { v: typeof v === 'string' ? new TextEncoder().encode(v).buffer : v, metadata: o && o.metadata }); },
+    async get(k) { return m.has(k) ? m.get(k).v : null; },
+    async getWithMetadata(k) { return m.has(k) ? { value: { async cancel() {} }, metadata: m.get(k).metadata } : { value: null }; },
+    async delete(k) { m.delete(k); },
+    async list({ prefix = '' }) { return { keys: [...m.keys()].filter((k) => k.startsWith(prefix)).map((k) => ({ name: k, metadata: m.get(k).metadata })), list_complete: true }; } };
+  const env = { TAKES_KV: kv, ADMIN_KEY: 'k' };
+  assert.equal((await call(env, 'PUT', `/v1/takes/${I}/take01/audio`, wav())).status, 409);
+  assert.equal((await call(env, 'PUT', `/v1/takes/${I}/take01/meta`, meta())).status, 200);
+  assert.equal((await call(env, 'PUT', `/v1/takes/${I}/take01/audio`, wav())).status, 200);
+  const l = await (await call(env, 'GET', '/v1/admin/list', undefined, { Authorization: 'Bearer k' })).json();
+  assert.deepEqual(l.keys.map((k) => k.size).sort(), [100, l.keys.find((k) => k.key.endsWith('json')).size].sort());
+  assert.equal((await (await call(env, 'DELETE', `/v1/installs/${I}`)).json()).deleted, 2);
+  kv.put = async () => { throw new Error('KV put() limit exceeded for the day'); };
+  assert.equal((await call(env, 'PUT', `/v1/takes/${I}/take02/meta`, meta())).status, 507);
+});

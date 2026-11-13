@@ -1,4 +1,4 @@
-# Noodle takes service (see src/index.js). Its own Worker and its own R2 bucket, separate from Fan to See.
+# Noodle takes service (see src/index.js). Its own Worker and its own KV namespace, separate from Fan to See.
 name = "noodle-takes"
 main = "src/index.js"
 account_id = "5649ad1dfbf6102845b7facae8598e7b"
@@ -6,7 +6,8 @@ compatibility_date = "2026-09-01"
 workers_dev = true
 preview_urls = false
 
-[[r2_buckets]]
-binding = "TAKES"
-bucket_name = "noodle-takes"
-# ADMIN_KEY is a secret: `wrangler secret put ADMIN_KEY` (never in this file)
+# Free-plan storage (no card): the deploy workflow finds or creates this namespace and fills in its id.
+[[kv_namespaces]]
+binding = "TAKES_KV"
+id = "KV_NAMESPACE_ID"
+# ADMIN_KEY is a secret: set it in the dashboard (never in this file)

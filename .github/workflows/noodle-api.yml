@@ -1,6 +1,6 @@
 name: Noodle takes service
 # Tests and deploys noodle-api/ to Cloudflare when it changes. Needs the repository secret CLOUDFLARE_API_TOKEN
-# (Workers Scripts: Edit, Workers R2 Storage: Edit); without it the deploy step is skipped.
+# (Workers Scripts: Edit, Workers KV Storage: Edit); without it the deploy step is skipped.
 on:
   push:
     branches: [main]
@@ -20,5 +20,8 @@ jobs:
       - name: Deploy
         if: env.CLOUDFLARE_API_TOKEN != ''
         run: |
-          npx --yes wrangler@4 r2 bucket create noodle-takes || true
-          npx --yes wrangler@4 deploy
+          # find or create the storage namespace, then deploy with its id filled in
+          ID=$(npx --yes wrangler@4 kv namespace list | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const n=JSON.parse(s).find(x=>x.title==='noodle-takes');console.log(n?n.id:'')})")
+          if [ -z "$ID" ]; then npx --yes wrangler@4 kv namespace create noodle-takes; ID=$(npx --yes wrangler@4 kv namespace list | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{console.log(JSON.parse(s).find(x=>x.title==='noodle-takes').id)})"); fi
+          sed "s/KV_NAMESPACE_ID/$ID/" wrangler.toml > wrangler.deploy.toml
+          npx --yes wrangler@4 deploy --config wrangler.deploy.toml

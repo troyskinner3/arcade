@@ -2213,14 +2213,26 @@ let drop=null; try{ drop=JSON.parse(localStorage.getItem(DROP_KEY)||'null'); }ca
 (function(){ try{ const q=new URLSearchParams(location.search); if(q.get('drop')){
   if(q.get('drop')==='off'){ drop=null; localStorage.removeItem(DROP_KEY); }
   else { drop={url:q.get('drop'), k:q.get('k')||'', who:q.get('who')||''}; localStorage.setItem(DROP_KEY,JSON.stringify(drop)); }
-  history.replaceState(null,'',location.pathname); } }catch(e){} })();
+  history.replaceState(null,'',location.pathname); }
+  if(q.get('share')){ if(q.get('share')==='off') shareDisable(false); else if(q.get('age13')==='1') shareEnable(q.get('share')); history.replaceState(null,'',location.pathname); } }catch(e){} })();
+/* Sharing through the Noodle takes service (opt-in, 13+). No account: this install gets a random id that only this phone knows,
+   which lets it add, update and delete its own takes. */
+function shareEnable(api){ const b=crypto.getRandomValues(new Uint8Array(18)), id=btoa(String.fromCharCode(...b)).replace(/\+/g,'-').replace(/\//g,'_');
+  drop={api:String(api).replace(/\/+$/,''), install:(drop&&drop.api&&drop.install)||id, consent:{v:1, age13:true, at:new Date().toISOString()}}; try{ localStorage.setItem(DROP_KEY,JSON.stringify(drop)); }catch(e){} }
+async function shareDisable(deleteShared){ const d=drop; drop=null; try{ localStorage.removeItem(DROP_KEY); }catch(e){}
+  if(deleteShared && d && d.api){ try{ const r=await fetch(`${d.api}/v1/installs/${d.install}`,{method:'DELETE'}); return r.ok; }catch(e){ return false; } } return true; }
+function wavBytes16k(x,sr){ const R=16000, n=Math.floor((x.length-1)*R/sr), z=sr>R?biquad(biquad(x,'lp',7200,0.707,sr),'lp',7200,0.707,sr):x, out=new DataView(new ArrayBuffer(44+n*2)), w=(o,t)=>{ for(let i=0;i<t.length;i++) out.setUint8(o+i,t.charCodeAt(i)); };
+  w(0,'RIFF'); out.setUint32(4,36+n*2,true); w(8,'WAVE'); w(12,'fmt '); out.setUint32(16,16,true); out.setUint16(20,1,true); out.setUint16(22,1,true); out.setUint32(24,R,true); out.setUint32(28,R*2,true); out.setUint16(32,2,true); out.setUint16(34,16,true); w(36,'data'); out.setUint32(40,n*2,true);
+  for(let i=0;i<n;i++){ const q=i*sr/R, i0=Math.floor(q), fr=q-i0, v=z[i0]*(1-fr)+z[i0+1]*fr; out.setInt16(44+i*2,Math.max(-32768,Math.min(32767,Math.round(v*32767))),true); }
+  return out.buffer; }
+async function sharePut(path, body, type){ for(let i=0;i<3;i++){ try{ const r=await fetch(`${drop.api}/v1/takes/${drop.install}/${path}`,{method:'PUT',headers:{'Content-Type':type},body}); if(r.ok) return true; if(r.status<500&&r.status!==429) return false; }catch(e){} await new Promise(r=>setTimeout(r,2000*(i+1))); } return false; }
 function dropLineUI(){ const el=$('dropLine'); if(!el) return; try{ guidedUI(); }catch(e){}
   if(!drop && /NoodleApp/.test(navigator.userAgent)){   /* inside the iPhone app (its own storage): paste the sharing link once */
     el.hidden=false; el.innerHTML='<input id="dropPaste" type="url" placeholder="Paste your sharing link" style="width:100%;margin:4px 0" autocomplete="off"> <button class="btn" id="dropGo">Share my takes</button>';
     $('dropGo').onclick=()=>{ try{ const q=new URL($('dropPaste').value.trim()).searchParams; if(!q.get('drop')) throw 0;
       drop={url:q.get('drop'),k:q.get('k')||'',who:q.get('who')||''}; localStorage.setItem(DROP_KEY,JSON.stringify(drop)); dropLineUI(); toast('Takes will be shared.'); }catch(e){ toast('That link doesn’t look right.'); } };
     return; }
-  el.hidden=!drop; if(!drop) return;
+  el.hidden=!drop||!!drop.api; if(!drop||drop.api) return;   /* the service's opt-in gets its own screen */
   el.innerHTML='Sharing your takes to help improve Noodle. <a href="#" id="dropOff">Stop</a>';
   $('dropOff').onclick=e=>{ e.preventDefault(); drop=null; try{ localStorage.removeItem(DROP_KEY); }catch(_){} dropLineUI(); toast('Takes are no longer shared.'); }; }
 document.addEventListener('DOMContentLoaded',dropLineUI); setTimeout(dropLineUI,0);
@@ -2229,7 +2241,11 @@ setTimeout(async()=>{ if(!drop) return; const day=new Date().toISOString().slice
   const r={ua:navigator.userAgent, VE:typeof VideoEncoder, AE:typeof AudioEncoder, MR:typeof MediaRecorder};
   try{ for(const sr of [44100,48000]) r['aac'+sr]=!!(await videoEncodeConfig(sr)); }catch(e){ r.err=String(e); }
   dropPost({sid:'diag-'+day+'-'+(slug(drop.who)||'me'), meta:r}); },4000);
-async function dropPost(body){ if(!drop) return; const data=JSON.stringify({k:drop.k, ...body});
+async function dropPost(body){ if(!drop) return;
+  if(drop.api){ if(!body.meta||!body.sid||/^diag-/.test(body.sid)) return true; const {who,ua,...m}=body.meta;
+    if(!(await sharePut(`${body.sid}/meta`, JSON.stringify({...m, consent:drop.consent, app:/NoodleApp/.test(navigator.userAgent)?'ios':'web'}), 'application/json'))) return false;
+    return body.pcm ? sharePut(`${body.sid}/audio`, wavBytes16k(body.pcm.x, body.pcm.sr), 'audio/wav') : true; }
+  const data=JSON.stringify({k:drop.k, ...body});
   for(let i=0;i<3;i++){ try{ await fetch(drop.url,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:data,keepalive:data.length<60000}); return true; }catch(e){ await new Promise(r=>setTimeout(r,2000*(i+1))); } }
   return false; }
 function dropWavB64(x,sr){ const R=24000, n=Math.floor((x.length-1)*R/sr), y=new Int16Array(n);
@@ -2246,14 +2262,14 @@ async function dropTake(x, sr, inst){ if(!drop) return;
   const tr=S.tracks.find(t=>(t._raw&&t._raw.x===x)||(t._takes||[]).some(k=>k.raw&&k.raw.x===x));
   if(!tr){ // nothing was heard: still worth sending, it shows what Noodle misses
     const d=new Date(), sid=`${d.toISOString().replace(/[-:]/g,'').slice(0,15)}-${slug(S.title)||'untitled'}-${inst}-nothing-heard`;
-    dropPost({sid, wav:await dropWavB64(x,sr), meta:{sid, song:S.title||'', inst, bpm:S.bpm, prompt:S.prompt||null, heard:null, recordedAt:d.toISOString(), who:drop.who||'', ua:navigator.userAgent.slice(0,120)}}); return; }
+    dropPost({sid, ...(drop.api?{pcm:{x,sr}}:{wav:await dropWavB64(x,sr)}), meta:{sid, song:S.title||'', inst, bpm:S.bpm, prompt:S.prompt||null, heard:null, recordedAt:d.toISOString(), who:drop.who||'', ua:navigator.userAgent.slice(0,120)}}); return; }
   const d=new Date(), pad=v=>String(v).padStart(2,'0');
   tr.sid=`${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}-${slug(S.title)||'untitled'}-${inst}`;
   tr.sidAt=d.toISOString(); tr.sidHeard=dropState(tr); tr.sidNoise=lastNoise; tr._dropSent=null; persist();
   if(S.prompt && !tr.guide && INST[tr.inst].kind==='pitched'){ learnSqueeze(tr); persist(); }
   if(S.prompt && !tr.guide){ guidedDone.add(S.prompt); try{ localStorage.setItem('noodle.guided',JSON.stringify([...guidedDone])); }catch(e){} guidedUI(); }
-  const wav=await dropWavB64(x,sr), meta=dropMeta(tr); tr._dropSent=JSON.stringify(meta.now);
-  const ok=await dropPost({sid:tr.sid, wav, meta}); if(!ok) toast('Couldn’t send that take. It’ll still work here.'); }
+  const wav=drop.api?null:await dropWavB64(x,sr), meta=dropMeta(tr); tr._dropSent=JSON.stringify(meta.now);
+  const ok=await dropPost({sid:tr.sid, ...(drop.api?{pcm:{x,sr}}:{wav}), meta}); if(!ok) toast('Couldn’t send that take. It’ll still work here.'); }
 let dropTimer=0;
 function dropSoon(){ if(!drop) return; clearTimeout(dropTimer); dropTimer=setTimeout(dropSync,8000); }
 function dropSync(){ if(!drop) return; clearTimeout(dropTimer);
@@ -2316,7 +2332,7 @@ const GUIDED=[
 ];
 const guidedNext=()=>GUIDED.find(g=>!guidedDone.has(g[0]) && g[0]!==S.prompt);
 let guidedDone=new Set(); try{ guidedDone=new Set(JSON.parse(localStorage.getItem('noodle.guided')||'[]')); }catch(e){}
-function guidedUI(){ const el=$('guided'); if(!el) return; el.hidden=!drop; if(!drop) return;
+function guidedUI(){ const el=$('guided'); if(!el) return; el.hidden=!drop||!!drop.api; if(!drop||drop.api) return;
   const cur=GUIDED.find(g=>g[0]===S.prompt), next=GUIDED.find(g=>!guidedDone.has(g[0]) && g[0]!==S.prompt)||GUIDED.find(g=>!guidedDone.has(g[0]));
   el.innerHTML=`<div class="g-top"><b>Guided takes</b><span class="g-n">${guidedDone.size} of ${GUIDED.length} done</span></div>
     <div class="g-row"><select id="gPick" aria-label="Pick a guided take">${GUIDED.map(g=>`<option value="${g[0]}" ${(cur?cur[0]:next&&next[0])===g[0]?'selected':''}>${guidedDone.has(g[0])?'✓ ':''}${g[0]}</option>`).join('')}</select>
