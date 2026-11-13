@@ -234,3 +234,9 @@ Real noise (DEMAND, CC BY 4.0: street traffic, cafeteria, bus, town square, park
 - **Too-noisy hint (shipped):** background = 30th percentile of 10 ms frame levels during the count-in (skipped when the count-in arpeggio or a vocal pre-roll plays).
   During the count-in it is compared with the singer's usual loud level (learned from their takes, −30 dB to start) and the label adds "Noisy here: hold the phone close"
   under 20 dB; after the take the real margin is used and the message suggests a retake. Shared takes carry `noise: {floor, top}`. Checked with a simulated mic (`noise_ui.js`).
+- **Stricter voicing when noisy (`replay_gate.js`, frames within 6/10/14 dB of the noise floor ignored):** trades extra notes for missed ones. Traffic 10 dB 6.36 → 6.36–6.66,
+  cafeteria 10 dB 5.80 → 5.48–7.78, square 5 dB 8.32 → 7.46–9.18. Dropped.
+- **Spectral subtraction from the count-in (shipped, `denoiseTake`):** the background's per-frequency median power over the count-in (32 ms windows), subtracted ×2 with a 0.1 gain floor,
+  gain smoothed over 3 frames and 3 bins. Through the app (`replay_den.js`, 2 s of the same background as the count-in): traffic 10 dB 6.36 → 4.32, square 5 dB 8.32 → 6.00;
+  offline prototype (`denoise_mix.py`): cafeteria 10 dB 5.80 → 5.48 (other voices are not steady), traffic 20 dB 3.94 → 4.02 (so it only runs under the 20 dB line),
+  ×4 subtraction no better. Pitched live takes only (not the Voice instrument, whose sound is kept), ~0.2 s for a 9 s take. Live path checked with a simulated mic (`noise_ui2.js`).

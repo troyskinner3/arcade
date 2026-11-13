@@ -2013,21 +2013,43 @@ function frameDbs(x, sr){ const y=biquad(x,'hp',45,0.707,sr), w=Math.round(0.01*
 function countInFloor(r, upTo){ if(r.calib||r.teach||r.preroll||r.arp) return null;   /* needs a count-in with only clicks in it */
   const a=r.countStart+r.lat+0.05, b=Math.min(upTo??1e9, r.start+r.lat-0.05); if(b-a<0.6) return null;
   const d=frameDbs(assemble(r.chunks,a,b,ctx.sampleRate),ctx.sampleRate); return d.length?d[Math.floor((d.length-1)*0.3)]:null; }
+/* Noisy take: subtract the background's spectrum (learned from the count-in, where only the background and clicks are heard) from
+   the recording. Only used under the NOISY_DB line; quiet takes are never touched. */
+function denoiseTake(x, sr, pre, over=2, flo=0.1){
+  const n=2**Math.round(Math.log2(0.032*sr)), h=n>>2, nb=n/2+1, w=new Float64Array(n); for(let i=0;i<n;i++) w[i]=Math.sqrt(0.5-0.5*Math.cos(2*Math.PI*i/n));
+  const re=new Float64Array(n), im=new Float64Array(n);
+  // the background: per-frequency median power over the count-in (the median ignores the few frames with a click in them)
+  const kp=Math.floor((pre.length-n)/h)+1; if(kp<8) return x; const PP=new Float32Array(kp*nb);
+  for(let f=0;f<kp;f++){ for(let i=0;i<n;i++){ re[i]=pre[f*h+i]*w[i]; im[i]=0; } readerFFT(re,im); for(let k=0;k<nb;k++) PP[f*nb+k]=re[k]*re[k]+im[k]*im[k]; }
+  const N=new Float64Array(nb), col=new Float32Array(kp); for(let k=0;k<nb;k++){ for(let f=0;f<kp;f++) col[f]=PP[f*nb+k]; col.sort(); N[k]=col[kp>>1]/0.693; }
+  const L=x.length+2*n, yp=new Float64Array(L); yp.set(x,n); const K=Math.floor((L-n)/h)+1, YR=new Float32Array(K*nb), YI=new Float32Array(K*nb), G=new Float32Array(K*nb);
+  for(let f=0;f<K;f++){ for(let i=0;i<n;i++){ re[i]=yp[f*h+i]*w[i]; im[i]=0; } readerFFT(re,im);
+    for(let k=0;k<nb;k++){ const o=f*nb+k; YR[o]=re[k]; YI[o]=im[k]; G[o]=Math.max(0,1-over*N[k]/(re[k]*re[k]+im[k]*im[k]+1e-20)); } }
+  // smooth the gain a little over time, then over frequency
+  const G2=new Float32Array(K*nb); for(let f=0;f<K;f++){ const a=(f+K-1)%K, b=(f+1)%K; for(let k=0;k<nb;k++) G2[f*nb+k]=(G[f*nb+k]+G[a*nb+k]+G[b*nb+k])/3; }
+  for(let f=0;f<K;f++) for(let k=0;k<nb;k++){ const o=f*nb; G[o+k]=Math.max(flo,(G2[o+k]+G2[o+(k+nb-1)%nb]+G2[o+(k+1)%nb])/3); }
+  const out=new Float64Array(L), ws=new Float64Array(L);
+  for(let f=0;f<K;f++){ for(let k=0;k<nb;k++){ const o=f*nb+k; re[k]=YR[o]*G[o]; im[k]=-YI[o]*G[o]; } for(let k=1;k<nb-1;k++){ re[n-k]=re[k]; im[n-k]=-im[k]; }
+    readerFFT(re,im);   /* forward FFT of the conjugate = inverse, times n */
+    for(let i=0;i<n;i++){ out[f*h+i]+=re[i]/n*w[i]; ws[f*h+i]+=w[i]*w[i]; } }
+  const y=new Float32Array(x.length); for(let i=0;i<x.length;i++) y[i]=out[n+i]/Math.max(ws[n+i],1e-6); return y; }
 async function finishRecord(){
   const r=recState; capturing=false; recState=null; stopAll(); setRecUI(false); if(!r.teach) dropMic(); renderKitPanel();
   let leak=0;
   if(r.inst==='vox' && !r.calib && !r.teach){ const m=measureTakeDelay(r); if(m!=null){ r.lat=m;
       const bar=r.start-r.countStart, cin=biquad(assemble(r.chunks, r.countStart+bar/2+m, r.start+m-0.02, ctx.sampleRate),'hp',150,0.707,ctx.sampleRate); let q=0; for(let i=0;i<cin.length;i++) q+=cin[i]*cin[i]; leak=Math.sqrt(q/Math.max(1,cin.length)); S.vocLat=S.vocLat==null?m:+(0.5*S.vocLat+0.5*m).toFixed(4); save(); } }
   const sr=ctx.sampleRate, pre=0.08, a=r.start+r.lat-pre, b=r.end+r.lat+0.25;
-  const x=assemble(r.chunks,a,b,sr);
+  let x=assemble(r.chunks,a,b,sr);
   // only mention headphones when the beat actually leaked in: compare the count-in (you're silent) with your singing
   bleedHint=false; if(r.inst==='vox' && leak>0){ const h=biquad(x,'hp',150,0.707,sr); let q=0; for(let i=0;i<h.length;i++) q+=h[i]*h[i]; const voice=Math.sqrt(q/Math.max(1,h.length)); bleedHint = voice>0 && leak/voice>0.15; }
   if(r.calib){ finishCalib(x,sr,pre); showReview(); return; }
   if(r.teach){ finishTeach(x,sr,r.teach); if(!teachQueue) showReview(); return; }
   const nf=countInFloor(r), fd=frameDbs(x,sr), top=fd.length?fd[Math.floor((fd.length-1)*0.99)]:null; lastNoise = nf!=null&&top!=null ? {floor:+nf.toFixed(1), top:+top.toFixed(1)} : null;
+  if(lastNoise && lastNoise.top-lastNoise.floor<NOISY_DB && INST[r.inst].kind==='pitched'){   /* noisy: clean the take before reading notes from it */
+    try{ x=denoiseTake(x, sr, assemble(r.chunks, r.countStart+r.lat+0.05, r.start+r.lat-0.05, sr)); lastNoise.den=1; }catch(e){} }
   await addTake(x, sr, r.inst, {align:pre, notch:true, live:true});
   if(lastNoise){ const loud=lastNoise.top-lastNoise.floor; if(loud>=NOISY_DB && INST[r.inst].kind==='pitched'){ S.voxTop=+(S.voxTop==null?lastNoise.top:0.7*S.voxTop+0.3*lastNoise.top).toFixed(1); save(); }   /* your usual level, for the count-in check */
-    if(loud<NOISY_DB) toast((lastMsg?lastMsg+' ':'')+'Noisy here: hold the phone closer and retake for cleaner notes.',6000); }
+    if(loud<NOISY_DB) toast((lastMsg?lastMsg+' ':'')+(lastNoise.den?'Noisy here, so Noodle cleaned it up. Holding the phone closer gives cleaner notes.':'Noisy here: hold the phone closer and retake for cleaner notes.'),6000); }
   flushSave(); if(takeMode()) afterTake(); else showReview();
 }
 /* What the phone played during the count-in (metronome + pre-rolled parts), and how late the mic heard it.
