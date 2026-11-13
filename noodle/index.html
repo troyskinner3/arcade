@@ -1873,7 +1873,7 @@ function updatePlayBtn(){ const f=$('fab'); if(f){ f.setAttribute('aria-label',p
   b.innerHTML = playing ? '<svg viewBox="0 0 20 20" fill="currentColor"><rect x="4" y="4" width="12" height="12" rx="1.5"/></svg>' : '<svg viewBox="0 0 20 20" fill="currentColor"><path d="M5 3l12 7-12 7z"/></svg>'; }
 
 /* ============================== mic + recording ============================== */
-let mic=null, capturing=false, recState=null, guessFix=null, teachQueue=null, teachGot={};
+let lastNoise=null, mic=null, capturing=false, recState=null, guessFix=null, teachQueue=null, teachGot={};
 function micAllowedByPage(){
   if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || !window.isSecureContext) return false;
   try{ const pp=document.permissionsPolicy||document.featurePolicy; if(pp&&pp.allowsFeature) return pp.allowsFeature('microphone'); }catch(e){}
@@ -1942,8 +1942,8 @@ async function startRecord(calib=false, teach=null){
   if(along) S.tracks.forEach(tr=>{ if(tr._buf && !tr.guide){ ensureNodes(tr); tr._src=preroll?startSrc(tr._buf,tr._g,when,poff):startSrc(tr._buf,tr._g,when+bar,0); } });
   if(!metroGain){ metroGain=ctx.createGain(); metroGain.connect(ctx.destination); }
   metroGain.gain.value=0.75; metroSrc=startSrc(metroBuf,metroGain,when,0); gateOpen(when);
-  if(S.keyRef && !calib && !teach && INST[S.inst].kind==='pitched'){ const K=keyKnown(); if(K) playKeyArp(K, when, bar); }
-  recState={calib, teach, inst:S.inst, countStart:when, start:when+bar, end:when+bar+L, preroll, poff, along, lat:calib?0:(!teach&&S.inst==='vox'&&S.vocLat!=null?S.vocLat:latency()), chunks:[]};
+  let arp=false; if(S.keyRef && !calib && !teach && INST[S.inst].kind==='pitched'){ const K=keyKnown(); if(K){ playKeyArp(K, when, bar); arp=true; } }
+  recState={arp, calib, teach, inst:S.inst, countStart:when, start:when+bar, end:when+bar+L, preroll, poff, along, lat:calib?0:(!teach&&S.inst==='vox'&&S.vocLat!=null?S.vocLat:latency()), chunks:[]};
   if(!teach) teachQueue=null;
   capturing=true; setRecUI(true);
 }
@@ -1987,7 +1987,7 @@ async function recordInto(id, resume=null){
   if(!recState){ S.target=null; rs.mode=null; if(resume) await restoreSnap(resume.snap).then(()=>{ hist.cur=resume.snap; updateHistBtns(); takeBar=resume.bar; editId=resume.bar.id; }); }
   renderTracks(); if(tr._row) tr._row.scrollIntoView({block:'nearest',behavior:'smooth'});
 }
-function importInto(id){
+function importInto(id){ lastNoise=null;
   const tr=S.tracks.find(t=>t.id===id); if(!tr) return;
   flushSave(); rs={mode:'take', pre:hist.cur, histLen:hist.undo.length}; takeBar=null; pickFor=null;
   S.target=tr.id; S.activeId=tr.id; S.inst=tr.inst; updateDock(); $('fileIn').click();
@@ -2006,6 +2006,13 @@ function assemble(chunks, a, b, sr){
   for(const ch of chunks){ const s=Math.round((ch.t-a)*sr); for(let i=0;i<ch.d.length;i++){ const k=s+i; if(k>=0&&k<n) out[k]=ch.d[i]; } }
   return out;
 }
+/* Too noisy? Notes stay accurate while the voice is 20 dB or more above the background (measured on real street, cafe and
+   park noise mixed into guided takes); below that, extra and wrong notes climb fast. The background is read during the count-in. */
+const NOISY_DB=20, VOX_TOP=-30;   /* a typical take's loud level before Noodle has heard yours */
+function frameDbs(x, sr){ const y=biquad(x,'hp',45,0.707,sr), w=Math.round(0.01*sr), out=[]; for(let i=0;i+w<=y.length;i+=w){ let e=0; for(let k=i;k<i+w;k++) e+=y[k]*y[k]; out.push(10*Math.log10(e/w+1e-12)); } return out.sort((a,b)=>a-b); }
+function countInFloor(r, upTo){ if(r.calib||r.teach||r.preroll||r.arp) return null;   /* needs a count-in with only clicks in it */
+  const a=r.countStart+r.lat+0.05, b=Math.min(upTo??1e9, r.start+r.lat-0.05); if(b-a<0.6) return null;
+  const d=frameDbs(assemble(r.chunks,a,b,ctx.sampleRate),ctx.sampleRate); return d.length?d[Math.floor((d.length-1)*0.3)]:null; }
 async function finishRecord(){
   const r=recState; capturing=false; recState=null; stopAll(); setRecUI(false); if(!r.teach) dropMic(); renderKitPanel();
   let leak=0;
@@ -2017,7 +2024,11 @@ async function finishRecord(){
   bleedHint=false; if(r.inst==='vox' && leak>0){ const h=biquad(x,'hp',150,0.707,sr); let q=0; for(let i=0;i<h.length;i++) q+=h[i]*h[i]; const voice=Math.sqrt(q/Math.max(1,h.length)); bleedHint = voice>0 && leak/voice>0.15; }
   if(r.calib){ finishCalib(x,sr,pre); showReview(); return; }
   if(r.teach){ finishTeach(x,sr,r.teach); if(!teachQueue) showReview(); return; }
-  await addTake(x, sr, r.inst, {align:pre, notch:true, live:true}); flushSave(); if(takeMode()) afterTake(); else showReview();
+  const nf=countInFloor(r), fd=frameDbs(x,sr), top=fd.length?fd[Math.floor((fd.length-1)*0.99)]:null; lastNoise = nf!=null&&top!=null ? {floor:+nf.toFixed(1), top:+top.toFixed(1)} : null;
+  await addTake(x, sr, r.inst, {align:pre, notch:true, live:true});
+  if(lastNoise){ const loud=lastNoise.top-lastNoise.floor; if(loud>=NOISY_DB && INST[r.inst].kind==='pitched'){ S.voxTop=+(S.voxTop==null?lastNoise.top:0.7*S.voxTop+0.3*lastNoise.top).toFixed(1); save(); }   /* your usual level, for the count-in check */
+    if(loud<NOISY_DB) toast((lastMsg?lastMsg+' ':'')+'Noisy here: hold the phone closer and retake for cleaner notes.',6000); }
+  flushSave(); if(takeMode()) afterTake(); else showReview();
 }
 /* What the phone played during the count-in (metronome + pre-rolled parts), and how late the mic heard it.
    Normalized cross-correlation at ~4 kHz over 0–500 ms; returns seconds, or null when there's no clear match. */
@@ -2208,7 +2219,7 @@ function dropWavB64(x,sr){ const R=24000, n=Math.floor((x.length-1)*R/sr), y=new
 const slug=t=>String(t||'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,40);
 function dropState(tr){ return {notes:tr.notes?tr.notes.map(n=>({s:n.s,l:n.l,p:pitchOf(n),raw:+(+n.p).toFixed(3),v:n.v,x:!!n.x,...(n.hs?{hs:n.hs}:{})})):undefined, hits:tr.hits?tr.hits.map(h=>({s:h.s,d:h.d,v:h.v})):undefined, va:tr.va, sound:tr.sound}; }
 function dropMeta(tr){ return {sid:tr.sid, song:S.title||'', inst:tr.inst, bpm:S.bpm, bars:S.bars, quant:S.quant, key:S.key, scale:S.scale, snapStr:S.snapStr??100, sens:tr.sens??S.sens, latMs:S.latMs, who:drop&&drop.who||'',
-  recordedAt:tr.sidAt, updatedAt:new Date().toISOString(), heard:tr.sidHeard, now:dropState(tr), reading:tr.reading||null, prompt:S.prompt||null, guide:(()=>{ const g=S.tracks.find(t=>t.guide); return g?dropState(g):null; })(), playAlong:!!S.playAlong, ua:navigator.userAgent.slice(0,120)}; }
+  recordedAt:tr.sidAt, updatedAt:new Date().toISOString(), heard:tr.sidHeard, now:dropState(tr), reading:tr.reading||null, prompt:S.prompt||null, guide:(()=>{ const g=S.tracks.find(t=>t.guide); return g?dropState(g):null; })(), playAlong:!!S.playAlong, noise:tr.sidNoise||null, ua:navigator.userAgent.slice(0,120)}; }
 async function dropTake(x, sr, inst){ if(!drop) return;
   const tr=S.tracks.find(t=>(t._raw&&t._raw.x===x)||(t._takes||[]).some(k=>k.raw&&k.raw.x===x));
   if(!tr){ // nothing was heard: still worth sending, it shows what Noodle misses
@@ -2216,7 +2227,7 @@ async function dropTake(x, sr, inst){ if(!drop) return;
     dropPost({sid, wav:await dropWavB64(x,sr), meta:{sid, song:S.title||'', inst, bpm:S.bpm, prompt:S.prompt||null, heard:null, recordedAt:d.toISOString(), who:drop.who||'', ua:navigator.userAgent.slice(0,120)}}); return; }
   const d=new Date(), pad=v=>String(v).padStart(2,'0');
   tr.sid=`${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}-${slug(S.title)||'untitled'}-${inst}`;
-  tr.sidAt=d.toISOString(); tr.sidHeard=dropState(tr); tr._dropSent=null; persist();
+  tr.sidAt=d.toISOString(); tr.sidHeard=dropState(tr); tr.sidNoise=lastNoise; tr._dropSent=null; persist();
   if(S.prompt && !tr.guide && INST[tr.inst].kind==='pitched'){ learnSqueeze(tr); persist(); }
   if(S.prompt && !tr.guide){ guidedDone.add(S.prompt); try{ localStorage.setItem('noodle.guided',JSON.stringify([...guidedDone])); }catch(e){} guidedUI(); }
   const wav=await dropWavB64(x,sr), meta=dropMeta(tr); tr._dropSent=JSON.stringify(meta.now);
@@ -3083,7 +3094,8 @@ function tick(){
   S.tracks.forEach(tr=>{ if(!tr._ph||!tr._grid) return; const ps=pSteps(tr), pp=pRep(tr)?((((now-t0)/(ps*stepDur()))%1)+1)%1*ps:ph*steps(); tr._ph.style.display=showPh&&pp<ps?'block':'none'; if(showPh&&pp<ps&&playing&&tr._cv&&!(Date.now()-(tr._touchT||0)<3000)){ const G=tr._grid, w=tr._cv.parentElement.parentElement, x=G.gut+pp*G.cw; if(w.scrollWidth>w.clientWidth+2 && (x<w.scrollLeft+G.gut || x>w.scrollLeft+w.clientWidth-24)){ tr._autoScroll=true; w.scrollLeft=Math.max(0,x-G.gut-8); } } if(showPh&&pp<ps){ const G=tr._grid, pos=pp, L=Math.min(G.lines-1,Math.floor(pos/G.sPL)); tr._ph.style.transform=`translate(${G.gut+(pos-L*G.sPL)*G.cw}px,${L*(G.lineH+G.gapH)}px)`; } });
   if(recState){
     const r=recState, beat=60/S.bpm, dots=$('beats').children;
-    if(now<r.start){ const b=Math.floor((now-r.countStart)/beat); $('recLabel').textContent = now<r.countStart?'Get ready':(r.teach?`Say “${r.teach.say}” on each click · ${4-b}`:`Count-in ${4-b}`); [...dots].forEach((d,i)=>{ d.className = (now>=r.countStart && i===b)?'on'+(i===0?' one':''):''; }); $('recProg').style.width='0%'; }
+    if(now<r.start){ const b=Math.floor((now-r.countStart)/beat); if(r.noisy==null && now>r.countStart+r.lat+(r.start-r.countStart)*0.7){ const f=countInFloor(r, now-0.03); r.noisy = f!=null && (S.voxTop??VOX_TOP)-f<NOISY_DB; }
+      $('recLabel').textContent = now<r.countStart?'Get ready':(r.teach?`Say “${r.teach.say}” on each click · ${4-b}`:`Count-in ${4-b}`+(r.noisy?' · Noisy here: hold the phone close':'')); [...dots].forEach((d,i)=>{ d.className = (now>=r.countStart && i===b)?'on'+(i===0?' one':''):''; }); $('recProg').style.width='0%'; }
     else { const el=now-r.start, b=Math.floor(el/beat)%4, bar=Math.floor(el/(beat*4))+1; [...dots].forEach((d,i)=>d.className=i===b?'on'+(i===0?' one':''):''); const RL=r.end-r.start, nb=Math.round(RL/(beat*4)); $('recLabel').textContent=r.teach?`Say “${r.teach.say}” on every click · ${Math.min(bar,nb)}/${nb}`:r.calib?`Clap along · bar ${Math.min(bar,nb)} of ${nb}`:`● Recording bar ${Math.min(bar,nb)} of ${nb}`; $('recProg').style.width=clamp(el/RL*100,0,100)+'%'; }
     if(mic){ const a=new Float32Array(mic.an.fftSize); mic.an.getFloatTimeDomainData(a); let m=0; for(const v of a) m=Math.max(m,Math.abs(v)); $('meter').style.width=clamp(Math.sqrt(m)*100,0,100)+'%'; }
     if(now>r.end+r.lat+0.3) finishRecord();

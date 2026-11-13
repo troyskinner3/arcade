@@ -218,3 +218,19 @@ Guided melodies replayed in the app (with the new scale-la take): no reader 3.62
 - All 31 guided takes (`replay_fast.js`, `hint_eval.py`): 23 seams; 14 sit on a real repeat, 9 stray (mostly a vowel change inside a held word).
   Tapping the useful ones: 3.88 → 3.60. Notes longer than a bar get none (the sustained long-vowels / long-swell takes had 3 each before that limit).
 - Shared takes include each note's seams (`hs`), so real use can show how often they're right.
+
+### Background noise (Nov 13)
+Real noise (DEMAND, CC BY 4.0: street traffic, cafeteria, bus, town square, park) mixed into all 31 guided takes (`mix_noise.py`, `noise_run.sh`); fixes per 10 notes, clean 3.88:
+
+| voice above noise | traffic | cafeteria | bus | square | park |
+|---|---|---|---|---|---|
+| 20 dB | 3.94 | 4.18 | 4.10 | 4.24 | 4.18 |
+| 10 dB | 6.36 | 5.80 | 4.36 | 4.70 | 4.62 |
+| 5 dB | 9.60 | 8.74 | 5.06 | 8.32 | 8.04 |
+
+- The damage is mostly extra notes (deletes 22 → 108 for traffic at 10 dB), then pitch.
+- By how far the take's loud level sits above the noise alone (`noise_floor_truth.py`, 465 noisy takes): 28–34 dB +0.20 fixes per 10 notes, 24–28 +0.39, 20–24 +0.73,
+  16–20 +1.58, 12–16 +4.16, under 12 +5.66. The take's own loud-minus-quiet range does not work as the measure (clean takes with few pauses read 10–25 dB).
+- **Too-noisy hint (shipped):** background = 30th percentile of 10 ms frame levels during the count-in (skipped when the count-in arpeggio or a vocal pre-roll plays).
+  During the count-in it is compared with the singer's usual loud level (learned from their takes, −30 dB to start) and the label adds "Noisy here: hold the phone close"
+  under 20 dB; after the take the real margin is used and the message suggests a retake. Shared takes carry `noise: {floor, top}`. Checked with a simulated mic (`noise_ui.js`).
