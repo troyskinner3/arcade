@@ -21,7 +21,7 @@ exports (WAV, MIDI, video) go to the share sheet. Later builds move pitch readin
 
 ### Run it on your iPhone
 1. Xcode → File → New → Project → iOS → **App**. Product Name **Noodle**, Team = your developer team,
-   Organization Identifier e.g. `com.persnickety` (bundle ID becomes `com.persnickety.Noodle`), Interface **SwiftUI**, Language **Swift**.
+   Organization Identifier = the one Tuttii Inc. uses for its apps (Noodle ships from the Tuttii Inc. developer account; the bundle ID cannot be changed after release, so use the company one, not a personal one), Interface **SwiftUI**, Language **Swift**.
 2. Delete the generated `NoodleApp.swift` and `ContentView.swift`. Drag `NoodleWeb/NoodleWebApp.swift` into the project (tick "Copy items if needed").
 3. Target **Noodle** → **General**: Minimum Deployments **iOS 16.0**.
 4. Target → **Info** → add these keys (the + button on any row):
