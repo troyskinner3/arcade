@@ -752,7 +752,7 @@ let S = defaultState();
   S.tracks.forEach(t=>{ t._dirty=true; });
 })();
 let saveTimer=0;
-function persist(){ try{ localStorage.setItem(STORE_KEY, JSON.stringify(S,(k,v)=>k[0]==='_'?undefined:v)); }catch(e){} }
+function persist(){ try{ localStorage.setItem(STORE_KEY, JSON.stringify(S,(k,v)=>k[0]==='_'?undefined:v)); }catch(e){} try{ projSoon(); }catch(e){} }
 function save(){ clearTimeout(saveTimer); saveTimer=setTimeout(()=>{ saveTimer=0; persist(); histCommit(); dropSoon(); },300); }
 /* Undo / redo: every saved change becomes a step (rapid changes such as a slider drag merge into one).
    A step remembers the song plus the recordings behind each part, so undoing a deleted part brings its take back. */
@@ -777,8 +777,8 @@ async function restoreSnap(sn){
 async function newSong(){
   if(!S.tracks.length && !S.title) return;
   flushSave(); if(playing){ stopAll(); playing=false; updatePlayBtn(); }
-  const keepKeys=['kit','calibrated','latAuto','latMs','ec','sens','snapStr','detailBias','vocLat','mergeDrums','replaceTonal','mig2','mig3','sq','keyRef'];
-  const o=defaultState(); keepKeys.forEach(k=>{ if(k in S) o[k]=S[k]; }); o.tracks=[]; o.nextId=S.nextId;
+  await projSaveCurrent();
+  const o=defaultState(); SETUP_KEYS.forEach(k=>{ if(k in S) o[k]=S[k]; }); o.tracks=[]; o.nextId=S.nextId; o.pid=projId();
   takeBar=null; await restoreSnap({json:JSON.stringify(o), rt:new Map()}); save(); flushSave();
   window.scrollTo({top:0}); toast('New song. Undo brings the last one back.'); }
 async function undo(){ flushSave(); if(!hist.undo.length) return; hist.redo.push(hist.cur); hist.cur=hist.undo.pop(); updateHistBtns(); await restoreSnap(hist.cur); toast('Undone'); }
@@ -807,9 +807,42 @@ const VOX_KNOBS=[['tune','Tune',v=>v?v+'%':'off'],['form','Formant',fmtSt],['low
 const fxOf=tr=>Object.assign({form:50},VOX_PRESETS.Pop,tr.fx||{});
 /* recordings of vocal parts are kept in this browser (IndexedDB), so they survive a reload */
 const takeStore={ db:null,
-  open(){ if(this.db) return Promise.resolve(this.db); return new Promise(res=>{ try{ const r=indexedDB.open('mouth-machine',1); r.onupgradeneeded=()=>r.result.createObjectStore('takes'); r.onsuccess=()=>{ this.db=r.result; res(this.db); }; r.onerror=()=>res(null); }catch(e){ res(null); } }); },
+  open(){ if(this.db) return Promise.resolve(this.db); return new Promise(res=>{ try{ const r=indexedDB.open('mouth-machine',2); r.onupgradeneeded=()=>{ const d=r.result; if(!d.objectStoreNames.contains('takes')) d.createObjectStore('takes'); if(!d.objectStoreNames.contains('projects')) d.createObjectStore('projects'); }; r.onsuccess=()=>{ this.db=r.result; res(this.db); }; r.onerror=()=>res(null); }catch(e){ res(null); } }); },
   async put(k,v){ const db=await this.open(); if(!db) return; try{ db.transaction('takes','readwrite').objectStore('takes').put(v,k); }catch(e){} },
-  async get(k){ const db=await this.open(); if(!db) return null; return new Promise(res=>{ try{ const q=db.transaction('takes').objectStore('takes').get(k); q.onsuccess=()=>res(q.result||null); q.onerror=()=>res(null); }catch(e){ res(null); } }); } };
+  async get(k){ const db=await this.open(); if(!db) return null; return new Promise(res=>{ try{ const q=db.transaction('takes').objectStore('takes').get(k); q.onsuccess=()=>res(q.result||null); q.onerror=()=>res(null); }catch(e){ res(null); } }); },
+  async del(k){ const db=await this.open(); if(!db) return; try{ db.transaction('takes','readwrite').objectStore('takes').delete(k); }catch(e){} } };
+/* ---- Saved projects: every song you make is kept on this device (IndexedDB) and can be reopened, renamed, duplicated or deleted.
+   A project is the song only; your setup (taught drum sounds, mic timing, learned preferences) is shared by all of them. ---- */
+const SETUP_KEYS=['kit','calibrated','latAuto','latMs','ec','sens','snapStr','detailBias','vocLat','mergeDrums','replaceTonal','mig2','mig3','sq','keyRef','voxTop'];
+const projDb={
+  async req(mode,fn){ const db=await takeStore.open(); if(!db) return null; return new Promise(res=>{ try{ const q=fn(db.transaction('projects',mode).objectStore('projects')); q.onsuccess=()=>res(q.result??null); q.onerror=()=>res(null); }catch(e){ res(null); } }); },
+  get(id){ return this.req('readonly',st=>st.get(id)); }, all(){ return this.req('readonly',st=>st.getAll()); },
+  put(p){ return this.req('readwrite',st=>st.put(p,p.id)); }, del(id){ return this.req('readwrite',st=>st.delete(id)); } };
+const projId=()=>'p'+Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+const songJson=()=>JSON.stringify(S,(k,v)=>k[0]==='_'?undefined:v);
+const projWorthKeeping=()=>!S.prompt && (!!S.title || S.tracks.some(t=>!t.ex && !t.guide));   /* not the untouched example, not a guided-take song */
+let projTimer=0, projSaved='';
+async function projSaveCurrent(){ clearTimeout(projTimer); projTimer=0; if(!projWorthKeeping()) return null;
+  if(!S.pid){ S.pid=projId(); persist(); } const json=songJson(); if(json===projSaved) return S.pid;
+  const old=await projDb.get(S.pid), now=Date.now();
+  await projDb.put({id:S.pid, title:S.title||'', createdAt:old?old.createdAt:now, updatedAt:now, bpm:S.bpm, bars:S.bars, parts:S.tracks.filter(t=>!t.guide).map(t=>t.inst), json}); projSaved=json; return S.pid; }
+function projSoon(){ clearTimeout(projTimer); projTimer=setTimeout(()=>projSaveCurrent().catch(()=>{}),1500); }
+async function projList(){ const all=(await projDb.all())||[]; return all.map(({json,...p})=>({...p, current:p.id===S.pid})).sort((a,b)=>b.updatedAt-a.updatedAt); }
+async function projLoadState(o){ flushSave(); if(playing){ stopAll(); playing=false; updatePlayBtn(); }
+  const st=defaultState(); Object.assign(st,o); SETUP_KEYS.forEach(k=>{ if(k in S) st[k]=S[k]; else delete st[k]; }); st.nextId=Math.max(S.nextId||10, o.nextId||10);
+  takeBar=null; await restoreSnap({json:JSON.stringify(st), rt:new Map()}); hist.undo=[]; hist.redo=[]; hist.cur=snapNow(); updateHistBtns(); projSaved=songJson(); reloadRaw(); }
+async function projOpen(id){ await projSaveCurrent(); const p=await projDb.get(id); if(!p) return false; await projLoadState(JSON.parse(p.json)); return true; }
+async function projNew(){ await projSaveCurrent(); const o=defaultState(); o.tracks=[]; o.pid=projId(); await projLoadState(o); return o.pid; }
+async function projRename(id,title){ title=String(title||'').slice(0,80); if(id===S.pid){ S.title=title; const sn=$('songName'); if(sn) sn.value=title; persist(); await projSaveCurrent(); return true; }
+  const p=await projDb.get(id); if(!p) return false; const o=JSON.parse(p.json); o.title=title; await projDb.put({...p, title, json:JSON.stringify(o), updatedAt:Date.now()}); return true; }
+/* recordings kept as sound belong to one part each, so a copy gets its own */
+async function projDuplicate(id){ if(id===S.pid) await projSaveCurrent(); const p=await projDb.get(id); if(!p) return null; const o=JSON.parse(p.json), now=Date.now(); let nid=Math.max(S.nextId||10, o.nextId||10);
+  for(const t of o.tracks||[]){ const old=t.id; t.id=nid++; if(o.activeId===old) o.activeId=t.id; const raw=await takeStore.get('vox'+old); if(raw) await takeStore.put('vox'+t.id,raw); }
+  o.nextId=nid; S.nextId=nid; persist(); o.pid=projId(); o.title=(p.title||'Untitled')+' copy';
+  await projDb.put({...p, id:o.pid, title:o.title, createdAt:now, updatedAt:now, json:JSON.stringify(o)}); return o.pid; }
+async function projDelete(id){ const p=await projDb.get(id); if(!p) return false; try{ for(const t of JSON.parse(p.json).tracks||[]) await takeStore.del('vox'+t.id); }catch(e){}
+  await projDb.del(id); if(id===S.pid){ const o=defaultState(); o.tracks=[]; o.pid=projId(); projSaved=''; await projLoadState(o); } return true; }
+function reloadRaw(){ S.tracks.filter(t=>((t.inst==='vox' && t.va!=null) || (t.expr>0 && t.exprAlign!=null)) && !t._raw).forEach(tr=>loadVox(tr).then(ok=>{ if(!ok) return; redrawTrack(tr); if(tr._row) renderTracks(); if(ctx) scheduleRender(); })); }
 function storeVox(tr){ const {x,sr}=tr._raw; const pcm=new Int16Array(x.length); for(let i=0;i<x.length;i++) pcm[i]=Math.max(-32767,Math.min(32767,Math.round(x[i]*32767))); takeStore.put('vox'+tr.id,{sr,pcm}); }
 async function loadVox(tr){ const r=await takeStore.get('vox'+tr.id); if(!r) return false; const x=new Float32Array(r.pcm.length); for(let i=0;i<x.length;i++) x[i]=r.pcm[i]/32767; tr._raw={x,sr:r.sr}; tr._dirty=true; return true; }
 /* pitch of the take every 10 ms (same hum tracker the melody parts use) */
@@ -1915,7 +1948,7 @@ function onHide(){
   if(ctx){ stopAll(); if(origSrc){ try{origSrc.stop();}catch(e){} origSrc=null; } playing=false; updatePlayBtn(); try{ ctx.suspend(); }catch(e){} }
   dropMic();
 }
-document.addEventListener('visibilitychange',()=>{ if(document.hidden){ onHide(); dropSync(); } });
+document.addEventListener('visibilitychange',()=>{ if(document.hidden){ onHide(); dropSync(); projSaveCurrent().catch(()=>{}); } });
 window.addEventListener('pagehide',onHide);
 function micBlocked(why){
   micOff=true; const n=$('micNote'); n.hidden=false;
@@ -2217,7 +2250,11 @@ let drop=null; try{ drop=JSON.parse(localStorage.getItem(DROP_KEY)||'null'); }ca
   if(q.get('share')){ if(q.get('share')==='off') shareDisable(false); else if(q.get('age13')==='1') shareEnable(q.get('share')); history.replaceState(null,'',location.pathname); } }catch(e){} })();
 /* Sharing through the Noodle takes service (opt-in, 13+). No account: this install gets a random id that only this phone knows,
    which lets it add, update and delete its own takes. */
-function shareEnable(api){ const b=crypto.getRandomValues(new Uint8Array(18)), id=btoa(String.fromCharCode(...b)).replace(/\+/g,'-').replace(/\//g,'_');
+const NOODLE_API='https://noodle-takes.cracked.workers.dev';
+/* Optional email list (news about Noodle and what comes next): separate from sharing takes, with its own consent. `text` is the wording the person agreed to. */
+async function emailSignup(email, text){ try{ const r=await fetch(NOODLE_API+'/v1/signups',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({email, consent:{v:1, text}})}); return r.ok; }catch(e){ return false; } }
+async function emailRemove(email){ try{ const r=await fetch(NOODLE_API+'/v1/signups',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({email})}); return r.ok; }catch(e){ return false; } }
+function shareEnable(api=NOODLE_API){ const b=crypto.getRandomValues(new Uint8Array(18)), id=btoa(String.fromCharCode(...b)).replace(/\+/g,'-').replace(/\//g,'_');
   drop={api:String(api).replace(/\/+$/,''), install:(drop&&drop.api&&drop.install)||id, consent:{v:1, age13:true, at:new Date().toISOString()}}; try{ localStorage.setItem(DROP_KEY,JSON.stringify(drop)); }catch(e){} }
 async function shareDisable(deleteShared){ const d=drop; drop=null; try{ localStorage.removeItem(DROP_KEY); }catch(e){}
   if(deleteShared && d && d.api){ try{ const r=await fetch(`${d.api}/v1/installs/${d.install}`,{method:'DELETE'}); return r.ok; }catch(e){ return false; } } return true; }
@@ -2340,7 +2377,7 @@ function guidedUI(){ const el=$('guided'); if(!el) return; el.hidden=!drop||!!dr
     ${cur?`<p class="g-how">${cur[2]}<small>Play to hear the Guide, then record into Your take.</small></p>${next&&next[0]!==cur[0]?`<div class="g-row"><button class="newsong${guidedDone.has(cur[0])?' g-go':''}" id="gNext">Next: ${next[0]}</button></div>`:''}`:''}`;
   $('gSet').onclick=()=>guidedSetup($('gPick').value); const nb=$('gNext'); if(nb) nb.onclick=()=>guidedSetup(next[0]); }
 async function guidedSetup(id){ const g=GUIDED.find(x=>x[0]===id); if(!g) return; const [,mel,how,inst0,bpm]=g, kit=inst0==='kit';
-  flushSave(); if(playing){ stopAll(); playing=false; updatePlayBtn(); }
+  flushSave(); await projSaveCurrent(); if(playing){ stopAll(); playing=false; updatePlayBtn(); }
   const keepKeys=['kit','calibrated','latAuto','latMs','ec','sens','snapStr','detailBias','vocLat','mergeDrums','replaceTonal','mig2','mig3','sq','keyRef','playAlong'];
   const o=defaultState(); keepKeys.forEach(k=>{ if(k in S) o[k]=S[k]; });
   o.title=id; o.prompt=id; o.bpm=bpm||110; o.bars=4; o.loops=2; let nid=S.nextId;
@@ -3114,7 +3151,7 @@ function init(){
   requestAnimationFrame(tick);
   hist.cur=snapNow(); updateHistBtns();
   // bring back vocal recordings saved in this browser
-  S.tracks.filter(t=>((t.inst==='vox' && t.va!=null) || (t.expr>0 && t.exprAlign!=null)) && !t._raw).forEach(tr=>loadVox(tr).then(ok=>{ if(!ok) return; redrawTrack(tr); if(tr._row) renderTracks(); if(ctx) scheduleRender(); }));
+  reloadRaw();
   // iOS only lets audio start on a finger lift (touchend/click), not on touch-down: unlock (or re-wake) on every such gesture while it's suspended
   const unlockAudio=()=>{ if(ctx && ctx.state!=='running' && !document.hidden){ try{ ctx.resume(); }catch(e){} } };
   ['touchend','click','keydown'].forEach(ev=>document.addEventListener(ev,unlockAudio,{capture:true,passive:true}));

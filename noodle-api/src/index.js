@@ -7,9 +7,13 @@
 //   PUT    /v1/takes/:install/:take/meta    body = JSON (must carry consent: {v, age13: true})
 //   DELETE /v1/takes/:install/:take         delete one take
 //   DELETE /v1/installs/:install            delete everything this install shared
+//   PUT    /v1/signups                      body = {email, consent: {v, text}}  optional email list (news), separate from sharing takes
+//   DELETE /v1/signups                      body = {email}                      take that email off the list
+// Shared takes are kept for 3 years at most (KEEP_DAYS), counted from when the take first arrived; storage removes them on its own.
 //   GET    /v1/admin/list?prefix=&cursor=   owner only (Authorization: Bearer ADMIN_KEY)
 //   GET    /v1/admin/get?key=               owner only
 const ORIGINS = ['noodle://app', 'https://troyskinner3.github.io'];
+const KEEP_DAYS = 3 * 365, MAX_SIGNUPS_PER_DAY = 400;
 const MAX_AUDIO = 3 * 1024 * 1024, MAX_META = 256 * 1024, MAX_TAKES_PER_DAY = 300;
 const ID = /^[A-Za-z0-9_-]{22,64}$/, TAKE = /^[A-Za-z0-9_-]{6,96}$/;
 
@@ -33,7 +37,7 @@ function store(env) {
   if (env.TAKES) return env.TAKES;
   const kv = env.TAKES_KV;
   return {
-    async put(k, v) { await kv.put(k, v, { metadata: { size: typeof v === 'string' ? v.length : v.byteLength, at: Date.now() } }); },
+    async put(k, v, o) { await kv.put(k, v, { ...(o && o.expiresAt ? { expiration: Math.floor(o.expiresAt / 1000) } : {}), metadata: { size: typeof v === 'string' ? v.length : v.byteLength, at: Date.now() } }); },
     async get(k) { const v = await kv.get(k, { type: 'arrayBuffer' }); return v === null ? null : { body: v, async json() { return JSON.parse(new TextDecoder().decode(v)); } }; },
     async head(k) { const r = await kv.getWithMetadata(k, { type: 'stream' }); if (r.value === null) return null; try { await r.value.cancel(); } catch {} return { key: k }; },
     async delete(ks) { for (const k of [].concat(ks)) await kv.delete(k); },
@@ -61,7 +65,7 @@ async function underDailyCap(bucket, install, take) {
   const cur = await bucket.get(key); const seen = cur ? await cur.json() : [];
   if (seen.includes(take)) return true;
   if (seen.length >= MAX_TAKES_PER_DAY) return false;
-  seen.push(take); await bucket.put(key, JSON.stringify(seen)); return true;
+  seen.push(take); await bucket.put(key, JSON.stringify(seen), { expiresAt: Date.now() + 3 * 864e5 }); return true;
 }
 
 export default {
@@ -84,13 +88,29 @@ async function handle(req, env) {
         return json(req, 200, { keys: page.objects.map((o) => ({ key: o.key, size: o.size, uploaded: o.uploaded })), cursor: page.truncated ? page.cursor : null });
       }
       if (p[2] === 'get') {
-        const key = url.searchParams.get('key') || ''; if (!key.startsWith('takes/')) return json(req, 400, { error: 'key' });
+        const key = url.searchParams.get('key') || ''; if (!key.startsWith('takes/') && !key.startsWith('signups/')) return json(req, 400, { error: 'key' });
         const o = await B.get(key); if (!o) return json(req, 404, { error: 'not found' });
         return new Response(o.body, { headers: { 'Content-Type': key.endsWith('.json') ? 'application/json' : 'audio/wav' } });
       }
       return json(req, 404, { error: 'not found' });
     }
 
+    if (p[1] === 'signups' && p.length === 2 && (req.method === 'PUT' || req.method === 'DELETE')) {
+      const buf = await readLimited(req, 4096); if (!buf) return json(req, 413, { error: 'too large' });
+      let m; try { m = JSON.parse(new TextDecoder().decode(buf)); } catch { return json(req, 400, { error: 'json' }); }
+      const email = String((m && m.email) || '').trim().toLowerCase();
+      if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return json(req, 400, { error: 'email' });
+      const h = [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(email)))].map((x) => x.toString(16).padStart(2, '0')).join('');
+      if (req.method === 'DELETE') { await B.delete('signups/' + h + '.json'); return json(req, 200, { ok: true }); }
+      // the person must have agreed to the wording shown to them; it is stored with the address
+      if (!m.consent || !m.consent.v || typeof m.consent.text !== 'string' || !m.consent.text.trim()) return json(req, 403, { error: 'consent' });
+      if (await B.head('signups/' + h + '.json')) return json(req, 200, { ok: true });
+      const day = new Date().toISOString().slice(0, 10), ck = `quota/signups/${day}.json`, cur = await B.get(ck), n = cur ? (await cur.json()).n : 0;
+      if (n >= MAX_SIGNUPS_PER_DAY) return json(req, 429, { error: 'daily limit' });
+      await B.put(ck, JSON.stringify({ n: n + 1 }), { expiresAt: Date.now() + 3 * 864e5 });
+      await B.put('signups/' + h + '.json', JSON.stringify({ email, at: new Date().toISOString(), source: 'noodle', consent: { v: m.consent.v, text: m.consent.text.slice(0, 300) } }), { httpMetadata: { contentType: 'application/json' } });
+      return json(req, 200, { ok: true });
+    }
     if (p[1] === 'installs' && p.length === 3 && req.method === 'DELETE') {
       if (!ID.test(p[2])) return json(req, 400, { error: 'id' });
       const n = await deletePrefix(B, `takes/${p[2]}/`); await deletePrefix(B, `quota/${p[2]}/`);
@@ -109,16 +129,18 @@ async function handle(req, env) {
         // sharing is opt-in and 13+: the record itself must say so, or it is not stored
         if (!m || typeof m !== 'object' || !m.consent || m.consent.age13 !== true || !m.consent.v) return json(req, 403, { error: 'consent' });
         if (!(await underDailyCap(B, install, take))) return json(req, 429, { error: 'daily limit' });
-        delete m.ua; m.receivedAt = new Date().toISOString();
-        await B.put(base + 'meta.json', JSON.stringify(m), { httpMetadata: { contentType: 'application/json' } });
+        const prev = await B.get(base + 'meta.json'); let first = null; try { first = prev && (await prev.json()).receivedAt; } catch {}
+        delete m.ua; m.receivedAt = first || new Date().toISOString(); m.updatedAt = new Date().toISOString();
+        await B.put(base + 'meta.json', JSON.stringify(m), { httpMetadata: { contentType: 'application/json' }, expiresAt: Date.parse(m.receivedAt) + KEEP_DAYS * 864e5 });
         return json(req, 200, { ok: true });
       }
       if (part === 'audio') {
         // the audio is only kept for a take whose record (with consent) is already here
-        if (!(await B.head(base + 'meta.json'))) return json(req, 409, { error: 'send meta first' });
+        const rec = await B.get(base + 'meta.json'); if (!rec) return json(req, 409, { error: 'send meta first' });
+        let at = Date.now(); try { at = Date.parse((await rec.json()).receivedAt) || at; } catch {}
         const buf = await readLimited(req, MAX_AUDIO); if (!buf) return json(req, 413, { error: 'too large' });
         if (!isWav(buf)) return json(req, 415, { error: 'wav only' });
-        await B.put(base + 'audio.wav', buf, { httpMetadata: { contentType: 'audio/wav' } });
+        await B.put(base + 'audio.wav', buf, { httpMetadata: { contentType: 'audio/wav' }, expiresAt: at + KEEP_DAYS * 864e5 });
         return json(req, 200, { ok: true });
       }
     }

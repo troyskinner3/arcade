@@ -6,6 +6,9 @@ Stores takes people chose to share (opt-in, 13+) so Noodle can learn from them. 
 - No accounts. Each install has a random id only that phone knows; it can add, update and delete its own takes.
 - A record is stored only if it carries `consent: {v, age13: true}`; audio only after its record. No IP addresses are stored.
 - Limits: 3 MB audio (WAV), 256 KB record, 300 takes per install per day.
+- Takes are kept 3 years at most, counted from when they first arrived (storage expires them on its own).
+- Optional email list (`/v1/signups`): address + date + the consent wording agreed to, deduplicated, removable; 400 new addresses a day at most.
+  Not linked to takes. To be copied into Tuttii's marketing sheet (by hand or a script using the admin endpoints).
 - Owner access (`/v1/admin/*`) needs the `ADMIN_KEY` secret.
 
 ## Cost: none, by design

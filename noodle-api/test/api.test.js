@@ -72,3 +72,25 @@ test('works on KV storage too, and a storage refusal is a clean 507', async () =
   kv.put = async () => { throw new Error('KV put() limit exceeded for the day'); };
   assert.equal((await call(env, 'PUT', `/v1/takes/${I}/take02/meta`, meta())).status, 507);
 });
+test('email signup: needs consent wording, dedupes, can be removed; admin can read it', async () => {
+  const env = { TAKES: bucket(), ADMIN_KEY: 'k' }, C = { v: 1, text: 'Get news about Noodle and what we are building next.' };
+  assert.equal((await call(env, 'PUT', '/v1/signups', JSON.stringify({ email: 'not-an-email', consent: C }))).status, 400);
+  assert.equal((await call(env, 'PUT', '/v1/signups', JSON.stringify({ email: 'a@b.co' }))).status, 403);
+  assert.equal((await call(env, 'PUT', '/v1/signups', JSON.stringify({ email: ' A@B.co ', consent: C }))).status, 200);
+  assert.equal((await call(env, 'PUT', '/v1/signups', JSON.stringify({ email: 'a@b.co', consent: C }))).status, 200);
+  const keys = [...env.TAKES.m.keys()].filter((k) => k.startsWith('signups/')); assert.equal(keys.length, 1);
+  const got = await (await call(env, 'GET', '/v1/admin/get?key=' + keys[0], undefined, { Authorization: 'Bearer k' })).json();
+  assert.equal(got.email, 'a@b.co'); assert.equal(got.source, 'noodle'); assert.equal(got.consent.text, C.text);
+  assert.equal((await call(env, 'DELETE', '/v1/signups', JSON.stringify({ email: 'a@b.co' }))).status, 200);
+  assert.equal([...env.TAKES.m.keys()].filter((k) => k.startsWith('signups/')).length, 0);
+});
+test('takes expire 3 years after they first arrived, even when the record is updated later', async () => {
+  const puts = [], B = bucket(), put0 = B.put; B.put = async (k, v, o) => { puts.push([k, o && o.expiresAt]); return put0(k, v); };
+  const env = { TAKES: B };
+  await call(env, 'PUT', `/v1/takes/${I}/take01/meta`, meta()); await call(env, 'PUT', `/v1/takes/${I}/take01/audio`, wav());
+  const first = JSON.parse(new TextDecoder().decode(B.m.get(`takes/${I}/take01/meta.json`))).receivedAt;
+  await new Promise((r) => setTimeout(r, 15)); await call(env, 'PUT', `/v1/takes/${I}/take01/meta`, meta({ now: { notes: [1] } }));
+  const exp = puts.filter(([k]) => k.startsWith('takes/')).map(([, e]) => e), want = Date.parse(first) + 3 * 365 * 864e5;
+  assert.equal(exp.length, 3); for (const e of exp) assert.equal(e, want);
+  assert.equal(JSON.parse(new TextDecoder().decode(B.m.get(`takes/${I}/take01/meta.json`))).receivedAt, first);
+});

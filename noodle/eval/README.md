@@ -240,3 +240,9 @@ Real noise (DEMAND, CC BY 4.0: street traffic, cafeteria, bus, town square, park
   gain smoothed over 3 frames and 3 bins. Through the app (`replay_den.js`, 2 s of the same background as the count-in): traffic 10 dB 6.36 → 4.32, square 5 dB 8.32 → 6.00;
   offline prototype (`denoise_mix.py`): cafeteria 10 dB 5.80 → 5.48 (other voices are not steady), traffic 20 dB 3.94 → 4.02 (so it only runs under the 20 dB line),
   ×4 subtraction no better. Pitched live takes only (not the Voice instrument, whose sound is kept), ~0.2 s for a 9 s take. Live path checked with a simulated mic (`noise_ui2.js`).
+
+### Saved projects, sharing service, email list (Nov 14)
+- **Saved projects (`proj*` functions, no screen yet):** every song with content or a name is kept in IndexedDB (`projects` store): list, open, new, rename, duplicate (sound parts get their own copies), delete.
+  Setup (taught drums, timing, learned preferences) is shared by all projects. The untouched example and guided-take songs are never saved. Checked by `proj_test.js`.
+- **Sharing to the takes service (`noodle-api/`):** `shareEnable()` / `shareDisable(deleteShared)`; off until an opt-in screen calls it. Checked by `share_e2e.js` against a local copy.
+- **Email list:** `emailSignup(email, text)` / `emailRemove(email)`; no screen yet.
