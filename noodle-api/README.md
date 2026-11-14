@@ -14,10 +14,18 @@ take on the phone) instead of charging. Free limits: 1 GB stored (about 3,400 ta
 100,000 requests a day. This only stays true while the Cloudflare account is on the **Free** Workers plan: on the $5/month paid plan,
 going over is billed. If Noodle outgrows this, bind an R2 bucket as `TAKES` and the same code uses it.
 
-## One-time setup (owner)
-1. Cloudflare → My Profile → API Tokens → Create Token → Custom: **Workers Scripts: Edit** and **Workers KV Storage: Edit** on the account.
-2. GitHub → arcade → Settings → Secrets and variables → Actions → New repository secret `CLOUDFLARE_API_TOKEN` = that token.
-3. Push to main (or GitHub → Actions → "Noodle takes service" → Run workflow).
-4. Cloudflare → Workers → noodle-takes → Settings → Variables and Secrets → add secret `ADMIN_KEY` (any long random text; keep it private).
+## How it deploys (read this first: it is unusual)
+**The code lives here, but it is deployed from a different repository.** The Fan to See repo (`Persnickety-Games/fantasy-lab`) already holds the
+Cloudflare token as its `CLOUDFLARE_API_TOKEN` secret, so its workflow `.github/workflows/noodle-takes.yml` checks out **this** repo's `main`
+branch and deploys `noodle-api/` with that token. Chosen so the owner had no new token to create; the two projects are otherwise separate.
+
+- To release a change: push it to `main` here, then run **"Noodle takes service"** in the fantasy-lab repo's Actions tab (Run workflow).
+  It is never triggered by pushes to either repo and is not part of the Fan to See site deploy.
+- The Worker is `noodle-takes` and its KV namespace is `noodle-takes`, on the same Cloudflare account as Fan to See, sharing nothing with it.
+- If that token is ever rotated or removed in fantasy-lab, this deploy stops working until it is replaced there.
+- To move the deploy into this repo later: add a `CLOUDFLARE_API_TOKEN` secret here (Workers Scripts: Edit, Workers KV Storage: Edit),
+  copy the deploy steps from fantasy-lab's `noodle-takes.yml` into `.github/workflows/noodle-api.yml`, and delete the workflow there.
+- Owner step after the first deploy: Cloudflare → Workers → noodle-takes → Settings → Variables and Secrets → add secret `ADMIN_KEY`
+  (any long random text; keep it private). Without it, the owner-only read endpoints refuse everyone.
 
 Local testing: `node dev/local-server.mjs` runs the service on localhost:8787 with in-memory storage (admin key `local`).
