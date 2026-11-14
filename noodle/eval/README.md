@@ -246,3 +246,11 @@ Real noise (DEMAND, CC BY 4.0: street traffic, cafeteria, bus, town square, park
   Setup (taught drums, timing, learned preferences) is shared by all projects. The untouched example and guided-take songs are never saved. Checked by `proj_test.js`.
 - **Sharing to the takes service (`noodle-api/`):** `shareEnable()` / `shareDisable(deleteShared)`; off until an opt-in screen calls it. Checked by `share_e2e.js` against a local copy.
 - **Email list:** `emailSignup(email, text)` / `emailRemove(email)`; no screen yet.
+
+### App shell (Nov 14)
+- Rebuild plan (agreed with the owner): bottom nav (Projects · + · More) on Projects and More; the Studio is full screen with a back button. Studio = linear timeline with clips,
+  loop as a toggle; opens in a new project. Mockup: scratch file `noodle-app-mockup.html` (published as an artifact), not part of the app.
+- **Step 1 (shipped):** `nx*` functions and `.nx-*` styles. Projects (search, sort, rows with created date · key · tempo, ⋯ menu: rename, duplicate, delete), More (privacy link for now),
+  back button on the existing studio. Opening the app starts a new project unless it was used in the last 10 minutes (a reload mid-work returns to the song). No example song on a fresh install.
+  Checked by `shell_test.js`; the 31-take replay is unchanged (3.88).
+- Next: Studio in portrait on a clip timeline, track sheets, landscape, first launch and More.
