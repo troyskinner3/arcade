@@ -567,6 +567,10 @@ button.card-head{margin:0;width:100%;padding:10px 14px;border-radius:0;backgroun
 .nx-grab{width:40px;height:4px;border-radius:2px;background:var(--line);margin:0 auto 6px}
 .nx-act{display:flex;align-items:center;width:100%;padding:14px 0;border:0;border-bottom:1px solid var(--line);background:none;color:inherit;font:600 16px var(--f-body);text-align:left}
 .nx-act.danger{color:var(--rec)}
+.nx-act small{display:block;font:400 13px var(--f-body);color:var(--muted);margin-top:2px}
+.nx-act:disabled{opacity:.45}
+.s2-shst{padding:12px 0 4px;color:var(--muted);font-size:14px}
+.s2-shgo{display:flex;gap:8px;padding-top:6px} .s2-shgo button{flex:1;height:48px;border-radius:10px;border:1px solid var(--line);background:none;color:inherit;font:700 16px var(--f-body)} .s2-shgo .go{background:var(--lcd-ink);color:#1b1608;border-color:var(--lcd-ink)}
 .nx-txt{width:100%;height:46px;border-radius:10px;border:1px solid var(--line);background:var(--pad);color:inherit;font:16px var(--f-body);padding:0 12px}
 .nx-primary{width:100%;height:48px;border-radius:10px;border:0;background:var(--lcd-ink);color:#1b1608;font:700 16px var(--f-body);margin-top:10px}
 .nx-item{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 0;border-bottom:1px solid var(--line);color:inherit;text-decoration:none;font:600 16px var(--f-body)}
@@ -639,7 +643,7 @@ button.card-head{margin:0;width:100%;padding:10px 14px;border-radius:0;backgroun
 .s2-edt{flex:1;min-width:0;padding:6px 4px;text-align:left} .s2-edt b{display:block;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis} .s2-edt small{color:var(--s2-muted);font:500 12px var(--f-mono)}
 .s2-edb{flex:1;min-height:0;overflow-y:auto;padding-top:4px}
 .s2-edb .track{border:0;background:none;padding:0;margin:0;box-shadow:none}
-.s2-edb .tquick,.s2-edb .ctl.insp,.s2-edb .spotbar{display:none!important}
+.s2-edb .tquick,.s2-edb .ctl.insp,.s2-edb .spotbar,.s2-edb .zoom{display:none!important}
 .s2-edh{color:var(--s2-muted);font-size:12.5px;padding-top:8px;padding-bottom:2px}
 .s2-edbar{display:flex;align-items:center;gap:8px;padding-top:8px;padding-bottom:10px;flex:none;background:var(--s2-panel)}
 .s2-edbar button{height:44px;padding:0 14px!important;border:1px solid var(--s2-line)!important;border-radius:10px;font-weight:600!important;font-size:14px!important}
@@ -794,6 +798,8 @@ button.card-head{margin:0;width:100%;padding:10px 14px;border-radius:0;backgroun
 <section class="nx-view" id="nxMore" hidden>
   <div class="nx-g nx-top"><h1>More</h1></div>
   <div class="nx-list"><div class="nx-g">
+    <div class="nx-grp">Your setup</div>
+    <button class="nx-item" id="nxTiming" style="width:100%;background:none;border:0;border-bottom:1px solid var(--line);text-align:left"><span>Mic timing<small>Fix notes that land late, and other mic settings</small></span><svg class="nx-ico" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
     <div class="nx-grp">Studio</div>
     <button class="nx-item" id="nxClassic" style="width:100%;background:none;border:0;border-bottom:1px solid var(--line);text-align:left"><span>Classic studio<small id="nxClassicS"></small></span></button>
     <div class="nx-grp">About</div>
@@ -1157,8 +1163,27 @@ function s2EdMount(){ if(s2.edId==null) return; const tr=S.tracks.find(t=>t.id==
   $('s2EdHint').textContent=kind==='pitched'?'Tap a note to select it, drag to move. Double-tap a note, or tap a faint seam, to split it.':tr.hits?'Tap a square to add or remove a hit.':'';
   $('s2EdUndo').disabled=!hist.undo.length; $('s2EdRedo').disabled=!hist.redo.length; }
 function s2EdClose(){ const tr=S.tracks.find(t=>t.id===s2.edId); if(tr){ tr._cv=null; tr._sel=null; } s2.edId=null; GRID_H=176; GRID_RH=15; GRID_DRUM=1; $('s2Ed').hidden=true; $('s2EdBody').innerHTML=''; s2Render(); }
-function s2ClipSheet(tr){ nxSheet(`<h2>${nxEsc(s2Name(s2Lane(s2LaneId(tr))))}</h2><button class="nx-act" data-a="edit">Edit notes</button><button class="nx-act danger" data-a="del">Delete this part</button>`);
-  $('nxSheet').onclick=e=>{ const b=e.target.closest('[data-a]'); if(!b) return; nxClose(); if(b.dataset.a==='edit') return s2Edit(tr);
+/* Share, inside the Studio. A linear song is exported once through (Loop is only for listening). */
+function s2ShareSheet(){ if(!S.tracks.some(hasContent)){ toast('Record something first'); return; } if(playing) togglePlay();
+  nxSheet(`<h2>Share “${nxEsc(S.title||'Untitled')}”</h2>
+    <button class="nx-act" data-k="daw"><span>Send to your DAW<small>Every track as audio and MIDI, with the tempo and key, in one .zip</small></span></button>
+    <button class="nx-act" data-k="audio"><span>Audio<small>The whole song as one file</small></span></button>
+    <button class="nx-act" data-k="video"><span>Video<small>For posting: your parts move to the beat</small></span></button>
+    <div class="s2-shst" id="s2ShSt" hidden></div><div class="s2-shgo" id="s2ShGo" hidden><button class="go" id="s2ShNow">Share</button><button id="s2ShSave">Save to Files</button></div>`);
+  const st=m=>{ const e=$('s2ShSt'); if(e){ e.hidden=!m; e.textContent=m||''; } }, lock=v=>$('nxSheet').querySelectorAll('.nx-act').forEach(b=>{ b.disabled=v; });
+  $('s2ShNow').onclick=()=>shareNow(); $('s2ShSave').onclick=()=>{ if(shareFile) offerFile(shareFile.name, shareFile); };
+  $('nxSheet').onclick=async e=>{ const b=e.target.closest('[data-k]'); if(!b||b.disabled) return; const k=b.dataset.k; S.loops=1; lock(true); $('s2ShGo').hidden=true;
+    if(k==='daw'){ st('Preparing your tracks…'); await exportZip(); st('Done. Look for the .zip in your downloads or the share sheet.'); lock(false); return; }
+    st(k==='video'?'Making your video…':'Making your audio…'); shareFile=null; const poll=setInterval(()=>{ const t=$('shVideo').textContent; if(/Making/.test(t)) st(t); },300);
+    await prepareShare(k); clearInterval(poll); lock(false); if(!$('s2ShSt')) return;
+    if(shareFile){ st($('shMsg').textContent); $('s2ShGo').hidden=false; $('s2ShNow').hidden=$('shNow').hidden; } else st('That didn’t work here. Try the other option.'); }; }
+/* Move a part along its lane, in whole bars. It can't land on another part. */
+function s2MoveClip(tr, bars){ const off=(tr.off||0)+bars*16, len=pSteps(tr)*pLoops(tr); if(tr.inst==='vox'||pLoops(tr)>1) return false; if(off<0 || off+len>64*16) return false;
+  const hit=S.tracks.some(t=>t!==tr&&s2LaneId(t)===s2LaneId(tr)&&hasContent(t)&&off<(t.off||0)+pSteps(t)*pLoops(t)&&(t.off||0)<off+len); if(hit) return false;
+  const L=pBars(tr); tr.len=L; tr.lenSet=true; tr.rep=false; const need=Math.max(1,...S.tracks.filter(hasContent).map(t=>t===tr?off/16+L:Math.floor((t.off||0)/16)+(t.off!=null&&t.len?t.len:S.bars)));
+  if(need>S.bars){ S.bars=Math.min(64,need); } tr.off=off; if(need<S.bars && S.tracks.filter(hasContent).every(t=>t.off!=null&&t.len)) S.bars=need; syncTransport(); tr._dirty=true; save(); scheduleRender(); return true; }
+function s2ClipSheet(tr){ const mv=tr.inst!=='vox'&&pLoops(tr)===1; nxSheet(`<h2>${nxEsc(s2Name(s2Lane(s2LaneId(tr))))}</h2><button class="nx-act" data-a="edit">Edit notes</button>${mv?'<button class="nx-act" data-a="ml">Move one bar earlier</button><button class="nx-act" data-a="mr">Move one bar later<small>Or press and hold the part on the timeline, then drag it</small></button>':''}<button class="nx-act danger" data-a="del">Delete this part</button>`);
+  $('nxSheet').onclick=e=>{ const b=e.target.closest('[data-a]'); if(!b) return; if(b.dataset.a==='ml'||b.dataset.a==='mr'){ if(s2MoveClip(tr,b.dataset.a==='ml'?-1:1)) renderTracks(); else toast('No room there'); return; } nxClose(); if(b.dataset.a==='edit') return s2Edit(tr);
     const mates=S.tracks.filter(o=>o!==tr&&s2LaneId(o)===s2LaneId(tr)); if(mates.length){ if(tr.lane==null) mates.forEach(o=>{ o.lane=mates[0].id; }); s2.recPrev=0; deletePart(tr); }
     else { if(tr.notes) tr.notes=[]; if(tr.hits) tr.hits=[]; tr._an=null; tr._takes=null; tr._raw=null; tr._dirty=true; keyCache=null; save(); renderTracks(); scheduleRender(); toast('Part deleted'); } }; }
 function s2TrackSheet(L){ const tr=L.tracks[0], all=()=>S.tracks.filter(t=>s2LaneId(t)===L.id), I=INST[tr.inst], nm=nxEsc(s2Name(L));
@@ -1184,7 +1209,7 @@ function s2Init(){ const _rt=renderTracks; renderTracks=function(){ if(s2.post &
   $('s2EdFill').onclick=()=>{ const b=$('s2EdBody').querySelector('.pfill'); if(b) b.click(); };
   $('s2EdVer').onclick=()=>{ const tr=S.tracks.find(t=>t.id===s2.edId); if(!tr) return; if(!tr._versions) tr._versions=takeVersions(tr); if(tr._versions.length<2){ toast('No other likely readings of this part.'); return; } const i=((tr._vi||0)+1)%tr._versions.length; applyVersion(tr,i); toast(i?`Reading ${i+1} of ${tr._versions.length}`:'Back to what Noodle heard'); };
   $('s2Back').onclick=()=>nxGo('projects'); $('s2Name').onclick=()=>s2Sheets('name'); $('s2Undo').onclick=()=>undo(); $('s2Redo').onclick=()=>redo();
-  $('s2Share').onclick=()=>s2Detail('export'); $('s2Bpm').onclick=()=>s2Sheets('tempo'); $('s2Key').onclick=()=>s2Sheets('key'); $('s2Mix').onclick=()=>s2Sheets('mix');
+  $('s2Share').onclick=s2ShareSheet; $('s2Bpm').onclick=()=>s2Sheets('tempo'); $('s2Key').onclick=()=>s2Sheets('key'); $('s2Mix').onclick=()=>s2Sheets('mix');
   $('s2Play').onclick=()=>togglePlay(); $('s2RecB').onclick=s2Record; $('s2Metro').onclick=()=>$('metro').click();
   $('s2Rew').onclick=()=>{ if(recState) return; playFrom=0; s2.cur=0; $('s2Tl').scrollLeft=0; if(playing&&ctx) startAll(ctx.currentTime+0.02,0); };
   $('s2Loop').onclick=e=>{ s2.loop=!s2.loop; e.currentTarget.setAttribute('aria-pressed',s2.loop); toast(s2.loop?'Loop on':'Loop off'); };
@@ -1196,14 +1221,23 @@ function s2Init(){ const _rt=renderTracks; renderTracks=function(){ if(s2.post &
     else if(b=g('m')){ const L=s2Lane(b.dataset.m), v=!L.tracks[0].mute; L.tracks.forEach(t=>{ t.mute=v; }); save(); applyAllMix(); s2Render(); }
     else if(b=g('s')){ const L=s2Lane(b.dataset.s), v=!L.tracks[0].solo; L.tracks.forEach(t=>{ t.solo=v; }); save(); applyAllMix(); s2Render(); }
     else if(b=g('t')) s2TrackSheet(s2Lane(b.dataset.t));
-    else if(b=g('ln')){ if(recState) return; const L=s2Lane(b.dataset.ln), st=(e.clientX-b.getBoundingClientRect().left)/s2.barw*16, t=L.tracks.find(t=>hasContent(t)&&st>=(t.off||0)&&st<(t.off||0)+pSteps(t)*pLoops(t)); if(t) s2ClipSheet(t); }
+    else if(b=g('ln')){ if(recState || Date.now()-(s2.noTap||0)<400) return; const L=s2Lane(b.dataset.ln), st=(e.clientX-b.getBoundingClientRect().left)/s2.barw*16, t=L.tracks.find(t=>hasContent(t)&&st>=(t.off||0)&&st<(t.off||0)+pSteps(t)*pLoops(t)); if(t) s2ClipSheet(t); }
     else if(e.target.id==='s2Add') s2AddSheet(false); };
+  { const T=$('s2In'); let hold=0, dr=null, sx=0, sy=0;
+    const clipAt=(ln,x)=>{ const L=s2Lane(ln.dataset.ln), st=(x-ln.getBoundingClientRect().left)/s2.barw*16; return L&&L.tracks.find(t=>hasContent(t)&&st>=(t.off||0)&&st<(t.off||0)+pSteps(t)*pLoops(t)); };
+    T.addEventListener('pointerdown',e=>{ const ln=e.target.closest('.s2-ln'); if(!ln||recState) return; sx=e.clientX; sy=e.clientY; clearTimeout(hold);
+      hold=setTimeout(()=>{ const tr=clipAt(ln,sx); if(!tr||tr.inst==='vox'||pLoops(tr)>1) return; dr={tr,ln,off0:tr.off||0,x0:sx,id:e.pointerId,moved:false}; s2.drag=true; try{ ln.setPointerCapture(e.pointerId); }catch(_){} try{ navigator.vibrate&&navigator.vibrate(10); }catch(_){} ln.style.outline='2px solid var(--s2-amber)'; },380); });
+    T.addEventListener('pointermove',e=>{ if(!dr){ if(Math.abs(e.clientX-sx)>8||Math.abs(e.clientY-sy)>8) clearTimeout(hold); return; }
+      const nb=Math.round((e.clientX-dr.x0)/s2.barw), off=Math.max(0,dr.off0+nb*16); if(off!==(dr.tr.off||0)){ dr.tr.off=off; dr.moved=true; const L=s2Lane(s2LaneId(dr.tr)), cv=dr.ln.querySelector('canvas'); if(L&&cv) s2DrawLane(L,cv); } });
+    const end=e=>{ clearTimeout(hold); if(!dr) return; const d=dr; dr=null; s2.drag=false; d.ln.style.outline=''; s2.noTap=Date.now(); const want=(d.tr.off||0)-d.off0; d.tr.off=d.off0; if(d.moved && want){ if(!s2MoveClip(d.tr,want/16)) toast('No room there'); } renderTracks(); };
+    T.addEventListener('pointerup',end); T.addEventListener('pointercancel',end); }
   const tl=$('s2Tl'); let d0=0,b0=0,zt=0; const dist=t=>Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY);
   const zoom=z=>{ s2.barw=clamp(z,20,160); $('s2').style.setProperty('--s2-barw',s2.barw+'px'); clearTimeout(zt); zt=setTimeout(s2Render,140); };
   tl.addEventListener('touchstart',e=>{ if(e.touches.length===2){ d0=dist(e.touches); b0=s2.barw; } },{passive:true});
-  tl.addEventListener('touchmove',e=>{ if(e.touches.length===2&&d0){ e.preventDefault(); zoom(b0*dist(e.touches)/d0); } },{passive:false});
+  tl.addEventListener('touchmove',e=>{ if(s2.drag){ e.preventDefault(); return; } if(e.touches.length===2&&d0){ e.preventDefault(); zoom(b0*dist(e.touches)/d0); } },{passive:false});
   tl.addEventListener('touchend',()=>{ d0=0; }); tl.addEventListener('wheel',e=>{ if(e.ctrlKey){ e.preventDefault(); zoom(s2.barw*(e.deltaY<0?1.1:0.9)); } },{passive:false});
   window.addEventListener('resize',()=>{ if(s2On()) s2Render(); }); tl.addEventListener('scroll',s2Clip,{passive:true});
+  $('nxTiming').onclick=async()=>{ await nxGo('studio'); s2Detail('timing'); };
   const cb=$('nxClassic'), lab=()=>{ $('nxClassicS').textContent=s2Use()?'Off. Tap to use the old screen instead of the timeline.':'On. Tap to go back to the timeline.'; }; lab();
   cb.onclick=()=>{ try{ localStorage.setItem('noodle.studio',s2Use()?'classic':'timeline'); }catch(e){} lab(); };
   if(nxResume || new URLSearchParams(location.search).has('studio')){ if(s2Use()) s2Show(true); } else nxGo('projects'); }

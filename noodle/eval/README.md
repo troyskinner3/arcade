@@ -272,3 +272,6 @@ Real noise (DEMAND, CC BY 4.0: street traffic, cafeteria, bus, town square, park
   split hints, "Other readings", Fill gaps, undo/redo, play. Clips have a border and their notes are drawn inside it; the timeline is one colour; tracks are named per lane.
   Checked by `s2_replace.js` and `s2_editor.js`; 31-take replay unchanged (3.88).
 - Still to do: Share inside the Studio, move/trim clips, voice clips anywhere, landscape pass, first launch, More (timing, drum teaching).
+- **Step 2d (shipped):** Share sheet inside the Studio (DAW pack, audio, video; a linear song exports once through, `S.loops=1`); move a part by whole bars (press and hold, then drag; or the part's sheet),
+  never onto another part; editor zoom buttons removed (pinch works); More → Mic timing (opens the classic section for now). Landscape checked by screenshot. `s2_share_move.js`.
+- Still to do: trim clips, voice clips anywhere, first launch (voice check, sharing opt-in, email), More (drum teaching, mic timing in the new style).
