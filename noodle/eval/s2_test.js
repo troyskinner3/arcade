@@ -2,7 +2,7 @@
 const {chromium,devices}=require('playwright');
 (async()=>{ const b=await chromium.launch({args:['--use-fake-ui-for-media-stream','--autoplay-policy=no-user-gesture-required']}); const c=await b.newContext({...devices['iPhone 13'],permissions:['microphone']}); const p=await c.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(e.message));
   await p.addInitScript(()=>{ navigator.mediaDevices.getUserMedia=async()=>{ const cx=window.__ctx, dst=cx.createMediaStreamDestination(); window.__sing=(t0,notes)=>notes.forEach(([st,du,hz])=>{ const o=cx.createOscillator(), g=cx.createGain(); o.type='sawtooth'; o.frequency.value=hz; g.gain.value=0; g.gain.setTargetAtTime(0.15,t0+st,0.01); g.gain.setTargetAtTime(0,t0+st+du-0.05,0.01); o.connect(g); g.connect(dst); o.start(t0+st); o.stop(t0+st+du+0.1); }); return dst.stream; }; });
-  await p.goto('http://localhost:8800/noodle-s2.html'); await p.waitForTimeout(1200); const out={};
+  await p.goto('http://localhost:8800/noodle-s2.html?studio'); await p.waitForTimeout(1200); const out={};
   out.start=await p.evaluate(()=>({s2:!$('s2').hidden, hint:!!document.querySelector('.s2-hint'), nav:$('nxNav').hidden})); await p.screenshot({path:'results/s2a.png'});
   await p.evaluate(()=>{ ensureCtx(); window.__ctx=ctx; return ctx.resume(); });
   await p.tap('#s2RecB'); await p.waitForTimeout(300); out.sheet=await p.$eval('#nxSheet h2',e=>e.textContent); await p.tap('#nxSheet [data-k="lead"]'); await p.waitForTimeout(500);

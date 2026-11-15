@@ -1,7 +1,7 @@
 // app shell: opens in the Studio; back -> Projects; rows open; menu renames, duplicates, deletes; + starts a new project
 const {chromium,devices}=require('playwright');
 (async()=>{ const b=await chromium.launch(); const c=await b.newContext({...devices['iPhone 13']}); const p=await c.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(e.message));
-  await p.goto('http://localhost:8800/noodle-nx.html'); await p.waitForTimeout(1200); const out={};
+  await p.goto('http://localhost:8800/noodle-nx.html?studio'); await p.waitForTimeout(1200); const out={};
   out.start=await p.evaluate(()=>({at:nxAt, navHidden:$('nxNav').hidden, tracks:S.tracks.length})); await p.screenshot({path:'results/nx0.png'});
   await p.evaluate(async()=>{ S.title='Subway hook'; S.bpm=110; S.tracks.push(mkTrack('lead',{id:S.nextId++,notes:[{s:0,l:4,p:60,v:.8,x:true},{s:4,l:4,p:64,v:.8,x:true}]})); S.tracks.push(mkTrack('kit',{id:S.nextId++,hits:[{s:0,d:'kick',v:1}]})); save(); flushSave(); renderTracks(); await projSaveCurrent(); await projNew(); S.title='Rainy bassline'; S.bpm=92; S.tracks.push(mkTrack('bass',{id:S.nextId++,notes:[{s:0,l:8,p:40,v:.8,x:true}]})); save(); flushSave(); renderTracks(); });
   await p.tap('#s2Back'); await p.waitForTimeout(400); out.list=await p.$$eval('.nx-row',r=>r.map(x=>x.querySelector('.nx-tt').textContent+' | '+x.querySelector('.nx-mt').textContent)); await p.screenshot({path:'results/nx1.png'});

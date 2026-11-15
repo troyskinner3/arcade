@@ -593,8 +593,8 @@ button.card-head{margin:0;width:100%;padding:10px 14px;border-radius:0;backgroun
 .s2-mix{margin-left:auto;height:34px;padding:0 10px!important;border:1px solid var(--s2-line)!important;border-radius:6px;display:flex;align-items:center;gap:6px;font-weight:600!important;font-size:13px!important;flex:none}
 .s2-tl{flex:1;min-height:0;overflow:auto;position:relative;border-top:1px solid var(--s2-line);border-bottom:1px solid var(--s2-line);touch-action:pan-x pan-y;overscroll-behavior:contain;background:var(--s2-lane)}
 .s2-in{position:relative;width:calc(var(--s2-hdr) + var(--s2-view) * var(--s2-barw));min-width:100%;min-height:100%}
-.s2-ruler{position:sticky;top:0;z-index:3;display:flex;height:26px;background:var(--s2-panel);border-bottom:1px solid var(--s2-line)}
-.s2-corner{position:sticky;left:0;z-index:4;width:var(--s2-hdr);flex:none;background:var(--s2-panel);border-right:1px solid var(--s2-line)}
+.s2-ruler{position:sticky;top:0;z-index:4;display:flex;height:26px;background:var(--s2-panel);border-bottom:1px solid var(--s2-line)}
+.s2-corner{position:sticky;left:0;z-index:5;width:var(--s2-hdr);flex:none;background:var(--s2-panel);border-right:1px solid var(--s2-line)}
 .s2-marks{position:relative;flex:none;width:calc(var(--s2-view) * var(--s2-barw));touch-action:none;cursor:pointer}
 .s2-mk{position:absolute;top:0;bottom:0;border-left:1px solid var(--s2-line);padding-left:4px;font:500 11px/26px var(--f-mono);color:var(--s2-muted)}
 .s2-mk.out{opacity:.45}
@@ -602,8 +602,10 @@ button.card-head{margin:0;width:100%;padding:10px 14px;border-radius:0;backgroun
 .s2-phh::after{content:"";position:absolute;left:3px;top:8px;border:6px solid transparent;border-top:10px solid var(--s2-amber)}
 .s2-ph{position:absolute;top:26px;bottom:0;width:2px;margin-left:-1px;background:var(--s2-amber);z-index:1;pointer-events:none}
 .s2-end{position:absolute;top:26px;bottom:0;left:calc(var(--s2-hdr) + var(--s2-bars) * var(--s2-barw));right:0;background:rgba(0,0,0,.18);pointer-events:none}
+.s2-side{position:sticky;left:0;top:26px;z-index:2;width:var(--s2-hdr);height:0}
+.s2-side::after{content:"";position:absolute;left:0;top:0;width:100%;height:var(--s2-sideh,0px);background:var(--s2-panel);border-right:1px solid var(--s2-line)}
 .s2-trk{display:flex;height:var(--s2-rowh);border-bottom:1px solid var(--s2-line)}
-.s2-th{position:sticky;left:0;z-index:2;width:var(--s2-hdr);flex:none;background:var(--s2-panel);border-right:1px solid var(--s2-line);display:flex;flex-direction:column;justify-content:center;gap:5px;padding:4px 6px 4px 8px}
+.s2-th{position:sticky;left:0;z-index:3;width:var(--s2-hdr);flex:none;background:var(--s2-panel);border-right:1px solid var(--s2-line);display:flex;flex-direction:column;justify-content:center;gap:5px;padding:4px 6px 4px 8px}
 .s2-nm{display:flex!important;align-items:center;gap:6px;font-weight:700!important;font-size:13px!important;text-align:left;min-width:0}
 .s2-nm span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .s2-nm i{width:8px;height:8px;border-radius:2px;flex:none}
@@ -619,7 +621,7 @@ button.card-head{margin:0;width:100%;padding:10px 14px;border-radius:0;backgroun
 .s2-ln canvas{position:absolute;left:0;top:0;height:100%;width:calc(var(--s2-bars) * var(--s2-barw));display:block}
 .s2-trk.dim canvas{opacity:.35}
 .s2-add{display:flex;height:48px}
-.s2-add button{position:sticky;left:0;width:var(--s2-hdr);color:var(--s2-muted)!important;font-weight:700!important;font-size:13px!important;text-align:left;padding-left:10px!important;background:var(--s2-panel)!important;border-right:1px solid var(--s2-line)!important}
+.s2-add button{position:sticky;left:0;z-index:3;width:var(--s2-hdr);color:var(--s2-muted)!important;font-weight:700!important;font-size:13px!important;text-align:left;padding-left:10px!important;background:var(--s2-panel)!important;border-right:1px solid var(--s2-line)!important}
 .s2-hint{position:sticky;left:var(--s2-hdr);width:min(300px,calc(100vw - var(--s2-hdr)));padding:28px 16px;color:var(--s2-muted);text-align:center}
 .s2-hint b{display:block;color:var(--s2-ink);font-size:16px;margin-bottom:4px}
 .s2-bot{flex:none;background:var(--s2-panel)}
@@ -1007,7 +1009,7 @@ function projKeyLabel(){ try{ const has=S.tracks.some(t=>(INST[t.inst].kind==='p
   return NOTE_NAMES[K.tonic]+' '+(({major:'major',minor:'minor','pent-minor':'minor pent.','pent-major':'major pent.',blues:'blues',dorian:'dorian'})[K.scale]||''); }catch(e){ return ''; } }
 /* ---- App shell ---- */
 const nxEsc=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-let nxSortBy='updatedAt', nxAt='studio';
+let nxSortBy='updatedAt', nxAt='studio', nxResume=false;
 function nxThumb(p){ const cols=(p.parts||[]).slice(0,4).map(i=>(INST[i]||{}).color||'#888'); let h=p.title.length*97+(p.bpm||0)+7; const r=()=>((h=(h*16807)%2147483647)/2147483647);
   return '<svg width="34" height="30" viewBox="0 0 34 30" aria-hidden="true">'+cols.map((c,i)=>Array.from({length:5},(_,k)=>r()>.35?`<rect x="${k*7}" y="${i*8+1}" width="${(4+r()*3).toFixed(1)}" height="5" rx="1" fill="${c}"/>`:'').join('')).join('')+'</svg>'; }
 async function nxRenderProjects(){ const q=$('nxQ').value.trim().toLowerCase(); let L=(await projList()).filter(p=>(p.title||'untitled').toLowerCase().includes(q));
@@ -1034,9 +1036,9 @@ function nxInit(){ $('nxBack').onclick=()=>{ if(s2Use()&&s2.detail) s2Show(true)
   $('nxQ').oninput=nxRenderProjects; $('nxScrim').onclick=e=>{ if(e.target===$('nxScrim')) nxClose(); };
   $('nxSort').onclick=e=>{ const b=e.target.closest('button'); if(!b) return; nxSortBy=b.dataset.s; [...$('nxSort').children].forEach(x=>x.setAttribute('aria-pressed',x===b)); nxRenderProjects(); };
   $('nxList').onclick=async e=>{ const m=e.target.closest('[data-menu]'), o=e.target.closest('[data-id]'); if(m) return nxMenu(m.dataset.menu); if(!o) return; if(o.dataset.id!==S.pid) await projOpen(o.dataset.id); nxGo('studio'); };
-  /* opening the app starts a new project, unless you were just here (a reload mid-work brings you back to what you were doing) */
+  /* the app opens on Projects, unless you were just working (a reload mid-work brings you back to your song) */
   let lastAt=0; try{ lastAt=+localStorage.getItem('noodle.active')||0; }catch(e){}
-  if(!nxSongEmpty() && Date.now()-lastAt>10*60*1000) projNew().catch(()=>{});
+  nxResume = !nxSongEmpty() && Date.now()-lastAt<10*60*1000;
   const touch=()=>{ try{ localStorage.setItem('noodle.active',Date.now()); }catch(e){} }; touch(); ['pointerdown','keydown'].forEach(ev=>document.addEventListener(ev,touch,{capture:true,passive:true})); }
 /* ---- Studio (timeline view). A new front on the same engine: parts are drawn as clips on a bar timeline; recording, playback and
    note reading are the existing ones. Note editing, export and timing still open the classic screens ("detail"), with a back button here. ---- */
@@ -1062,19 +1064,21 @@ function s2Render(){ if(!s2On()) return; const el=$('s2'), bars=S.bars, view=Mat
   if(s2.armId!=null && !S.tracks.some(t=>t.id===s2.armId)) s2.armId=null;
   $('s2Name').textContent=S.title||'Untitled'; $('s2Undo').disabled=!hist.undo.length; $('s2Redo').disabled=!hist.redo.length;
   const anySolo=S.tracks.some(t=>t.solo);
-  let h=`<div class="s2-ruler"><div class="s2-corner"></div><div class="s2-marks" id="s2Marks">${Array.from({length:view},(_,i)=>`<span class="s2-mk${i>=bars?' out':''}" style="left:calc(${i} * var(--s2-barw))">${i+1}</span>`).join('')}<span class="s2-phh" id="s2PhH"></span></div></div>`;
+  let h=`<div class="s2-ruler"><div class="s2-corner"></div><div class="s2-marks" id="s2Marks">${Array.from({length:view},(_,i)=>`<span class="s2-mk${i>=bars?' out':''}" style="left:calc(${i} * var(--s2-barw))">${i+1}</span>`).join('')}<span class="s2-phh" id="s2PhH"></span></div></div><div class="s2-side"></div>`;
   S.tracks.forEach(tr=>{ const nm=nxEsc(partName(tr)); h+=`<div class="s2-trk${(tr.mute||(anySolo&&!tr.solo))?' dim':''}"><div class="s2-th"><button class="s2-nm" data-t="${tr.id}"><i style="background:${INST[tr.inst].color}"></i><span>${nm}</span></button><div class="s2-ct">${tr.guide?'':`<button class="s2-arm" data-arm="${tr.id}" aria-pressed="${s2.armId===tr.id}" aria-label="Record into ${nm}"><i></i></button>`}<button class="s2-ms" data-m="${tr.id}" aria-pressed="${!!tr.mute}" aria-label="Mute ${nm}">M</button><button class="s2-ms so" data-s="${tr.id}" aria-pressed="${!!tr.solo}" aria-label="Solo ${nm}">S</button></div></div><div class="s2-ln" data-ln="${tr.id}"><canvas data-cv="${tr.id}"></canvas></div></div>`; });
   if(!S.tracks.length) h+=`<div class="s2-hint"><b>New project</b>Tap record, then pick what you're recording.</div>`;
   h+=`<div class="s2-add"><button id="s2Add">+ Add track</button></div><div class="s2-end"></div><div class="s2-ph" id="s2Ph"></div>`;
   $('s2In').innerHTML=h; S.tracks.forEach(tr=>{ const cv=$('s2In').querySelector(`canvas[data-cv="${tr.id}"]`); if(cv) s2DrawLane(tr,cv); });
-  const tk=takeBar&&!recState; $('s2Take').hidden=!tk; s2.pos=-1; s2Chips(); s2Seek(); }
+  const tk=takeBar&&!recState; $('s2Take').hidden=!tk; s2.pos=-1; s2Chips(); s2Seek(); s2Clip(); }
+/* keep the playhead out from under the track headers, and the header panel as tall as the timeline */
+function s2Clip(){ const tl=$('s2Tl'), a=$('s2Ph'), b=$('s2PhH'); if(!a) return; $('s2').style.setProperty('--s2-sideh',Math.max(0,tl.clientHeight-26)+'px'); const hid=Math.max(0,s2.pos)*s2.barw<tl.scrollLeft-1?'hidden':'visible'; a.style.visibility=hid; b.style.visibility=hid; }
 function s2Chips(){ const b=$('s2Bpm').lastElementChild, k=$('s2Key').lastElementChild, kl=projKeyLabel()||'Auto'; if(b.textContent!==String(S.bpm)) b.textContent=S.bpm; if(k.textContent!==kl) k.textContent=kl;
   const m=$('s2Metro'), on=String(!!S.metro); if(m.getAttribute('aria-pressed')!==on) m.setAttribute('aria-pressed',on); }
 /* called every frame: playhead, position readout, recording banner, stop at the end when Loop is off */
 function s2Tick(frac){ if(!s2On()) return; const bars=S.bars, pos=clamp(frac,0,1)*bars;
   if(playing && !recState && !s2.loop && ctx && ctx.currentTime-t0>=loopLen()-0.03){ togglePlay().then(()=>{ playFrom=0; }); }
   if(Math.abs(pos-s2.pos)>0.002){ s2.pos=pos; const a=$('s2Ph'), b=$('s2PhH'); if(a){ a.style.left=`calc(var(--s2-hdr) + ${pos} * var(--s2-barw))`; b.style.left=`calc(${pos} * var(--s2-barw))`; }
-    $('s2Pos').textContent=(Math.min(bars,Math.floor(pos)+1))+'.'+(Math.floor((pos%1)*4)+1);
+    $('s2Pos').textContent=(Math.min(bars,Math.floor(pos)+1))+'.'+(Math.floor((pos%1)*4)+1); s2Clip();
     if(playing||recState){ const tl=$('s2Tl'), hw=parseFloat(getComputedStyle($('s2')).getPropertyValue('--s2-hdr')), x=hw+pos*s2.barw; if(x>tl.scrollLeft+tl.clientWidth-24||x<tl.scrollLeft+hw) tl.scrollLeft=x-hw-8; } }
   const rec=!!recState; if($('s2').classList.contains('recording')!==rec){ $('s2').classList.toggle('recording',rec); $('s2Rec').hidden=!rec; $('s2RecB').setAttribute('aria-label',rec?'Stop recording':'Record'); if(!rec) s2Render(); }
   if(rec){ const t=$('recLabel').textContent; if($('s2RecL').textContent!==t) $('s2RecL').textContent=t; }
@@ -1125,10 +1129,10 @@ function s2Init(){ const _rt=renderTracks; renderTracks=function(){ _rt.apply(th
   tl.addEventListener('touchstart',e=>{ if(e.touches.length===2){ d0=dist(e.touches); b0=s2.barw; } },{passive:true});
   tl.addEventListener('touchmove',e=>{ if(e.touches.length===2&&d0){ e.preventDefault(); zoom(b0*dist(e.touches)/d0); } },{passive:false});
   tl.addEventListener('touchend',()=>{ d0=0; }); tl.addEventListener('wheel',e=>{ if(e.ctrlKey){ e.preventDefault(); zoom(s2.barw*(e.deltaY<0?1.1:0.9)); } },{passive:false});
-  window.addEventListener('resize',()=>{ if(s2On()) s2Render(); });
+  window.addEventListener('resize',()=>{ if(s2On()) s2Render(); }); tl.addEventListener('scroll',s2Clip,{passive:true});
   const cb=$('nxClassic'), lab=()=>{ $('nxClassicS').textContent=s2Use()?'Off. Tap to use the old screen instead of the timeline.':'On. Tap to go back to the timeline.'; }; lab();
   cb.onclick=()=>{ try{ localStorage.setItem('noodle.studio',s2Use()?'classic':'timeline'); }catch(e){} lab(); };
-  if(s2Use()) s2Show(true); }
+  if(nxResume || new URLSearchParams(location.search).has('studio')){ if(s2Use()) s2Show(true); } else nxGo('projects'); }
 function reloadRaw(){ S.tracks.filter(t=>((t.inst==='vox' && t.va!=null) || (t.expr>0 && t.exprAlign!=null)) && !t._raw).forEach(tr=>loadVox(tr).then(ok=>{ if(!ok) return; redrawTrack(tr); if(tr._row) renderTracks(); if(ctx) scheduleRender(); })); }
 function storeVox(tr){ const {x,sr}=tr._raw; const pcm=new Int16Array(x.length); for(let i=0;i<x.length;i++) pcm[i]=Math.max(-32767,Math.min(32767,Math.round(x[i]*32767))); takeStore.put('vox'+tr.id,{sr,pcm}); }
 async function loadVox(tr){ const r=await takeStore.get('vox'+tr.id); if(!r) return false; const x=new Float32Array(r.pcm.length); for(let i=0;i<x.length;i++) x[i]=r.pcm[i]/32767; tr._raw={x,sr:r.sr}; tr._dirty=true; return true; }
