@@ -304,3 +304,6 @@ Real noise (DEMAND, CC BY 4.0: street traffic, cafeteria, bus, town square, park
   the root README's Noodle section describes the app as it is. Service: at most 40 writes a minute per address, counted in memory only (best-effort). `s2_extras.js`.
 - Known and left for later: the engine still builds the old part rows off-screen on every change (the hidden markup it depends on); removing them is the multi-file refactor.
   The 50 guided-take prompts (owner's test link) have no entry point in the new screens; the voice check covers two of them.
+- **Teach Noodle your voice (shipped):** a card at the top of More opens the 50 guided tunes for anyone, three at a time (listen, then sing it back as the prompt says; `nxTrain`, built on the voice-check flow).
+  Each good take updates the interval profile and is marked done (progress on the card); with sharing on it arrives labelled with its tune. Drum prompts and the one-long-note prompts are included. `train_test.js`.
+- **First launch:** the opening line speaks to people without a DAW too, with three rows on what Audio, Video and the DAW pack are for (the Share sheet says the same); it ends on Projects, nav bar showing, with an example song in the list.

@@ -683,12 +683,17 @@ button.card-head{margin:0;width:100%;padding:10px 14px;border-radius:0;backgroun
 .nx-ob h1{font:700 26px/1.15 var(--f-display);margin:0;text-wrap:balance}
 .nx-ob p,.nx-ob li{font:16px/1.5 var(--f-body);margin:0;color:var(--ink)} .nx-ob ul{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:8px}
 .nx-ob .sub{color:var(--muted)}
+.nx-ways{display:flex;flex-direction:column;margin-top:6px;border-top:1px solid var(--line)} .nx-ways div{display:flex;gap:12px;align-items:baseline;padding:11px 0;border-bottom:1px solid var(--line)} .nx-ways b{flex:none;width:84px;font:700 14px var(--f-body)} .nx-ways span{font:14px/1.4 var(--f-body);color:var(--muted)}
 .nx-ob .brand2{font:700 15px var(--f-display);color:var(--muted)}
 .nx-chk{display:flex;gap:12px;align-items:center;font:600 16px var(--f-body);padding:6px 0} .nx-chk input{width:24px;height:24px;flex:none;accent-color:var(--lcd-ink)}
 .nx-ob .acts{flex:none;display:flex;flex-direction:column;gap:8px;padding-bottom:16px}
 .nx-bar{height:8px;border-radius:4px;background:var(--line);overflow:hidden} .nx-bar i{display:block;height:100%;width:0;background:var(--lcd-ink)}
 .nx-ghost{width:100%;height:48px;border-radius:10px;border:1px solid var(--line);background:none;color:inherit;font:600 16px var(--f-body)}
 .nx-primary:disabled{opacity:.4}
+.nx-train{display:block;width:100%;text-align:left;margin:4px 0 6px;padding:16px;border-radius:14px;border:0;background:var(--lcd);color:#f1f2f4}
+.nx-train b{display:block;font:700 19px/1.2 var(--f-display);color:var(--lcd-ink);margin-bottom:6px}
+.nx-train span{display:block;font:15px/1.4 var(--f-body);color:#c9cdd6}
+.nx-train .nx-bar{margin:12px 0 6px;background:#3a3f4a} .nx-train small{font:500 12px var(--f-mono);color:#9aa1b0}
 .nx-sw{width:46px;height:28px;border-radius:99px;background:var(--line);position:relative;flex:none;border:0}
 .nx-sw::after{content:"";position:absolute;left:3px;top:3px;width:22px;height:22px;border-radius:50%;background:var(--pad)}
 .nx-sw[aria-checked="true"]{background:var(--lcd-ink)} .nx-sw[aria-checked="true"]::after{left:21px}
@@ -841,11 +846,11 @@ button.card-head{margin:0;width:100%;padding:10px 14px;border-radius:0;backgroun
 <section class="nx-view" id="nxMore" hidden>
   <div class="nx-g nx-top"><h1>More</h1></div>
   <div class="nx-list"><div class="nx-g">
+    <button class="nx-train" id="nxTrainCard"><b>Teach Noodle your voice</b><span>Sing a few short tunes back and Noodle gets better at reading you.</span><div class="nx-bar"><i id="nxTrP"></i></div><small id="nxTrS"></small></button>
     <div class="nx-grp">Help Noodle get better</div>
     <div class="nx-item"><span>Share my takes<small id="nxShS"></small></span><button class="nx-sw" id="nxShSw" role="switch" aria-checked="false" aria-label="Share my takes"></button></div>
     <button class="nx-item" id="nxEmail" style="width:100%;background:none;border:0;border-bottom:1px solid var(--line);text-align:left"><span>Email news<small id="nxEmS">Hear about Noodle and what we build next</small></span><svg class="nx-ico" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
     <div class="nx-grp">Your setup</div>
-    <button class="nx-item" id="nxVoice" style="width:100%;background:none;border:0;border-bottom:1px solid var(--line);text-align:left"><span>Voice check<small id="nxVoS">Hum two short tunes back, so Noodle learns how you sing</small></span><svg class="nx-ico" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
     <button class="nx-item" id="nxTiming" style="width:100%;background:none;border:0;border-bottom:1px solid var(--line);text-align:left"><span>Mic and timing<small>Fix notes that land late, and other mic settings</small></span><svg class="nx-ico" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
     <button class="nx-item" id="nxDrums" style="width:100%;background:none;border:0;border-bottom:1px solid var(--line);text-align:left"><span>Your drum sounds<small>Teach Noodle your own noises for each drum</small></span><svg class="nx-ico" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
     <div class="nx-grp">About</div>
@@ -1091,9 +1096,9 @@ async function nxRenderProjects(){ const q=$('nxQ').value.trim().toLowerCase(); 
   const day=t=>new Date(t).toLocaleDateString(undefined,{month:'short',day:'numeric',...(new Date(t).getFullYear()!==new Date().getFullYear()?{year:'numeric'}:{})});
   $('nxList').innerHTML = L.length ? L.map(p=>`<div class="nx-row"><button class="nx-open" data-id="${p.id}"><span class="nx-thumb">${nxThumb(p)}</span><span style="min-width:0"><span class="nx-tt">${nxEsc(p.title||'Untitled')}</span><span class="nx-mt">${[day(p.createdAt), p.key, p.bpm+' BPM'].filter(Boolean).join(' · ')}</span></span></button><button class="nx-dots" data-menu="${p.id}" aria-label="Options for ${nxEsc(p.title||'Untitled')}"><svg class="nx-ico" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="12" cy="19" r="1.4"/></svg></button></div>`).join('')
     : `<p class="nx-empty">${q?'No projects match.':'No projects yet. Tap + to start one.'}</p>${q?'':'<div style="text-align:center"><button class="nx-ghost" id="nxExample" style="width:auto;padding:0 18px">Open an example song</button></div>'}`;
-  const ex=$('nxExample'); if(ex) ex.onclick=nxExample; }
+  const ex=$('nxExample'); if(ex) ex.onclick=()=>nxExample(); }
 /* a small finished song to poke at: play it, open a part, re-record over it */
-async function nxExample(){ await projNew(); S.title='Example song'; S.bpm=94; S.bars=2; S.tracks=exampleTracks().map(t=>{ t.id=S.nextId++; delete t.ex; t.off=0; t.len=2; t.lenSet=true; t.rep=false; t._dirty=true; return t; }); keyCache=null; syncTransport(); save(); flushSave(); await projSaveCurrent(); await nxGo('studio'); renderTracks(); scheduleRender(); }
+async function nxExample(stay){ await projNew(); S.title='Example song'; S.bpm=94; S.bars=2; S.tracks=exampleTracks().map(t=>{ t.id=S.nextId++; delete t.ex; t.off=0; t.len=2; t.lenSet=true; t.rep=false; t._dirty=true; return t; }); keyCache=null; syncTransport(); save(); flushSave(); await projSaveCurrent(); if(stay){ await nxGo('projects'); return; } await nxGo('studio'); renderTracks(); scheduleRender(); }
 async function nxGo(v){ if(v!=='studio'){ flushSave(); if(recState) cancelRecord(); if(playing){ stopAll(); playing=false; updatePlayBtn(); } await projSaveCurrent().catch(()=>{}); }
   nxAt=v; $('nxProjects').hidden=v!=='projects'; $('nxMore').hidden=v!=='more'; $('nxNav').hidden=v==='studio'; document.body.classList.toggle('nx-on',v!=='studio'); document.body.style.overflow=v==='studio'?'':'hidden';
   if(v==='studio' && s2Use()) s2Show(true); else if(v==='studio') s2Show(false); else { $('s2').hidden=true; document.body.classList.remove('s2-on'); }
@@ -1116,7 +1121,7 @@ const NX_EMAIL_TEXT='Get news about Noodle and what we are building next. Unsubs
 const nxSharing=()=>!!(drop&&drop.api), nxLegacy=()=>!!(drop&&!drop.api);
 function nxMoreSync(){ const sw=$('nxShSw'); if(!sw) return; sw.setAttribute('aria-checked',String(nxSharing()||nxLegacy())); $('nxShS').textContent=nxLegacy()?'On, through your test link':nxSharing()?'On. Tap to stop, or to delete what you shared.':'Off. Send recordings and your fixes so Noodle learns. 13+';
   let em=''; try{ em=localStorage.getItem('noodle.email')||''; }catch(e){} $('nxEmS').textContent=em?'Signed up as '+em:'Hear about Noodle and what we build next';
-  let vc=false; try{ vc=!!localStorage.getItem('noodle.voice'); }catch(e){} $('nxVoS').textContent=vc?'Done. Run it again any time.':'Hum two short tunes back, so Noodle learns how you sing'; }
+  const dn=GUIDED.filter(g=>guidedDone.has(g[0])).length; $('nxTrP').style.width=Math.round(dn/GUIDED.length*100)+'%'; $('nxTrS').textContent=dn?`${dn} of ${GUIDED.length} tunes done · about 30 seconds each`:'About 30 seconds a tune · do as many as you like'; }
 function nxShareSheet(){ if(nxLegacy()){ toast('Sharing is on through your test link.'); return; }
   if(!nxSharing()){ nxSheet(`<h2>Share my takes</h2><div class="nx-ob" style="position:static;padding:0;background:none"><div style="display:flex;flex-direction:column;gap:12px">${NX_SHARE_HTML}</div></div><button class="nx-primary" id="nxShOk" disabled>Share my takes</button>`);
     $('nxSheet').onclick=null; $('nxAge').onchange=e=>{ $('nxShOk').disabled=!e.target.checked; }; $('nxShOk').onclick=()=>{ shareEnable(); nxClose(); nxMoreSync(); toast('Thank you. Sharing is on.'); }; return; }
@@ -1128,43 +1133,56 @@ function nxEmailSheet(){ let em=''; try{ em=localStorage.getItem('noodle.email')
   if(em) $('nxEmOff').onclick=async()=>{ const ok=await emailRemove(em); if(ok){ try{ localStorage.removeItem('noodle.email'); }catch(e){} nxClose(); nxMoreSync(); toast('You’re off the list.'); } else toast('That didn’t go through. Try again in a moment.'); }; }
 /* Voice check: Noodle plays a short tune, you hum it back, twice. From how wide you sing the jumps it learns your interval profile (S.sq),
    which decides whether your takes get the whole-line reading. If you share takes, these two are sent like any other, with the tune they answer. */
-const NX_TUNES=[['scale-hum','Up and down the scale'],['ode-hum','Ode to Joy']];
-async function nxVoiceCheck(done){ const O=$('nxOb'), I=$('nxObIn'), A=$('nxObActs'), wait=ms=>new Promise(r=>setTimeout(r,ms)); O.hidden=false; let stop=false, learned=0; const back=S.pid; toastQuiet=true; $('toast').classList.remove('on');
+const NX_TUNES=['scale-hum','ode-hum'];   /* the first-launch voice check */
+const NX_TITLES={scale:'Up and down the scale',twinkle:'Twinkle, Twinkle',mary:'Mary Had a Little Lamb',ode:'Ode to Joy',jingle:'Jingle Bells',frere:'Frère Jacques',birthday:'Happy Birthday',birthday2:'Happy Birthday, the ending',long:'One long note',
+  row:'Row, Row, Row Your Boat',london:'London Bridge',yankee:'Yankee Doodle',saints:'When the Saints',farm:'Old MacDonald',buns:'Hot Cross Buns',joy:'Joy to the World',susanna:'Oh! Susanna',taps:'Taps',kumbaya:'Kumbaya',michael:'Michael, Row the Boat Ashore',
+  arpeggio:'Up and down a chord',jumps:'Big jumps',beat:'A drum beat',each:'Kick, snare, hat'};
+const nxTune=id=>{ const g=GUIDED.find(x=>x[0]===id)||[id,'','']; return {title:NX_TITLES[g[1]]||g[1], how:g[2]||'', kit:g[3]==='kit'}; };
+const nxTuneDone=id=>{ guidedDone.add(id); try{ localStorage.setItem('noodle.guided',JSON.stringify([...guidedDone])); }catch(e){} };
+/* "Teach Noodle your voice": three tunes at a time, picking up where you left off (all 50, then round again) */
+async function nxTrain(){ for(;;){ let next=GUIDED.map(g=>g[0]).filter(id=>!guidedDone.has(id)); if(!next.length){ next=GUIDED.map(g=>g[0]); }
+    const r=await nxVoiceCheck(null,{tunes:next.slice(0,3), train:true}); if(r!=='more') break; } }
+async function nxVoiceCheck(done, opt={}){ const TUNES=opt.tunes||NX_TUNES; let result='done'; const O=$('nxOb'), I=$('nxObIn'), A=$('nxObActs'), wait=ms=>new Promise(r=>setTimeout(r,ms)); O.hidden=false; let stop=false, learned=0; const back=S.pid; toastQuiet=true; $('toast').classList.remove('on');
   const end=async()=>{ stop=true; if(recState) cancelRecord(); if(playing&&ctx){ stopAll(); playing=false; updatePlayBtn(); } takeBar=null;
     if(S.prompt){ if(back && await projDb.get(back)) await projOpen(back); else await projNew(); }
-    toastQuiet=false; O.hidden=true; nxMoreSync(); if(done) done(); };
+    toastQuiet=false; O.hidden=true; nxMoreSync(); if(done) done(); return result; };
   const ask=(html,acts)=>new Promise(res=>{ I.innerHTML=html; A.innerHTML=acts.map(([id,label,cls])=>`<button class="${cls}" id="${id}">${label}</button>`).join(''); acts.forEach(([id],k)=>{ $(id).onclick=()=>res(k); }); });
-  if(await ask(`<h1>Voice check</h1><p class="sub">Noodle plays two short tunes. Hum each one back. It learns how you sing, so your notes come out right more often.</p><p class="sub">Takes about a minute. Somewhere quiet works best.</p>`,[['vcGo','Start','nx-primary'],['vcSkip','Skip for now','nx-ghost']])!==0) return end();
-  ensureCtx(); if(micOff){ await end(); toast('The microphone isn’t available here.'); return; }
-  for(let i=0;i<NX_TUNES.length && !stop;i++){ let tries=0, good=false;
-    while(!good && !stop && tries<2){ tries++; await guidedSetup(NX_TUNES[i][0]); const take=S.tracks.find(t=>!t.guide);
-      I.innerHTML=`<p class="sub">Tune ${i+1} of ${NX_TUNES.length} · ${NX_TUNES[i][1]}</p><h1 id="vcH">Listen</h1><div class="nx-bar"><i id="vcP"></i></div><p class="sub" id="vcS">Just listen this time.</p>`; A.innerHTML=`<button class="nx-ghost" id="vcStop">Stop the voice check</button>`; $('vcStop').onclick=()=>{ stop=true; };
+  const left=GUIDED.filter(g=>!guidedDone.has(g[0])).length;
+  if(await ask(opt.train ? `<h1>Teach Noodle your voice</h1><p class="sub">Noodle plays a short tune, you sing it back. Each one teaches Noodle a little more about how you sing, so your own songs come out right more often.</p><p class="sub">${TUNES.length} tunes now, about a minute and a half. ${left?left+' of '+GUIDED.length+' still to go.':'You’ve done them all; another round keeps it sharp.'}</p>${nxSharing()||nxLegacy()?'':'<p class="sub">With Share my takes on (below, in More), these also help Noodle improve for everyone.</p>'}`
+      : `<h1>Voice check</h1><p class="sub">Noodle plays two short tunes. Hum each one back. It learns how you sing, so your notes come out right more often.</p><p class="sub">Takes about a minute. Somewhere quiet works best.</p>`,[['vcGo','Start','nx-primary'],['vcSkip',opt.train?'Not now':'Skip for now','nx-ghost']])!==0) return end();
+  ensureCtx(); if(micOff){ await end(); toast('The microphone isn’t available here.'); return 'done'; }
+  for(let i=0;i<TUNES.length && !stop;i++){ let tries=0, good=false; const tu=nxTune(TUNES[i]);
+    while(!good && !stop && tries<2){ tries++; await guidedSetup(TUNES[i]); const take=S.tracks.find(t=>!t.guide);
+      I.innerHTML=`<p class="sub">Tune ${i+1} of ${TUNES.length} · ${nxEsc(tu.title)}</p><h1 id="vcH">Listen</h1><div class="nx-bar"><i id="vcP"></i></div><p class="sub" id="vcS">Just listen this time.</p><p id="vcHow" style="font-weight:600">Then: ${nxEsc(tu.how)}</p>`; A.innerHTML=`<button class="nx-ghost" id="vcStop">Stop</button>`; $('vcStop').onclick=()=>{ stop=true; };
       await renderDirty(); const L=loopLen(); startAll(ctx.currentTime+0.15,0); playing=true; const t1=performance.now();
       while(performance.now()-t1<(L+0.3)*1000 && !stop){ $('vcP').style.width=Math.min(100,(performance.now()-t1)/(L*10))+'%'; await wait(60); }
       stopAll(); playing=false; updatePlayBtn(); if(stop) break;
-      $('vcH').textContent='Your turn'; $('vcS').textContent='After four clicks, hum it back.'; $('vcP').style.width='0%';
+      $('vcH').textContent='Your turn'; $('vcS').textContent='After four clicks.'; $('vcHow').textContent=tu.how; $('vcP').style.width='0%';
       await recordInto(take.id); if(!recState){ await end(); toast('The microphone isn’t available here.'); return; }
       while((recState||rs.mode) && !stop){ const r=recState; if(r&&ctx){ $('vcS').textContent=$('recLabel').textContent; $('vcP').style.width=clamp((ctx.currentTime-r.start)/(r.end-r.start)*100,0,100)+'%'; } else $('vcS').textContent='Listening to your take…'; await wait(80); }
       if(stop) break; if(playing){ stopAll(); playing=false; updatePlayBtn(); } takeBar=null;
-      const tk=S.tracks.find(t=>!t.guide); good=!!(tk&&tk.notes&&tk.notes.length>=5);
-      if(good){ if(!drop){ learnSqueeze(tk); persist(); } learned++; }   /* when sharing is on, sending the take already counted it */
-      else if(tries<2){ if(await ask(`<h1>Let’s try that once more</h1><p class="sub">I couldn’t hear enough notes. Hum a little louder, closer to the phone.</p>`,[['vcRe','Try again','nx-primary'],['vcStop2','Stop the voice check','nx-ghost']])!==0) stop=true; } } }
+      const tk=S.tracks.find(t=>!t.guide); good=!!(tk&&(tu.kit ? (tk.hits||[]).length>=4 : /^long-/.test(TUNES[i]) ? (tk.notes||[]).length>=1 : (tk.notes||[]).length>=5));
+      if(good){ if(!drop && tk.notes && !tu.kit){ learnSqueeze(tk); persist(); } nxTuneDone(TUNES[i]); learned++; }   /* when sharing is on, sending the take already counted it */
+      else if(tries<2){ if(await ask(`<h1>Let’s try that once more</h1><p class="sub">I couldn’t hear enough of it. A little louder, closer to the phone.</p>`,[['vcRe','Try again','nx-primary'],['vcStop2','Stop','nx-ghost']])!==0) stop=true; } } }
   if(stop) return end();
   try{ if(learned) localStorage.setItem('noodle.voice',String(Date.now())); }catch(e){}
-  await ask(learned ? `<h1>All set</h1><p class="sub">Thanks. Noodle knows your voice a little better now.</p><p class="sub">You can run the voice check again any time in More.</p>`
-    : `<h1>That didn’t work this time</h1><p class="sub">I couldn’t hear the tunes clearly, so nothing changed. You can run the voice check again any time in More.</p>`,[['vcDone','Done','nx-primary']]);
-  end(); }
+  if(opt.train){ const dn=GUIDED.filter(g=>guidedDone.has(g[0])).length;
+    const k=await ask(learned ? `<h1>Nice.</h1><p class="sub">Noodle knows your voice a little better now.</p><p class="sub">${dn} of ${GUIDED.length} tunes done.</p>` : `<h1>That didn’t work this time</h1><p class="sub">I couldn’t hear the tunes clearly, so nothing changed.</p>`,[['vcMore',learned?'Do three more':'Try again','nx-primary'],['vcDone','Done for now','nx-ghost']]);
+    if(k===0) result='more'; return end(); }
+  await ask(learned ? `<h1>All set</h1><p class="sub">Thanks. Noodle knows your voice a little better now.</p><p class="sub">You can teach it more any time in More.</p>`
+    : `<h1>That didn’t work this time</h1><p class="sub">I couldn’t hear the tunes clearly, so nothing changed. You can try again any time in More.</p>`,[['vcDone','Done','nx-primary']]);
+  return end(); }
 /* First launch: what Noodle is, then the two optional choices. Shown once. */
 function nxOnboard(done){ const O=$('nxOb'), I=$('nxObIn'), A=$('nxObActs'); O.hidden=false; let step=0;
   const finish=()=>{ try{ localStorage.setItem('noodle.onboard','1'); }catch(e){} nxMoreSync(); nxVoiceCheck(done); };
   const show=()=>{ if(step===1 && (nxSharing()||nxLegacy())) step=2;
-    if(step===0){ I.innerHTML=`<div class="brand2">Noodle</div><h1>Get the song out of your head</h1><p class="sub">Hum, sing or beatbox. Noodle turns it into instruments you can edit, then send to your DAW.</p>`; A.innerHTML=`<button class="nx-primary" id="obN">Get started</button>`; $('obN').onclick=()=>{ step=1; show(); }; }
+    if(step===0){ I.innerHTML=`<div class="brand2">Noodle</div><h1>Get the song out of your head</h1><p class="sub">Hum, sing or beatbox. Noodle turns it into instruments you can edit. Then share it with friends, post it, or take it into your DAW to finish.</p><div class="nx-ways"><div><b>Audio</b><span>Send it to friends, or put it on SoundCloud</span></div><div><b>Video</b><span>Post it on TikTok, Reels or YouTube, or keep editing in CapCut</span></div><div><b>DAW pack</b><span>Every track as audio and MIDI, with the tempo and key, for Logic, Ableton, FL Studio or GarageBand</span></div></div>`; A.innerHTML=`<button class="nx-primary" id="obN">Get started</button>`; $('obN').onclick=()=>{ step=1; show(); }; }
     else if(step===1){ I.innerHTML=`<h1>Help Noodle get better?</h1>${NX_SHARE_HTML}`; A.innerHTML=`<button class="nx-primary" id="obY" disabled>Share my takes</button><button class="nx-ghost" id="obS">Not now</button>`;
       $('nxAge').onchange=e=>{ $('obY').disabled=!e.target.checked; }; $('obY').onclick=()=>{ shareEnable(); step=2; show(); }; $('obS').onclick=()=>{ step=2; show(); }; }
     else { I.innerHTML=`<h1>Want news?</h1><p class="sub">${NX_EMAIL_TEXT}</p><input class="nx-txt" id="obEm" type="email" inputmode="email" autocomplete="email" placeholder="you@example.com" aria-label="Email address">`; A.innerHTML=`<button class="nx-primary" id="obE">Sign me up</button><button class="nx-ghost" id="obK">Skip</button>`;
       $('obK').onclick=finish; $('obE').onclick=async()=>{ const v=$('obEm').value.trim(); if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v)){ toast('That doesn’t look like an email address.'); return; } $('obE').disabled=true; const ok=await emailSignup(v,NX_EMAIL_TEXT); if(ok){ try{ localStorage.setItem('noodle.email',v); }catch(e){} finish(); } else { $('obE').disabled=false; toast('That didn’t go through. You can sign up later in More.'); } }; } };
   show(); }
-function nxInit(){ $('nxVoice').onclick=()=>nxVoiceCheck(); $('nxShSw').onclick=nxShareSheet; $('nxEmail').onclick=nxEmailSheet; nxMoreSync(); $('nxBack').onclick=()=>nxGo('projects'); $('nxTabP').onclick=()=>nxGo('projects'); $('nxTabM').onclick=()=>nxGo('more'); $('nxPlus').onclick=nxNew;
+function nxInit(){ $('nxTrainCard').onclick=()=>nxTrain(); $('nxShSw').onclick=nxShareSheet; $('nxEmail').onclick=nxEmailSheet; nxMoreSync(); $('nxBack').onclick=()=>nxGo('projects'); $('nxTabP').onclick=()=>nxGo('projects'); $('nxTabM').onclick=()=>nxGo('more'); $('nxPlus').onclick=nxNew;
   $('nxQ').oninput=nxRenderProjects; $('nxScrim').onclick=e=>{ if(e.target===$('nxScrim')) nxClose(); };
   $('nxSort').onclick=e=>{ const b=e.target.closest('button'); if(!b) return; nxSortBy=b.dataset.s; [...$('nxSort').children].forEach(x=>x.setAttribute('aria-pressed',x===b)); nxRenderProjects(); };
   $('nxList').onclick=async e=>{ const m=e.target.closest('[data-menu]'), o=e.target.closest('[data-id]'); if(m) return nxMenu(m.dataset.menu); if(!o) return; if(o.dataset.id!==S.pid) await projOpen(o.dataset.id); nxGo('studio'); };
@@ -1274,9 +1292,9 @@ function s2EdClose(){ const tr=S.tracks.find(t=>t.id===s2.edId); if(tr){ tr._cv=
 /* Share, inside the Studio. A linear song is exported once through (Loop is only for listening). */
 function s2ShareSheet(){ if(!S.tracks.some(hasContent)){ toast('Record something first'); return; } if(playing) togglePlay();
   nxSheet(`<h2>Share “${nxEsc(S.title||'Untitled')}”</h2>
-    <button class="nx-act" data-k="daw"><span>Send to your DAW<small>Every track as audio and MIDI, with the tempo and key, in one .zip</small></span></button>
-    <button class="nx-act" data-k="audio"><span>Audio<small>The whole song as one file</small></span></button>
-    <button class="nx-act" data-k="video"><span>Video<small>For posting: your parts move to the beat</small></span></button>
+    <button class="nx-act" data-k="daw"><span>DAW pack<small>To finish it in Logic, Ableton, FL Studio or GarageBand: every track as audio and MIDI, with the tempo and key, in one .zip</small></span></button>
+    <button class="nx-act" data-k="audio"><span>Audio<small>The whole song as one file, to send to friends or put on SoundCloud</small></span></button>
+    <button class="nx-act" data-k="video"><span>Video<small>To post on TikTok, Reels or YouTube, or keep editing in CapCut: your parts move to the beat</small></span></button>
     <div class="s2-shst" id="s2ShSt" hidden></div><div class="nx-bar s2-shbar" id="s2ShBar" hidden><i></i></div><div class="s2-shgo" id="s2ShGo" hidden><button class="go" id="s2ShNow">Share</button><button id="s2ShSave">Save to Files</button></div>`);
   const st=m=>{ const e=$('s2ShSt'); if(e){ e.hidden=!m; e.textContent=m||''; } }, bar=(mode,frac)=>{ const e=$('s2ShBar'); if(!e) return; e.hidden=!mode; e.classList.toggle('ind',mode==='ind'); if(mode==='pct') e.firstElementChild.style.width=Math.round(clamp(frac,0,1)*100)+'%'; else e.firstElementChild.style.width=''; }, lock=v=>$('nxSheet').querySelectorAll('.nx-act').forEach(b=>{ b.disabled=v; });
   $('s2ShNow').onclick=()=>shareNow(); $('s2ShSave').onclick=()=>{ if(shareFile) offerFile(shareFile.name, shareFile); };
@@ -1403,7 +1421,7 @@ function s2Init(){ const _rt=renderTracks; renderTracks=function(){ if(s2.post &
     nxSheet(`<h2>Your drum sounds</h2><p style="color:var(--muted);font-size:14px;margin:0 0 6px">Make your noise for a drum on every click, and Noodle learns to tell your sounds apart.</p>${rows}<button class="nx-primary" id="nxTeachAll">Teach them all</button>`);
     $('nxSheet').onclick=e=>{ const b=e.target.closest('[data-teach]'); const all=e.target.closest('#nxTeachAll'); if(!b&&!all) return; nxClose(); ensureCtx(); startTeach(all?S.kit.slots.map(x=>x.id):[b.dataset.teach]); }; };
   let seen=true; try{ seen=!!localStorage.getItem('noodle.onboard'); }catch(e){}
-  if(nxResume || new URLSearchParams(location.search).has('studio')){ if(s2Use()) s2Show(true); } else { nxGo('projects'); if(!seen) nxOnboard(()=>nxNew()); } }
+  if(nxResume || new URLSearchParams(location.search).has('studio')){ if(s2Use()) s2Show(true); } else { nxGo('projects'); if(!seen) nxOnboard(async()=>{ if(!((await projList())||[]).length) await nxExample(true); else await nxGo('projects'); }); } }
 function reloadRaw(){ S.tracks.filter(t=>((t.inst==='vox' && t.va!=null) || (t.expr>0 && t.exprAlign!=null)) && !t._raw).forEach(tr=>loadVox(tr).then(ok=>{ if(!ok) return; redrawTrack(tr); if(tr._row) renderTracks(); if(ctx) scheduleRender(); })); }
 function storeVox(tr){ const {x,sr}=tr._raw; const pcm=new Int16Array(x.length); for(let i=0;i<x.length;i++) pcm[i]=Math.max(-32767,Math.min(32767,Math.round(x[i]*32767))); takeStore.put('vox'+tr.id,{sr,pcm}); }
 async function loadVox(tr){ const r=await takeStore.get('vox'+tr.id); if(!r) return false; const x=new Float32Array(r.pcm.length); for(let i=0;i<x.length;i++) x[i]=r.pcm[i]/32767; tr._raw={x,sr:r.sr}; tr._dirty=true; return true; }
