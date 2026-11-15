@@ -15,36 +15,21 @@
 
 Tests on Linux/Mac: `cd NoodleKit && swift test`.
 
-## Noodle app (TestFlight build): `NoodleWeb/`
-The full Noodle web app inside a native shell (`NoodleWebApp.swift`): plays through the silent switch, mic permission asked once,
-exports (WAV, MIDI, video) go to the share sheet. Later builds move pitch reading, the note reader and live expression into Swift.
+## Noodle app: `NoodleWeb/`
+The full Noodle web app inside a native shell (`NoodleWebApp.swift`). The web app ships inside the app (`NoodleWeb/web`, served at `noodle://app/`), so it works offline
+and each build is a fixed version. Native pieces: plays through the silent switch, mic permission asked once, exports go to the share sheet.
+If iOS won't let the bundled page use the microphone, the app loads the live site instead.
 
 ### Run it on your iPhone
-1. Xcode → File → New → Project → iOS → **App**. Product Name **Noodle**, Team = your developer team,
-   Organization Identifier = the one Tuttii Inc. uses for its apps (Noodle ships from the Tuttii Inc. developer account; the bundle ID cannot be changed after release, so use the company one, not a personal one), Interface **SwiftUI**, Language **Swift**.
-2. Delete the generated `NoodleApp.swift` and `ContentView.swift`. Drag `NoodleWeb/NoodleWebApp.swift` into the project (tick "Copy items if needed").
-3. Target **Noodle** → **General**: Minimum Deployments **iOS 16.0**.
-4. Target → **Info** → add these keys (the + button on any row):
-   - `Privacy - Microphone Usage Description` = `Noodle listens to your voice to turn it into music.`
-   - `App Uses Non-Exempt Encryption` = `NO` (skips the export-compliance question on every upload)
-5. **Assets** → **AppIcon** → drag `NoodleWeb/AppIcon-1024.png` into the 1024 slot.
-6. Target → **Signing & Capabilities**: Automatically manage signing, your team.
-7. Plug in the iPhone, pick it as the run destination at the top, press ▶. (First time: on the phone, Settings → Privacy & Security → Developer Mode on; and Settings → General → VPN & Device Management → trust your developer certificate if asked.)
+The Xcode project is in the repo (`NoodleWeb/Noodle.xcodeproj`): nothing to create or drag.
+1. Terminal: `cd ~ && (test -d arcade && (cd arcade && git pull) || git clone https://github.com/troyskinner3/arcade.git)`
+2. Terminal: `open ~/arcade/noodle-ios/NoodleWeb/Noodle.xcodeproj`
+3. In Xcode: click the blue **Noodle** icon at the top of the left sidebar → under TARGETS click **Noodle** → **Signing & Capabilities** tab → **Team**: pick your team.
+   If it says the bundle identifier is not available, change **Bundle Identifier** to something of your own (e.g. add your initials to the end).
+4. Plug in the iPhone, pick it at the top of the window, press ▶.
 
-### Bundled web app (for the App Store build)
-The app now carries the web app inside it (`NoodleWeb/web`, served at `noodle://app/`), so it works offline and each release is a fixed
-version. Fonts and the video maker are bundled too (nothing loads from other sites). If iOS won't let the bundled page use the
-microphone, the app quietly loads the live site instead. To check which one you got: Safari → Develop → your iPhone → the page address
-starts with `noodle://` (bundled) or `https://` (live).
-
-Update an existing Xcode project once:
-1. On the Mac: `git pull`, then in Terminal `arcade/noodle-ios/sync-web.sh` (copies the latest web app into `NoodleWeb/web`; run it before every release build).
-2. In Xcode's left sidebar, right-click the old `NoodleWebApp.swift` → **Delete** → **Move to Trash**. Then drag `noodle-ios/NoodleWeb/NoodleWebApp.swift`
-   from Finder into the sidebar and **untick** "Copy items if needed" (so later `git pull`s update it), target **Noodle** ticked → Finish.
-3. Drag the `noodle-ios/NoodleWeb/web` folder into the sidebar: **untick** "Copy items if needed", choose **Create folder references**
-   (it shows as a blue folder), target **Noodle** ticked → Finish.
-4. Drag `noodle-ios/NoodleWeb/PrivacyInfo.xcprivacy` into the sidebar the same way (target ticked). Apple requires this privacy manifest.
-5. ▶ Run on the iPhone.
+To update later: `cd ~/arcade && git pull`, then ▶ again. (`sync-web.sh` copies `../noodle` into `NoodleWeb/web`; it is run before each commit, so the folder in the repo is already current.)
+The App Store build should use Tuttii Inc.'s team and bundle identifier (it cannot be changed after release).
 
 ### TestFlight
 1. https://appstoreconnect.apple.com → Apps → **+** → New App: platform iOS, name (e.g. "Noodle: Hum to Music" if "Noodle" is taken), the bundle ID from step 1, any SKU.
