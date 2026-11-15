@@ -15,6 +15,7 @@ const {chromium,devices}=require('playwright');
   await drag(X(1),X(3)); out.moved=await st();                // body: two bars later
   await p.tap('#s2CbDup'); await p.waitForTimeout(350); out.dup=await st(); out.dupSelected=await p.evaluate(()=>S.tracks.findIndex(t=>t.id===s2.selId)); await p.screenshot({path:'results/rg2.png'});
   await p.tap('#s2CbDel'); await p.waitForTimeout(400); out.del=await st(); out.afterDel=await p.evaluate(()=>({sel:s2.selId, bar:$('s2Clip').hidden}));
+  out.scrolledToCopy=await p.evaluate(()=>$('s2Tl').scrollLeft>0); await p.evaluate(()=>{ $('s2Tl').scrollLeft=0; }); await p.waitForTimeout(200);
   await p.mouse.click(X(2.5),lane.y); await p.waitForTimeout(250); await p.mouse.click(X(2.5),lane.y); await p.waitForTimeout(500); out.tapAgainEdits=await p.evaluate(()=>!$('s2Ed').hidden); await p.tap('#s2EdBack');
   await p.waitForTimeout(450); await p.mouse.click(X(0.5),lane.y); await p.waitForTimeout(250); out.deselect=await p.evaluate(()=>s2.selId);
   await p.tap('#s2Undo'); await p.waitForTimeout(500); out.undo=await st();
