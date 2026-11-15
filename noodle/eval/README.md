@@ -254,3 +254,10 @@ Real noise (DEMAND, CC BY 4.0: street traffic, cafeteria, bus, town square, park
   back button on the existing studio. Opening the app starts a new project unless it was used in the last 10 minutes (a reload mid-work returns to the song). No example song on a fresh install.
   Checked by `shell_test.js`; the 31-take replay is unchanged (3.88).
 - Next: Studio in portrait on a clip timeline, track sheets, landscape, first launch and More.
+- **Step 2a (shipped): Studio timeline view** (`s2*` functions, `.s2-*` styles), the default studio; More → "Classic studio" switches back. A new front on the same engine:
+  bar ruler with draggable playhead, one lane per part drawn as clips (repeats shown lighter), track headers with record-arm / mute / solo, track sheet (sound, volume, edit, delete),
+  tempo + length, key + snap and mix sheets, transport (metronome, back to start, play, record, loop; play stops at the end unless Loop is on), take bar (Retake / Discard / Keep),
+  pinch to zoom. Record with nothing armed asks what you're recording first. New projects are 4 bars.
+  Still the classic screens, opened from here with a back button: note editing (tap a clip), Share/export, timing and drum teaching.
+  Not yet linear: a part still starts at bar 1 and the song has a set length (1–16 bars). Checked by `s2_test.js` (simulated mic); 31-take replay unchanged (3.88).
+- Next (2b): clips anywhere on the timeline and recording from the playhead until stopped; note editor and Share inside the new Studio; landscape pass; first launch and More.

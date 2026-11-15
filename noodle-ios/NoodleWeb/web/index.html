@@ -572,6 +572,76 @@ button.card-head{margin:0;width:100%;padding:10px 14px;border-radius:0;backgroun
 .nx-item{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 0;border-bottom:1px solid var(--line);color:inherit;text-decoration:none;font:600 16px var(--f-body)}
 .nx-item small{display:block;font:400 13px var(--f-body);color:var(--muted)}
 .nx-grp{font:700 11px var(--f-mono);color:var(--muted);text-transform:uppercase;letter-spacing:.08em;padding:18px 0 4px}
+.s2{position:fixed;inset:0;z-index:30;display:flex;flex-direction:column;background:var(--s2-bg);color:var(--s2-ink);padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+  --s2-bg:#14161b;--s2-panel:#1c1f26;--s2-raise:#262a33;--s2-line:#333845;--s2-ink:#eef0f4;--s2-muted:#9299a8;--s2-amber:#f1c75b;--s2-amber-ink:#1b1608;--s2-lane:#191c22;--s2-lane2:#1e2129;
+  --s2-hdr:116px;--s2-rowh:64px;--s2-barw:44px;--s2-bars:8;--s2-view:16;--s2-gl:max(12px,env(safe-area-inset-left,0px));--s2-gr:max(12px,env(safe-area-inset-right,0px));font-family:var(--f-body)}
+@media (prefers-color-scheme: light){ :root:not([data-theme="dark"]) .s2{--s2-bg:#e7e9ec;--s2-panel:#f6f7f9;--s2-raise:#fff;--s2-line:#cfd3da;--s2-ink:#15171c;--s2-muted:#5b616c;--s2-amber:#b7791f;--s2-amber-ink:#fff;--s2-lane:#eceef1;--s2-lane2:#e3e6eb} }
+:root[data-theme="light"] .s2{--s2-bg:#e7e9ec;--s2-panel:#f6f7f9;--s2-raise:#fff;--s2-line:#cfd3da;--s2-ink:#15171c;--s2-muted:#5b616c;--s2-amber:#b7791f;--s2-amber-ink:#fff;--s2-lane:#eceef1;--s2-lane2:#e3e6eb}
+@media (orientation: landscape) and (min-width: 560px){ .s2{--s2-hdr:176px;--s2-rowh:54px} }
+.s2 button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
+.s2 button:focus-visible{outline:2px solid var(--s2-amber);outline-offset:2px}
+.s2-g{padding-left:var(--s2-gl);padding-right:var(--s2-gr)}
+.s2-top{display:flex;align-items:center;gap:4px;padding-top:6px;padding-bottom:6px;flex:none}
+.s2-name{flex:1;min-width:0;font-weight:700;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:left;padding:8px 4px!important}
+.s2-ib{width:40px;height:40px;border-radius:8px;display:grid;place-items:center;flex:none}
+.s2-ib:disabled{opacity:.35}
+.s2-share{background:var(--s2-amber)!important;color:var(--s2-amber-ink)!important;border-radius:8px;height:36px;padding:0 12px!important;font-weight:700!important;display:flex;align-items:center;gap:6px;flex:none}
+.s2-info{display:flex;align-items:center;gap:6px;padding-bottom:8px;flex:none}
+.s2-lcd{background:#0d0f12;color:#f1c75b;border-radius:6px;padding:6px 10px;font:700 15px var(--f-mono);font-variant-numeric:tabular-nums;min-width:56px;text-align:center;flex:none}
+.s2-chip{border:1px solid var(--s2-line)!important;border-radius:6px;padding:7px 9px!important;font:500 13px var(--f-mono)!important;white-space:nowrap;flex:none}
+.s2-chip small{color:var(--s2-muted);font-size:11px;margin-right:4px}
+.s2-mix{margin-left:auto;height:34px;padding:0 10px!important;border:1px solid var(--s2-line)!important;border-radius:6px;display:flex;align-items:center;gap:6px;font-weight:600!important;font-size:13px!important;flex:none}
+.s2-tl{flex:1;min-height:0;overflow:auto;position:relative;border-top:1px solid var(--s2-line);border-bottom:1px solid var(--s2-line);touch-action:pan-x pan-y;overscroll-behavior:contain;background:var(--s2-lane)}
+.s2-in{position:relative;width:calc(var(--s2-hdr) + var(--s2-view) * var(--s2-barw));min-width:100%;min-height:100%}
+.s2-ruler{position:sticky;top:0;z-index:3;display:flex;height:26px;background:var(--s2-panel);border-bottom:1px solid var(--s2-line)}
+.s2-corner{position:sticky;left:0;z-index:4;width:var(--s2-hdr);flex:none;background:var(--s2-panel);border-right:1px solid var(--s2-line)}
+.s2-marks{position:relative;flex:none;width:calc(var(--s2-view) * var(--s2-barw));touch-action:none;cursor:pointer}
+.s2-mk{position:absolute;top:0;bottom:0;border-left:1px solid var(--s2-line);padding-left:4px;font:500 11px/26px var(--f-mono);color:var(--s2-muted)}
+.s2-mk.out{opacity:.45}
+.s2-phh{position:absolute;top:0;width:18px;height:26px;margin-left:-9px;z-index:1;pointer-events:none}
+.s2-phh::after{content:"";position:absolute;left:3px;top:8px;border:6px solid transparent;border-top:10px solid var(--s2-amber)}
+.s2-ph{position:absolute;top:26px;bottom:0;width:2px;margin-left:-1px;background:var(--s2-amber);z-index:1;pointer-events:none}
+.s2-end{position:absolute;top:26px;bottom:0;left:calc(var(--s2-hdr) + var(--s2-bars) * var(--s2-barw));right:0;background:rgba(0,0,0,.18);pointer-events:none}
+.s2-trk{display:flex;height:var(--s2-rowh);border-bottom:1px solid var(--s2-line)}
+.s2-th{position:sticky;left:0;z-index:2;width:var(--s2-hdr);flex:none;background:var(--s2-panel);border-right:1px solid var(--s2-line);display:flex;flex-direction:column;justify-content:center;gap:5px;padding:4px 6px 4px 8px}
+.s2-nm{display:flex!important;align-items:center;gap:6px;font-weight:700!important;font-size:13px!important;text-align:left;min-width:0}
+.s2-nm span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.s2-nm i{width:8px;height:8px;border-radius:2px;flex:none}
+.s2-ct{display:flex;align-items:center;gap:5px}
+.s2-arm{width:30px;height:30px;border-radius:50%!important;border:2px solid var(--rec)!important;display:grid!important;place-items:center;flex:none}
+.s2-arm i{width:12px;height:12px;border-radius:50%;background:var(--rec);opacity:.25}
+.s2-arm[aria-pressed="true"]{background:var(--rec)!important} .s2-arm[aria-pressed="true"] i{background:#fff;opacity:1}
+.s2-ms{width:30px;height:30px;border-radius:6px!important;border:1px solid var(--s2-line)!important;font:700 11px var(--f-mono)!important;flex:none}
+.s2-ms[aria-pressed="true"]{background:var(--s2-ink)!important;color:var(--s2-bg)!important}
+.s2-ms.so[aria-pressed="true"]{background:var(--s2-amber)!important;color:var(--s2-amber-ink)!important;border-color:var(--s2-amber)!important}
+.s2-ln{position:relative;flex:none;width:calc(var(--s2-view) * var(--s2-barw));background-image:linear-gradient(90deg,var(--s2-line) 1px,transparent 1px);background-size:var(--s2-barw) 100%}
+.s2-trk:nth-child(odd) .s2-ln{background-color:var(--s2-lane2)}
+.s2-ln canvas{position:absolute;left:0;top:0;height:100%;width:calc(var(--s2-bars) * var(--s2-barw));display:block}
+.s2-trk.dim canvas{opacity:.35}
+.s2-add{display:flex;height:48px}
+.s2-add button{position:sticky;left:0;width:var(--s2-hdr);color:var(--s2-muted)!important;font-weight:700!important;font-size:13px!important;text-align:left;padding-left:10px!important;background:var(--s2-panel)!important;border-right:1px solid var(--s2-line)!important}
+.s2-hint{position:sticky;left:var(--s2-hdr);width:min(300px,calc(100vw - var(--s2-hdr)));padding:28px 16px;color:var(--s2-muted);text-align:center}
+.s2-hint b{display:block;color:var(--s2-ink);font-size:16px;margin-bottom:4px}
+.s2-bot{flex:none;background:var(--s2-panel)}
+.s2-rec{display:flex;align-items:center;gap:8px;padding-top:8px;padding-bottom:8px;background:var(--rec);color:#fff;font-weight:700;font-size:14px}
+.s2-take{display:flex;align-items:center;gap:8px;padding-top:8px;padding-bottom:0}
+.s2-take span{flex:1;min-width:0;font-weight:700;font-size:14px}
+.s2-take button{height:38px;padding:0 12px!important;border:1px solid var(--s2-line)!important;border-radius:8px;font-weight:600!important;font-size:14px!important}
+.s2-take .ok{background:var(--s2-amber)!important;color:var(--s2-amber-ink)!important;border-color:var(--s2-amber)!important}
+.s2-tr{display:flex;align-items:center;justify-content:space-between;padding-top:8px;padding-bottom:10px}
+.s2-tb{width:48px;height:48px;border-radius:10px;border:1px solid var(--s2-line)!important;display:grid!important;place-items:center;color:var(--s2-muted)!important}
+.s2-tb[aria-pressed="true"]{color:var(--s2-amber)!important;border-color:var(--s2-amber)!important}
+.s2-play{width:64px;background:var(--s2-raise)!important;color:var(--s2-ink)!important}
+.s2-recb{width:64px;height:48px;border-radius:10px;background:var(--rec)!important;display:grid!important;place-items:center}
+.s2-recb i{width:18px;height:18px;border-radius:50%;background:#fff}
+.s2.recording .s2-recb i{border-radius:3px}
+@media (orientation: landscape) and (min-width: 560px){ .s2-tr{justify-content:center;gap:14px;padding-top:6px;padding-bottom:6px} .s2-tb,.s2-recb{height:40px} .s2-top{padding-top:2px;padding-bottom:2px} }
+.s2-fld{display:flex;align-items:center;gap:12px;padding:8px 0}
+.s2-fld label{width:112px;flex:none;color:var(--muted);font-size:14px} .s2-fld input[type=range]{flex:1;min-width:0} .s2-fld output{width:44px;text-align:right;font:500 13px var(--f-mono)}
+.s2-opts{display:flex;flex-wrap:wrap;gap:6px;padding-bottom:12px}
+.s2-opts button{padding:9px 13px;border:1px solid var(--line);border-radius:8px;background:none;color:inherit;font:600 14px var(--f-body)}
+.s2-opts button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.s2-on .toast{z-index:80;bottom:calc(120px + env(safe-area-inset-bottom,0px))}
 .nx-on .toast{z-index:80;bottom:calc(84px + env(safe-area-inset-bottom,0px))}
 .nx-view button:focus-visible,.nx-nav button:focus-visible,.nx-sheet button:focus-visible,.nx-back:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
 </style>
@@ -665,6 +735,33 @@ button.card-head{margin:0;width:100%;padding:10px 14px;border-radius:0;backgroun
   </section>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 </main>
+<section class="s2" id="s2" hidden>
+  <div class="s2-top s2-g">
+    <button class="s2-ib" id="s2Back" aria-label="Projects"><svg class="nx-ico" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
+    <button class="s2-name" id="s2Name"></button>
+    <button class="s2-ib" id="s2Undo" aria-label="Undo"><svg class="nx-ico" viewBox="0 0 24 24"><path d="M9 6L4 11l5 5"/><path d="M4 11h10a5 5 0 010 10h-3"/></svg></button>
+    <button class="s2-ib" id="s2Redo" aria-label="Redo"><svg class="nx-ico" viewBox="0 0 24 24"><path d="M15 6l5 5-5 5"/><path d="M20 11H10a5 5 0 000 10h3"/></svg></button>
+    <button class="s2-share" id="s2Share"><svg class="nx-ico" viewBox="0 0 24 24"><path d="M12 15V3M7 8l5-5 5 5M5 14v5a2 2 0 002 2h10a2 2 0 002-2v-5"/></svg>Share</button>
+  </div>
+  <div class="s2-info s2-g">
+    <span class="s2-lcd" id="s2Pos">1.1</span>
+    <button class="s2-chip" id="s2Bpm"><small>BPM</small><span></span></button>
+    <button class="s2-chip" id="s2Key"><small>KEY</small><span></span></button>
+    <button class="s2-mix" id="s2Mix"><svg class="nx-ico" viewBox="0 0 24 24" style="width:18px;height:18px"><path d="M6 3v18M12 3v18M18 3v18"/><path d="M4 8h4M10 15h4M16 10h4" stroke-width="3"/></svg>Mix</button>
+  </div>
+  <div class="s2-tl" id="s2Tl"><div class="s2-in" id="s2In"></div></div>
+  <div class="s2-bot">
+    <div class="s2-rec s2-g" id="s2Rec" hidden><span id="s2RecL"></span></div>
+    <div class="s2-take s2-g" id="s2Take" hidden><span>New take</span><button id="s2TkRe">Retake</button><button id="s2TkDel">Discard</button><button class="ok" id="s2TkOk">Keep</button></div>
+    <div class="s2-tr s2-g">
+      <button class="s2-tb" id="s2Metro" aria-pressed="false" aria-label="Metronome"><svg class="nx-ico" viewBox="0 0 24 24"><path d="M8 3h8l3 18H5L8 3zM12 14l5-8"/></svg></button>
+      <button class="s2-tb" id="s2Rew" aria-label="Back to start"><svg class="nx-ico" viewBox="0 0 24 24"><path d="M6 5v14M19 5l-9 7 9 7V5z"/></svg></button>
+      <button class="s2-tb s2-play" id="s2Play" aria-label="Play"><svg class="nx-ico" viewBox="0 0 24 24" id="s2PlayI"><path d="M7 4l13 8-13 8V4z" fill="currentColor"/></svg></button>
+      <button class="s2-recb" id="s2RecB" aria-label="Record"><i></i></button>
+      <button class="s2-tb" id="s2Loop" aria-pressed="false" aria-label="Loop"><svg class="nx-ico" viewBox="0 0 24 24"><path d="M17 2l4 4-4 4M3 11V9a3 3 0 013-3h15M7 22l-4-4 4-4M21 13v2a3 3 0 01-3 3H3"/></svg></button>
+    </div>
+  </div>
+</section>
 <section class="nx-view" id="nxProjects" hidden>
   <div class="nx-g nx-top"><h1>Projects</h1></div>
   <div class="nx-g"><label class="nx-search"><svg class="nx-ico" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><input id="nxQ" type="search" placeholder="Search projects" autocomplete="off" aria-label="Search projects"></label>
@@ -674,6 +771,8 @@ button.card-head{margin:0;width:100%;padding:10px 14px;border-radius:0;backgroun
 <section class="nx-view" id="nxMore" hidden>
   <div class="nx-g nx-top"><h1>More</h1></div>
   <div class="nx-list"><div class="nx-g">
+    <div class="nx-grp">Studio</div>
+    <button class="nx-item" id="nxClassic" style="width:100%;background:none;border:0;border-bottom:1px solid var(--line);text-align:left"><span>Classic studio<small id="nxClassicS"></small></span></button>
     <div class="nx-grp">About</div>
     <a class="nx-item" href="https://troyskinner3.github.io/arcade/noodle/privacy/" target="_blank" rel="noopener"><span>Privacy</span><svg class="nx-ico" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></a>
     <div class="nx-item"><span>Noodle<small>Hum it, sing it, beatbox it. From the makers of Tuttii.</small></span></div>
@@ -803,7 +902,7 @@ function mkTrack(inst, o={}){
 }
 function S0sens(){ return (typeof S!=='undefined' && S) ? S.sens : 55; }
 function defaultState(){
-  return {v:1,bpm:94,bars:2,swing:14,key:'auto',scale:'auto',quant:16,metro:false,playAlong:false,ec:false,calibrated:false,mergeDrums:true,replaceTonal:true,kit:null,latAuto:true,latMs:80,sens:55,loops:4,
+  return {v:1,bpm:94,bars:4,swing:14,key:'auto',scale:'auto',quant:16,metro:false,playAlong:false,ec:false,calibrated:false,mergeDrums:true,replaceTonal:true,kit:null,latAuto:true,latMs:80,sens:55,loops:4,
     master:{vol:80,rev:45,drive:20,punch:50}, inst:'kit', nextId:10, tracks:null};
 }
 let S = defaultState();
@@ -918,6 +1017,7 @@ async function nxRenderProjects(){ const q=$('nxQ').value.trim().toLowerCase(); 
     : `<p class="nx-empty">${q?'No projects match.':'No projects yet. Tap + to start one.'}</p>`; }
 async function nxGo(v){ if(v!=='studio'){ flushSave(); if(recState) cancelRecord(); if(playing){ stopAll(); playing=false; updatePlayBtn(); } await projSaveCurrent().catch(()=>{}); }
   nxAt=v; $('nxProjects').hidden=v!=='projects'; $('nxMore').hidden=v!=='more'; $('nxNav').hidden=v==='studio'; document.body.classList.toggle('nx-on',v!=='studio'); document.body.style.overflow=v==='studio'?'':'hidden';
+  if(v==='studio' && s2Use()) s2Show(true); else if(v==='studio') s2Show(false); else { $('s2').hidden=true; document.body.classList.remove('s2-on'); }
   $('nxTabP').toggleAttribute('aria-current',false); $('nxTabM').toggleAttribute('aria-current',false); if(v==='projects') $('nxTabP').setAttribute('aria-current','page'); if(v==='more') $('nxTabM').setAttribute('aria-current','page');
   if(v==='projects') await nxRenderProjects(); if(v==='studio') window.scrollTo({top:0}); }
 const nxSongEmpty=()=>!S.title && !S.prompt && !S.tracks.some(t=>!t.ex&&!t.guide);
@@ -930,7 +1030,7 @@ async function nxMenu(id){ const p=(await projList()).find(x=>x.id===id); if(!p)
     if(k==='rename'){ nxSheet(`<h2>Rename</h2><input class="nx-txt" id="nxRn" maxlength="60" value="${nxEsc(p.title||'')}" placeholder="Untitled" aria-label="Project name"><button class="nx-primary" id="nxRnOk">Save</button>`); $('nxSheet').onclick=null; const ok=async()=>{ await projRename(id,$('nxRn').value.trim()); nxClose(); nxRenderProjects(); }; $('nxRnOk').onclick=ok; $('nxRn').onkeydown=ev=>{ if(ev.key==='Enter') ok(); }; $('nxRn').focus(); }
     else if(k==='dup'){ await projDuplicate(id); nxClose(); await nxRenderProjects(); toast('Duplicated'); }
     else if(k==='del'){ nxSheet(`<h2>Delete “${nxEsc(name)}”?</h2><p style="color:var(--muted);margin:0 0 6px">This removes the project from this device.</p><button class="nx-act danger" id="nxDelOk">Delete project</button><button class="nx-act" id="nxDelNo">Keep it</button>`); $('nxSheet').onclick=null; $('nxDelNo').onclick=nxClose; $('nxDelOk').onclick=async()=>{ await projDelete(id); nxClose(); await nxRenderProjects(); toast('Deleted'); }; } }; }
-function nxInit(){ $('nxBack').onclick=()=>nxGo('projects'); $('nxTabP').onclick=()=>nxGo('projects'); $('nxTabM').onclick=()=>nxGo('more'); $('nxPlus').onclick=nxNew;
+function nxInit(){ $('nxBack').onclick=()=>{ if(s2Use()&&s2.detail) s2Show(true); else nxGo('projects'); }; $('nxTabP').onclick=()=>nxGo('projects'); $('nxTabM').onclick=()=>nxGo('more'); $('nxPlus').onclick=nxNew;
   $('nxQ').oninput=nxRenderProjects; $('nxScrim').onclick=e=>{ if(e.target===$('nxScrim')) nxClose(); };
   $('nxSort').onclick=e=>{ const b=e.target.closest('button'); if(!b) return; nxSortBy=b.dataset.s; [...$('nxSort').children].forEach(x=>x.setAttribute('aria-pressed',x===b)); nxRenderProjects(); };
   $('nxList').onclick=async e=>{ const m=e.target.closest('[data-menu]'), o=e.target.closest('[data-id]'); if(m) return nxMenu(m.dataset.menu); if(!o) return; if(o.dataset.id!==S.pid) await projOpen(o.dataset.id); nxGo('studio'); };
@@ -938,6 +1038,97 @@ function nxInit(){ $('nxBack').onclick=()=>nxGo('projects'); $('nxTabP').onclick
   let lastAt=0; try{ lastAt=+localStorage.getItem('noodle.active')||0; }catch(e){}
   if(!nxSongEmpty() && Date.now()-lastAt>10*60*1000) projNew().catch(()=>{});
   const touch=()=>{ try{ localStorage.setItem('noodle.active',Date.now()); }catch(e){} }; touch(); ['pointerdown','keydown'].forEach(ev=>document.addEventListener(ev,touch,{capture:true,passive:true})); }
+/* ---- Studio (timeline view). A new front on the same engine: parts are drawn as clips on a bar timeline; recording, playback and
+   note reading are the existing ones. Note editing, export and timing still open the classic screens ("detail"), with a back button here. ---- */
+const s2={barw:44, armId:null, loop:false, detail:false, pos:-1};
+const s2Use=()=>{ try{ return localStorage.getItem('noodle.studio')!=='classic'; }catch(e){ return true; } };
+const s2On=()=>!$('s2').hidden;
+function s2Show(on){ $('s2').hidden=!on; document.body.classList.toggle('s2-on',on); if(on){ s2.detail=false; document.body.style.overflow='hidden'; if(editId!=null) closeEditor(); s2Render(); } }
+function s2Detail(what){ s2.detail=true; $('s2').hidden=true; document.body.classList.remove('s2-on'); document.body.style.overflow='';
+  if(what&&what.id!=null){ S.activeId=what.id; openEditor(what); }
+  else if(typeof what==='string'){ const h=document.querySelector(`.card-head[data-sec="${what}"]`); if(h){ if(h.getAttribute('aria-expanded')!=='true') h.click(); requestAnimationFrame(()=>h.scrollIntoView({block:'start'})); } } }
+function s2DrawLane(tr,cv){ const W=cv.clientWidth, H=cv.clientHeight; if(!W||!H) return; const dpr=Math.min(2,window.devicePixelRatio||1); cv.width=Math.round(W*dpr); cv.height=Math.round(H*dpr);
+  const g=cv.getContext('2d'); g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,W,H); if(!hasContent(tr)) return;
+  const col=INST[tr.inst].color, n=steps(), ps=pSteps(tr), reps=pLoops(tr), sw=W/n, top=6, h=H-12;
+  for(let k=0;k<reps;k++){ const x0=k*ps*sw+2, w=ps*sw-4; g.globalAlpha=k?0.16:0.28; g.fillStyle=col; g.beginPath(); if(g.roundRect) g.roundRect(x0,top,w,h,5); else g.rect(x0,top,w,h); g.fill();
+    g.globalAlpha=k?0.55:1; g.fillStyle=col;
+    if(tr.notes && INST[tr.inst].kind==='pitched'){ const ps2=tr.notes.map(pitchOf); if(ps2.length){ const lo=Math.min(...ps2)-1, hi=Math.max(...ps2)+1, span=Math.max(6,hi-lo);
+        tr.notes.forEach((nt,i)=>{ if(nt.s>=ps) return; const y=top+3+(h-9)*(1-(ps2[i]-lo)/span); g.fillRect(x0-2+nt.s*sw+1, y, Math.max(2,Math.min(nt.l,ps-nt.s)*sw-1.5), 3.5); }); } }
+    else if(tr.hits){ const rows=[...new Set(tr.hits.map(x=>x.d))]; tr.hits.forEach(x=>{ if(x.s>=ps) return; const i=rows.indexOf(x.d), y=top+3+(h-9)*((i+0.5)/rows.length)-1.5; g.fillRect(x0-2+x.s*sw+1, y, Math.max(2,sw-1.5), 3.5); }); }
+    else { const raw=tr._raw; const N=Math.max(8,Math.floor(w/3)); for(let i=0;i<N;i++){ let a=0.25; if(raw&&raw.x){ const i0=Math.floor(i/N*raw.x.length), i1=Math.floor((i+1)/N*raw.x.length); let m=0; for(let j=i0;j<i1;j+=16) m=Math.max(m,Math.abs(raw.x[j])); a=Math.min(1,m*2.2); } const bh=Math.max(2,a*(h-8)); g.fillRect(x0+i*(w/N), top+h/2-bh/2, 1.6, bh); } } }
+  g.globalAlpha=1; }
+function s2Render(){ if(!s2On()) return; const el=$('s2'), bars=S.bars, view=Math.max(bars+8, Math.ceil((window.innerWidth||400)/s2.barw));
+  el.style.setProperty('--s2-bars',bars); el.style.setProperty('--s2-view',view); el.style.setProperty('--s2-barw',s2.barw+'px');
+  if(s2.armId!=null && !S.tracks.some(t=>t.id===s2.armId)) s2.armId=null;
+  $('s2Name').textContent=S.title||'Untitled'; $('s2Undo').disabled=!hist.undo.length; $('s2Redo').disabled=!hist.redo.length;
+  const anySolo=S.tracks.some(t=>t.solo);
+  let h=`<div class="s2-ruler"><div class="s2-corner"></div><div class="s2-marks" id="s2Marks">${Array.from({length:view},(_,i)=>`<span class="s2-mk${i>=bars?' out':''}" style="left:calc(${i} * var(--s2-barw))">${i+1}</span>`).join('')}<span class="s2-phh" id="s2PhH"></span></div></div>`;
+  S.tracks.forEach(tr=>{ const nm=nxEsc(partName(tr)); h+=`<div class="s2-trk${(tr.mute||(anySolo&&!tr.solo))?' dim':''}"><div class="s2-th"><button class="s2-nm" data-t="${tr.id}"><i style="background:${INST[tr.inst].color}"></i><span>${nm}</span></button><div class="s2-ct">${tr.guide?'':`<button class="s2-arm" data-arm="${tr.id}" aria-pressed="${s2.armId===tr.id}" aria-label="Record into ${nm}"><i></i></button>`}<button class="s2-ms" data-m="${tr.id}" aria-pressed="${!!tr.mute}" aria-label="Mute ${nm}">M</button><button class="s2-ms so" data-s="${tr.id}" aria-pressed="${!!tr.solo}" aria-label="Solo ${nm}">S</button></div></div><div class="s2-ln" data-ln="${tr.id}"><canvas data-cv="${tr.id}"></canvas></div></div>`; });
+  if(!S.tracks.length) h+=`<div class="s2-hint"><b>New project</b>Tap record, then pick what you're recording.</div>`;
+  h+=`<div class="s2-add"><button id="s2Add">+ Add track</button></div><div class="s2-end"></div><div class="s2-ph" id="s2Ph"></div>`;
+  $('s2In').innerHTML=h; S.tracks.forEach(tr=>{ const cv=$('s2In').querySelector(`canvas[data-cv="${tr.id}"]`); if(cv) s2DrawLane(tr,cv); });
+  const tk=takeBar&&!recState; $('s2Take').hidden=!tk; s2.pos=-1; s2Chips(); s2Seek(); }
+function s2Chips(){ const b=$('s2Bpm').lastElementChild, k=$('s2Key').lastElementChild, kl=projKeyLabel()||'Auto'; if(b.textContent!==String(S.bpm)) b.textContent=S.bpm; if(k.textContent!==kl) k.textContent=kl;
+  const m=$('s2Metro'), on=String(!!S.metro); if(m.getAttribute('aria-pressed')!==on) m.setAttribute('aria-pressed',on); }
+/* called every frame: playhead, position readout, recording banner, stop at the end when Loop is off */
+function s2Tick(frac){ if(!s2On()) return; const bars=S.bars, pos=clamp(frac,0,1)*bars;
+  if(playing && !recState && !s2.loop && ctx && ctx.currentTime-t0>=loopLen()-0.03){ togglePlay().then(()=>{ playFrom=0; }); }
+  if(Math.abs(pos-s2.pos)>0.002){ s2.pos=pos; const a=$('s2Ph'), b=$('s2PhH'); if(a){ a.style.left=`calc(var(--s2-hdr) + ${pos} * var(--s2-barw))`; b.style.left=`calc(${pos} * var(--s2-barw))`; }
+    $('s2Pos').textContent=(Math.min(bars,Math.floor(pos)+1))+'.'+(Math.floor((pos%1)*4)+1);
+    if(playing||recState){ const tl=$('s2Tl'), hw=parseFloat(getComputedStyle($('s2')).getPropertyValue('--s2-hdr')), x=hw+pos*s2.barw; if(x>tl.scrollLeft+tl.clientWidth-24||x<tl.scrollLeft+hw) tl.scrollLeft=x-hw-8; } }
+  const rec=!!recState; if($('s2').classList.contains('recording')!==rec){ $('s2').classList.toggle('recording',rec); $('s2Rec').hidden=!rec; $('s2RecB').setAttribute('aria-label',rec?'Stop recording':'Record'); if(!rec) s2Render(); }
+  if(rec){ const t=$('recLabel').textContent; if($('s2RecL').textContent!==t) $('s2RecL').textContent=t; }
+  const pi=playing?'<path d="M7 5v14M17 5v14" stroke-width="3"/>':'<path d="M7 4l13 8-13 8V4z" fill="currentColor"/>'; if(s2._pi!==playing){ s2._pi=playing; $('s2PlayI').innerHTML=pi; $('s2Play').setAttribute('aria-label',playing?'Pause':'Play'); }
+  s2Chips(); }
+function s2Seek(){ const m=$('s2Marks'); if(!m) return; let drag=false; const set=e=>{ if(recState) return; const r=m.getBoundingClientRect(), bar=clamp((e.clientX-r.left)/s2.barw,0,S.bars), L=loopLen(); playFrom=Math.min(bar/S.bars*L, L-0.001); if(playing&&ctx) startAll(ctx.currentTime+0.02, playFrom); };
+  m.onpointerdown=e=>{ drag=true; try{ m.setPointerCapture(e.pointerId); }catch(_){} set(e); }; m.onpointermove=e=>{ if(drag) set(e); }; m.onpointerup=m.onpointercancel=()=>{ drag=false; }; }
+const s2Fld=(id,label,min,max,v,step=1)=>`<div class="s2-fld"><label for="${id}">${label}</label><input type="range" id="${id}" min="${min}" max="${max}" step="${step}" value="${v}" oninput="this.nextElementSibling.value=this.value"><output>${v}</output></div>`;
+function s2AddSheet(thenRecord){ nxSheet(`<h2>${thenRecord?'What are you recording?':'Add a track'}</h2>${PICK_GROUPS.map(([g,ids])=>`<div class="nx-grp" style="padding-top:6px">${g}</div><div class="s2-opts">${ids.map(k=>`<button data-k="${k}"><i style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${INST[k].color};margin-right:6px"></i>${INST[k].label}</button>`).join('')}</div>`).join('')}`);
+  $('nxSheet').onclick=e=>{ const b=e.target.closest('[data-k]'); if(!b) return; nxClose(); const tr=mkTrack(b.dataset.k,{id:S.nextId++}); S.tracks.push(tr); S.activeId=tr.id; s2.armId=tr.id; keyCache=null; save(); renderTracks(); updateDock(); if(thenRecord) s2Record(); else toast('Ready: tap record'); }; }
+function s2Record(){ ensureCtx(); if(recState){ cancelRecord(); return; } const tr=S.tracks.find(t=>t.id===s2.armId&&!t.guide); if(!tr){ s2AddSheet(true); return; } takeBar=null; recordInto(tr.id); }
+function s2TrackSheet(tr){ const I=INST[tr.inst], nm=nxEsc(partName(tr));
+  nxSheet(`<h2>${nm}</h2>${I.sounds&&I.sounds.length?`<div class="nx-grp" style="padding-top:0">Sound</div><div class="s2-opts" id="s2Snd">${I.sounds.map(x=>`<button data-x="${nxEsc(x)}" aria-pressed="${x===tr.sound}">${nxEsc(x)}</button>`).join('')}</div>`:''}
+    ${s2Fld('s2Vol','Volume',0,100,tr.vol??80)}<button class="nx-act" data-a="edit">Edit notes and more</button><button class="nx-act danger" data-a="del">Delete track</button>`);
+  $('nxSheet').onclick=e=>{ let b; if(b=e.target.closest('#s2Snd button')){ tr.sound=b.dataset.x; if(tr.inst==='vox') tr.fx=Object.assign({},VOX_PRESETS[tr.sound]); tr._dirty=true; save(); scheduleRender(); s2TrackSheet(tr); }
+    else if(b=e.target.closest('[data-a]')){ nxClose(); if(b.dataset.a==='edit') s2Detail(tr); else deletePart(tr); } };
+  $('nxSheet').oninput=e=>{ if(e.target.id==='s2Vol'){ tr.vol=+e.target.value; applyAllMix(); save(); } }; }
+function s2Bind(id,src,ev='input'){ const a=$(id), b=$(src); if(!a||!b) return; a.addEventListener(ev,()=>{ b.value=a.value; b.dispatchEvent(new Event(ev,{bubbles:true})); if(ev!=='change') b.dispatchEvent(new Event('change',{bubbles:true})); }); }
+function s2Sheets(kind){ $('nxSheet').oninput=null;
+  if(kind==='tempo'){ nxSheet(`<h2>Tempo and length</h2>${s2Fld('s2T','Tempo',60,180,S.bpm)}<div class="nx-grp" style="padding-top:6px">Song length (bars)</div><div class="s2-opts" id="s2Len">${[1,2,4,8,16].map(b=>`<button data-b="${b}" aria-pressed="${b===S.bars}">${b}</button>`).join('')}</div><label class="chk" style="display:flex;gap:10px;align-items:center;padding:8px 0"><input type="checkbox" id="s2Arp" ${S.keyRef?'checked':''}> <span>Play the home chord during the count-in</span></label>`);
+    $('s2T').onchange=e=>setTempo(+e.target.value); $('s2Arp').onchange=()=>$('keyRef').click();
+    $('nxSheet').onclick=e=>{ const b=e.target.closest('#s2Len button'); if(!b) return; const sel=$('bars'); sel.value=b.dataset.b; sel.dispatchEvent(new Event('change',{bubbles:true})); s2Sheets('tempo'); s2Render(); }; }
+  if(kind==='key'){ nxSheet(`<h2>Key and snap</h2><div class="s2-fld"><label for="s2K">Key</label><select class="nx-txt" id="s2K">${$('key').innerHTML}</select></div><div class="s2-fld"><label for="s2Sc">Snap notes to</label><select class="nx-txt" id="s2Sc">${$('scale').innerHTML}</select></div>${s2Fld('s2Sn','Snap strength',0,100,S.snapStr??100,5)}`);
+    $('s2K').value=$('key').value; $('s2Sc').value=$('scale').value; s2Bind('s2K','key','change'); s2Bind('s2Sc','scale','change'); s2Bind('s2Sn','snapStr'); $('nxSheet').onclick=null; }
+  if(kind==='mix'){ nxSheet(`<h2>Mix</h2>${s2Fld('s2Mv','Master volume',0,100,S.master.vol)}${s2Fld('s2Mr','Reverb',0,100,S.master.rev)}${s2Fld('s2Md','Drive',0,100,S.master.drive)}${s2Fld('s2Mp','Punch',0,100,S.master.punch)}`);
+    s2Bind('s2Mv','mvol'); s2Bind('s2Mr','mrev'); s2Bind('s2Md','mdrive'); s2Bind('s2Mp','mpunch'); $('nxSheet').onclick=null; }
+  if(kind==='name'){ nxSheet(`<h2>Rename</h2><input class="nx-txt" id="s2Rn" maxlength="60" value="${nxEsc(S.title||'')}" placeholder="Untitled" aria-label="Project name"><button class="nx-primary" id="s2RnOk">Save</button>`); $('nxSheet').onclick=null;
+    const ok=()=>{ S.title=$('s2Rn').value.trim(); const sn=$('songName'); if(sn) sn.value=S.title; save(); nxClose(); s2Render(); }; $('s2RnOk').onclick=ok; $('s2Rn').onkeydown=e=>{ if(e.key==='Enter') ok(); }; $('s2Rn').focus(); } }
+function s2Init(){ const _rt=renderTracks; renderTracks=function(){ _rt.apply(this,arguments); if(s2On()) s2Render(); };
+  const _rd=redrawTrack; redrawTrack=function(tr){ _rd.apply(this,arguments); if(s2On()){ const cv=$('s2In').querySelector(`canvas[data-cv="${tr.id}"]`); if(cv) s2DrawLane(tr,cv); } };
+  $('s2Back').onclick=()=>nxGo('projects'); $('s2Name').onclick=()=>s2Sheets('name'); $('s2Undo').onclick=()=>undo(); $('s2Redo').onclick=()=>redo();
+  $('s2Share').onclick=()=>s2Detail('export'); $('s2Bpm').onclick=()=>s2Sheets('tempo'); $('s2Key').onclick=()=>s2Sheets('key'); $('s2Mix').onclick=()=>s2Sheets('mix');
+  $('s2Play').onclick=()=>togglePlay(); $('s2RecB').onclick=s2Record; $('s2Metro').onclick=()=>$('metro').click();
+  $('s2Rew').onclick=()=>{ if(recState) return; playFrom=0; $('s2Tl').scrollLeft=0; if(playing&&ctx) startAll(ctx.currentTime+0.02,0); };
+  $('s2Loop').onclick=e=>{ s2.loop=!s2.loop; e.currentTarget.setAttribute('aria-pressed',s2.loop); toast(s2.loop?'Loop on':'Loop off'); };
+  $('s2TkOk').onclick=()=>{ takeBar=null; renderTracks(); };
+  $('s2TkDel').onclick=async()=>{ const p=takeBar; takeBar=null; await discardTake(p); renderTracks(); toast('Take discarded'); };
+  $('s2TkRe').onclick=async()=>{ const p=takeBar; takeBar=null; flushSave(); const snap=hist.cur; await discardTake(p); s2.armId=p.id; recordInto(p.id,{snap,bar:p}); };
+  $('s2In').onclick=e=>{ const g=k=>e.target.closest(`[data-${k}]`), T=id=>S.tracks.find(t=>String(t.id)===id); let b;
+    if(b=g('arm')){ const id=T(b.dataset.arm).id; s2.armId=s2.armId===id?null:id; if(s2.armId!=null){ S.activeId=id; updateDock(); } s2Render(); }
+    else if(b=g('m')){ const t=T(b.dataset.m); t.mute=!t.mute; save(); applyAllMix(); s2Render(); }
+    else if(b=g('s')){ const t=T(b.dataset.s); t.solo=!t.solo; save(); applyAllMix(); s2Render(); }
+    else if(b=g('t')) s2TrackSheet(T(b.dataset.t));
+    else if(b=g('ln')){ const t=T(b.dataset.ln); if(t&&hasContent(t)&&!recState) s2Detail(t); }
+    else if(e.target.id==='s2Add') s2AddSheet(false); };
+  const tl=$('s2Tl'); let d0=0,b0=0,zt=0; const dist=t=>Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY);
+  const zoom=z=>{ s2.barw=clamp(z,20,160); $('s2').style.setProperty('--s2-barw',s2.barw+'px'); clearTimeout(zt); zt=setTimeout(s2Render,140); };
+  tl.addEventListener('touchstart',e=>{ if(e.touches.length===2){ d0=dist(e.touches); b0=s2.barw; } },{passive:true});
+  tl.addEventListener('touchmove',e=>{ if(e.touches.length===2&&d0){ e.preventDefault(); zoom(b0*dist(e.touches)/d0); } },{passive:false});
+  tl.addEventListener('touchend',()=>{ d0=0; }); tl.addEventListener('wheel',e=>{ if(e.ctrlKey){ e.preventDefault(); zoom(s2.barw*(e.deltaY<0?1.1:0.9)); } },{passive:false});
+  window.addEventListener('resize',()=>{ if(s2On()) s2Render(); });
+  const cb=$('nxClassic'), lab=()=>{ $('nxClassicS').textContent=s2Use()?'Off. Tap to use the old screen instead of the timeline.':'On. Tap to go back to the timeline.'; }; lab();
+  cb.onclick=()=>{ try{ localStorage.setItem('noodle.studio',s2Use()?'classic':'timeline'); }catch(e){} lab(); };
+  if(s2Use()) s2Show(true); }
 function reloadRaw(){ S.tracks.filter(t=>((t.inst==='vox' && t.va!=null) || (t.expr>0 && t.exprAlign!=null)) && !t._raw).forEach(tr=>loadVox(tr).then(ok=>{ if(!ok) return; redrawTrack(tr); if(tr._row) renderTracks(); if(ctx) scheduleRender(); })); }
 function storeVox(tr){ const {x,sr}=tr._raw; const pcm=new Int16Array(x.length); for(let i=0;i<x.length;i++) pcm[i]=Math.max(-32767,Math.min(32767,Math.round(x[i]*32767))); takeStore.put('vox'+tr.id,{sr,pcm}); }
 async function loadVox(tr){ const r=await takeStore.get('vox'+tr.id); if(!r) return false; const x=new Float32Array(r.pcm.length); for(let i=0;i<x.length;i++) x[i]=r.pcm[i]/32767; tr._raw={x,sr:r.sr}; tr._dirty=true; return true; }
@@ -3247,7 +3438,7 @@ function init(){
   requestAnimationFrame(tick);
   hist.cur=snapNow(); updateHistBtns();
   // bring back vocal recordings saved in this browser
-  reloadRaw(); nxInit();
+  reloadRaw(); nxInit(); s2Init();
   // iOS only lets audio start on a finger lift (touchend/click), not on touch-down: unlock (or re-wake) on every such gesture while it's suspended
   const unlockAudio=()=>{ if(ctx && ctx.state!=='running' && !document.hidden){ try{ ctx.resume(); }catch(e){} } };
   ['touchend','click','keydown'].forEach(ev=>document.addEventListener(ev,unlockAudio,{capture:true,passive:true}));
@@ -3256,11 +3447,12 @@ function init(){
 }
 function tick(){
   requestAnimationFrame(tick);
-  if(!ctx) return;
+  if(!ctx){ try{ s2Tick((playFrom%loopLen())/loopLen()); }catch(e){} return; }
   const now=ctx.currentTime, L=loopLen();
   const showPh = (playing||recState) && now>=t0;
   const ph = showPh ? (((now-t0)/L)%1+1)%1 : 0;
   drawSeek(playing&&now>=t0 ? ph : (playFrom%L)/L);
+  try{ s2Tick(showPh ? ph : (playFrom%L)/L); }catch(e){}
   S.tracks.forEach(tr=>{ if(tr._mph){ tr._mph.style.display=showPh?'block':'none'; if(showPh) tr._mph.style.transform=`translateX(${ph*(tr._mph.parentElement.clientWidth||0)}px)`; } });
   S.tracks.forEach(tr=>{ if(!tr._ph||!tr._grid) return; const ps=pSteps(tr), pp=pRep(tr)?((((now-t0)/(ps*stepDur()))%1)+1)%1*ps:ph*steps(); tr._ph.style.display=showPh&&pp<ps?'block':'none'; if(showPh&&pp<ps&&playing&&tr._cv&&!(Date.now()-(tr._touchT||0)<3000)){ const G=tr._grid, w=tr._cv.parentElement.parentElement, x=G.gut+pp*G.cw; if(w.scrollWidth>w.clientWidth+2 && (x<w.scrollLeft+G.gut || x>w.scrollLeft+w.clientWidth-24)){ tr._autoScroll=true; w.scrollLeft=Math.max(0,x-G.gut-8); } } if(showPh&&pp<ps){ const G=tr._grid, pos=pp, L=Math.min(G.lines-1,Math.floor(pos/G.sPL)); tr._ph.style.transform=`translate(${G.gut+(pos-L*G.sPL)*G.cw}px,${L*(G.lineH+G.gapH)}px)`; } });
   if(recState){
