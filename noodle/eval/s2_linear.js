@@ -1,0 +1,20 @@
+// linear timeline: record until stopped; a second take from bar 5 becomes a second clip in the same lane; song length follows; discard and delete tidy up; playback renders both
+const {chromium,devices}=require('playwright');
+(async()=>{ const b=await chromium.launch({args:['--use-fake-ui-for-media-stream','--autoplay-policy=no-user-gesture-required']}); const c=await b.newContext({...devices['iPhone 13'],permissions:['microphone']}); const p=await c.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(e.message));
+  await p.addInitScript(()=>{ navigator.mediaDevices.getUserMedia=async()=>{ const cx=window.__ctx, dst=cx.createMediaStreamDestination(); window.__sing=(t0,notes)=>notes.forEach(([st,du,hz])=>{ const o=cx.createOscillator(), g=cx.createGain(); o.type='sawtooth'; o.frequency.value=hz; g.gain.value=0; g.gain.setTargetAtTime(0.15,t0+st,0.01); g.gain.setTargetAtTime(0,t0+st+du-0.05,0.01); o.connect(g); g.connect(dst); o.start(t0+st); o.stop(t0+st+du+0.1); }); return dst.stream; }; });
+  await p.goto('http://localhost:8800/noodle-s2.html?studio'); await p.waitForTimeout(1200); const out={};
+  await p.evaluate(()=>{ ensureCtx(); window.__ctx=ctx; return ctx.resume(); });
+  const take=async(n)=>{ await p.waitForFunction(()=>!!recState,null,{timeout:8000}); const info=await p.evaluate((n)=>{ const r=recState, beat=60/S.bpm; window.__sing(r.start,Array.from({length:n},(_,i)=>[i*beat,beat*.9,196*Math.pow(2,[0,2,4,5,7,9][i%6]/12)])); return {wait:(r.start-ctx.currentTime)+n*beat+0.5, bars:S.bars, off:(S.tracks.find(t=>t.id===s2.recId)||{}).off}; },n);
+    await p.waitForTimeout(info.wait*1000); await p.tap('#s2RecB'); await p.waitForFunction(()=>!recState,null,{timeout:8000}); await p.waitForFunction(()=>!$('s2Take').hidden,null,{timeout:15000}); await p.waitForTimeout(600); return info; };
+  const state=()=>p.evaluate(()=>({bars:S.bars, lanes:s2Lanes().length, clips:S.tracks.map(t=>({off:t.off||0,len:t.len,notes:(t.notes||[]).length,lane:t.lane??null}))}));
+  await p.tap('#s2RecB'); await p.tap('#nxSheet [data-k="lead"]'); out.t1=await take(6); out.s1=await state(); await p.tap('#s2TkOk'); if(await p.evaluate(()=>playing)) await p.tap('#s2Play');
+  const box=await p.$eval('#s2Marks',e=>{ const r=e.getBoundingClientRect(); return {x:r.left,y:r.top+10}; }); await p.mouse.click(box.x+44*4.2,box.y); await p.waitForTimeout(200); out.cursor=await p.$eval('#s2Pos',e=>e.textContent);
+  await p.tap('#s2RecB'); out.t2=await take(4); out.s2=await state(); await p.screenshot({path:'results/lin1.png'}); await p.tap('#s2TkOk'); if(await p.evaluate(()=>playing)) await p.tap('#s2Play');
+  // third take from bar 7, then discard it: back to two clips and the same length
+  await p.evaluate(()=>{ $('s2Tl').scrollLeft=0; }); await p.waitForTimeout(200); await p.mouse.click(box.x+44*6.3,box.y); await p.waitForTimeout(200); out.cursor3=await p.$eval('#s2Pos',e=>e.textContent); await p.tap('#s2RecB'); out.t3=await take(3); out.s3=await state(); await p.tap('#s2TkDel'); await p.waitForTimeout(900); out.afterDiscard=await state();
+  // the rendered audio: sound in bars 1-2 and 5, silence in bar 3-4
+  out.audio=await p.evaluate(async()=>{ await renderDirty(); const L=loopLen(), bar=L/S.bars, r=[]; for(let i=0;i<S.bars;i++){ let e=0; S.tracks.forEach(t=>{ if(!t._buf) return; const d=t._buf.getChannelData(0), a=Math.floor(i*bar*ctx.sampleRate), z=Math.floor((i+1)*bar*ctx.sampleRate); for(let k=a;k<z;k+=7) e+=d[k]*d[k]; }); r.push(e>0.5?1:0); } return r.join(''); });
+  // delete the second clip from its sheet
+  await p.evaluate(()=>{ $('s2Tl').scrollLeft=0; }); await p.waitForTimeout(200); await p.mouse.click(box.x+44*4.5, box.y+60); await p.waitForTimeout(300); out.clipSheet=await p.$$eval('#nxSheet .nx-act',b=>b.map(x=>x.textContent)); await p.tap('#nxSheet [data-a="del"]'); await p.waitForTimeout(600); out.afterDelete=await state();
+  await p.tap('#s2Undo'); await p.waitForTimeout(700); out.afterUndo=await state();
+  console.log(JSON.stringify(out),errs); await b.close(); })();

@@ -261,3 +261,9 @@ Real noise (DEMAND, CC BY 4.0: street traffic, cafeteria, bus, town square, park
   Still the classic screens, opened from here with a back button: note editing (tap a clip), Share/export, timing and drum teaching.
   Not yet linear: a part still starts at bar 1 and the song has a set length (1–16 bars). Checked by `s2_test.js` (simulated mic); 31-take replay unchanged (3.88).
 - Next (2b): clips anywhere on the timeline and recording from the playhead until stopped; note editor and Share inside the new Studio; landscape pass; first launch and More.
+- **Step 2b (shipped): linear timeline.** A part can start anywhere (`tr.off`, in steps; `songEvents` and `fullSong` place it; recording plays the song from there). A lane (`tr.lane`) is a row of
+  parts sharing instrument, sound and mix. Record starts at the bar under the cursor (tap the ruler; it can be past the end) and runs until you tap record again (16 bars at most);
+  the new part is cut to the bars that hold notes and the song ends where its last part ends (64 bars at most). Discarding or cancelling a take removes its empty part. Tap a clip: Edit notes / Delete this part.
+  Voice (audio) parts still start at bar 1, one per lane. In the classic screens each clip shows as its own part. Checked by `s2_linear.js` (two takes at bars 1 and 5 render as sound in bars 1–2 and 5 only);
+  31-take replay unchanged (3.88).
+- Still to do: move/trim clips, voice clips anywhere, note editor and Share inside the Studio, landscape pass, first launch, More.
