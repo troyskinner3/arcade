@@ -311,3 +311,6 @@ Real noise (DEMAND, CC BY 4.0: street traffic, cafeteria, bus, town square, park
   Shared takes that can't be sent wait in an `outbox` store (one entry per take, later edits update it in place, 150 at most) and go out on reconnect, on return to the app, and at start; turning sharing off empties it; More shows how many are waiting.
   Voice tracks' sheet has Pitch correction (0–100, the existing PSOLA tuner, follows the key) and the rest of the vocal chain. `offline_test.js`; a 226 Hz tone renders at 220 Hz with correction on.
   The iPhone app works offline only once it is rebuilt with the bundled `web` folder (`noodle-ios/README.md`); the older build loads the live site and shows nothing without a connection.
+- **Modes and chord shapes (shipped):** scales added: Mixolydian, Lydian, Phrygian, Phrygian dominant, harmonic minor, melodic minor, Locrian (`SCALES`, `SCALE_LABEL`, `SCALE_REL` for the MIDI key signature).
+  Chords are stacked from the song's scale, so each mode gives its own (G Mixolydian's 7th on G is G7; in G major it is Gmaj7). Chord shapes added: 11th, 6th, add 9, sus 2, sus 4. `modes_test.js`.
+  Automatic key detection still chooses between major and minor only; a mode is picked by hand (tap KEY).
