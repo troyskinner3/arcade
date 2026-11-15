@@ -15,6 +15,6 @@ const {chromium,devices}=require('playwright');
   // the rendered audio: sound in bars 1-2 and 5, silence in bar 3-4
   out.audio=await p.evaluate(async()=>{ await renderDirty(); const L=loopLen(), bar=L/S.bars, r=[]; for(let i=0;i<S.bars;i++){ let e=0; S.tracks.forEach(t=>{ if(!t._buf) return; const d=t._buf.getChannelData(0), a=Math.floor(i*bar*ctx.sampleRate), z=Math.floor((i+1)*bar*ctx.sampleRate); for(let k=a;k<z;k+=7) e+=d[k]*d[k]; }); r.push(e>0.5?1:0); } return r.join(''); });
   // delete the second clip from its sheet
-  await p.evaluate(()=>{ $('s2Tl').scrollLeft=0; }); await p.waitForTimeout(200); await p.mouse.click(box.x+44*4.5, box.y+60); await p.waitForTimeout(300); out.clipSheet=await p.$$eval('#nxSheet .nx-act',b=>b.map(x=>x.textContent)); await p.tap('#nxSheet [data-a="del"]'); await p.waitForTimeout(600); out.afterDelete=await state();
+  await p.evaluate(()=>{ $('s2Tl').scrollLeft=0; }); await p.waitForTimeout(200); await p.mouse.click(box.x+44*4.5, box.y+60); await p.waitForTimeout(300); out.clipBar=await p.$$eval('#s2Clip button',b=>b.length); await p.tap('#s2CbDel'); await p.waitForTimeout(600); out.afterDelete=await state();
   await p.tap('#s2Undo'); await p.waitForTimeout(700); out.afterUndo=await state();
   console.log(JSON.stringify(out),errs); await b.close(); })();

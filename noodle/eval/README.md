@@ -289,3 +289,13 @@ Real noise (DEMAND, CC BY 4.0: street traffic, cafeteria, bus, town square, park
 - Not done: copying email signups into the marketing sheet (needs the sheet and the admin key once there are signups).
 - **Step 6 (shipped):** no classic-studio switch any more (the timeline is the only studio; the older screens remain in the page only as its engine and are not reachable).
   The timing-fix and drum-teaching recorder (`#recSheet`) restyled to match (rounded, no Import button, its own messages instead of pop-ups). `recsheet_cal.js`: 16 simulated claps ~130 ms late → "Mic delay set to 151 ms".
+
+### Review pass and region editing (Nov 15)
+- **Regions are edited directly:** tap a part to select it (outline, a grip on each end, and a bar with Edit notes / Duplicate / Delete); drag the body to move, drag a grip to trim or extend by bars
+  (`s2ResizeClip`; never onto another part, never down to nothing), tap the selected part again to edit its notes. `s2DupClip` puts a copy in the next gap on the same track. The old part sheet and its nudge / trim buttons are gone. `s2_regions.js`.
+- **Shared takes say more about what happened to them** (for telling a fix from a creative change later): an edit log per part (`logEdit`: kind, where, old/new pitch, what was sung there `r0`, seconds since the take),
+  `discarded` when a take is thrown away or retaken, `exportedAt` when the song is exported, `cut` when a later take or a trim removed notes, where the part sits (`clip`), and the app build.
+- **Small fixes:** record with nothing armed offers your tracks first; the recording bar reads "Recording · bar N · tap ■ to stop"; song-length chips removed from the tempo sheet (length follows the parts);
+  pop-up wording no longer points at screens that are gone; fewer storage writes.
+- **Profile from pitch fixes: tested, not shipped (`fix_profile.py`).** A user only fixes notes Noodle got wrong, and intervals touching those notes are not a fair sample: for the owner the profile reads 0.61 from them
+  vs 0.73 from all intervals; for the held-out singers the "squeezes" verdict rises from 67% to 91% of takes (HumTrans) and 50% to 76% (Vocadito). It would push everyone toward "squeezed". The voice check stays the only source.

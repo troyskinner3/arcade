@@ -16,8 +16,6 @@ const {chromium,devices}=require('playwright');
   out.voxAudio=await p.evaluate(async()=>{ await renderDirty(); const v=S.tracks.find(t=>t.inst==='vox'), L=loopLen(), bar=L/S.bars, d=v._buf.getChannelData(0), r=[]; for(let i=0;i<S.bars;i++){ let e=0; const a=Math.floor(i*bar*ctx.sampleRate), z=Math.floor((i+1)*bar*ctx.sampleRate); for(let k=a;k<z;k+=7) e+=d[k]*d[k]; r.push(e>0.5?1:0); } return r.join(''); });
   out.voxMove=await p.evaluate(()=>{ const v=S.tracks.find(t=>t.inst==='vox'); const a=s2MoveClip(v,1); return a+' '+v.off/16; }); out.voxTrim=await p.evaluate(()=>{ const v=S.tracks.find(t=>t.inst==='vox'), va=v.va, ok=s2TrimClip(v,'start'); return ok+' off '+v.off/16+' len '+v.len+' va+'+(v.va-va).toFixed(2); });
   await p.evaluate(()=>renderTracks()); await p.waitForTimeout(300); await p.screenshot({path:'results/rest1.png'});
-  // clip sheet layout
-  const lane=await p.$eval('.s2-ln canvas',e=>{ const r=e.getBoundingClientRect(); return {x:r.left,y:r.top+r.height/2}; }); await p.mouse.click(lane.x+44*1.5,lane.y); await p.waitForTimeout(300); await p.screenshot({path:'results/rest2.png'}); await p.evaluate(()=>nxClose());
   // More sheets
   await p.tap('#s2Back'); await p.waitForTimeout(400); await p.tap('#nxTabM'); await p.waitForTimeout(200); await p.tap('#nxTiming'); await p.waitForTimeout(200); await p.screenshot({path:'results/rest3.png'});
   await p.tap('#nxEc'); out.ec=await p.evaluate(()=>S.ec); await p.evaluate(()=>{ const e=$('nxSens'); e.value=70; e.dispatchEvent(new Event('change',{bubbles:true})); }); out.sens=await p.evaluate(()=>S.sens);

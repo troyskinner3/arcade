@@ -572,7 +572,7 @@ button.card-head{margin:0;width:100%;padding:10px 14px;border-radius:0;backgroun
 .nx-back{width:40px;height:40px;margin-left:-8px;flex:none;display:grid;place-items:center;background:none;border:0;color:#e9ebef;border-radius:8px}
 .nx-scrim{position:fixed;inset:0;z-index:70;background:rgba(0,0,0,.5);display:flex;align-items:flex-end}
 .nx-sheet{width:100%;max-width:760px;margin:0 auto;max-height:82%;overflow-y:auto;background:var(--panel);color:var(--ink);border-radius:16px 16px 0 0;padding-top:8px;padding-bottom:calc(14px + env(safe-area-inset-bottom,0px))}
-.nx-sheet h2{font:700 15px var(--f-display);margin:8px 0 10px;overflow-wrap:anywhere}
+.nx-sheet h2{font:700 17px/1.25 var(--f-display);margin:8px 0 10px;overflow-wrap:anywhere;text-transform:none;letter-spacing:0}
 .nx-grab{width:40px;height:4px;border-radius:2px;background:var(--line);margin:0 auto 6px}
 .nx-act{display:flex;align-items:center;width:100%;padding:14px 0;border:0;border-bottom:1px solid var(--line);background:none;color:inherit;font:600 16px var(--f-body);text-align:left}
 .nx-act.danger{color:var(--rec)}
@@ -630,6 +630,18 @@ button.card-head{margin:0;width:100%;padding:10px 14px;border-radius:0;backgroun
 .s2-ln{position:relative;flex:none;width:calc(var(--s2-view) * var(--s2-barw));background-image:linear-gradient(90deg,var(--s2-line) 1px,transparent 1px);background-size:var(--s2-barw) 100%}
 .s2-ln canvas{position:absolute;left:0;top:0;height:100%;width:calc(var(--s2-bars) * var(--s2-barw));display:block}
 .s2-trk.dim canvas{opacity:.35}
+/* the selected part: an outline you can drag, with a grip on each end to trim or extend it */
+.s2-sel{position:absolute;top:4px;bottom:4px;border:2px solid var(--s2-amber);border-radius:7px;touch-action:none;z-index:1;cursor:grab;box-sizing:border-box}
+.s2-sel i{position:absolute;top:-2px;bottom:-2px;width:26px;touch-action:none;cursor:ew-resize}
+.s2-sel .hl{left:-13px} .s2-sel .hr{right:-13px}
+.s2-sel i::after{content:"";position:absolute;left:9px;top:50%;width:8px;height:26px;margin-top:-13px;border-radius:4px;background:var(--s2-amber);box-shadow:0 0 0 2px var(--s2-bg)}
+.s2-clip{display:flex;align-items:center;gap:8px;padding-top:8px}
+.s2-clip span{flex:1;min-width:0;font:500 12px var(--f-mono);color:var(--s2-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.s2-clip span b{display:block;font:700 14px var(--f-body);color:var(--s2-ink)}
+.s2-clip button{height:40px;padding:0 12px!important;border:1px solid var(--s2-line)!important;border-radius:8px;font-weight:600!important;font-size:14px!important;display:flex!important;align-items:center;gap:6px;flex:none}
+.s2-clip .go{background:var(--s2-amber)!important;color:var(--s2-amber-ink)!important;border-color:var(--s2-amber)!important}
+.s2-clip .del{color:var(--rec)!important;width:40px;padding:0!important;justify-content:center}
+.s2-clip .nx-ico{width:18px;height:18px}
 .s2-add{display:flex;height:48px}
 .s2-add button{position:sticky;left:0;z-index:3;width:var(--s2-hdr);color:var(--s2-muted)!important;font-weight:700!important;font-size:13px!important;text-align:left;padding-left:10px!important;background:none!important}
 .s2-hint{position:sticky;left:var(--s2-hdr);width:min(300px,calc(100vw - var(--s2-hdr)));padding:28px 16px;color:var(--s2-muted);text-align:center}
@@ -803,6 +815,10 @@ button.card-head{margin:0;width:100%;padding:10px 14px;border-radius:0;backgroun
   </div>
   <div class="s2-bot">
     <div class="s2-rec s2-g" id="s2Rec" hidden><span id="s2RecL"></span></div>
+    <div class="s2-clip s2-g" id="s2Clip" hidden><span id="s2CbL"></span>
+      <button class="go" id="s2CbEdit"><svg class="nx-ico" viewBox="0 0 24 24"><path d="M4 20l4-1L19 8l-3-3L5 16l-1 4z"/></svg>Edit notes</button>
+      <button id="s2CbDup"><svg class="nx-ico" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 00-2-2H6a2 2 0 00-2 2v8a2 2 0 002 2h2"/></svg>Duplicate</button>
+      <button class="del" id="s2CbDel" aria-label="Delete this part"><svg class="nx-ico" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg></button></div>
     <div class="s2-take s2-g" id="s2Take" hidden><span>New take</span><button id="s2TkRe">Retake</button><button id="s2TkDel">Discard</button><button class="ok" id="s2TkOk">Keep</button></div>
     <div class="s2-tr s2-g">
       <button class="s2-tb" id="s2Metro" aria-pressed="false" aria-label="Metronome"><svg class="nx-ico" viewBox="0 0 24 24"><path d="M8 3h8l3 18H5L8 3zM12 14l5-8"/></svg></button>
@@ -1149,10 +1165,10 @@ function nxInit(){ $('nxVoice').onclick=()=>nxVoiceCheck(); $('nxShSw').onclick=
   /* the app opens on Projects, unless you were just working (a reload mid-work brings you back to your song) */
   let lastAt=0; try{ lastAt=+localStorage.getItem('noodle.active')||0; }catch(e){}
   nxResume = !nxSongEmpty() && Date.now()-lastAt<10*60*1000;
-  const touch=()=>{ try{ localStorage.setItem('noodle.active',Date.now()); }catch(e){} }; touch(); ['pointerdown','keydown'].forEach(ev=>document.addEventListener(ev,touch,{capture:true,passive:true})); }
+  let touched=0; const touch=()=>{ const n=Date.now(); if(n-touched<20000) return; touched=n; try{ localStorage.setItem('noodle.active',n); }catch(e){} }; touch(); ['pointerdown','keydown'].forEach(ev=>document.addEventListener(ev,touch,{capture:true,passive:true})); }
 /* ---- Studio (timeline view). A new front on the same engine: parts are drawn as clips on a bar timeline; recording, playback and
    note reading are the existing ones. Note editing, export and timing still open the classic screens ("detail"), with a back button here. ---- */
-const s2={barw:44, armId:null, loop:false, detail:false, pos:-1, cur:0, recId:null, recLen:0, recPrev:0, post:false};
+const s2={selId:null, barw:44, armId:null, loop:false, detail:false, pos:-1, cur:0, recId:null, recLen:0, recPrev:0, post:false};
 const s2Use=()=>true;   /* the timeline is the only studio; the older screens underneath are only its engine */
 const s2On=()=>!$('s2').hidden;
 function s2Show(on){ if(!on&&s2.edId!=null){ s2.edId=null; $('s2Ed').hidden=true; $('s2EdBody').innerHTML=''; GRID_H=176; GRID_RH=15; GRID_DRUM=1; } $('s2').hidden=!on; document.body.classList.toggle('s2-on',on); if(on){ s2.detail=false; document.body.style.overflow='hidden'; if(editId!=null) closeEditor(); s2Render(); } }
@@ -1182,6 +1198,7 @@ function s2Cut(tr, from, to){   /* keep steps [from,to) of a part (in its own st
   const fix=e=>{ const s0=e.s, e0=e.s+(e.l||1); if(e0<=from||s0>=to) return null; const o={...e, s:Math.max(s0,from)-from}; if(e.l!=null) o.l=Math.min(e0,to)-Math.max(s0,from); return o; };
   if(tr.notes) tr.notes=tr.notes.map(fix).filter(Boolean); if(tr.hits) tr.hits=tr.hits.map(fix).filter(Boolean);
   if(tr.inst==='vox'){ tr.va=+((tr.va||0)+from*stepDur()).toFixed(4); if(tr.vn) tr.vn=tr.vn.map(v=>({...v,t:v.t-from*stepDur()})).filter(v=>v.t>=0&&v.t<(to-from)*stepDur()); tr._tuned=null; tr._pitch=null; }
+  tr.cutAt=Date.now();   /* its notes were cut by a later take or a trim, not corrected */
   tr.off=(tr.off||0)+from; tr.len=Math.max(1,Math.round((to-from)/16)); tr.lenSet=true; tr.rep=false; tr._an=null; tr._takes=null; tr._versions=null; tr._dirty=true; if(tr.expr) tr.expr=0; }
 function s2Replace(nw){ const a=nw.off||0, b=a+pSteps(nw); let changed=false;
   for(const t of S.tracks.slice()){ if(t===nw || t.guide || s2LaneId(t)!==s2LaneId(nw) || !hasContent(t)) continue;
@@ -1203,11 +1220,13 @@ function s2Render(){ if(!s2On()) return; const el=$('s2'), bars=S.bars, view=Mat
   const anySolo=S.tracks.some(t=>t.solo);
   let h=`<div class="s2-ruler"><div class="s2-corner"></div><div class="s2-marks" id="s2Marks">${Array.from({length:view},(_,i)=>`<span class="s2-mk${i>=bars?' out':''}" style="left:calc(${i} * var(--s2-barw))">${i+1}</span>`).join('')}<span class="s2-phh" id="s2PhH"></span></div></div><div class="s2-side"></div>`;
   const lanes=s2Lanes();
-  lanes.forEach(L=>{ const tr=L.tracks[0], nm=nxEsc(s2Name(L)); h+=`<div class="s2-trk${(tr.mute||(anySolo&&!tr.solo))?' dim':''}"><div class="s2-th"><button class="s2-nm" data-t="${L.id}"><i style="background:${INST[tr.inst].color}"></i><span>${nm}</span></button><div class="s2-ct">${tr.guide?'':`<button class="s2-arm" data-arm="${L.id}" aria-pressed="${String(s2.armId)===String(L.id)}" aria-label="Record into ${nm}"><i></i></button>`}<button class="s2-ms" data-m="${L.id}" aria-pressed="${!!tr.mute}" aria-label="Mute ${nm}">M</button><button class="s2-ms so" data-s="${L.id}" aria-pressed="${!!tr.solo}" aria-label="Solo ${nm}">S</button></div></div><div class="s2-ln" data-ln="${L.id}"><canvas data-cv="${L.id}"></canvas></div></div>`; });
+  lanes.forEach(L=>{ const tr=L.tracks[0], nm=nxEsc(s2Name(L)); h+=`<div class="s2-trk${(tr.mute||(anySolo&&!tr.solo))?' dim':''}"><div class="s2-th"><button class="s2-nm" data-t="${L.id}"><i style="background:${INST[tr.inst].color}"></i><span>${nm}</span></button><div class="s2-ct">${tr.guide?'':`<button class="s2-arm" data-arm="${L.id}" aria-pressed="${String(s2.armId)===String(L.id)}" aria-label="Record into ${nm}"><i></i></button>`}<button class="s2-ms" data-m="${L.id}" aria-pressed="${!!tr.mute}" aria-label="Mute ${nm}">M</button><button class="s2-ms so" data-s="${L.id}" aria-pressed="${!!tr.solo}" aria-label="Solo ${nm}">S</button></div></div><div class="s2-ln" data-ln="${L.id}"><canvas data-cv="${L.id}"></canvas>${(()=>{ const t=L.tracks.find(x=>x.id===s2.selId&&hasContent(x)); return t?`<div class="s2-sel" id="s2Sel" style="left:calc(${(t.off||0)/16} * var(--s2-barw));width:calc(${pBars(t)*pLoops(t)} * var(--s2-barw))">${pLoops(t)>1?'':'<i class="hl"></i><i class="hr"></i>'}</div>`:''; })()}</div></div>`; });
   if(!S.tracks.length) h+=`<div class="s2-hint"><b>New project</b>Tap record, then pick what you're recording.</div>`;
   h+=`<div class="s2-add"><button id="s2Add">+ Add track</button></div><div class="s2-ph" id="s2Ph"></div>`;
   $('s2In').innerHTML=h; lanes.forEach(L=>{ const cv=$('s2In').querySelector(`canvas[data-cv="${L.id}"]`); if(cv) s2DrawLane(L,cv); });
-  const tk=takeBar&&!recState; $('s2Take').hidden=!tk; s2.pos=-1; s2Chips(); s2Seek(); s2Clip(); }
+  if(s2.selId!=null && !S.tracks.some(t=>t.id===s2.selId&&hasContent(t))) s2.selId=null;
+  const tk=takeBar&&!recState; $('s2Take').hidden=!tk; { const t=S.tracks.find(x=>x.id===s2.selId), show=!!t&&!tk&&!recState; $('s2Clip').hidden=!show; if(show){ const b0=Math.floor((t.off||0)/16)+1, b1=b0+pBars(t)*pLoops(t)-1; $('s2CbL').innerHTML=`<b>${nxEsc(s2Name(s2Lane(s2LaneId(t))))}</b>${b1>b0?'Bars '+b0+'–'+b1:'Bar '+b0}`; $('s2CbEdit').hidden=t.inst==='vox'; } }
+  s2.pos=-1; s2Chips(); s2Seek(); s2Clip(); }
 /* keep the playhead out from under the track headers, and the header panel as tall as the timeline */
 function s2Clip(){ const tl=$('s2Tl'), a=$('s2Ph'), b=$('s2PhH'); if(!a) return; $('s2').style.setProperty('--s2-sideh',Math.max(0,tl.clientHeight-26)+'px'); const hid=Math.max(0,s2.pos)*s2.barw<tl.scrollLeft-1?'hidden':'visible'; a.style.visibility=hid; b.style.visibility=hid; }
 function s2Chips(){ const b=$('s2Bpm').lastElementChild, k=$('s2Key').lastElementChild, kl=projKeyLabel()||'Auto'; if(b.textContent!==String(S.bpm)) b.textContent=S.bpm; if(k.textContent!==kl) k.textContent=kl;
@@ -1219,16 +1238,18 @@ function s2Tick(frac){ if(!s2On()) return; const bars=S.bars, live=playing||!!re
     $('s2Pos').textContent=(Math.floor(pos)+1)+'.'+(Math.floor((pos%1)*4)+1); s2Clip();
     if(playing||recState){ const tl=$('s2Tl'), hw=parseFloat(getComputedStyle($('s2')).getPropertyValue('--s2-hdr')), x=hw+pos*s2.barw; if(x>tl.scrollLeft+tl.clientWidth-24||x<tl.scrollLeft+hw) tl.scrollLeft=x-hw-8; } }
   const rec=!!recState; if($('s2').classList.contains('recording')!==rec){ $('s2').classList.toggle('recording',rec); $('s2Rec').hidden=!rec; $('s2RecB').setAttribute('aria-label',rec?'Stop recording':'Record'); if(!rec) s2Render(); }
-  if(rec){ const t=$('recLabel').textContent; if($('s2RecL').textContent!==t) $('s2RecL').textContent=t; }
+  if(rec){ const r=recState, live=ctx&&ctx.currentTime>=r.start, t=live&&!r.calib&&!r.teach ? `● Recording · bar ${Math.floor(pos)+1} · tap ■ to stop` : $('recLabel').textContent; if($('s2RecL').textContent!==t) $('s2RecL').textContent=t; }
   const pi=playing?'<path d="M7 5v14M17 5v14" stroke-width="3"/>':'<path d="M7 4l13 8-13 8V4z" fill="currentColor"/>'; if(s2._pi!==playing){ s2._pi=playing; $('s2PlayI').innerHTML=pi; $('s2EdPlayI').innerHTML=pi; $('s2Play').setAttribute('aria-label',playing?'Pause':'Play'); }
   s2Chips(); }
 function s2Seek(){ const m=$('s2Marks'); if(!m) return; let drag=false; const set=e=>{ if(recState) return; const r=m.getBoundingClientRect(), bar=clamp((e.clientX-r.left)/s2.barw,0,63.99), L=loopLen(); s2.cur=playing?Math.min(bar,S.bars):bar; playFrom=Math.min(Math.min(bar,S.bars)/S.bars*L, L-0.001); if(playing&&ctx) startAll(ctx.currentTime+0.02, playFrom); };
   m.onpointerdown=e=>{ drag=true; try{ m.setPointerCapture(e.pointerId); }catch(_){} set(e); }; m.onpointermove=e=>{ if(drag) set(e); }; m.onpointerup=m.onpointercancel=()=>{ drag=false; }; }
 const s2Fld=(id,label,min,max,v,step=1)=>`<div class="s2-fld"><label for="${id}">${label}</label><input type="range" id="${id}" min="${min}" max="${max}" step="${step}" value="${v}" oninput="this.nextElementSibling.value=this.value"><output>${v}</output></div>`;
-function s2AddSheet(thenRecord){ nxSheet(`<h2>${thenRecord?'What are you recording?':'Add a track'}</h2>${PICK_GROUPS.map(([g,ids])=>`<div class="nx-grp" style="padding-top:6px">${g}</div><div class="s2-opts">${ids.map(k=>`<button data-k="${k}"><i style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${INST[k].color};margin-right:6px"></i>${INST[k].label}</button>`).join('')}</div>`).join('')}`);
-  $('nxSheet').onclick=e=>{ const b=e.target.closest('[data-k]'); if(!b) return; nxClose(); const tr=mkTrack(b.dataset.k,{id:S.nextId++}); S.tracks.push(tr); S.activeId=tr.id; s2.armId=tr.id; keyCache=null; save(); renderTracks(); updateDock(); if(thenRecord) s2Record(); else toast('Ready: tap record'); }; }
+function s2AddSheet(thenRecord){ const mine=thenRecord?s2Lanes().filter(L=>!L.tracks[0].guide):[];
+  nxSheet(`<h2>${thenRecord?'What are you recording?':'Add a track'}</h2>${mine.length?`<div class="nx-grp" style="padding-top:6px">Your tracks</div><div class="s2-opts">${mine.map(L=>`<button data-lane="${L.id}"><i style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${INST[L.tracks[0].inst].color};margin-right:6px"></i>${nxEsc(s2Name(L))}</button>`).join('')}</div><div class="nx-grp" style="padding-top:0">A new track</div>`:''}${PICK_GROUPS.map(([g,ids])=>`<div class="nx-grp" style="padding-top:6px">${g}</div><div class="s2-opts">${ids.map(k=>`<button data-k="${k}"><i style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${INST[k].color};margin-right:6px"></i>${INST[k].label}</button>`).join('')}</div>`).join('')}`);
+  $('nxSheet').onclick=e=>{ const ln=e.target.closest('[data-lane]'); if(ln){ nxClose(); s2.armId=s2Lane(ln.dataset.lane).id; s2Render(); s2Record(); return; }
+    const b=e.target.closest('[data-k]'); if(!b) return; nxClose(); const tr=mkTrack(b.dataset.k,{id:S.nextId++}); S.tracks.push(tr); S.activeId=tr.id; s2.armId=tr.id; keyCache=null; save(); renderTracks(); updateDock(); if(thenRecord) s2Record(); else toast('Ready: tap record'); }; }
 const S2_MAX=16;   /* longest single take, in bars */
-function s2Record(){ ensureCtx(); if(recState){ const r=recState; if(ctx.currentTime<r.start+0.4) cancelRecord(); else r.end=Math.min(r.end, ctx.currentTime-r.lat-0.05); return; }   /* tap again: stop and keep what was recorded */
+function s2Record(){ ensureCtx(); s2.selId=null; if(recState){ const r=recState; if(ctx.currentTime<r.start+0.4) cancelRecord(); else r.end=Math.min(r.end, ctx.currentTime-r.lat-0.05); return; }   /* tap again: stop and keep what was recorded */
   const L=s2Lane(s2.armId); if(!L||L.tracks[0].guide){ s2AddSheet(true); return; } const first=L.tracks[0]; let tr=first; takeBar=null;
   { const P=clamp(Math.floor(s2.cur+1e-6),0,63);
     tr=L.tracks.find(t=>!hasContent(t));
@@ -1257,6 +1278,7 @@ function s2ShareSheet(){ if(!S.tracks.some(hasContent)){ toast('Record something
   const st=m=>{ const e=$('s2ShSt'); if(e){ e.hidden=!m; e.textContent=m||''; } }, lock=v=>$('nxSheet').querySelectorAll('.nx-act').forEach(b=>{ b.disabled=v; });
   $('s2ShNow').onclick=()=>shareNow(); $('s2ShSave').onclick=()=>{ if(shareFile) offerFile(shareFile.name, shareFile); };
   $('nxSheet').onclick=async e=>{ const b=e.target.closest('[data-k]'); if(!b||b.disabled) return; const k=b.dataset.k; S.loops=1; lock(true); $('s2ShGo').hidden=true;
+    S.exportedAt=new Date().toISOString(); save(); try{ dropSync(true); }catch(e){}   /* exporting says: these notes are what I meant */
     if(k==='daw'){ st('Preparing your tracks…'); await exportZip(); st('Done. Look for the .zip in your downloads or the share sheet.'); lock(false); return; }
     st(k==='video'?'Making your video…':'Making your audio…'); shareFile=null; const poll=setInterval(()=>{ const t=$('shVideo').textContent; if(/Making/.test(t)) st(t); },300);
     await prepareShare(k); clearInterval(poll); lock(false); if(!$('s2ShSt')) return;
@@ -1266,17 +1288,26 @@ function s2MoveClip(tr, bars){ const off=(tr.off||0)+bars*16, len=pSteps(tr)*pLo
   const hit=S.tracks.some(t=>t!==tr&&s2LaneId(t)===s2LaneId(tr)&&hasContent(t)&&off<(t.off||0)+pSteps(t)*pLoops(t)&&(t.off||0)<off+len); if(hit) return false;
   const L=pBars(tr); tr.len=L; tr.lenSet=true; tr.rep=false; const need=Math.max(1,...S.tracks.filter(hasContent).map(t=>t===tr?off/16+L:Math.floor((t.off||0)/16)+(t.off!=null&&t.len?t.len:S.bars)));
   if(need>S.bars){ S.bars=Math.min(64,need); } tr.off=off; if(need<S.bars && S.tracks.filter(hasContent).every(t=>t.off!=null&&t.len)) S.bars=need; syncTransport(); tr._dirty=true; save(); scheduleRender(); return true; }
-function s2TrimClip(tr, how){ if(pLoops(tr)>1) return false; const n=pSteps(tr), L=pBars(tr);
-  if(how==='start'||how==='end'){ if(L<2) return false; if(how==='start') s2Cut(tr,16,n); else s2Cut(tr,0,n-16); }
-  else { const off=tr.off||0, end=off+n+16; if(end>64*16) return false; if(S.tracks.some(t=>t!==tr&&s2LaneId(t)===s2LaneId(tr)&&hasContent(t)&&(t.off||0)<end&&(t.off||0)+pSteps(t)*pLoops(t)>off+n)) return false;
-    tr.off=off; tr.rep=false; tr.len=L+1; tr.lenSet=true; if(S.bars<end/16) S.bars=end/16; tr._dirty=true; }
+/* Trim or extend a part by whole bars: ds moves its start (+ later, - earlier), de moves its end (+ later, - earlier). Never onto another part. */
+function s2ResizeClip(tr, ds, de){ if(pLoops(tr)>1 || (!ds&&!de)) return false; let n=pSteps(tr); const off=tr.off||0, a=off+16*ds, b=off+n+16*de;
+  if(b-a<16 || a<0 || b>64*16) return false; if(S.tracks.some(t=>t!==tr&&s2LaneId(t)===s2LaneId(tr)&&hasContent(t)&&(t.off||0)<b&&(t.off||0)+pSteps(t)*pLoops(t)>a)) return false;
+  if(tr.inst!=='vox'){ const lo=Math.max(0,16*ds), hi=n+Math.min(0,16*de); if(![...(tr.notes||[]),...(tr.hits||[])].some(x=>x.s<hi&&x.s+(x.l||1)>lo)) return false; }   /* a trim never leaves a part with nothing in it */
+  tr.len=pBars(tr); tr.lenSet=true; tr.rep=false; if(S.bars<b/16) S.bars=b/16;
+  if(ds>0) s2Cut(tr,16*ds,n);
+  else if(ds<0){ const k=-ds*16; if(tr.notes) tr.notes.forEach(x=>{ x.s+=k; }); if(tr.hits) tr.hits.forEach(x=>{ x.s+=k; }); if(tr.inst==='vox'){ tr.va=+((tr.va||0)-k*stepDur()).toFixed(4); if(tr.vn) tr.vn.forEach(v=>{ v.t+=k*stepDur(); }); tr._tuned=null; tr._pitch=null; } tr.off=off-k; tr.len+=-ds; }
+  n=tr.len*16; if(de<0) s2Cut(tr,0,n+16*de); else if(de>0) tr.len+=de;
+  tr._an=null; tr._takes=null; tr._dirty=true;
   if(S.tracks.filter(hasContent).every(t=>t.off!=null&&t.len)) S.bars=Math.max(1,...S.tracks.filter(hasContent).map(t=>Math.floor(t.off/16)+t.len));
   syncTransport(); keyCache=null; save(); scheduleRender(); return true; }
-function s2ClipSheet(tr){ const mv=pLoops(tr)===1, b0=Math.floor((tr.off||0)/16)+1, b1=b0+pBars(tr)*pLoops(tr)-1; nxSheet(`<h2>${nxEsc(s2Name(s2Lane(s2LaneId(tr))))} <small style="font:500 12px var(--f-mono);color:var(--muted);text-transform:none">${b1>b0?'bars '+b0+'–'+b1:'bar '+b0}</small></h2>${tr.inst==='vox'?'':'<button class="nx-act" data-a="edit">Edit notes</button>'}${mv?'<div class="nx-grp" style="padding-top:10px">Move (or press and hold the part, then drag)</div><div class="s2-opts"><button data-a="ml">◀ One bar earlier</button><button data-a="mr">One bar later ▶</button></div><div class="nx-grp" style="padding-top:0">Length</div><div class="s2-opts"><button data-a="ts">Trim the first bar</button><button data-a="te">Trim the last bar</button><button data-a="ex">Add a bar</button></div>':''}<button class="nx-act danger" data-a="del">Delete this part</button>`);
-  $('nxSheet').onclick=e=>{ const b=e.target.closest('[data-a]'); if(!b) return; const a=b.dataset.a; if(a==='ml'||a==='mr'){ if(s2MoveClip(tr,a==='ml'?-1:1)){ renderTracks(); s2ClipSheet(tr); } else toast('No room there'); return; }
-    if(a==='ts'||a==='te'||a==='ex'){ if(s2TrimClip(tr,a==='ts'?'start':a==='te'?'end':'add')){ renderTracks(); s2ClipSheet(tr); } else toast(a==='ex'?'No room there':'It’s already one bar'); return; } nxClose(); if(b.dataset.a==='edit') return s2Edit(tr);
-    const mates=S.tracks.filter(o=>o!==tr&&s2LaneId(o)===s2LaneId(tr)); if(mates.length){ if(tr.lane==null) mates.forEach(o=>{ o.lane=mates[0].id; }); s2.recPrev=0; deletePart(tr); }
-    else { if(tr.notes) tr.notes=[]; if(tr.hits) tr.hits=[]; tr._an=null; tr._takes=null; tr._raw=null; tr._dirty=true; keyCache=null; save(); renderTracks(); scheduleRender(); toast('Part deleted'); } }; }
+const s2TrimClip=(tr,how)=>how==='start'?(pBars(tr)<2?false:s2ResizeClip(tr,1,0)):how==='end'?(pBars(tr)<2?false:s2ResizeClip(tr,0,-1)):s2ResizeClip(tr,0,1);
+/* A copy of a part, placed right after it (or in the next gap that fits) on the same track. */
+function s2DupClip(tr){ if(pLoops(tr)>1) return null; const len=pSteps(tr), mates=S.tracks.filter(t=>s2LaneId(t)===s2LaneId(tr)&&hasContent(t)).sort((x,y)=>(x.off||0)-(y.off||0));
+  let at=(tr.off||0)+len; for(const m of mates){ const o=m.off||0, e=o+pSteps(m)*pLoops(m); if(o<at+len && e>at) at=e; } if(at+len>64*16) return null;
+  const c=JSON.parse(JSON.stringify(tr,(k,v)=>k[0]==='_'?undefined:v)); c.id=S.nextId++; c.lane=s2LaneId(tr); c.off=at; c.len=pBars(tr); c.lenSet=true; c.rep=false; delete c.sid; delete c.sidAt; delete c.sidHeard; delete c.ed; c.copyOf=tr.id; c._dirty=true;
+  if(tr._raw){ c._raw=tr._raw; storeVox(c); } S.tracks.push(c); if(S.bars<(at+len)/16) S.bars=(at+len)/16; syncTransport(); keyCache=null; save(); scheduleRender(); return c; }
+function s2DeleteClip(tr){ const mates=S.tracks.filter(o=>o!==tr&&s2LaneId(o)===s2LaneId(tr)); s2.selId=null;
+  if(mates.length){ if(tr.lane==null) mates.forEach(o=>{ o.lane=mates[0].id; }); s2.recPrev=0; deletePart(tr); }
+  else { if(tr.notes) tr.notes=[]; if(tr.hits) tr.hits=[]; tr._an=null; tr._takes=null; if(tr._raw){ tr._raw=null; tr.va=null; takeStore.del('vox'+tr.id); } tr._dirty=true; keyCache=null; save(); renderTracks(); scheduleRender(); toast('Part deleted'); } }
 function s2TrackSheet(L){ const tr=L.tracks[0], all=()=>S.tracks.filter(t=>s2LaneId(t)===L.id), I=INST[tr.inst], nm=nxEsc(s2Name(L));
   nxSheet(`<h2>${nm}</h2>${I.sounds&&I.sounds.length?`<div class="nx-grp" style="padding-top:0">Sound</div><div class="s2-opts" id="s2Snd">${I.sounds.map(x=>`<button data-x="${nxEsc(x)}" aria-pressed="${x===tr.sound}">${nxEsc(x)}</button>`).join('')}</div>`:''}
     ${s2Fld('s2Vol','Volume',0,100,tr.vol??80)}<button class="nx-act danger" data-a="del">Delete track</button>`);
@@ -1285,9 +1316,8 @@ function s2TrackSheet(L){ const tr=L.tracks[0], all=()=>S.tracks.filter(t=>s2Lan
   $('nxSheet').oninput=e=>{ if(e.target.id==='s2Vol'){ all().forEach(t=>{ t.vol=+e.target.value; }); applyAllMix(); save(); } }; }
 function s2Bind(id,src,ev='input'){ const a=$(id), b=$(src); if(!a||!b) return; a.addEventListener(ev,()=>{ b.value=a.value; b.dispatchEvent(new Event(ev,{bubbles:true})); if(ev!=='change') b.dispatchEvent(new Event('change',{bubbles:true})); }); }
 function s2Sheets(kind){ $('nxSheet').oninput=null;
-  if(kind==='tempo'){ nxSheet(`<h2>Tempo and length</h2>${s2Fld('s2T','Tempo',60,180,S.bpm)}<div class="nx-grp" style="padding-top:6px">Song length (bars)</div><div class="s2-opts" id="s2Len">${[1,2,4,8,16].map(b=>`<button data-b="${b}" aria-pressed="${b===S.bars}">${b}</button>`).join('')}</div><label class="chk" style="display:flex;gap:10px;align-items:center;padding:8px 0"><input type="checkbox" id="s2Arp" ${S.keyRef?'checked':''}> <span>Play the home chord during the count-in</span></label>`);
-    $('s2T').onchange=e=>setTempo(+e.target.value); $('s2Arp').onchange=()=>$('keyRef').click();
-    $('nxSheet').onclick=e=>{ const b=e.target.closest('#s2Len button'); if(!b) return; const sel=$('bars'); sel.value=b.dataset.b; sel.dispatchEvent(new Event('change',{bubbles:true})); s2Sheets('tempo'); s2Render(); }; }
+  if(kind==='tempo'){ nxSheet(`<h2>Tempo</h2>${s2Fld('s2T','Tempo',60,180,S.bpm)}<label class="nx-chk" style="font-weight:400;font-size:15px"><input type="checkbox" id="s2Arp" ${S.keyRef?'checked':''}> <span>Play the home chord during the count-in</span></label>`);
+    $('s2T').onchange=e=>setTempo(+e.target.value); $('s2Arp').onchange=()=>$('keyRef').click(); $('nxSheet').onclick=null; }
   if(kind==='key'){ nxSheet(`<h2>Key and snap</h2><div class="s2-fld"><label for="s2K">Key</label><select class="nx-txt" id="s2K">${$('key').innerHTML}</select></div><div class="s2-fld"><label for="s2Sc">Snap notes to</label><select class="nx-txt" id="s2Sc">${$('scale').innerHTML}</select></div>${s2Fld('s2Sn','Snap strength',0,100,S.snapStr??100,5)}`);
     $('s2K').value=$('key').value; $('s2Sc').value=$('scale').value; s2Bind('s2K','key','change'); s2Bind('s2Sc','scale','change'); s2Bind('s2Sn','snapStr'); $('nxSheet').onclick=null; }
   if(kind==='mix'){ nxSheet(`<h2>Mix</h2>${s2Fld('s2Mv','Master volume',0,100,S.master.vol)}${s2Fld('s2Mr','Reverb',0,100,S.master.rev)}${s2Fld('s2Md','Drive',0,100,S.master.drive)}${s2Fld('s2Mp','Punch',0,100,S.master.punch)}`);
@@ -1299,28 +1329,42 @@ function s2Init(){ const _rt=renderTracks; renderTracks=function(){ if(s2.post &
   $('s2EdBack').onclick=s2EdClose; $('s2EdUndo').onclick=()=>undo(); $('s2EdRedo').onclick=()=>redo(); $('s2EdPlay').onclick=()=>togglePlay();
   $('s2EdFill').onclick=()=>{ const b=$('s2EdBody').querySelector('.pfill'); if(b) b.click(); };
   $('s2EdVer').onclick=()=>{ const tr=S.tracks.find(t=>t.id===s2.edId); if(!tr) return; if(!tr._versions) tr._versions=takeVersions(tr); if(tr._versions.length<2){ toast('No other likely readings of this part.'); return; } const i=((tr._vi||0)+1)%tr._versions.length; applyVersion(tr,i); toast(i?`Reading ${i+1} of ${tr._versions.length}`:'Back to what Noodle heard'); };
+  $('s2CbEdit').onclick=()=>{ const t=S.tracks.find(x=>x.id===s2.selId); if(t) s2Edit(t); };
+  $('s2CbDup').onclick=()=>{ const t=S.tracks.find(x=>x.id===s2.selId); if(!t) return; const c=s2DupClip(t); if(c){ s2.selId=c.id; renderTracks(); const tl=$('s2Tl'), x0=(c.off/16)*s2.barw, x1=x0+pBars(c)*s2.barw, hw=parseFloat(getComputedStyle($('s2')).getPropertyValue('--s2-hdr')); if(x1>tl.scrollLeft+tl.clientWidth-hw-12) tl.scrollLeft=Math.max(0,x1-(tl.clientWidth-hw)+24); else if(x0<tl.scrollLeft) tl.scrollLeft=Math.max(0,x0-12); } else toast('No room for a copy'); };
+  $('s2CbDel').onclick=()=>{ const t=S.tracks.find(x=>x.id===s2.selId); if(t) s2DeleteClip(t); };
   $('s2Back').onclick=()=>nxGo('projects'); $('s2Name').onclick=()=>s2Sheets('name'); $('s2Undo').onclick=()=>undo(); $('s2Redo').onclick=()=>redo();
   $('s2Share').onclick=s2ShareSheet; $('s2Bpm').onclick=()=>s2Sheets('tempo'); $('s2Key').onclick=()=>s2Sheets('key'); $('s2Mix').onclick=()=>s2Sheets('mix');
   $('s2Play').onclick=()=>togglePlay(); $('s2RecB').onclick=s2Record; $('s2Metro').onclick=()=>$('metro').click();
   $('s2Rew').onclick=()=>{ if(recState) return; playFrom=0; s2.cur=0; $('s2Tl').scrollLeft=0; if(playing&&ctx) startAll(ctx.currentTime+0.02,0); };
   $('s2Loop').onclick=e=>{ s2.loop=!s2.loop; e.currentTarget.setAttribute('aria-pressed',s2.loop); toast(s2.loop?'Loop on':'Loop off'); };
   $('s2TkOk').onclick=()=>{ takeBar=null; renderTracks(); };
-  $('s2TkDel').onclick=async()=>{ const p=takeBar, pb=p.prevBars; takeBar=null; await discardTake(p); s2.recPrev=pb||0; s2.recId=null; s2Tidy(); renderTracks(); toast('Take discarded'); };
-  $('s2TkRe').onclick=async()=>{ const p=takeBar; takeBar=null; flushSave(); const snap=hist.cur; await discardTake(p); const t=S.tracks.find(x=>x.id===p.id); s2.recId=p.id; s2.recPrev=p.prevBars||S.bars; s2.recLen=t&&t.off!=null?t.len:0; s2.post=true; recordInto(p.id,{snap,bar:p}); };
+  const gone=p=>{ try{ const t=S.tracks.find(x=>x.id===p.id); if(drop&&t&&t.sid) dropPost({sid:t.sid, meta:{...dropMeta(t), discarded:true}}); }catch(e){} };   /* a thrown-away take is worth knowing about */
+  $('s2TkDel').onclick=async()=>{ const p=takeBar, pb=p.prevBars; gone(p); takeBar=null; await discardTake(p); s2.recPrev=pb||0; s2.recId=null; s2Tidy(); renderTracks(); toast('Take discarded'); };
+  $('s2TkRe').onclick=async()=>{ const p=takeBar; gone(p); takeBar=null; flushSave(); const snap=hist.cur; await discardTake(p); const t=S.tracks.find(x=>x.id===p.id); s2.recId=p.id; s2.recPrev=p.prevBars||S.bars; s2.recLen=t&&t.off!=null?t.len:0; s2.post=true; recordInto(p.id,{snap,bar:p}); };
   $('s2In').onclick=e=>{ const g=k=>e.target.closest(`[data-${k}]`), T=id=>S.tracks.find(t=>String(t.id)===id); let b;
     if(b=g('arm')){ const L=s2Lane(b.dataset.arm); s2.armId=String(s2.armId)===String(L.id)?null:L.id; if(s2.armId!=null){ S.activeId=L.tracks[0].id; updateDock(); } s2Render(); }
     else if(b=g('m')){ const L=s2Lane(b.dataset.m), v=!L.tracks[0].mute; L.tracks.forEach(t=>{ t.mute=v; }); save(); applyAllMix(); s2Render(); }
     else if(b=g('s')){ const L=s2Lane(b.dataset.s), v=!L.tracks[0].solo; L.tracks.forEach(t=>{ t.solo=v; }); save(); applyAllMix(); s2Render(); }
     else if(b=g('t')) s2TrackSheet(s2Lane(b.dataset.t));
-    else if(b=g('ln')){ if(recState || Date.now()-(s2.noTap||0)<400) return; const L=s2Lane(b.dataset.ln), st=(e.clientX-b.getBoundingClientRect().left)/s2.barw*16, t=L.tracks.find(t=>hasContent(t)&&st>=(t.off||0)&&st<(t.off||0)+pSteps(t)*pLoops(t)); if(t) s2ClipSheet(t); }
+    else if(b=g('ln')){ if(recState || Date.now()-(s2.noTap||0)<400) return; const L=s2Lane(b.dataset.ln), st=(e.clientX-b.getBoundingClientRect().left)/s2.barw*16, t=L.tracks.find(t=>hasContent(t)&&st>=(t.off||0)&&st<(t.off||0)+pSteps(t)*pLoops(t)); s2.selId=t?t.id:null; s2Render(); }
     else if(e.target.id==='s2Add') s2AddSheet(false); };
+  { const T=$('s2In'); let g=null;
+    T.addEventListener('pointerdown',e=>{ const sel=e.target.closest('.s2-sel'); if(!sel||recState) return; const tr=S.tracks.find(x=>x.id===s2.selId); if(!tr) return; e.stopPropagation();
+      g={tr,sel,x0:e.clientX,mode:e.target.classList.contains('hl')?'l':e.target.classList.contains('hr')?'r':'m',off:(tr.off||0)/16,len:pBars(tr)*pLoops(tr),d:0}; s2.drag=true; try{ sel.setPointerCapture(e.pointerId); }catch(_){} },true);
+    T.addEventListener('pointermove',e=>{ if(!g) return; let d=Math.round((e.clientX-g.x0)/s2.barw); if(g.mode==='m') d=Math.max(-g.off,d); if(g.mode==='l') d=Math.min(g.len-1,Math.max(-g.off,d)); if(g.mode==='r') d=Math.max(1-g.len,d); g.d=d;
+      const o=g.off+(g.mode==='r'?0:d), w=g.len+(g.mode==='r'?d:g.mode==='l'?-d:0); g.sel.style.left=`calc(${o} * var(--s2-barw))`; g.sel.style.width=`calc(${w} * var(--s2-barw))`; },true);
+    const fin=e=>{ if(!g) return; const q=g; g=null; s2.drag=false; s2.noTap=Date.now(); let ok=true;
+      if(q.d){ ok = q.mode==='m' ? s2MoveClip(q.tr,q.d) : q.mode==='l' ? s2ResizeClip(q.tr,q.d,0) : s2ResizeClip(q.tr,0,q.d); if(!ok) toast('No room there'); }
+      else if(q.mode==='m' && e.type==='pointerup' && q.tr.inst!=='vox'){ renderTracks(); s2Edit(q.tr); return; }   /* tap the selected part: edit its notes */
+      renderTracks(); };
+    T.addEventListener('pointerup',fin,true); T.addEventListener('pointercancel',fin,true); }
   { const T=$('s2In'); let hold=0, dr=null, sx=0, sy=0;
     const clipAt=(ln,x)=>{ const L=s2Lane(ln.dataset.ln), st=(x-ln.getBoundingClientRect().left)/s2.barw*16; return L&&L.tracks.find(t=>hasContent(t)&&st>=(t.off||0)&&st<(t.off||0)+pSteps(t)*pLoops(t)); };
-    T.addEventListener('pointerdown',e=>{ const ln=e.target.closest('.s2-ln'); if(!ln||recState) return; sx=e.clientX; sy=e.clientY; clearTimeout(hold);
+    T.addEventListener('pointerdown',e=>{ const ln=e.target.closest('.s2-ln'); if(!ln||recState||e.target.closest('.s2-sel')) return; sx=e.clientX; sy=e.clientY; clearTimeout(hold);
       hold=setTimeout(()=>{ const tr=clipAt(ln,sx); if(!tr||pLoops(tr)>1) return; dr={tr,ln,off0:tr.off||0,x0:sx,id:e.pointerId,moved:false}; s2.drag=true; try{ ln.setPointerCapture(e.pointerId); }catch(_){} try{ navigator.vibrate&&navigator.vibrate(10); }catch(_){} ln.style.outline='2px solid var(--s2-amber)'; },380); });
     T.addEventListener('pointermove',e=>{ if(!dr){ if(Math.abs(e.clientX-sx)>8||Math.abs(e.clientY-sy)>8) clearTimeout(hold); return; }
       const nb=Math.round((e.clientX-dr.x0)/s2.barw), off=Math.max(0,dr.off0+nb*16); if(off!==(dr.tr.off||0)){ dr.tr.off=off; dr.moved=true; const L=s2Lane(s2LaneId(dr.tr)), cv=dr.ln.querySelector('canvas'); if(L&&cv) s2DrawLane(L,cv); } });
-    const end=e=>{ clearTimeout(hold); if(!dr) return; const d=dr; dr=null; s2.drag=false; d.ln.style.outline=''; s2.noTap=Date.now(); const want=(d.tr.off||0)-d.off0; d.tr.off=d.off0; if(d.moved && want){ if(!s2MoveClip(d.tr,want/16)) toast('No room there'); } renderTracks(); };
+    const end=e=>{ clearTimeout(hold); if(!dr) return; const d=dr; dr=null; s2.drag=false; d.ln.style.outline=''; s2.noTap=Date.now(); const want=(d.tr.off||0)-d.off0; d.tr.off=d.off0; if(d.moved && want){ if(!s2MoveClip(d.tr,want/16)) toast('No room there'); else s2.selId=d.tr.id; } renderTracks(); };
     T.addEventListener('pointerup',end); T.addEventListener('pointercancel',end); }
   const tl=$('s2Tl'); let d0=0,b0=0,zt=0; const dist=t=>Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY);
   const zoom=z=>{ s2.barw=clamp(z,20,160); $('s2').style.setProperty('--s2-barw',s2.barw+'px'); clearTimeout(zt); zt=setTimeout(s2Render,140); };
@@ -2748,6 +2792,7 @@ let drop=null; try{ drop=JSON.parse(localStorage.getItem(DROP_KEY)||'null'); }ca
   if(q.get('share')){ if(q.get('share')==='off') shareDisable(false); else if(q.get('age13')==='1') shareEnable(q.get('share')); history.replaceState(null,'',location.pathname); } }catch(e){} })();
 /* Sharing through the Noodle takes service (opt-in, 13+). No account: this install gets a random id that only this phone knows,
    which lets it add, update and delete its own takes. */
+const NOODLE_BUILD='2026-11-15';   /* which version of Noodle heard a shared take */
 const NOODLE_API=(()=>{ try{ return localStorage.getItem('noodle.api')||'https://noodle-takes.cracked.workers.dev'; }catch(e){ return 'https://noodle-takes.cracked.workers.dev'; } })();   /* 'noodle.api' is for tests */
 /* Optional email list (news about Noodle and what comes next): separate from sharing takes, with its own consent. `text` is the wording the person agreed to. */
 async function emailSignup(email, text){ try{ const r=await fetch(NOODLE_API+'/v1/signups',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({email, consent:{v:1, text}})}); return r.ok; }catch(e){ return false; } }
@@ -2792,9 +2837,9 @@ function dropWavB64(x,sr){ const R=24000, n=Math.floor((x.length-1)*R/sr), y=new
   w(0,'RIFF'); b.setUint32(4,36+n*2,true); w(8,'WAVE'); w(12,'fmt '); b.setUint32(16,16,true); b.setUint16(20,1,true); b.setUint16(22,1,true); b.setUint32(24,R,true); b.setUint32(28,R*2,true); b.setUint16(32,2,true); b.setUint16(34,16,true); w(36,'data'); b.setUint32(40,n*2,true);
   return new Promise(res=>{ const fr=new FileReader(); fr.onload=()=>res(String(fr.result).split(',')[1]); fr.readAsDataURL(new Blob([b.buffer,y.buffer])); }); }
 const slug=t=>String(t||'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,40);
-function dropState(tr){ return {notes:tr.notes?tr.notes.map(n=>({s:n.s,l:n.l,p:pitchOf(n),raw:+(+n.p).toFixed(3),v:n.v,x:!!n.x,...(n.hs?{hs:n.hs}:{})})):undefined, hits:tr.hits?tr.hits.map(h=>({s:h.s,d:h.d,v:h.v})):undefined, va:tr.va, sound:tr.sound}; }
+function dropState(tr){ return {notes:tr.notes?tr.notes.map(n=>({s:n.s,l:n.l,p:pitchOf(n),raw:+(+n.p).toFixed(3),v:n.v,x:!!n.x,...(n.r0!=null?{r0:n.r0}:{}),...(n.hs?{hs:n.hs}:{})})):undefined, hits:tr.hits?tr.hits.map(h=>({s:h.s,d:h.d,v:h.v})):undefined, va:tr.va, sound:tr.sound}; }
 function dropMeta(tr){ return {sid:tr.sid, song:S.title||'', inst:tr.inst, bpm:S.bpm, bars:S.bars, quant:S.quant, key:S.key, scale:S.scale, snapStr:S.snapStr??100, sens:tr.sens??S.sens, latMs:S.latMs, who:drop&&drop.who||'',
-  recordedAt:tr.sidAt, updatedAt:new Date().toISOString(), heard:tr.sidHeard, now:dropState(tr), reading:tr.reading||null, prompt:S.prompt||null, guide:(()=>{ const g=S.tracks.find(t=>t.guide); return g?dropState(g):null; })(), playAlong:!!S.playAlong, noise:tr.sidNoise||null, ua:navigator.userAgent.slice(0,120)}; }
+  recordedAt:tr.sidAt, updatedAt:new Date().toISOString(), heard:tr.sidHeard, now:dropState(tr), reading:tr.reading||null, prompt:S.prompt||null, guide:(()=>{ const g=S.tracks.find(t=>t.guide); return g?dropState(g):null; })(), playAlong:!!S.playAlong, noise:tr.sidNoise||null, edits:tr.ed||[], clip:{off:tr.off||0,len:tr.len||null}, cut:!!tr.cutAt, exportedAt:S.exportedAt||null, build:NOODLE_BUILD, ua:navigator.userAgent.slice(0,120)}; }
 async function dropTake(x, sr, inst){ if(!drop) return;
   const tr=S.tracks.find(t=>(t._raw&&t._raw.x===x)||(t._takes||[]).some(k=>k.raw&&k.raw.x===x));
   if(!tr){ // nothing was heard: still worth sending, it shows what Noodle misses
@@ -2809,8 +2854,8 @@ async function dropTake(x, sr, inst){ if(!drop) return;
   const ok=await dropPost({sid:tr.sid, ...(drop.api?{pcm:{x,sr}}:{wav}), meta}); if(!ok) toast('Couldn’t send that take. It’ll still work here.'); }
 let dropTimer=0;
 function dropSoon(){ if(!drop) return; clearTimeout(dropTimer); dropTimer=setTimeout(dropSync,8000); }
-function dropSync(){ if(!drop) return; clearTimeout(dropTimer);
-  S.tracks.forEach(tr=>{ if(!tr.sid) return; const now=JSON.stringify(dropState(tr)); if(now===tr._dropSent) return; tr._dropSent=now; dropPost({sid:tr.sid, meta:dropMeta(tr)}); }); }
+function dropSync(force){ if(!drop) return; clearTimeout(dropTimer);
+  S.tracks.forEach(tr=>{ if(!tr.sid) return; const now=JSON.stringify(dropState(tr)); if(now===tr._dropSent && !force) return; tr._dropSent=now; dropPost({sid:tr.sid, meta:dropMeta(tr)}); }); }
 /* ---- Guided takes (only while sharing is on): a 4-bar guide to listen to, then you record the same thing ---- */
 const G_MEL={   // [midi, steps] (16 steps a bar, 4 bars)
   scale:   [[60,4],[62,4],[64,4],[65,4],[67,4],[69,4],[71,4],[72,4],[71,4],[69,4],[67,4],[65,4],[64,4],[62,4],[60,8]],
@@ -2905,7 +2950,7 @@ async function addTake0(x, sr, inst, opt){
     const tgD=S.tracks.find(t=>t.id===S.target); const an=withDetail(partDetail(tgD), ()=>analyzeTake(x,sr,inst,tr.sens,opt.notch)); const wmsg=fitWhistle(an,inst);
     const kind=INST[inst].kind;
     let first = kind==='pitched' ? (an.notes[0]&&an.notes[0].t0) : (an.onsets[0]&&an.onsets[0].t);
-    if(first===undefined){ toast(kind==='pitched'?'I couldn’t hear clear notes. Hum a little louder, or raise the sensitivity in Timing & mic.':'I couldn’t hear any hits. Try a little louder, or raise the sensitivity in Timing & mic.'); return; }
+    if(first===undefined){ toast(kind==='pitched'?'I couldn’t hear clear notes. Hum a little louder, or raise Mic sensitivity in More.':'I couldn’t hear any hits. Try a little louder, or raise Mic sensitivity in More.'); return; }
     an.align = opt.align!=null ? opt.align : Math.max(0,first-0.004); an.live=!!opt.live; an.notchUsed=!!opt.notch; an.base=an.align;
     let msg='', detBars=0;
     if(!opt.live && $('detectTempo').checked && opt.first){
@@ -2966,7 +3011,7 @@ async function addTake0(x, sr, inst, opt){
     save(); renderTracks(); updateKeyInfo();
     let detail='';
     if(inst==='kit'){ const c={}; S.kit.slots.forEach(x=>c[x.id]=0); tr.hits.forEach(h=>c[h.d]=(c[h.d]||0)+1); detail=' ('+Object.entries(c).filter(([d,n])=>n||['kick','snare','hat'].includes(d)).map(([d,n])=>n+' '+slotLabel(d).toLowerCase()).join(', ')+')'; }
-    toast(`${INST[inst].label}: ${count} ${kind==='pitched'?'notes':'hits'}${detail}.${msg}${wmsg}`+(an.bleed?` Ignored ${an.bleed} metronome clicks the mic picked up; headphones avoid this.`:'')+(opt.live&&!S.calibrated&&S.latAuto?' If it sounds late, calibrate once under Timing & mic.':''));
+    toast(`${INST[inst].label}: ${count} ${kind==='pitched'?'notes':'hits'}${detail}.${msg}${wmsg}`+(an.bleed?` Ignored ${an.bleed} metronome clicks the mic picked up; headphones avoid this.`:'')+(opt.live&&!S.calibrated&&S.latAuto?' If it sounds late, use Fix late notes in More.':''));
     tr._dirty=true; await renderDirty();
     if(!playing){ playing=true; updatePlayBtn(); startAll(ctx.currentTime+0.08); }
   } finally { busy(); }
@@ -3460,6 +3505,9 @@ function cellAt(tr,e,clampIt){
    - press and drag on an empty spot to draw a new note (it stays selected); tapping empty space deselects */
 function nextPitch(p,dir){ const K=currentKey(); if(K.none) return p+dir; let m=p+dir; for(let i=0;i<12 && !K.set.includes(((m-K.tonic)%12+12)%12);i++) m+=dir; return m; }
 function selectNote(tr,n){ tr._sel=n||null; drawGrid(tr); renderNoteBar(tr); }
+/* What was changed by hand on a recorded part, in order: kind, where, old and new pitch, what was actually sung there (raw), and how many seconds after the take.
+   Kept with the part and sent with shared takes. Telling a fix from a creative change is done later, from these facts (how soon, how far from what was sung, before or after export). */
+function logEdit(tr,o){ if(!tr||tr.guide) return; const t=tr.sidAt?Math.round((Date.now()-Date.parse(tr.sidAt))/1000):null; (tr.ed=tr.ed||[]).push({...o,t}); if(tr.ed.length>80) tr.ed.splice(0,tr.ed.length-80); }
 function noteChanged(tr){ keyCache=null; tr.notes.sort((a,b)=>a.s-b.s); enforceMono(tr); tr._dirty=true; save(); redrawTrack(tr); renderNoteBar(tr); scheduleRender(); }
 /* ---- learning from your corrections (no setup): small nudges to the same settings you can see and change ---- */
 let learnToldThisSession=false;
@@ -3467,8 +3515,8 @@ function learnNote(msg){ if(learnToldThisSession) return; learnToldThisSession=t
 function learnFromPitchFix(a,b){ const K=currentKey(); if(K.none||a===b||Math.abs(a-b)>2) return; const ink=m=>K.set.includes(((m-K.tonic)%12+12)%12);
   let d=0; if(!ink(a)&&ink(b)) d=5; else if(ink(a)&&!ink(b)) d=-5; if(!d) return;
   S.snapStr=clamp((S.snapStr??100)+d,0,100); const ss=$('snapStr'); if(ss){ ss.value=S.snapStr; ss.dispatchEvent(new Event('input')); } save();
-  learnNote(d>0?'Noted: recorded notes will snap a little more to the key (Snap strength, under Mix & global FX).':'Noted: recorded notes will keep a little more of what you sang (Snap strength, under Mix & global FX).'); }
-function learnDetail(d){ S.detailBias=clamp((S.detailBias||0)+d,-30,30); save(); if(S.detailBias<=-6) learnNote('Noted: future takes will lean toward fewer, longer notes. Change it any time with Notes on a take.'); }
+  learnNote(d>0?'Noted: recorded notes will snap a little more to the key. Change it any time: tap KEY.':'Noted: recorded notes will keep a little more of what you sang. Change it any time: tap KEY.'); }
+function learnDetail(d){ S.detailBias=clamp((S.detailBias||0)+d,-30,30); save(); if(S.detailBias<=-6) learnNote('Noted: future takes will lean toward fewer, longer notes.'); }
 /* Replacing a wrong note is often easier as "draw the right one, delete the old one" (either order) than dragging it.
    Within 30 s, a deleted recorded note and a drawn note over the same spot count as one fix (learned like a drag),
    not as "too many notes". */
@@ -3486,12 +3534,12 @@ function recordedDeleted(tr,n){ const now=Date.now(); tr._recent=(tr._recent||[]
   rec.timer=setTimeout(()=>{ tr._recent=(tr._recent||[]).filter(r=>r!==rec); if(short) learnDetail(-2); },REPLACE_MS);   // no replacement drawn: it really was an extra note
   tr._recent.push(rec); }
 /* Split: a held note becomes two on the same pitch (cut on a beat when it spans one, else in half) - for repeated notes sung as one */
-function splitSelNote(tr,at){ const n=tr._sel, q=S.quant==8?2:1; if(!n||!tr.notes.includes(n)||n.l<2*q) return;
+function splitSelNote(tr,at){ const n=tr._sel, q=S.quant==8?2:1; if(!n||!tr.notes.includes(n)||n.l<2*q) return; logEdit(tr,{k:'split',s:n.s,l:n.l,at:at??null,hint:!!(n.hs&&at!=null&&n.hs.includes(at-n.s))});
   const mid=n.s+n.l/2; let cut=at!=null?Math.round(at/q)*q:Math.round(mid/4)*4; if(cut<=n.s||cut>=n.s+n.l) cut=n.s+Math.max(q,Math.round(n.l/2/q)*q);
   const b={...n, s:cut, l:n.s+n.l-cut}; n.l=cut-n.s; delete b.g;
   if(n.hs){ const o=cut-n.s, L=n.hs.filter(h=>h<o), R=n.hs.filter(h=>h>o).map(h=>h-o); if(L.length) n.hs=L; else delete n.hs; if(R.length) b.hs=R; else delete b.hs; }
   tr.notes.push(b); tr._sel=b; keyCache=null; noteChanged(tr); }
-function deleteSelNote(tr){ const n=tr._sel; if(!n||!tr.notes.includes(n)) return; if(!n.x) recordedDeleted(tr,n); tr.notes.splice(tr.notes.indexOf(n),1); tr._sel=null; keyCache=null; noteChanged(tr); }
+function deleteSelNote(tr){ const n=tr._sel; if(!n||!tr.notes.includes(n)) return; logEdit(tr,{k:'del',s:n.s,l:n.l,from:pitchOf(n),raw:n.x?(n.r0??null):+(+n.p).toFixed(2),drawn:!!n.x&&n.r0==null}); if(!n.x) recordedDeleted(tr,n); tr.notes.splice(tr.notes.indexOf(n),1); tr._sel=null; keyCache=null; noteChanged(tr); }
 function placeHandle(tr){ const h=tr._nsel, G=tr._grid, n=tr._sel, x=tr._ndel; if(!h) return;
   const i=(n&&G)?G.rows.indexOf(pitchOf(n)):-1; if(i<0||!tr.notes.includes(n)){ h.hidden=true; if(x) x.hidden=true; if(tr._nsplit) tr._nsplit.hidden=true; return; }
   if(x){ const top=1+i*G.rh, above=top>=26; x.hidden=false; x.style.left=Math.max(0,G.gut+(n.s+n.l)*G.cw-12)+'px'; x.style.top=(above?top-26:top+G.rh+2)+'px'; }
@@ -3517,7 +3565,7 @@ function noteMove(tr,e){
   if(c.s!==d.s0 || c.row!==d.row0) d.moved=true; if(!d.moved) return;
   if(d.mode==='resize') d.note.l=clamp(Math.floor((c.s-d.note.s)/q)*q+q, q, n-d.note.s);
   else { d.note.s=clamp(d.ns+Math.round((c.s-d.s0)/q)*q, 0, n-d.note.l);
-    const np=snap(c.row); if(np!==pitchOf(d.note)){ d.note.p=np; d.note.x=true; previewNote(tr,np); } }
+    const np=snap(c.row); if(np!==pitchOf(d.note)){ if(!d.note.x && d.note.r0==null) d.note.r0=+(+d.note.p).toFixed(2);   /* keep what was sung */ d.note.p=np; d.note.x=true; previewNote(tr,np); } }
   drawGrid(tr);
 }
 function noteUp(tr,e,cancel){
@@ -3532,6 +3580,8 @@ function noteUp(tr,e,cancel){
     else { startNewNote(tr,d.c); tr._drag=null; noteChanged(tr); }
     return; }
   if(d.moved && d.rec && d.mode==='move') learnFromPitchFix(d.np, pitchOf(d.note));
+  if(d.moved && !d.created){ const to=pitchOf(d.note); if(d.mode==='move' && to!==d.np) logEdit(tr,{k:'pitch',s:d.note.s,from:d.np,to,raw:d.note.r0??null}); if(d.mode==='move' && d.note.s!==d.ns) logEdit(tr,{k:'move',s:d.note.s,from:d.ns}); if(d.mode==='resize') logEdit(tr,{k:'len',s:d.note.s,to:d.note.l}); }
+  if(d.created) logEdit(tr,{k:'add',s:d.note.s,to:pitchOf(d.note),l:d.note.l});
   if(d.created) noteDrawn(tr,d.note);
   if(d.moved||d.created) noteChanged(tr);
   else { const lt=tr._lastTap, now=Date.now();   /* a second tap on the selected note: split it there */
