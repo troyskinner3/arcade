@@ -10,7 +10,7 @@ const keys=async pre=>(await (await fetch(A+pre,{headers:H})).json()).keys.map(k
   await p.tap('#nxAge'); out.enabledAfterAge=await p.evaluate(()=>!$('obY').disabled); await p.tap('#obY'); await p.waitForTimeout(200);
   out.sharing=await p.evaluate(()=>({api:drop&&drop.api, age13:drop&&drop.consent.age13, id:drop&&drop.install.length}));
   await p.screenshot({path:'results/ob2.png'}); await p.fill('#obEm','nope'); await p.tap('#obE'); await p.waitForTimeout(200); out.badEmail=await p.$eval('#toast',e=>e.textContent);
-  await p.fill('#obEm','tester@example.com'); await p.tap('#obE'); await p.waitForFunction(()=>$('nxOb').hidden,null,{timeout:8000}); await p.waitForTimeout(500);
+  await p.fill('#obEm','tester@example.com'); await p.tap('#obE'); await p.waitForSelector('#vcSkip',{timeout:8000}); out.voiceIntro=await p.$eval('#nxOb h1',e=>e.textContent); await p.tap('#vcSkip'); await p.waitForFunction(()=>$('nxOb').hidden,null,{timeout:8000}); await p.waitForTimeout(500);
   out.after=await p.evaluate(()=>({studio:!$('s2').hidden, onboard:localStorage.getItem('noodle.onboard'), email:localStorage.getItem('noodle.email')})); out.signups=(await keys('signups/')).length;
   // share a take, then stop + delete from More
   await p.evaluate(async()=>{ ensureCtx(); const sr=ctx.sampleRate, x=new Float32Array(sr*4); for(let n=0;n<4;n++) for(let i=0;i<sr*0.8;i++){ const t=i/sr; x[Math.floor(n*sr+i)]=0.3*Math.sin(2*Math.PI*[196,220,247,262][n]*t)*Math.min(1,t*40)*Math.min(1,(0.8-t)*40); }

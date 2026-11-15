@@ -278,3 +278,6 @@ Real noise (DEMAND, CC BY 4.0: street traffic, cafeteria, bus, town square, park
 - **Step 3 (shipped): first launch and sharing controls.** Shown once: what Noodle is → "Help Noodle get better?" (what is sent, 13+ box required, Not now) → optional email → a new project in the Studio.
   More: "Share my takes" (turn on with the same wording and 13+ box; turn off, or off + delete everything shared; a failed delete keeps the id so it can be retried) and "Email news" (sign up, change, leave).
   Shared takes no longer carry the song's name (not in the record, not in the take id). `onboard_test.js` runs it against the local takes service. Not yet: the voice check.
+- **Step 4 (shipped): voice check** (`nxVoiceCheck`): at the end of first launch (skippable) and in More. Noodle plays a tune once, you hum it back, for two tunes (scale, Ode to Joy: 11 rising intervals,
+  enough for `squeezeOn`'s 10). Each take updates the interval profile `S.sq` (`learnSqueeze`; when sharing is on, sending the take does it, so it is not counted twice) and, if shared, arrives labelled with its tune.
+  A take with fewer than 5 notes gets one retry. Ends back in the song you were in, with a one-line result. `voice_test.js`: a simulated singer at 0.75× intervals reads as 0.75 (profile on), at 1.0× as 1.00 (off).
