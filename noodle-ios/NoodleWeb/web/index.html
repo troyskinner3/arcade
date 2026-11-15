@@ -1049,7 +1049,7 @@ const VOX_KNOBS=[['tune','Tune',v=>v?v+'%':'off'],['form','Formant',fmtSt],['low
 const fxOf=tr=>Object.assign({form:50},VOX_PRESETS.Pop,tr.fx||{});
 /* recordings of vocal parts are kept in this browser (IndexedDB), so they survive a reload */
 const takeStore={ db:null,
-  open(){ if(this.db) return Promise.resolve(this.db); return new Promise(res=>{ try{ const r=indexedDB.open('mouth-machine',2); r.onupgradeneeded=()=>{ const d=r.result; if(!d.objectStoreNames.contains('takes')) d.createObjectStore('takes'); if(!d.objectStoreNames.contains('projects')) d.createObjectStore('projects'); }; r.onsuccess=()=>{ this.db=r.result; res(this.db); }; r.onerror=()=>res(null); }catch(e){ res(null); } }); },
+  open(){ if(this.db) return Promise.resolve(this.db); return new Promise(res=>{ try{ const r=indexedDB.open('mouth-machine',3); r.onupgradeneeded=()=>{ const d=r.result; ['takes','projects','outbox'].forEach(n=>{ if(!d.objectStoreNames.contains(n)) d.createObjectStore(n); }); }; r.onsuccess=()=>{ this.db=r.result; res(this.db); }; r.onerror=()=>res(null); }catch(e){ res(null); } }); },
   async put(k,v){ const db=await this.open(); if(!db) return; try{ db.transaction('takes','readwrite').objectStore('takes').put(v,k); }catch(e){} },
   async get(k){ const db=await this.open(); if(!db) return null; return new Promise(res=>{ try{ const q=db.transaction('takes').objectStore('takes').get(k); q.onsuccess=()=>res(q.result||null); q.onerror=()=>res(null); }catch(e){ res(null); } }); },
   async del(k){ const db=await this.open(); if(!db) return; try{ db.transaction('takes','readwrite').objectStore('takes').delete(k); }catch(e){} } };
@@ -1120,6 +1120,7 @@ const NX_SHARE_HTML=`<ul><li>If you turn this on, Noodle sends us each take you 
 const NX_EMAIL_TEXT='Get news about Noodle and what we are building next. Unsubscribe any time.';
 const nxSharing=()=>!!(drop&&drop.api), nxLegacy=()=>!!(drop&&!drop.api);
 function nxMoreSync(){ const sw=$('nxShSw'); if(!sw) return; sw.setAttribute('aria-checked',String(nxSharing()||nxLegacy())); $('nxShS').textContent=nxLegacy()?'On, through your test link':nxSharing()?'On. Tap to stop, or to delete what you shared.':'Off. Send recordings and your fixes so Noodle learns. 13+';
+  if(nxSharing()) outbox.all().then(a=>{ const n=(a||[]).length; if(n && nxSharing()) $('nxShS').textContent=`On. ${n} take${n>1?'s':''} waiting to send when you’re back online.`; }).catch(()=>{});
   let em=''; try{ em=localStorage.getItem('noodle.email')||''; }catch(e){} $('nxEmS').textContent=em?'Signed up as '+em:'Hear about Noodle and what we build next';
   const dn=GUIDED.filter(g=>guidedDone.has(g[0])).length; $('nxTrP').style.width=Math.round(dn/GUIDED.length*100)+'%'; $('nxTrS').textContent=dn?`${dn} of ${GUIDED.length} tunes done · about 30 seconds each`:'About 30 seconds a tune · do as many as you like'; }
 function nxShareSheet(){ if(nxLegacy()){ toast('Sharing is on through your test link.'); return; }
@@ -1336,6 +1337,7 @@ function s2TrackSheet(L){ const tr=L.tracks[0], all=()=>S.tracks.filter(t=>s2Lan
     ${fam.length>1?`<div class="nx-grp" style="padding-top:0">Instrument</div><div class="s2-opts" id="s2Ins">${fam.map(k=>`<button data-k="${k}" aria-pressed="${k===tr.inst}">${dot(k)}${INST[k].label}</button>`).join('')}</div>`:''}
     ${I.sounds&&I.sounds.length?`<div class="nx-grp" style="padding-top:0">Sound</div><div class="s2-opts" id="s2Snd">${I.sounds.map(x=>`<button data-x="${nxEsc(x)}" aria-pressed="${x===tr.sound}">${nxEsc(x)}</button>`).join('')}</div>`:''}
     <div class="nx-grp" style="padding-top:0">Mix</div>${s2Fld('s2Vol','Volume',0,100,tr.vol??80)}${s2Fld('s2Rev','Reverb',0,100,tr.send??0)}${s2Fld('s2Pan','Left / right',-100,100,tr.pan??0)}${tr.inst==='vox'?'':s2Fld('s2Tone',pit?'Brightness':'Tone',0,100,tr.tone??50)}
+    ${tr.inst==='vox'?(()=>{ const fx=fxOf(tr), L={tune:'Pitch correction',form:'Voice character',low:'Low cut',pres:'Presence',air:'Air',comp:'Compression',dbl:'Double',echo:'Echo'}; return `<div class="nx-grp" style="padding-top:6px">Voice</div>${s2Fld('s2Fx_tune',L.tune,0,100,fx.tune)}<p style="color:var(--muted);font-size:13px;margin:-2px 0 6px">0 leaves your singing as it is. 100 is the hard-tuned sound. It follows the song’s key.</p>${VOX_KNOBS.filter(([k])=>k!=='tune').map(([k])=>s2Fld('s2Fx_'+k,L[k]||k,0,100,fx[k])).join('')}`; })():''}
     ${pit?`<div class="nx-grp" style="padding-top:6px">Notes</div><div class="s2-fld"><label>Octave</label><div class="s2-opts" style="padding:0"><button data-o="-1" aria-label="Octave down">−</button><output id="s2Oct" style="width:36px;text-align:center;align-self:center;font:700 15px var(--f-mono)">${tr.oct>0?'+':''}${tr.oct||0}</output><button data-o="1" aria-label="Octave up">+</button></div></div>
       ${tr.inst==='bass'?'':`<div class="s2-fld"><label for="s2Chd">Chord</label><select class="nx-txt" id="s2Chd">${Object.entries(CHORD_TYPES).map(([k,v])=>`<option value="${k}" ${k===chordType(tr)?'selected':''}>${v}</option>`).join('')}</select></div>`}
       ${hasVoice?s2Fld('s2Expr','Follow my voice',0,100,tr.expr||0,10):''}`:''}
@@ -1351,6 +1353,7 @@ function s2TrackSheet(L){ const tr=L.tracks[0], all=()=>S.tracks.filter(t=>s2Lan
     if(id==='s2Vol'){ each(t=>{ t.vol=v; }); applyAllMix(); save(); } if(id==='s2Rev'){ each(t=>{ t.send=v; }); applyAllMix(); save(); } if(id==='s2Pan'){ each(t=>{ t.pan=v; }); applyAllMix(); save(); } };
   $('nxSheet').onchange=e=>{ const id=e.target.id, v=e.target.value;
     if(id==='s2Tone'){ each(t=>{ t.tone=+v; t._dirty=true; }); rerender(); }
+    if(id.startsWith('s2Fx_')){ const k=id.slice(5); each(t=>{ t.fx=Object.assign(fxOf(t),{[k]:+v}); t._tuned=null; t._dirty=true; }); rerender(); }
     if(id==='s2Chd'){ each(t=>{ t.chordType=v; delete t.chords; t._dirty=true; }); rerender(); renderTracks(); }
     if(id==='s2Expr'){ each(t=>{ t.expr=+v; if(t.expr>0&&t._raw){ if(t._an) t.exprAlign=t._an.align; storeVox(t); } t._dirty=true; }); rerender(); } }; }
 function s2Bind(id,src,ev='input'){ const a=$(id), b=$(src); if(!a||!b) return; a.addEventListener(ev,()=>{ b.value=a.value; b.dispatchEvent(new Event(ev,{bubbles:true})); if(ev!=='change') b.dispatchEvent(new Event('change',{bubbles:true})); }); }
@@ -2838,15 +2841,26 @@ async function emailSignup(email, text){ try{ const r=await fetch(NOODLE_API+'/v
 async function emailRemove(email){ try{ const r=await fetch(NOODLE_API+'/v1/signups',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({email})}); return r.ok; }catch(e){ return false; } }
 function shareEnable(api=NOODLE_API){ const b=crypto.getRandomValues(new Uint8Array(18)), id=btoa(String.fromCharCode(...b)).replace(/\+/g,'-').replace(/\//g,'_');
   drop={api:String(api).replace(/\/+$/,''), install:(drop&&drop.api&&drop.install)||id, consent:{v:1, age13:true, at:new Date().toISOString()}}; try{ localStorage.setItem(DROP_KEY,JSON.stringify(drop)); }catch(e){} }
-async function shareDisable(deleteShared){ const d=drop; drop=null; try{ localStorage.removeItem(DROP_KEY); }catch(e){}
+async function shareDisable(deleteShared){ const d=drop; drop=null; try{ localStorage.removeItem(DROP_KEY); }catch(e){} if(!deleteShared){ try{ await outbox.clear(); }catch(e){} }
   if(deleteShared && d && d.api){ let ok=false; try{ ok=(await fetch(`${d.api}/v1/installs/${d.install}`,{method:'DELETE'})).ok; }catch(e){}
     if(!ok){ drop=d; try{ localStorage.setItem(DROP_KEY,JSON.stringify(d)); }catch(e){} }   /* keep the id, so deleting can be tried again */
+    else { try{ await outbox.clear(); }catch(e){} }
     return ok; } return true; }
 function wavBytes16k(x,sr){ const R=16000, n=Math.floor((x.length-1)*R/sr), z=sr>R?biquad(biquad(x,'lp',7200,0.707,sr),'lp',7200,0.707,sr):x, out=new DataView(new ArrayBuffer(44+n*2)), w=(o,t)=>{ for(let i=0;i<t.length;i++) out.setUint8(o+i,t.charCodeAt(i)); };
   w(0,'RIFF'); out.setUint32(4,36+n*2,true); w(8,'WAVE'); w(12,'fmt '); out.setUint32(16,16,true); out.setUint16(20,1,true); out.setUint16(22,1,true); out.setUint32(24,R,true); out.setUint32(28,R*2,true); out.setUint16(32,2,true); out.setUint16(34,16,true); w(36,'data'); out.setUint32(40,n*2,true);
   for(let i=0;i<n;i++){ const q=i*sr/R, i0=Math.floor(q), fr=q-i0, v=z[i0]*(1-fr)+z[i0+1]*fr; out.setInt16(44+i*2,Math.max(-32768,Math.min(32767,Math.round(v*32767))),true); }
   return out.buffer; }
-async function sharePut(path, body, type){ for(let i=0;i<3;i++){ try{ const r=await fetch(`${drop.api}/v1/takes/${drop.install}/${path}`,{method:'PUT',headers:{'Content-Type':type},body}); if(r.ok) return true; if(r.status<500&&r.status!==429) return false; }catch(e){} await new Promise(r=>setTimeout(r,2000*(i+1))); } return false; }
+/* 'ok', 'retry' (no connection or the service is busy: try again later) or 'drop' (the service refused it: trying again won't help) */
+async function sharePut(path, body, type){ if(navigator.onLine===false) return 'retry';
+  for(let i=0;i<2;i++){ try{ const r=await fetch(`${drop.api}/v1/takes/${drop.install}/${path}`,{method:'PUT',headers:{'Content-Type':type},body}); if(r.ok) return 'ok'; if(r.status<500&&r.status!==429) return 'drop'; }catch(e){} if(i<1) await new Promise(r=>setTimeout(r,1500)); } return 'retry'; }
+/* Takes recorded while offline (or when a send fails) wait here, on this device, and go out when the connection is back. One entry per take; a later update replaces the record and keeps the recording. */
+const outbox={ req(mode,fn){ return takeStore.open().then(db=>db?new Promise(res=>{ try{ const q=fn(db.transaction('outbox',mode).objectStore('outbox')); q.onsuccess=()=>res(q.result??null); q.onerror=()=>res(null); }catch(e){ res(null); } }):null); },
+  all(){ return this.req('readonly',st=>st.getAll()); }, get(k){ return this.req('readonly',st=>st.get(k)); }, put(v){ return this.req('readwrite',st=>st.put(v,v.sid)); }, del(k){ return this.req('readwrite',st=>st.delete(k)); }, clear(){ return this.req('readwrite',st=>st.clear()); } };
+async function shareSend(it){ const a=await sharePut(`${it.sid}/meta`, JSON.stringify(it.meta), 'application/json'); if(a!=='ok') return a; if(!it.wav) return 'ok'; return sharePut(`${it.sid}/audio`, it.wav, 'audio/wav'); }
+let shareFlushing=false;
+async function shareFlush(){ if(shareFlushing||!drop||!drop.api||navigator.onLine===false) return; shareFlushing=true;
+  try{ const items=((await outbox.all())||[]).sort((a,b)=>a.at-b.at); for(const it of items){ const r=await shareSend(it); if(r==='retry') break; await outbox.del(it.sid); } }catch(e){} finally{ shareFlushing=false; try{ nxMoreSync(); }catch(e){} } }
+window.addEventListener('online',()=>shareFlush()); document.addEventListener('visibilitychange',()=>{ if(!document.hidden) shareFlush(); }); setTimeout(()=>shareFlush(),4000);
 function dropLineUI(){ const el=$('dropLine'); if(!el) return; try{ guidedUI(); }catch(e){}
   if(!drop && /NoodleApp/.test(navigator.userAgent)){   /* inside the iPhone app (its own storage): paste the sharing link once */
     el.hidden=false; el.innerHTML='<input id="dropPaste" type="url" placeholder="Paste your sharing link" style="width:100%;margin:4px 0" autocomplete="off"> <button class="btn" id="dropGo">Share my takes</button>';
@@ -2864,8 +2878,11 @@ setTimeout(async()=>{ if(!drop) return; const day=new Date().toISOString().slice
   dropPost({sid:'diag-'+day+'-'+(slug(drop.who)||'me'), meta:r}); },4000);
 async function dropPost(body){ if(!drop) return;
   if(drop.api){ if(!body.meta||!body.sid||/^diag-/.test(body.sid)) return true; const {who,ua,song,...m}=body.meta;
-    if(!(await sharePut(`${body.sid}/meta`, JSON.stringify({...m, consent:drop.consent, app:/NoodleApp/.test(navigator.userAgent)?'ios':'web'}), 'application/json'))) return false;
-    return body.pcm ? sharePut(`${body.sid}/audio`, wavBytes16k(body.pcm.x, body.pcm.sr), 'audio/wav') : true; }
+    const it={sid:body.sid, at:Date.now(), meta:{...m, consent:drop.consent, app:/NoodleApp/.test(navigator.userAgent)?'ios':'web'}, wav:body.pcm?wavBytes16k(body.pcm.x, body.pcm.sr):null};
+    const waiting=await outbox.get(it.sid); if(waiting){ if(!it.wav&&waiting.wav) it.wav=waiting.wav; it.at=waiting.at; await outbox.put(it); shareFlush(); return true; }   /* this take is still waiting: update it in place */
+    const r=await shareSend(it); if(r==='retry'){ const all=(await outbox.all())||[]; if(all.length>=150){ const old=all.sort((a,b)=>a.at-b.at)[0]; await outbox.del(old.sid); } await outbox.put(it); try{ nxMoreSync(); }catch(e){} }
+    else if(r==='ok') shareFlush();
+    return true; }
   const data=JSON.stringify({k:drop.k, ...body});
   for(let i=0;i<3;i++){ try{ await fetch(drop.url,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:data,keepalive:data.length<60000}); return true; }catch(e){ await new Promise(r=>setTimeout(r,2000*(i+1))); } }
   return false; }
@@ -3744,6 +3761,7 @@ function init(){
   hist.cur=snapNow(); updateHistBtns();
   // bring back vocal recordings saved in this browser
   reloadRaw(); nxInit(); s2Init();
+  try{ if('serviceWorker' in navigator && (location.protocol==='https:'||location.hostname==='localhost')) navigator.serviceWorker.register('sw.js').catch(()=>{}); }catch(e){}   /* so the web version opens without a connection (the iPhone app carries its own copy) */
   // iOS only lets audio start on a finger lift (touchend/click), not on touch-down: unlock (or re-wake) on every such gesture while it's suspended
   const unlockAudio=()=>{ if(ctx && ctx.state!=='running' && !document.hidden){ try{ ctx.resume(); }catch(e){} } };
   ['touchend','click','keydown'].forEach(ev=>document.addEventListener(ev,unlockAudio,{capture:true,passive:true}));

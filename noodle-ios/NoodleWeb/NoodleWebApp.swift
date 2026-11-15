@@ -107,6 +107,10 @@ struct NoodleWeb: UIViewRepresentable {
         root.present(share, animated: true)
       }
     }
+    // if the page can't load at all (no bundled copy and no connection), say so instead of showing a blank screen
+    func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
+      webView.loadHTMLString("<meta name='viewport' content='width=device-width'><body style='background:#121417;color:#e9ebef;font:17px -apple-system;padding:48px 24px'><h2>No connection</h2><p>Noodle couldn’t load. Check your connection and open it again.</p></body>", baseURL: nil)
+    }
     // after a phone call or Siri, get the audio back
     func webViewWebContentProcessDidTerminate(_ webView: WKWebView) { webView.reload() }
   }
