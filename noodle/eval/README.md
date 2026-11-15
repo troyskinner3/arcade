@@ -275,3 +275,6 @@ Real noise (DEMAND, CC BY 4.0: street traffic, cafeteria, bus, town square, park
 - **Step 2d (shipped):** Share sheet inside the Studio (DAW pack, audio, video; a linear song exports once through, `S.loops=1`); move a part by whole bars (press and hold, then drag; or the part's sheet),
   never onto another part; editor zoom buttons removed (pinch works); More → Mic timing (opens the classic section for now). Landscape checked by screenshot. `s2_share_move.js`.
 - Still to do: trim clips, voice clips anywhere, first launch (voice check, sharing opt-in, email), More (drum teaching, mic timing in the new style).
+- **Step 3 (shipped): first launch and sharing controls.** Shown once: what Noodle is → "Help Noodle get better?" (what is sent, 13+ box required, Not now) → optional email → a new project in the Studio.
+  More: "Share my takes" (turn on with the same wording and 13+ box; turn off, or off + delete everything shared; a failed delete keeps the id so it can be retried) and "Email news" (sign up, change, leave).
+  Shared takes no longer carry the song's name (not in the record, not in the take id). `onboard_test.js` runs it against the local takes service. Not yet: the voice check.

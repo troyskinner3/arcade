@@ -654,6 +654,19 @@ button.card-head{margin:0;width:100%;padding:10px 14px;border-radius:0;backgroun
 .s2-opts button{padding:9px 13px;border:1px solid var(--line);border-radius:8px;background:none;color:inherit;font:600 14px var(--f-body)}
 .s2-opts button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
 .s2-on .toast{z-index:80;bottom:calc(120px + env(safe-area-inset-bottom,0px))}
+.nx-ob{position:fixed;inset:0;z-index:75;background:var(--bg);color:var(--ink);display:flex;flex-direction:column;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+.nx-ob .in{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;justify-content:center;gap:14px;padding-top:24px;padding-bottom:24px}
+.nx-ob h1{font:700 26px/1.15 var(--f-display);margin:0;text-wrap:balance}
+.nx-ob p,.nx-ob li{font:16px/1.5 var(--f-body);margin:0;color:var(--ink)} .nx-ob ul{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:8px}
+.nx-ob .sub{color:var(--muted)}
+.nx-ob .brand2{font:700 15px var(--f-display);color:var(--muted)}
+.nx-chk{display:flex;gap:12px;align-items:center;font:600 16px var(--f-body);padding:6px 0} .nx-chk input{width:24px;height:24px;flex:none;accent-color:var(--lcd-ink)}
+.nx-ob .acts{flex:none;display:flex;flex-direction:column;gap:8px;padding-bottom:16px}
+.nx-ghost{width:100%;height:48px;border-radius:10px;border:1px solid var(--line);background:none;color:inherit;font:600 16px var(--f-body)}
+.nx-primary:disabled{opacity:.4}
+.nx-sw{width:46px;height:28px;border-radius:99px;background:var(--line);position:relative;flex:none;border:0}
+.nx-sw::after{content:"";position:absolute;left:3px;top:3px;width:22px;height:22px;border-radius:50%;background:var(--pad)}
+.nx-sw[aria-checked="true"]{background:var(--lcd-ink)} .nx-sw[aria-checked="true"]::after{left:21px}
 .nx-on .toast{z-index:80;bottom:calc(84px + env(safe-area-inset-bottom,0px))}
 .nx-view button:focus-visible,.nx-nav button:focus-visible,.nx-sheet button:focus-visible,.nx-back:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
 </style>
@@ -798,6 +811,9 @@ button.card-head{margin:0;width:100%;padding:10px 14px;border-radius:0;backgroun
 <section class="nx-view" id="nxMore" hidden>
   <div class="nx-g nx-top"><h1>More</h1></div>
   <div class="nx-list"><div class="nx-g">
+    <div class="nx-grp">Help Noodle get better</div>
+    <div class="nx-item"><span>Share my takes<small id="nxShS"></small></span><button class="nx-sw" id="nxShSw" role="switch" aria-checked="false" aria-label="Share my takes"></button></div>
+    <button class="nx-item" id="nxEmail" style="width:100%;background:none;border:0;border-bottom:1px solid var(--line);text-align:left"><span>Email news<small id="nxEmS">Hear about Noodle and what we build next</small></span><svg class="nx-ico" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
     <div class="nx-grp">Your setup</div>
     <button class="nx-item" id="nxTiming" style="width:100%;background:none;border:0;border-bottom:1px solid var(--line);text-align:left"><span>Mic timing<small>Fix notes that land late, and other mic settings</small></span><svg class="nx-ico" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
     <div class="nx-grp">Studio</div>
@@ -807,6 +823,7 @@ button.card-head{margin:0;width:100%;padding:10px 14px;border-radius:0;backgroun
     <div class="nx-item"><span>Noodle<small>Hum it, sing it, beatbox it. From the makers of Tuttii.</small></span></div>
   </div></div>
 </section>
+<section class="nx-ob" id="nxOb" hidden><div class="in nx-g" id="nxObIn"></div><div class="acts nx-g" id="nxObActs"></div></section>
 <nav class="nx-nav" id="nxNav" aria-label="Main" hidden>
   <button class="nx-tab" id="nxTabP" aria-current="page"><svg class="nx-ico" viewBox="0 0 24 24"><path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/></svg>Projects</button>
   <button class="nx-plus" id="nxPlus" aria-label="New project"><svg class="nx-ico" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
@@ -1059,7 +1076,33 @@ async function nxMenu(id){ const p=(await projList()).find(x=>x.id===id); if(!p)
     if(k==='rename'){ nxSheet(`<h2>Rename</h2><input class="nx-txt" id="nxRn" maxlength="60" value="${nxEsc(p.title||'')}" placeholder="Untitled" aria-label="Project name"><button class="nx-primary" id="nxRnOk">Save</button>`); $('nxSheet').onclick=null; const ok=async()=>{ await projRename(id,$('nxRn').value.trim()); nxClose(); nxRenderProjects(); }; $('nxRnOk').onclick=ok; $('nxRn').onkeydown=ev=>{ if(ev.key==='Enter') ok(); }; $('nxRn').focus(); }
     else if(k==='dup'){ await projDuplicate(id); nxClose(); await nxRenderProjects(); toast('Duplicated'); }
     else if(k==='del'){ nxSheet(`<h2>Delete “${nxEsc(name)}”?</h2><p style="color:var(--muted);margin:0 0 6px">This removes the project from this device.</p><button class="nx-act danger" id="nxDelOk">Delete project</button><button class="nx-act" id="nxDelNo">Keep it</button>`); $('nxSheet').onclick=null; $('nxDelNo').onclick=nxClose; $('nxDelOk').onclick=async()=>{ await projDelete(id); nxClose(); await nxRenderProjects(); toast('Deleted'); }; } }; }
-function nxInit(){ $('nxBack').onclick=()=>{ if(s2Use()&&s2.detail) s2Show(true); else nxGo('projects'); }; $('nxTabP').onclick=()=>nxGo('projects'); $('nxTabM').onclick=()=>nxGo('more'); $('nxPlus').onclick=nxNew;
+/* ---- Sharing takes and email news (both optional), in More and in the first-launch screens ---- */
+const NX_PRIV='https://troyskinner3.github.io/arcade/noodle/privacy/';
+const NX_SHARE_HTML=`<ul><li>If you turn this on, Noodle sends us each take you record: the recording, the notes it heard, and your fixes.</li><li>We use them only to make Noodle hear better. No account, no name, never sold.</li><li>You can stop any time in More, and delete what you shared.</li></ul><label class="nx-chk"><input type="checkbox" id="nxAge"> <span>I'm 13 or older</span></label><p class="sub" style="font-size:14px"><a href="${NX_PRIV}" target="_blank" rel="noopener" style="color:inherit">Privacy policy</a></p>`;
+const NX_EMAIL_TEXT='Get news about Noodle and what we are building next. Unsubscribe any time.';
+const nxSharing=()=>!!(drop&&drop.api), nxLegacy=()=>!!(drop&&!drop.api);
+function nxMoreSync(){ const sw=$('nxShSw'); if(!sw) return; sw.setAttribute('aria-checked',String(nxSharing()||nxLegacy())); $('nxShS').textContent=nxLegacy()?'On, through your test link':nxSharing()?'On. Tap to stop, or to delete what you shared.':'Off. Send recordings and your fixes so Noodle learns. 13+';
+  let em=''; try{ em=localStorage.getItem('noodle.email')||''; }catch(e){} $('nxEmS').textContent=em?'Signed up as '+em:'Hear about Noodle and what we build next'; }
+function nxShareSheet(){ if(nxLegacy()){ toast('Sharing is on through your test link.'); return; }
+  if(!nxSharing()){ nxSheet(`<h2>Share my takes</h2><div class="nx-ob" style="position:static;padding:0;background:none"><div style="display:flex;flex-direction:column;gap:12px">${NX_SHARE_HTML}</div></div><button class="nx-primary" id="nxShOk" disabled>Share my takes</button>`);
+    $('nxSheet').onclick=null; $('nxAge').onchange=e=>{ $('nxShOk').disabled=!e.target.checked; }; $('nxShOk').onclick=()=>{ shareEnable(); nxClose(); nxMoreSync(); toast('Thank you. Sharing is on.'); }; return; }
+  nxSheet(`<h2>Share my takes</h2><button class="nx-act" data-a="stop">Stop sharing<small>New takes stay on this device</small></button><button class="nx-act danger" data-a="del">Stop and delete what I shared<small>Removes every take shared from this device</small></button>`);
+  $('nxSheet').onclick=async e=>{ const b=e.target.closest('[data-a]'); if(!b) return; const del=b.dataset.a==='del'; nxClose(); const ok=await shareDisable(del); nxMoreSync(); toast(!del?'Sharing is off.':ok?'Sharing is off and your shared takes are deleted.':'Deleting didn’t go through, so nothing changed. Check your connection and try again.',5000); }; }
+function nxEmailSheet(){ let em=''; try{ em=localStorage.getItem('noodle.email')||''; }catch(e){}
+  nxSheet(`<h2>Email news</h2><p style="color:var(--muted);margin:0 0 10px">${NX_EMAIL_TEXT}</p><input class="nx-txt" id="nxEm" type="email" inputmode="email" autocomplete="email" placeholder="you@example.com" value="${nxEsc(em)}" aria-label="Email address"><button class="nx-primary" id="nxEmOk">${em?'Update':'Sign me up'}</button>${em?'<button class="nx-act danger" id="nxEmOff">Take me off the list</button>':''}`);
+  $('nxSheet').onclick=null; $('nxEmOk').onclick=async()=>{ const v=$('nxEm').value.trim(); if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v)){ toast('That doesn’t look like an email address.'); return; } $('nxEmOk').disabled=true; const ok=await emailSignup(v,NX_EMAIL_TEXT); if(ok){ try{ localStorage.setItem('noodle.email',v); }catch(e){} nxClose(); nxMoreSync(); toast('You’re on the list.'); } else { $('nxEmOk').disabled=false; toast('That didn’t go through. Check your connection and try again.'); } };
+  if(em) $('nxEmOff').onclick=async()=>{ const ok=await emailRemove(em); if(ok){ try{ localStorage.removeItem('noodle.email'); }catch(e){} nxClose(); nxMoreSync(); toast('You’re off the list.'); } else toast('That didn’t go through. Try again in a moment.'); }; }
+/* First launch: what Noodle is, then the two optional choices. Shown once. */
+function nxOnboard(done){ const O=$('nxOb'), I=$('nxObIn'), A=$('nxObActs'); O.hidden=false; let step=0;
+  const finish=()=>{ try{ localStorage.setItem('noodle.onboard','1'); }catch(e){} O.hidden=true; nxMoreSync(); done&&done(); };
+  const show=()=>{ if(step===1 && (nxSharing()||nxLegacy())) step=2;
+    if(step===0){ I.innerHTML=`<div class="brand2">Noodle</div><h1>Get the song out of your head</h1><p class="sub">Hum, sing or beatbox. Noodle turns it into instruments you can edit, then send to your DAW.</p>`; A.innerHTML=`<button class="nx-primary" id="obN">Get started</button>`; $('obN').onclick=()=>{ step=1; show(); }; }
+    else if(step===1){ I.innerHTML=`<h1>Help Noodle get better?</h1>${NX_SHARE_HTML}`; A.innerHTML=`<button class="nx-primary" id="obY" disabled>Share my takes</button><button class="nx-ghost" id="obS">Not now</button>`;
+      $('nxAge').onchange=e=>{ $('obY').disabled=!e.target.checked; }; $('obY').onclick=()=>{ shareEnable(); step=2; show(); }; $('obS').onclick=()=>{ step=2; show(); }; }
+    else { I.innerHTML=`<h1>Want news?</h1><p class="sub">${NX_EMAIL_TEXT}</p><input class="nx-txt" id="obEm" type="email" inputmode="email" autocomplete="email" placeholder="you@example.com" aria-label="Email address">`; A.innerHTML=`<button class="nx-primary" id="obE">Sign me up</button><button class="nx-ghost" id="obK">Skip</button>`;
+      $('obK').onclick=finish; $('obE').onclick=async()=>{ const v=$('obEm').value.trim(); if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v)){ toast('That doesn’t look like an email address.'); return; } $('obE').disabled=true; const ok=await emailSignup(v,NX_EMAIL_TEXT); if(ok){ try{ localStorage.setItem('noodle.email',v); }catch(e){} finish(); } else { $('obE').disabled=false; toast('That didn’t go through. You can sign up later in More.'); } }; } };
+  show(); }
+function nxInit(){ $('nxShSw').onclick=nxShareSheet; $('nxEmail').onclick=nxEmailSheet; nxMoreSync(); $('nxBack').onclick=()=>{ if(s2Use()&&s2.detail) s2Show(true); else nxGo('projects'); }; $('nxTabP').onclick=()=>nxGo('projects'); $('nxTabM').onclick=()=>nxGo('more'); $('nxPlus').onclick=nxNew;
   $('nxQ').oninput=nxRenderProjects; $('nxScrim').onclick=e=>{ if(e.target===$('nxScrim')) nxClose(); };
   $('nxSort').onclick=e=>{ const b=e.target.closest('button'); if(!b) return; nxSortBy=b.dataset.s; [...$('nxSort').children].forEach(x=>x.setAttribute('aria-pressed',x===b)); nxRenderProjects(); };
   $('nxList').onclick=async e=>{ const m=e.target.closest('[data-menu]'), o=e.target.closest('[data-id]'); if(m) return nxMenu(m.dataset.menu); if(!o) return; if(o.dataset.id!==S.pid) await projOpen(o.dataset.id); nxGo('studio'); };
@@ -1240,7 +1283,8 @@ function s2Init(){ const _rt=renderTracks; renderTracks=function(){ if(s2.post &
   $('nxTiming').onclick=async()=>{ await nxGo('studio'); s2Detail('timing'); };
   const cb=$('nxClassic'), lab=()=>{ $('nxClassicS').textContent=s2Use()?'Off. Tap to use the old screen instead of the timeline.':'On. Tap to go back to the timeline.'; }; lab();
   cb.onclick=()=>{ try{ localStorage.setItem('noodle.studio',s2Use()?'classic':'timeline'); }catch(e){} lab(); };
-  if(nxResume || new URLSearchParams(location.search).has('studio')){ if(s2Use()) s2Show(true); } else nxGo('projects'); }
+  let seen=true; try{ seen=!!localStorage.getItem('noodle.onboard'); }catch(e){}
+  if(nxResume || new URLSearchParams(location.search).has('studio')){ if(s2Use()) s2Show(true); } else { nxGo('projects'); if(!seen) nxOnboard(()=>nxNew()); } }
 function reloadRaw(){ S.tracks.filter(t=>((t.inst==='vox' && t.va!=null) || (t.expr>0 && t.exprAlign!=null)) && !t._raw).forEach(tr=>loadVox(tr).then(ok=>{ if(!ok) return; redrawTrack(tr); if(tr._row) renderTracks(); if(ctx) scheduleRender(); })); }
 function storeVox(tr){ const {x,sr}=tr._raw; const pcm=new Int16Array(x.length); for(let i=0;i<x.length;i++) pcm[i]=Math.max(-32767,Math.min(32767,Math.round(x[i]*32767))); takeStore.put('vox'+tr.id,{sr,pcm}); }
 async function loadVox(tr){ const r=await takeStore.get('vox'+tr.id); if(!r) return false; const x=new Float32Array(r.pcm.length); for(let i=0;i<x.length;i++) x[i]=r.pcm[i]/32767; tr._raw={x,sr:r.sr}; tr._dirty=true; return true; }
@@ -2650,14 +2694,16 @@ let drop=null; try{ drop=JSON.parse(localStorage.getItem(DROP_KEY)||'null'); }ca
   if(q.get('share')){ if(q.get('share')==='off') shareDisable(false); else if(q.get('age13')==='1') shareEnable(q.get('share')); history.replaceState(null,'',location.pathname); } }catch(e){} })();
 /* Sharing through the Noodle takes service (opt-in, 13+). No account: this install gets a random id that only this phone knows,
    which lets it add, update and delete its own takes. */
-const NOODLE_API='https://noodle-takes.cracked.workers.dev';
+const NOODLE_API=(()=>{ try{ return localStorage.getItem('noodle.api')||'https://noodle-takes.cracked.workers.dev'; }catch(e){ return 'https://noodle-takes.cracked.workers.dev'; } })();   /* 'noodle.api' is for tests */
 /* Optional email list (news about Noodle and what comes next): separate from sharing takes, with its own consent. `text` is the wording the person agreed to. */
 async function emailSignup(email, text){ try{ const r=await fetch(NOODLE_API+'/v1/signups',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({email, consent:{v:1, text}})}); return r.ok; }catch(e){ return false; } }
 async function emailRemove(email){ try{ const r=await fetch(NOODLE_API+'/v1/signups',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({email})}); return r.ok; }catch(e){ return false; } }
 function shareEnable(api=NOODLE_API){ const b=crypto.getRandomValues(new Uint8Array(18)), id=btoa(String.fromCharCode(...b)).replace(/\+/g,'-').replace(/\//g,'_');
   drop={api:String(api).replace(/\/+$/,''), install:(drop&&drop.api&&drop.install)||id, consent:{v:1, age13:true, at:new Date().toISOString()}}; try{ localStorage.setItem(DROP_KEY,JSON.stringify(drop)); }catch(e){} }
 async function shareDisable(deleteShared){ const d=drop; drop=null; try{ localStorage.removeItem(DROP_KEY); }catch(e){}
-  if(deleteShared && d && d.api){ try{ const r=await fetch(`${d.api}/v1/installs/${d.install}`,{method:'DELETE'}); return r.ok; }catch(e){ return false; } } return true; }
+  if(deleteShared && d && d.api){ let ok=false; try{ ok=(await fetch(`${d.api}/v1/installs/${d.install}`,{method:'DELETE'})).ok; }catch(e){}
+    if(!ok){ drop=d; try{ localStorage.setItem(DROP_KEY,JSON.stringify(d)); }catch(e){} }   /* keep the id, so deleting can be tried again */
+    return ok; } return true; }
 function wavBytes16k(x,sr){ const R=16000, n=Math.floor((x.length-1)*R/sr), z=sr>R?biquad(biquad(x,'lp',7200,0.707,sr),'lp',7200,0.707,sr):x, out=new DataView(new ArrayBuffer(44+n*2)), w=(o,t)=>{ for(let i=0;i<t.length;i++) out.setUint8(o+i,t.charCodeAt(i)); };
   w(0,'RIFF'); out.setUint32(4,36+n*2,true); w(8,'WAVE'); w(12,'fmt '); out.setUint32(16,16,true); out.setUint16(20,1,true); out.setUint16(22,1,true); out.setUint32(24,R,true); out.setUint32(28,R*2,true); out.setUint16(32,2,true); out.setUint16(34,16,true); w(36,'data'); out.setUint32(40,n*2,true);
   for(let i=0;i<n;i++){ const q=i*sr/R, i0=Math.floor(q), fr=q-i0, v=z[i0]*(1-fr)+z[i0+1]*fr; out.setInt16(44+i*2,Math.max(-32768,Math.min(32767,Math.round(v*32767))),true); }
@@ -2679,7 +2725,7 @@ setTimeout(async()=>{ if(!drop) return; const day=new Date().toISOString().slice
   try{ for(const sr of [44100,48000]) r['aac'+sr]=!!(await videoEncodeConfig(sr)); }catch(e){ r.err=String(e); }
   dropPost({sid:'diag-'+day+'-'+(slug(drop.who)||'me'), meta:r}); },4000);
 async function dropPost(body){ if(!drop) return;
-  if(drop.api){ if(!body.meta||!body.sid||/^diag-/.test(body.sid)) return true; const {who,ua,...m}=body.meta;
+  if(drop.api){ if(!body.meta||!body.sid||/^diag-/.test(body.sid)) return true; const {who,ua,song,...m}=body.meta;
     if(!(await sharePut(`${body.sid}/meta`, JSON.stringify({...m, consent:drop.consent, app:/NoodleApp/.test(navigator.userAgent)?'ios':'web'}), 'application/json'))) return false;
     return body.pcm ? sharePut(`${body.sid}/audio`, wavBytes16k(body.pcm.x, body.pcm.sr), 'audio/wav') : true; }
   const data=JSON.stringify({k:drop.k, ...body});
@@ -2698,10 +2744,10 @@ function dropMeta(tr){ return {sid:tr.sid, song:S.title||'', inst:tr.inst, bpm:S
 async function dropTake(x, sr, inst){ if(!drop) return;
   const tr=S.tracks.find(t=>(t._raw&&t._raw.x===x)||(t._takes||[]).some(k=>k.raw&&k.raw.x===x));
   if(!tr){ // nothing was heard: still worth sending, it shows what Noodle misses
-    const d=new Date(), sid=`${d.toISOString().replace(/[-:]/g,'').slice(0,15)}-${slug(S.title)||'untitled'}-${inst}-nothing-heard`;
+    const d=new Date(), sid=`${d.toISOString().replace(/[-:]/g,'').slice(0,15)}-${(drop&&drop.api?'':slug(S.title))||'untitled'}-${inst}-nothing-heard`;
     dropPost({sid, ...(drop.api?{pcm:{x,sr}}:{wav:await dropWavB64(x,sr)}), meta:{sid, song:S.title||'', inst, bpm:S.bpm, prompt:S.prompt||null, heard:null, recordedAt:d.toISOString(), who:drop.who||'', ua:navigator.userAgent.slice(0,120)}}); return; }
   const d=new Date(), pad=v=>String(v).padStart(2,'0');
-  tr.sid=`${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}-${slug(S.title)||'untitled'}-${inst}`;
+  tr.sid=`${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}-${(drop&&drop.api?'':slug(S.title))||'untitled'}-${inst}`;
   tr.sidAt=d.toISOString(); tr.sidHeard=dropState(tr); tr.sidNoise=lastNoise; tr._dropSent=null; persist();
   if(S.prompt && !tr.guide && INST[tr.inst].kind==='pitched'){ learnSqueeze(tr); persist(); }
   if(S.prompt && !tr.guide){ guidedDone.add(S.prompt); try{ localStorage.setItem('noodle.guided',JSON.stringify([...guidedDone])); }catch(e){} guidedUI(); }
