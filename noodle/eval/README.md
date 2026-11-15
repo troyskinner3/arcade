@@ -267,3 +267,8 @@ Real noise (DEMAND, CC BY 4.0: street traffic, cafeteria, bus, town square, park
   Voice (audio) parts still start at bar 1, one per lane. In the classic screens each clip shows as its own part. Checked by `s2_linear.js` (two takes at bars 1 and 5 render as sound in bars 1–2 and 5 only);
   31-take replay unchanged (3.88).
 - Still to do: move/trim clips, voice clips anywhere, note editor and Share inside the Studio, landscape pass, first launch, More.
+- **Step 2c (shipped):** a new take **replaces** what it overlaps in its lane (`s2Replace`: covered parts removed, partly covered parts cut back, a part it lands inside split in two; Discard restores; drums too,
+  layering = another track). **Note editor inside the Studio** (`s2Edit`): the same grid (`buildCard`) full screen with taller rows (`GRID_H`, `GRID_RH`, `GRID_DRUM`), Split / Delete on the selected note,
+  split hints, "Other readings", Fill gaps, undo/redo, play. Clips have a border and their notes are drawn inside it; the timeline is one colour; tracks are named per lane.
+  Checked by `s2_replace.js` and `s2_editor.js`; 31-take replay unchanged (3.88).
+- Still to do: Share inside the Studio, move/trim clips, voice clips anywhere, landscape pass, first launch, More (timing, drum teaching).

@@ -597,11 +597,9 @@ button.card-head{margin:0;width:100%;padding:10px 14px;border-radius:0;backgroun
 .s2-corner{position:sticky;left:0;z-index:5;width:var(--s2-hdr);flex:none;background:var(--s2-panel);border-right:1px solid var(--s2-line)}
 .s2-marks{position:relative;flex:none;width:calc(var(--s2-view) * var(--s2-barw));touch-action:none;cursor:pointer}
 .s2-mk{position:absolute;top:0;bottom:0;border-left:1px solid var(--s2-line);padding-left:4px;font:500 11px/26px var(--f-mono);color:var(--s2-muted)}
-.s2-mk.out{opacity:.45}
 .s2-phh{position:absolute;top:0;width:18px;height:26px;margin-left:-9px;z-index:1;pointer-events:none}
 .s2-phh::after{content:"";position:absolute;left:3px;top:8px;border:6px solid transparent;border-top:10px solid var(--s2-amber)}
 .s2-ph{position:absolute;top:26px;bottom:0;width:2px;margin-left:-1px;background:var(--s2-amber);z-index:1;pointer-events:none}
-.s2-end{position:absolute;top:26px;bottom:0;left:calc(var(--s2-hdr) + var(--s2-bars) * var(--s2-barw));right:0;background:rgba(0,0,0,.18);pointer-events:none}
 .s2-side{position:sticky;left:0;top:26px;z-index:2;width:var(--s2-hdr);height:0}
 .s2-side::after{content:"";position:absolute;left:0;top:0;width:100%;height:var(--s2-sideh,0px);background:var(--s2-panel);border-right:1px solid var(--s2-line)}
 .s2-trk{display:flex;height:var(--s2-rowh);border-bottom:1px solid var(--s2-line)}
@@ -617,11 +615,10 @@ button.card-head{margin:0;width:100%;padding:10px 14px;border-radius:0;backgroun
 .s2-ms[aria-pressed="true"]{background:var(--s2-ink)!important;color:var(--s2-bg)!important}
 .s2-ms.so[aria-pressed="true"]{background:var(--s2-amber)!important;color:var(--s2-amber-ink)!important;border-color:var(--s2-amber)!important}
 .s2-ln{position:relative;flex:none;width:calc(var(--s2-view) * var(--s2-barw));background-image:linear-gradient(90deg,var(--s2-line) 1px,transparent 1px);background-size:var(--s2-barw) 100%}
-.s2-trk:nth-child(odd) .s2-ln{background-color:var(--s2-lane2)}
 .s2-ln canvas{position:absolute;left:0;top:0;height:100%;width:calc(var(--s2-bars) * var(--s2-barw));display:block}
 .s2-trk.dim canvas{opacity:.35}
 .s2-add{display:flex;height:48px}
-.s2-add button{position:sticky;left:0;z-index:3;width:var(--s2-hdr);color:var(--s2-muted)!important;font-weight:700!important;font-size:13px!important;text-align:left;padding-left:10px!important;background:var(--s2-panel)!important;border-right:1px solid var(--s2-line)!important}
+.s2-add button{position:sticky;left:0;z-index:3;width:var(--s2-hdr);color:var(--s2-muted)!important;font-weight:700!important;font-size:13px!important;text-align:left;padding-left:10px!important;background:none!important}
 .s2-hint{position:sticky;left:var(--s2-hdr);width:min(300px,calc(100vw - var(--s2-hdr)));padding:28px 16px;color:var(--s2-muted);text-align:center}
 .s2-hint b{display:block;color:var(--s2-ink);font-size:16px;margin-bottom:4px}
 .s2-bot{flex:none;background:var(--s2-panel)}
@@ -638,6 +635,15 @@ button.card-head{margin:0;width:100%;padding:10px 14px;border-radius:0;backgroun
 .s2-recb i{width:18px;height:18px;border-radius:50%;background:#fff}
 .s2.recording .s2-recb i{border-radius:3px}
 @media (orientation: landscape) and (min-width: 560px){ .s2-tr{justify-content:center;gap:14px;padding-top:6px;padding-bottom:6px} .s2-tb,.s2-recb{height:40px} .s2-top{padding-top:2px;padding-bottom:2px} }
+.s2-ed{position:absolute;inset:0;z-index:8;background:var(--s2-bg);display:flex;flex-direction:column;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+.s2-edt{flex:1;min-width:0;padding:6px 4px;text-align:left} .s2-edt b{display:block;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis} .s2-edt small{color:var(--s2-muted);font:500 12px var(--f-mono)}
+.s2-edb{flex:1;min-height:0;overflow-y:auto;padding-top:4px}
+.s2-edb .track{border:0;background:none;padding:0;margin:0;box-shadow:none}
+.s2-edb .tquick,.s2-edb .ctl.insp,.s2-edb .spotbar{display:none!important}
+.s2-edh{color:var(--s2-muted);font-size:12.5px;padding-top:8px;padding-bottom:2px}
+.s2-edbar{display:flex;align-items:center;gap:8px;padding-top:8px;padding-bottom:10px;flex:none;background:var(--s2-panel)}
+.s2-edbar button{height:44px;padding:0 14px!important;border:1px solid var(--s2-line)!important;border-radius:10px;font-weight:600!important;font-size:14px!important}
+.s2-edbar .s2-play{width:64px;padding:0!important;display:grid!important;place-items:center}
 .s2-fld{display:flex;align-items:center;gap:12px;padding:8px 0}
 .s2-fld label{width:112px;flex:none;color:var(--muted);font-size:14px} .s2-fld input[type=range]{flex:1;min-width:0} .s2-fld output{width:44px;text-align:right;font:500 13px var(--f-mono)}
 .s2-opts{display:flex;flex-wrap:wrap;gap:6px;padding-bottom:12px}
@@ -752,6 +758,21 @@ button.card-head{margin:0;width:100%;padding:10px 14px;border-radius:0;backgroun
     <button class="s2-mix" id="s2Mix"><svg class="nx-ico" viewBox="0 0 24 24" style="width:18px;height:18px"><path d="M6 3v18M12 3v18M18 3v18"/><path d="M4 8h4M10 15h4M16 10h4" stroke-width="3"/></svg>Mix</button>
   </div>
   <div class="s2-tl" id="s2Tl"><div class="s2-in" id="s2In"></div></div>
+  <div class="s2-ed" id="s2Ed" hidden>
+    <div class="s2-top s2-g">
+      <button class="s2-ib" id="s2EdBack" aria-label="Back to the timeline"><svg class="nx-ico" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
+      <div class="s2-edt"><b id="s2EdT"></b><small id="s2EdS"></small></div>
+      <button class="s2-ib" id="s2EdUndo" aria-label="Undo"><svg class="nx-ico" viewBox="0 0 24 24"><path d="M9 6L4 11l5 5"/><path d="M4 11h10a5 5 0 010 10h-3"/></svg></button>
+      <button class="s2-ib" id="s2EdRedo" aria-label="Redo"><svg class="nx-ico" viewBox="0 0 24 24"><path d="M15 6l5 5-5 5"/><path d="M20 11H10a5 5 0 000 10h3"/></svg></button>
+    </div>
+    <div class="s2-edb s2-g" id="s2EdBody"></div>
+    <div class="s2-edh s2-g" id="s2EdHint"></div>
+    <div class="s2-edbar s2-g">
+      <button class="s2-play" id="s2EdPlay" aria-label="Play"><svg class="nx-ico" viewBox="0 0 24 24" id="s2EdPlayI"><path d="M7 4l13 8-13 8V4z" fill="currentColor"/></svg></button>
+      <button id="s2EdVer">Other readings</button>
+      <button id="s2EdFill">Fill gaps</button>
+    </div>
+  </div>
   <div class="s2-bot">
     <div class="s2-rec s2-g" id="s2Rec" hidden><span id="s2RecL"></span></div>
     <div class="s2-take s2-g" id="s2Take" hidden><span>New take</span><button id="s2TkRe">Retake</button><button id="s2TkDel">Discard</button><button class="ok" id="s2TkOk">Keep</button></div>
@@ -1045,7 +1066,7 @@ function nxInit(){ $('nxBack').onclick=()=>{ if(s2Use()&&s2.detail) s2Show(true)
 const s2={barw:44, armId:null, loop:false, detail:false, pos:-1, cur:0, recId:null, recLen:0, recPrev:0, post:false};
 const s2Use=()=>{ try{ return localStorage.getItem('noodle.studio')!=='classic'; }catch(e){ return true; } };
 const s2On=()=>!$('s2').hidden;
-function s2Show(on){ $('s2').hidden=!on; document.body.classList.toggle('s2-on',on); if(on){ s2.detail=false; document.body.style.overflow='hidden'; if(editId!=null) closeEditor(); s2Render(); } }
+function s2Show(on){ if(!on&&s2.edId!=null){ s2.edId=null; $('s2Ed').hidden=true; $('s2EdBody').innerHTML=''; GRID_H=176; GRID_RH=15; GRID_DRUM=1; } $('s2').hidden=!on; document.body.classList.toggle('s2-on',on); if(on){ s2.detail=false; document.body.style.overflow='hidden'; if(editId!=null) closeEditor(); s2Render(); } }
 function s2Detail(what){ s2.detail=true; $('s2').hidden=true; document.body.classList.remove('s2-on'); document.body.style.overflow='';
   if(what&&what.id!=null){ S.activeId=what.id; openEditor(what); }
   else if(typeof what==='string'){ const h=document.querySelector(`.card-head[data-sec="${what}"]`); if(h){ if(h.getAttribute('aria-expanded')!=='true') h.click(); requestAnimationFrame(()=>h.scrollIntoView({block:'start'})); } } }
@@ -1053,19 +1074,36 @@ function s2Detail(what){ s2.detail=true; $('s2').hidden=true; document.body.clas
 const s2LaneId=t=>t.lane??t.id;
 function s2Lanes(){ const m=new Map(); S.tracks.forEach(t=>{ const k=s2LaneId(t); if(!m.has(k)) m.set(k,{id:k,tracks:[]}); m.get(k).tracks.push(t); }); return [...m.values()]; }
 const s2Lane=id=>s2Lanes().find(l=>String(l.id)===String(id));
+/* a track's name: its own, or the instrument (numbered only when several tracks share it) */
+function s2Name(L){ const tr=L.tracks[0]; if(tr.name) return tr.name; const same=s2Lanes().filter(x=>x.tracks[0].inst===tr.inst); return INST[tr.inst].label+(same.length>1?' '+(same.findIndex(x=>x.id===L.id)+1):''); }
 function s2DrawLane(lane,cv){ const W=cv.clientWidth, H=cv.clientHeight; if(!W||!H) return; const dpr=Math.min(2,window.devicePixelRatio||1); cv.width=Math.round(W*dpr); cv.height=Math.round(H*dpr);
   const g=cv.getContext('2d'); g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,W,H); const n=steps(), sw=W/n, top=6, h=H-12;
   for(const tr of lane.tracks){ if(!hasContent(tr)) continue; const col=INST[tr.inst].color, ps=pSteps(tr), reps=pLoops(tr), off=tr.off||0;
-   for(let k=0;k<reps;k++){ const x0=(off+k*ps)*sw+2, w=ps*sw-4; g.globalAlpha=k?0.16:0.28; g.fillStyle=col; g.beginPath(); if(g.roundRect) g.roundRect(x0,top,w,h,5); else g.rect(x0,top,w,h); g.fill();
-    g.globalAlpha=k?0.55:1; g.fillStyle=col;
-    if(tr.notes && INST[tr.inst].kind==='pitched'){ const ps2=tr.notes.map(pitchOf); if(ps2.length){ const lo=Math.min(...ps2)-1, hi=Math.max(...ps2)+1, span=Math.max(6,hi-lo);
-        tr.notes.forEach((nt,i)=>{ if(nt.s>=ps) return; const y=top+3+(h-9)*(1-(ps2[i]-lo)/span); g.fillRect(x0-2+nt.s*sw+1, y, Math.max(2,Math.min(nt.l,ps-nt.s)*sw-1.5), 3.5); }); } }
-    else if(tr.hits){ const rows=[...new Set(tr.hits.map(x=>x.d))]; tr.hits.forEach(x=>{ if(x.s>=ps) return; const i=rows.indexOf(x.d), y=top+3+(h-9)*((i+0.5)/rows.length)-1.5; g.fillRect(x0-2+x.s*sw+1, y, Math.max(2,sw-1.5), 3.5); }); }
-    else { const raw=tr._raw; const N=Math.max(8,Math.floor(w/3)); for(let i=0;i<N;i++){ let a=0.25; if(raw&&raw.x){ const i0=Math.floor(i/N*raw.x.length), i1=Math.floor((i+1)/N*raw.x.length); let m=0; for(let j=i0;j<i1;j+=16) m=Math.max(m,Math.abs(raw.x[j])); a=Math.min(1,m*2.2); } const bh=Math.max(2,a*(h-8)); g.fillRect(x0+i*(w/N), top+h/2-bh/2, 1.6, bh); } } } }
+   for(let k=0;k<reps;k++){ const x0=(off+k*ps)*sw+1.5, w=ps*sw-3, pad=4, iw=Math.max(4,w-2*pad), ix=x0+pad, u=iw/ps;   /* notes are drawn inside the region, with a margin */
+    g.globalAlpha=k?0.14:0.26; g.fillStyle=col; g.beginPath(); if(g.roundRect) g.roundRect(x0,top,w,h,5); else g.rect(x0,top,w,h); g.fill();
+    g.globalAlpha=k?0.45:0.95; g.strokeStyle=col; g.lineWidth=1.25; g.stroke();
+    g.globalAlpha=k?0.55:1; g.fillStyle=col; const yIn=top+pad, hIn=h-2*pad-3.5;
+    if(tr.notes && INST[tr.inst].kind==='pitched'){ const ps2=tr.notes.map(pitchOf); if(ps2.length){ const lo=Math.min(...ps2), hi=Math.max(...ps2), span=Math.max(5,hi-lo);
+        tr.notes.forEach((nt,i)=>{ if(nt.s>=ps) return; const y=yIn+hIn*(1-(ps2[i]-lo)/span), xa=ix+nt.s*u, xb=Math.min(ix+iw, ix+Math.min(nt.s+nt.l,ps)*u-1); g.fillRect(xa, y, Math.max(1.5,xb-xa), 3.5); }); } }
+    else if(tr.hits){ const rows=[...new Set(tr.hits.map(x=>x.d))]; tr.hits.forEach(x=>{ if(x.s>=ps) return; const i=rows.indexOf(x.d), y=yIn+hIn*(rows.length>1?i/(rows.length-1):0.5), xa=ix+x.s*u; g.fillRect(xa, y, Math.max(1.5,Math.min(u-1,ix+iw-xa)), 3.5); }); }
+    else { const raw=tr._raw; const N=Math.max(8,Math.floor(iw/3)); for(let i=0;i<N;i++){ let a=0.25; if(raw&&raw.x){ const i0=Math.floor(i/N*raw.x.length), i1=Math.floor((i+1)/N*raw.x.length); let m=0; for(let j=i0;j<i1;j+=16) m=Math.max(m,Math.abs(raw.x[j])); a=Math.min(1,m*2.2); } const bh=Math.max(2,a*(h-2*pad)); g.fillRect(ix+i*(iw/N), top+h/2-bh/2, 1.6, bh); } } } }
   g.globalAlpha=1; }
+/* A new take replaces whatever it overlaps in its lane: covered parts go, partly covered parts are cut back, and a part it lands inside is split in two. */
+function s2Cut(tr, from, to){   /* keep steps [from,to) of a part (in its own steps), as a part starting at its old start + from */
+  const fix=e=>{ const s0=e.s, e0=e.s+(e.l||1); if(e0<=from||s0>=to) return null; const o={...e, s:Math.max(s0,from)-from}; if(e.l!=null) o.l=Math.min(e0,to)-Math.max(s0,from); return o; };
+  if(tr.notes) tr.notes=tr.notes.map(fix).filter(Boolean); if(tr.hits) tr.hits=tr.hits.map(fix).filter(Boolean);
+  tr.off=(tr.off||0)+from; tr.len=Math.max(1,Math.round((to-from)/16)); tr.lenSet=true; tr.rep=false; tr._an=null; tr._takes=null; tr._versions=null; tr._dirty=true; if(tr.expr) tr.expr=0; }
+function s2Replace(nw){ const a=nw.off||0, b=a+pSteps(nw); let changed=false;
+  for(const t of S.tracks.slice()){ if(t===nw || t.guide || s2LaneId(t)!==s2LaneId(nw) || !hasContent(t) || t.inst==='vox') continue;
+    const n=pSteps(t)*pLoops(t), o=t.off||0, e=o+n; if(e<=a || o>=b) continue; changed=true;
+    if(pLoops(t)>1){ const base=t.notes?'notes':'hits', one=t[base].filter(x=>x.s<pSteps(t)), all=[]; for(let r=0;r<pLoops(t);r++) one.forEach(x=>all.push({...x,s:x.s+r*pSteps(t)})); t[base]=all; t.len=Math.round(n/16); }   /* a repeating part becomes one long part first */
+    if(o>=a && e<=b){ disposeTrack(t); S.tracks=S.tracks.filter(x=>x!==t); if(editId===t.id) editId=null; continue; }
+    if(o<a && e>b){ const right=JSON.parse(JSON.stringify(t,(k,v)=>k[0]==='_'?undefined:v)); right.id=S.nextId++; right.lane=s2LaneId(t); delete right.sid; right._dirty=true; s2Cut(right, b-o, n); S.tracks.push(right); s2Cut(t, 0, a-o); continue; }
+    if(o<a) s2Cut(t, 0, a-o); else s2Cut(t, b-o, n); }
+  if(changed){ S.tracks=S.tracks.filter(t=>hasContent(t)||t.guide||!S.tracks.some(o=>o!==t&&s2LaneId(o)===s2LaneId(t))); keyCache=null; } }
 /* after a take, a discard or a cancel: drop clips that ended up empty, fit the new clip's length to what was recorded, and end the song where its last part ends */
 function s2Tidy(){ const before=S.tracks.length; const lone=t=>!S.tracks.some(o=>o!==t&&s2LaneId(o)===s2LaneId(t)); S.tracks=S.tracks.filter(t=>{ if(hasContent(t)||t.guide||lone(t)) return true; disposeTrack(t); if(editId===t.id) editId=null; return false; });
-  const tr=S.tracks.find(t=>t.id===s2.recId); if(tr && hasContent(tr) && tr.inst!=='vox' && tr.off!=null && s2.recLen){ const last=Math.max(0,...(tr.notes||[]).map(n=>n.s+n.l),...(tr.hits||[]).map(h=>h.s+1)); tr.len=clamp(Math.ceil(last/16),1,s2.recLen); tr.lenSet=true; tr._dirty=true; }
+  const tr=S.tracks.find(t=>t.id===s2.recId); if(tr && hasContent(tr) && tr.inst!=='vox' && tr.off!=null && s2.recLen){ const last=Math.max(0,...(tr.notes||[]).map(n=>n.s+n.l),...(tr.hits||[]).map(h=>h.s+1)); tr.len=clamp(Math.ceil(last/16),1,s2.recLen); tr.lenSet=true; tr._dirty=true; s2Replace(tr); }
   if(s2.recPrev){ const end=Math.max(1,...S.tracks.filter(hasContent).map(t=>Math.floor((t.off||0)/16)+(t.off!=null&&t.len?t.len:s2.recPrev))); const nb=Math.min(64,S.tracks.some(hasContent)?end:s2.recPrev); if(nb!==S.bars){ S.bars=nb; syncTransport(); } }
   s2.recId=null; s2.recLen=0; s2.recPrev=0; if(S.tracks.length!==before) keyCache=null; save(); scheduleRender(); }
 function s2Render(){ if(!s2On()) return; const el=$('s2'), bars=S.bars, view=Math.max(bars+8, Math.ceil((window.innerWidth||400)/s2.barw));
@@ -1075,9 +1113,9 @@ function s2Render(){ if(!s2On()) return; const el=$('s2'), bars=S.bars, view=Mat
   const anySolo=S.tracks.some(t=>t.solo);
   let h=`<div class="s2-ruler"><div class="s2-corner"></div><div class="s2-marks" id="s2Marks">${Array.from({length:view},(_,i)=>`<span class="s2-mk${i>=bars?' out':''}" style="left:calc(${i} * var(--s2-barw))">${i+1}</span>`).join('')}<span class="s2-phh" id="s2PhH"></span></div></div><div class="s2-side"></div>`;
   const lanes=s2Lanes();
-  lanes.forEach(L=>{ const tr=L.tracks[0], nm=nxEsc(partName(tr)); h+=`<div class="s2-trk${(tr.mute||(anySolo&&!tr.solo))?' dim':''}"><div class="s2-th"><button class="s2-nm" data-t="${L.id}"><i style="background:${INST[tr.inst].color}"></i><span>${nm}</span></button><div class="s2-ct">${tr.guide?'':`<button class="s2-arm" data-arm="${L.id}" aria-pressed="${String(s2.armId)===String(L.id)}" aria-label="Record into ${nm}"><i></i></button>`}<button class="s2-ms" data-m="${L.id}" aria-pressed="${!!tr.mute}" aria-label="Mute ${nm}">M</button><button class="s2-ms so" data-s="${L.id}" aria-pressed="${!!tr.solo}" aria-label="Solo ${nm}">S</button></div></div><div class="s2-ln" data-ln="${L.id}"><canvas data-cv="${L.id}"></canvas></div></div>`; });
+  lanes.forEach(L=>{ const tr=L.tracks[0], nm=nxEsc(s2Name(L)); h+=`<div class="s2-trk${(tr.mute||(anySolo&&!tr.solo))?' dim':''}"><div class="s2-th"><button class="s2-nm" data-t="${L.id}"><i style="background:${INST[tr.inst].color}"></i><span>${nm}</span></button><div class="s2-ct">${tr.guide?'':`<button class="s2-arm" data-arm="${L.id}" aria-pressed="${String(s2.armId)===String(L.id)}" aria-label="Record into ${nm}"><i></i></button>`}<button class="s2-ms" data-m="${L.id}" aria-pressed="${!!tr.mute}" aria-label="Mute ${nm}">M</button><button class="s2-ms so" data-s="${L.id}" aria-pressed="${!!tr.solo}" aria-label="Solo ${nm}">S</button></div></div><div class="s2-ln" data-ln="${L.id}"><canvas data-cv="${L.id}"></canvas></div></div>`; });
   if(!S.tracks.length) h+=`<div class="s2-hint"><b>New project</b>Tap record, then pick what you're recording.</div>`;
-  h+=`<div class="s2-add"><button id="s2Add">+ Add track</button></div><div class="s2-end"></div><div class="s2-ph" id="s2Ph"></div>`;
+  h+=`<div class="s2-add"><button id="s2Add">+ Add track</button></div><div class="s2-ph" id="s2Ph"></div>`;
   $('s2In').innerHTML=h; lanes.forEach(L=>{ const cv=$('s2In').querySelector(`canvas[data-cv="${L.id}"]`); if(cv) s2DrawLane(L,cv); });
   const tk=takeBar&&!recState; $('s2Take').hidden=!tk; s2.pos=-1; s2Chips(); s2Seek(); s2Clip(); }
 /* keep the playhead out from under the track headers, and the header panel as tall as the timeline */
@@ -1092,7 +1130,7 @@ function s2Tick(frac){ if(!s2On()) return; const bars=S.bars, live=playing||!!re
     if(playing||recState){ const tl=$('s2Tl'), hw=parseFloat(getComputedStyle($('s2')).getPropertyValue('--s2-hdr')), x=hw+pos*s2.barw; if(x>tl.scrollLeft+tl.clientWidth-24||x<tl.scrollLeft+hw) tl.scrollLeft=x-hw-8; } }
   const rec=!!recState; if($('s2').classList.contains('recording')!==rec){ $('s2').classList.toggle('recording',rec); $('s2Rec').hidden=!rec; $('s2RecB').setAttribute('aria-label',rec?'Stop recording':'Record'); if(!rec) s2Render(); }
   if(rec){ const t=$('recLabel').textContent; if($('s2RecL').textContent!==t) $('s2RecL').textContent=t; }
-  const pi=playing?'<path d="M7 5v14M17 5v14" stroke-width="3"/>':'<path d="M7 4l13 8-13 8V4z" fill="currentColor"/>'; if(s2._pi!==playing){ s2._pi=playing; $('s2PlayI').innerHTML=pi; $('s2Play').setAttribute('aria-label',playing?'Pause':'Play'); }
+  const pi=playing?'<path d="M7 5v14M17 5v14" stroke-width="3"/>':'<path d="M7 4l13 8-13 8V4z" fill="currentColor"/>'; if(s2._pi!==playing){ s2._pi=playing; $('s2PlayI').innerHTML=pi; $('s2EdPlayI').innerHTML=pi; $('s2Play').setAttribute('aria-label',playing?'Pause':'Play'); }
   s2Chips(); }
 function s2Seek(){ const m=$('s2Marks'); if(!m) return; let drag=false; const set=e=>{ if(recState) return; const r=m.getBoundingClientRect(), bar=clamp((e.clientX-r.left)/s2.barw,0,63.99), L=loopLen(); s2.cur=playing?Math.min(bar,S.bars):bar; playFrom=Math.min(Math.min(bar,S.bars)/S.bars*L, L-0.001); if(playing&&ctx) startAll(ctx.currentTime+0.02, playFrom); };
   m.onpointerdown=e=>{ drag=true; try{ m.setPointerCapture(e.pointerId); }catch(_){} set(e); }; m.onpointermove=e=>{ if(drag) set(e); }; m.onpointerup=m.onpointercancel=()=>{ drag=false; }; }
@@ -1107,11 +1145,23 @@ function s2Record(){ ensureCtx(); if(recState){ const r=recState; if(ctx.current
     if(!tr){ tr=mkTrack(first.inst,{id:S.nextId++, lane:L.id, sound:first.sound, vol:first.vol, mute:first.mute, solo:first.solo, send:first.send, tone:first.tone, oct:first.oct, sens:first.sens}); if(first.adsr) tr.adsr=first.adsr; S.tracks.push(tr); }
     s2.recPrev=S.bars; s2.recLen=Math.min(S2_MAX,64-P); tr.off=P*16; tr.rep=false; tr.len=s2.recLen; tr.lenSet=true; if(S.bars<P+tr.len){ S.bars=P+tr.len; syncTransport(); } save(); }
   s2.recId=tr.id; s2.post=true; S.activeId=tr.id; recordInto(tr.id); }
-function s2ClipSheet(tr){ nxSheet(`<h2>${nxEsc(partName(S.tracks.find(t=>s2LaneId(t)===s2LaneId(tr))))}</h2><button class="nx-act" data-a="edit">Edit notes</button><button class="nx-act danger" data-a="del">Delete this part</button>`);
-  $('nxSheet').onclick=e=>{ const b=e.target.closest('[data-a]'); if(!b) return; nxClose(); if(b.dataset.a==='edit') return s2Detail(tr);
+/* The note editor: one part, full screen. The grid is the same one as before (tap to select, drag to move, double-tap or tap a seam to split), with bigger rows. */
+function s2Edit(tr){ s2.edId=tr.id; S.activeId=tr.id; if(editId!=null) closeEditor(); $('s2Ed').hidden=false; s2EdMount(); }
+function s2EdMount(){ if(s2.edId==null) return; const tr=S.tracks.find(t=>t.id===s2.edId); if(!tr||!hasContent(tr)){ s2EdClose(); return; }
+  const host=$('s2EdBody'), kind=INST[tr.inst].kind, avail=Math.max(200,(host.clientHeight||window.innerHeight*0.6)-90);
+  GRID_H=Math.min(520,avail); GRID_RH=30; GRID_DRUM=kind==='pitched'?1:Math.min(2.2,Math.max(1,avail/(gridRows(tr).rows.length*gridRows(tr).rh)));
+  const sx=tr._cv&&tr._cv.isConnected?tr._cv.parentElement.parentElement.scrollLeft:0; host.innerHTML=''; host.appendChild(buildCard(tr));
+  requestAnimationFrame(()=>{ if(tr._cv&&tr._cv.isConnected){ drawGrid(tr); if(sx){ tr._autoScroll=true; tr._cv.parentElement.parentElement.scrollLeft=sx; } } });
+  const b0=Math.floor((tr.off||0)/16)+1, b1=b0+pBars(tr)-1; $('s2EdT').textContent=s2Name(s2Lane(s2LaneId(tr))); $('s2EdS').textContent=(b1>b0?`Bars ${b0}–${b1}`:`Bar ${b0}`)+' · '+(tr.notes?tr.notes.length+' notes':tr.hits?tr.hits.length+' hits':'audio');
+  const pit=kind==='pitched'&&tr.inst!=='arp'; $('s2EdVer').hidden=!pit; $('s2EdFill').hidden=!pit;
+  $('s2EdHint').textContent=kind==='pitched'?'Tap a note to select it, drag to move. Double-tap a note, or tap a faint seam, to split it.':tr.hits?'Tap a square to add or remove a hit.':'';
+  $('s2EdUndo').disabled=!hist.undo.length; $('s2EdRedo').disabled=!hist.redo.length; }
+function s2EdClose(){ const tr=S.tracks.find(t=>t.id===s2.edId); if(tr){ tr._cv=null; tr._sel=null; } s2.edId=null; GRID_H=176; GRID_RH=15; GRID_DRUM=1; $('s2Ed').hidden=true; $('s2EdBody').innerHTML=''; s2Render(); }
+function s2ClipSheet(tr){ nxSheet(`<h2>${nxEsc(s2Name(s2Lane(s2LaneId(tr))))}</h2><button class="nx-act" data-a="edit">Edit notes</button><button class="nx-act danger" data-a="del">Delete this part</button>`);
+  $('nxSheet').onclick=e=>{ const b=e.target.closest('[data-a]'); if(!b) return; nxClose(); if(b.dataset.a==='edit') return s2Edit(tr);
     const mates=S.tracks.filter(o=>o!==tr&&s2LaneId(o)===s2LaneId(tr)); if(mates.length){ if(tr.lane==null) mates.forEach(o=>{ o.lane=mates[0].id; }); s2.recPrev=0; deletePart(tr); }
     else { if(tr.notes) tr.notes=[]; if(tr.hits) tr.hits=[]; tr._an=null; tr._takes=null; tr._raw=null; tr._dirty=true; keyCache=null; save(); renderTracks(); scheduleRender(); toast('Part deleted'); } }; }
-function s2TrackSheet(L){ const tr=L.tracks[0], all=()=>S.tracks.filter(t=>s2LaneId(t)===L.id), I=INST[tr.inst], nm=nxEsc(partName(tr));
+function s2TrackSheet(L){ const tr=L.tracks[0], all=()=>S.tracks.filter(t=>s2LaneId(t)===L.id), I=INST[tr.inst], nm=nxEsc(s2Name(L));
   nxSheet(`<h2>${nm}</h2>${I.sounds&&I.sounds.length?`<div class="nx-grp" style="padding-top:0">Sound</div><div class="s2-opts" id="s2Snd">${I.sounds.map(x=>`<button data-x="${nxEsc(x)}" aria-pressed="${x===tr.sound}">${nxEsc(x)}</button>`).join('')}</div>`:''}
     ${s2Fld('s2Vol','Volume',0,100,tr.vol??80)}<button class="nx-act danger" data-a="del">Delete track</button>`);
   $('nxSheet').onclick=e=>{ let b; if(b=e.target.closest('#s2Snd button')){ all().forEach(t=>{ t.sound=b.dataset.x; if(t.inst==='vox') t.fx=Object.assign({},VOX_PRESETS[t.sound]); t._dirty=true; }); save(); scheduleRender(); s2TrackSheet(s2Lane(L.id)); }
@@ -1128,8 +1178,11 @@ function s2Sheets(kind){ $('nxSheet').oninput=null;
     s2Bind('s2Mv','mvol'); s2Bind('s2Mr','mrev'); s2Bind('s2Md','mdrive'); s2Bind('s2Mp','mpunch'); $('nxSheet').onclick=null; }
   if(kind==='name'){ nxSheet(`<h2>Rename</h2><input class="nx-txt" id="s2Rn" maxlength="60" value="${nxEsc(S.title||'')}" placeholder="Untitled" aria-label="Project name"><button class="nx-primary" id="s2RnOk">Save</button>`); $('nxSheet').onclick=null;
     const ok=()=>{ S.title=$('s2Rn').value.trim(); const sn=$('songName'); if(sn) sn.value=S.title; save(); nxClose(); s2Render(); }; $('s2RnOk').onclick=ok; $('s2Rn').onkeydown=e=>{ if(e.key==='Enter') ok(); }; $('s2Rn').focus(); } }
-function s2Init(){ const _rt=renderTracks; renderTracks=function(){ if(s2.post && !recState && rs.mode==null){ s2.post=false; try{ s2Tidy(); }catch(e){} } _rt.apply(this,arguments); if(s2On()) s2Render(); };
+function s2Init(){ const _rt=renderTracks; renderTracks=function(){ if(s2.post && !recState && rs.mode==null){ s2.post=false; try{ s2Tidy(); }catch(e){} } _rt.apply(this,arguments); if(s2On()){ if(s2.edId!=null) s2EdMount(); else s2Render(); } };
   const _rd=redrawTrack; redrawTrack=function(tr){ _rd.apply(this,arguments); if(s2On()){ const L=s2Lane(s2LaneId(tr)), cv=L&&$('s2In').querySelector(`canvas[data-cv="${L.id}"]`); if(cv) s2DrawLane(L,cv); } };
+  $('s2EdBack').onclick=s2EdClose; $('s2EdUndo').onclick=()=>undo(); $('s2EdRedo').onclick=()=>redo(); $('s2EdPlay').onclick=()=>togglePlay();
+  $('s2EdFill').onclick=()=>{ const b=$('s2EdBody').querySelector('.pfill'); if(b) b.click(); };
+  $('s2EdVer').onclick=()=>{ const tr=S.tracks.find(t=>t.id===s2.edId); if(!tr) return; if(!tr._versions) tr._versions=takeVersions(tr); if(tr._versions.length<2){ toast('No other likely readings of this part.'); return; } const i=((tr._vi||0)+1)%tr._versions.length; applyVersion(tr,i); toast(i?`Reading ${i+1} of ${tr._versions.length}`:'Back to what Noodle heard'); };
   $('s2Back').onclick=()=>nxGo('projects'); $('s2Name').onclick=()=>s2Sheets('name'); $('s2Undo').onclick=()=>undo(); $('s2Redo').onclick=()=>redo();
   $('s2Share').onclick=()=>s2Detail('export'); $('s2Bpm').onclick=()=>s2Sheets('tempo'); $('s2Key').onclick=()=>s2Sheets('key'); $('s2Mix').onclick=()=>s2Sheets('mix');
   $('s2Play').onclick=()=>togglePlay(); $('s2RecB').onclick=s2Record; $('s2Metro').onclick=()=>$('metro').click();
@@ -3164,6 +3217,7 @@ let origSrc=null;
 function playOriginal(tr,btn){ ensureCtx(); if(origSrc){ try{origSrc.stop();}catch(e){} origSrc=null; btn.textContent='▶ Your take'; return; }
   const {x,sr}=tr._raw; const b=ctx.createBuffer(1,x.length,sr); b.copyToChannel(x,0); const s=ctx.createBufferSource(); s.buffer=b; s.connect(ctx.destination); s.start();
   origSrc=s; btn.textContent='■ Stop take'; s.onended=()=>{ if(origSrc===s){ origSrc=null; btn.textContent='▶ Your take'; } }; }
+let GRID_H=176, GRID_RH=15, GRID_DRUM=1;   /* grid height budget, tallest pitched row, drum row scale */
 function gridRows(tr){
   const d=INST[tr.inst];
   if(d.kind==='drums'){ const rows=S.kit.slots.map(x=>x.id).reverse(); (tr.hits||[]).forEach(h=>{ if(!rows.includes(h.d)) rows.unshift(h.d); }); return {rows, rh:rows.length>6?17:20}; }
@@ -3203,7 +3257,7 @@ function drawGrid(tr){
   if(!tr._ovRaf) tr._ovRaf=requestAnimationFrame(()=>{ tr._ovRaf=0; drawOverview(tr); });
   const cv=tr._cv; if(!cv) return; const wrap=cv.parentElement.parentElement; const n=pSteps(tr);
   const pitched=INST[tr.inst].kind==='pitched';
-  const gr=gridRows(tr), rows=gr.rows, rh=pitched?clamp(Math.floor(176/Math.max(1,rows.length)),8,15):gr.rh; const gut=pitched?40:(rows.length>1?52:0);
+  const gr=gridRows(tr), rows=gr.rows, rh=pitched?clamp(Math.floor(GRID_H/Math.max(1,rows.length)),8,GRID_RH):Math.round(gr.rh*GRID_DRUM); const gut=pitched?40:(rows.length>1?52:0);
   const VW=Math.max(200,wrap.clientWidth||320), fit=(VW-gut)/n, cw=Math.max(fit, Math.min(zoomCW(),40)), W=Math.ceil(gut+n*cw);
   const sPL=n, lines=1, lineH=rows.length*rh+2, gapH=0, H=lineH;
   tr._grid={cw,rh,rows,W,gut,sPL,lineH,gapH,lines,fit};
@@ -3480,7 +3534,7 @@ function tick(){
   drawSeek(playing&&now>=t0 ? ph : (playFrom%L)/L);
   try{ s2Tick(showPh ? ph : (playFrom%L)/L); }catch(e){}
   S.tracks.forEach(tr=>{ if(tr._mph){ tr._mph.style.display=showPh?'block':'none'; if(showPh) tr._mph.style.transform=`translateX(${ph*(tr._mph.parentElement.clientWidth||0)}px)`; } });
-  S.tracks.forEach(tr=>{ if(!tr._ph||!tr._grid) return; const ps=pSteps(tr), pp=pRep(tr)?((((now-t0)/(ps*stepDur()))%1)+1)%1*ps:ph*steps(); tr._ph.style.display=showPh&&pp<ps?'block':'none'; if(showPh&&pp<ps&&playing&&tr._cv&&!(Date.now()-(tr._touchT||0)<3000)){ const G=tr._grid, w=tr._cv.parentElement.parentElement, x=G.gut+pp*G.cw; if(w.scrollWidth>w.clientWidth+2 && (x<w.scrollLeft+G.gut || x>w.scrollLeft+w.clientWidth-24)){ tr._autoScroll=true; w.scrollLeft=Math.max(0,x-G.gut-8); } } if(showPh&&pp<ps){ const G=tr._grid, pos=pp, L=Math.min(G.lines-1,Math.floor(pos/G.sPL)); tr._ph.style.transform=`translate(${G.gut+(pos-L*G.sPL)*G.cw}px,${L*(G.lineH+G.gapH)}px)`; } });
+  S.tracks.forEach(tr=>{ if(!tr._ph||!tr._grid) return; const ps=pSteps(tr), pp0=(tr.off||!pRep(tr))?ph*steps()-(tr.off||0):((((now-t0)/(ps*stepDur()))%1)+1)%1*ps, pp=pp0<0?ps+1:pp0; tr._ph.style.display=showPh&&pp<ps?'block':'none'; if(showPh&&pp<ps&&playing&&tr._cv&&!(Date.now()-(tr._touchT||0)<3000)){ const G=tr._grid, w=tr._cv.parentElement.parentElement, x=G.gut+pp*G.cw; if(w.scrollWidth>w.clientWidth+2 && (x<w.scrollLeft+G.gut || x>w.scrollLeft+w.clientWidth-24)){ tr._autoScroll=true; w.scrollLeft=Math.max(0,x-G.gut-8); } } if(showPh&&pp<ps){ const G=tr._grid, pos=pp, L=Math.min(G.lines-1,Math.floor(pos/G.sPL)); tr._ph.style.transform=`translate(${G.gut+(pos-L*G.sPL)*G.cw}px,${L*(G.lineH+G.gapH)}px)`; } });
   if(recState){
     const r=recState, beat=60/S.bpm, dots=$('beats').children;
     if(now<r.start){ const b=Math.floor((now-r.countStart)/beat); if(r.noisy==null && now>r.countStart+r.lat+(r.start-r.countStart)*0.7){ const f=countInFloor(r, now-0.03); r.noisy = f!=null && (S.voxTop??VOX_TOP)-f<NOISY_DB; }
