@@ -3851,7 +3851,7 @@ async function renderMix(K, fade){
   if(fade){ const f0=n*K, f1=Math.min(mix.length, f0+Math.round(2.2*sr)); for(let c=0;c<2;c++){ const d=mix.getChannelData(c); for(let i=f0;i<mix.length;i++) d[i]*= i<f1 ? Math.pow(1-(i-f0)/(f1-f0),2) : 0; } }
   return mix;
 }
-const songTitle=()=>{ if(S.title) return S.title; const K=currentKey(); return `Noodle ${S.bpm} BPM${K.none?'':' '+NOTE_NAMES[K.tonic].replace('♯','#').replace('♭','b')+' '+(PARENT[K.scale]||K.scale)}`; };
+const songTitle=()=>{ if(S.title) return S.title; const K=currentKey(); return `Noodle ${S.bpm} BPM${K.none?'':' '+NOTE_NAMES[K.tonic].replace('♯','#').replace('♭','b')+' '+(SCALE_LABEL[PARENT[K.scale]||K.scale]||K.scale)}`; };
 const fileSafe=t=>t.replace(/[\/\\:*?"<>|]/g,'-');
 /* Producer pack: a folder you can drop into any DAW */
 async function exportZip(){
@@ -3876,7 +3876,8 @@ async function exportZip(){
   finally{ btn.disabled=false; btn.textContent='Download producer pack'; }
 }
 function packReadme(parts,K){
-  const Kk=currentKey(), key=Kk.none?'no fixed key':NOTE_NAMES[Kk.tonic]+' '+Kk.scale, bars=S.bars*K;
+  const Kk=currentKey(), kR=SCALE_REL[Kk.scale], kSame=(!Kk.none&&kR&&!['major','minor','pent-major','pent-minor','blues'].includes(Kk.scale)) ? ` (set your DAW's key to ${NOTE_NAMES[(Kk.tonic+kR[0])%12]} major${['harm-minor','mel-minor','phryg-dom'].includes(Kk.scale)?', the closest match; one note of this scale sits outside it':', which has the same notes'})` : '',
+      key=Kk.none?'no fixed key':NOTE_NAMES[Kk.tonic]+' '+(SCALE_LABEL[Kk.scale]||Kk.scale)+kSame, bars=S.bars*K;
   const drums=parts.filter(t=>INST[t.inst].kind!=='pitched'&&INST[t.inst].kind!=='audio');
   const map=[...new Set(drums.flatMap(t=>t.hits.map(h=>h.d)))].map(d=>`  note ${drumNote(d)}  ${slotLabel(d)}`).join('\n');
   return `${songTitle()}
