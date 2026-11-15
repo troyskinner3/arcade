@@ -299,3 +299,8 @@ Real noise (DEMAND, CC BY 4.0: street traffic, cafeteria, bus, town square, park
   pop-up wording no longer points at screens that are gone; fewer storage writes.
 - **Profile from pitch fixes: tested, not shipped (`fix_profile.py`).** A user only fixes notes Noodle got wrong, and intervals touching those notes are not a fair sample: for the owner the profile reads 0.61 from them
   vs 0.73 from all intervals; for the held-out singers the "squeezes" verdict rises from 67% to 91% of takes (HumTrans) and 50% to 76% (Vocadito). It would push everyone toward "squeezed". The voice check stays the only source.
+- **Pre-review pass (shipped):** track sheet gains name, instrument (within its family, `changeInst`), reverb, left/right, brightness, octave, chord and Follow my voice, applied to every part on the track;
+  Share shows a progress bar (moving for audio and the DAW pack, filling for video); an empty Projects screen offers "Open an example song"; `s2Detail` and the last references to the removed screens are gone;
+  the root README's Noodle section describes the app as it is. Service: at most 40 writes a minute per address, counted in memory only (best-effort). `s2_extras.js`.
+- Known and left for later: the engine still builds the old part rows off-screen on every change (the hidden markup it depends on); removing them is the multi-file refactor.
+  The 50 guided-take prompts (owner's test link) have no entry point in the new screens; the voice check covers two of them.

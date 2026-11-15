@@ -17,6 +17,15 @@ const KEEP_DAYS = 3 * 365, MAX_SIGNUPS_PER_DAY = 400;
 const MAX_AUDIO = 3 * 1024 * 1024, MAX_META = 256 * 1024, MAX_TAKES_PER_DAY = 300;
 const ID = /^[A-Za-z0-9_-]{22,64}$/, TAKE = /^[A-Za-z0-9_-]{6,96}$/;
 
+// A light brake on floods: at most RATE writes a minute from one address, counted in this worker's memory only (nothing about the address is stored).
+// It is best-effort (each worker instance counts on its own); the free plan's daily limits are the hard stop.
+const RATE = 40, hits = new Map();
+function tooFast(req) {
+  const ip = req.headers.get('CF-Connecting-IP') || ''; if (!ip) return false;
+  const now = Date.now(), win = Math.floor(now / 60000), k = ip + '|' + win, n = (hits.get(k) || 0) + 1; hits.set(k, n);
+  if (hits.size > 5000) for (const key of hits.keys()) { if (!key.endsWith('|' + win)) hits.delete(key); }
+  return n > RATE;
+}
 function cors(req) {
   const o = req.headers.get('Origin') || '';
   const ok = ORIGINS.includes(o) || /^http:\/\/localhost(:\d+)?$/.test(o);
@@ -78,6 +87,7 @@ async function handle(req, env) {
     const url = new URL(req.url), p = url.pathname.split('/').filter(Boolean), B = store(env);
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors(req) });
     if (p[0] !== 'v1') return json(req, 404, { error: 'not found' });
+    if ((req.method === 'PUT' || req.method === 'DELETE') && tooFast(req)) return json(req, 429, { error: 'slow down' });
 
     if (p[1] === 'admin') {
       const auth = req.headers.get('Authorization') || '';

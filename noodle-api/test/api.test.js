@@ -94,3 +94,9 @@ test('takes expire 3 years after they first arrived, even when the record is upd
   assert.equal(exp.length, 3); for (const e of exp) assert.equal(e, want);
   assert.equal(JSON.parse(new TextDecoder().decode(B.m.get(`takes/${I}/take01/meta.json`))).receivedAt, first);
 });
+test('more than 40 writes a minute from one address are refused; other addresses are not affected', async () => {
+  const env = { TAKES: bucket() }; let last = 0;
+  for (let i = 0; i < 45; i++) last = (await call(env, 'PUT', `/v1/takes/${I}/take${String(i).padStart(3, '0')}/meta`, meta(), { 'CF-Connecting-IP': '203.0.113.9' })).status;
+  assert.equal(last, 429);
+  assert.equal((await call(env, 'PUT', `/v1/takes/${I2}/take001/meta`, meta(), { 'CF-Connecting-IP': '203.0.113.10' })).status, 200);
+});

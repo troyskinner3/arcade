@@ -25,24 +25,16 @@ Simple browser games for mobile and desktop. Plain HTML/CSS/JS with no build ste
   - Progress is saved only in the browser (`localStorage`). There's no server or account, so it doesn't follow you to another device or browser.
 - **Two Thumbs Up Classic** (`two-thumbs-up-classic/`): the original one-finger version. Drag to slingshot, and the hand auto-grabs near the top of its arc.
 
-- **Noodle** (`noodle/`, mobile and desktop; was Mouth Machine, and `mouth-machine/` still forwards here): a beatbox-to-beat studio. Tap + Add part, choose an instrument on the new card, then record into it with the mic (count-in and metronome) or import a voice memo, and it becomes real instruments.
-  - Drums: beatbox the whole kit in one take (default "B" = kick, "ch" = snare, "k" = clap, "ts" = hi-hat) or record each drum on its own. Drum takes layer onto the same Drums part (one grid; Undo last take removes a layer). Hits snap to 16th (or 8th) notes.
-  - Your kit (on the Drum kit pad): up to 12 slots, each playing one of 19 synthesized sounds (toms, rim, cowbell, shaker, crash, ride, 808 boom…) or "My own noise" (your taught recording). Teach each slot your trigger noise with a short take on the click; hits are then sorted by comparing a spectral fingerprint (tone shape at the attack and body, plus length, brightness, bass and hiss) against your examples. Look-alike noises get a warning.
-  - Bass, lead, keys and pad: sing ("ahh", "ooo"), hum or whistle. Each take's own tuning offset from A=440 is measured and removed first. Notes are the steady pitches you settle on; scoops and slides belong to the note they slide into, and the note changes where a slide passes halfway. Where you slid, the synth slides too (Slides toggle per part). Save take downloads the raw recording (WAV + settings) for troubleshooting. Pitch is tracked and snapped to the detected key and scale; whistling (1-4 kHz) is followed by its own tracker and moved down whole octaves into the part's range. A new take records over the existing part of that instrument unless you choose to add another part.
-  - Chords: every tonal part has a Chord setting (Single notes, Triad, 7th, 9th, Power), built from the song's key. Keys, Pad and Arp default to Triad; Bass and Lead to single notes.
-  - Arp: sing or draw root notes and each plays its chord as an arpeggio. Controls: Pattern (Up, Down, Up & down, Random), Rate (1/8, 1/16, 1/32), Range (1-3 octaves), Gate. MIDI export contains the arpeggiated notes.
-  - Editing notes: tap a note to select it, then drag it to a new step or pitch (snapped to the key), drag its end to trim or extend it, or use the edit bar (move, up/down through the key, shorter/longer, delete). Press and drag on an empty spot to draw a new note.
-  - Each part gets its own sound, volume, pan, reverb, tone, octave and nudge controls, plus an editable grid. Master swing, room, drive and punch.
-  - Styles: one tap sets every part's sound, the vocal preset and the mix for Pop, Hip hop, EDM, Rock or Lo-fi. More sounds per instrument (supersaw, guitar, piano, stab, choir, sweep, 808 glide, synth bass, rock bass) and EDM / Rock drum kits and vocal presets. Loops can be up to 16 bars.
-  - Share your song: Share audio (WAV) or Share video (a vertical clip of the parts moving to the beat, recorded in real time; MP4 where supported) through the phone's share sheet, or Save to Files.
-  - Producer pack (.zip): a folder named with tempo and key containing every part as a 24-bit WAV from bar 1 (same length), the full mix, processed and raw vocals, MIDI per part plus All parts.mid (tempo, 4/4, key signature, named tracks; drums on GM notes) and a README with import steps for Logic, Ableton, FL Studio and GarageBand.
-  - Vocals: records your voice as audio (the other parts play while you sing) and runs it through a pop / hip-hop chain: Tune (pitch correction to the song's key with PSOLA; 100% is the hard-tuned sound), Low cut, Presence, Air, Compression, Double (stereo doubling), Echo (1/8-note delay), plus pan and reverb. Presets: Pop, Hip hop, Hard tune, Natural. The editor shows the waveform with your pitch and the tuned pitch. Vocal takes are saved in the browser (IndexedDB) so they survive a reload; MIDI export skips them.
-  - Layout: a bottom bar holds Undo, Redo, Play and Record (labeled with the chosen instrument). Record opens a full-screen record screen (options, count-in, then a review with Keep, Retry or Discard; calibration and teaching run there too). Parts are slim rows with a pattern preview, volume, mute and solo; tap one to open its full-screen editor (bar numbers, wider grid when the phone is sideways). Undo/redo covers every change, including deleted parts and their takes.
-  - Wear headphones while recording. Timing & mic has a clap-along calibration for mic delay.
-
-The Two Thumbs Up games have a ⚙ button with live tuning sliders, saved in your browser.
-
-`climber/` and `climber-classic/` just forward to the new addresses.
+- **Noodle** (`noodle/`; was Mouth Machine, and `mouth-machine/` still forwards here): hum, sing, whistle or beatbox, and it becomes instruments you can edit and send to a DAW. Built for phones; ships as an iPhone app too (`noodle-ios/`).
+  - **Projects:** every song is saved on the device; search, sort, rename, duplicate, delete. A bottom bar (Projects, +, More) shows everywhere except the Studio.
+  - **Studio:** a timeline. Tracks are rows with record-arm, mute and solo; tap a track's name for its sheet (name, instrument, sound, volume, reverb, left/right, brightness, octave, chord, Follow my voice).
+    Record starts at the playhead and runs until you tap record again; each take becomes a region and replaces what it overlaps. Tap a region to select it: drag to move, drag its ends to trim or extend (whole bars), Duplicate, Delete, Edit notes.
+  - **Note editor:** tap a note to select it and drag to move, Split / Delete, double-tap or tap a faint seam to split, Other readings (other ways Noodle could have read a melody), Fill gaps.
+  - **Listening:** drums from beatboxing ("B" kick, "ch" snare, "k" clap, "ts" hat; teach your own noises in More), melodies from humming, singing or whistling, snapped to the song's key; voice tracks keep your recording as sound.
+    Noisy surroundings are detected during the count-in and the take is cleaned before reading. A one-minute voice check (More) teaches Noodle how you sing.
+  - **Share:** Send to your DAW (.zip: every track as 24-bit WAV and MIDI, with tempo and key), audio (WAV), or a vertical video.
+  - **Optional, off by default:** Share my takes (recordings and your fixes, to improve Noodle; 13+; stop or delete any time) and Email news. The service is `noodle-api/`; the privacy draft is `noodle/privacy/`.
+  - Everything else stays in the browser or app. Tests and measurements: `noodle/eval/README.md`.
 
 ## Run locally
 
