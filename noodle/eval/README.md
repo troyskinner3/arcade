@@ -281,3 +281,9 @@ Real noise (DEMAND, CC BY 4.0: street traffic, cafeteria, bus, town square, park
 - **Step 4 (shipped): voice check** (`nxVoiceCheck`): at the end of first launch (skippable) and in More. Noodle plays a tune once, you hum it back, for two tunes (scale, Ode to Joy: 11 rising intervals,
   enough for `squeezeOn`'s 10). Each take updates the interval profile `S.sq` (`learnSqueeze`; when sharing is on, sending the take does it, so it is not counted twice) and, if shared, arrives labelled with its tune.
   A take with fewer than 5 notes gets one retry. Ends back in the song you were in, with a one-line result. `voice_test.js`: a simulated singer at 0.75× intervals reads as 0.75 (profile on), at 1.0× as 1.00 (off).
+- **Step 5 (shipped):** the voice check no longer tells people how they sing (it would make some feel judged and others change how they hum); it ends with a plain "All set".
+  **Voice (audio) parts anywhere:** `renderVox` places a part at `tr.off`; recording pre-rolls the bar before the take; a take's length comes from its audio; cutting moves the start point into the recording (`va`);
+  new takes replace overlapping audio like notes. **Trim / extend** a part by a bar from its sheet (`s2TrimClip`). **More → Mic and timing** (calibrate, sensitivity, automatic delay, play-along, echo cancellation)
+  and **Your drum sounds** (teach each or all) as sheets in the new style; the calibration and teaching recorders are the existing ones. Messages show at the top of the screen, clear of the transport and sheets.
+  `s2_rest.js`; all eval scripts pass; 31-take replay unchanged (3.88).
+- Not done: copying email signups into the marketing sheet (needs the sheet and the admin key once there are signups).

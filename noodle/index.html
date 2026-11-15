@@ -653,7 +653,7 @@ button.card-head{margin:0;width:100%;padding:10px 14px;border-radius:0;backgroun
 .s2-opts{display:flex;flex-wrap:wrap;gap:6px;padding-bottom:12px}
 .s2-opts button{padding:9px 13px;border:1px solid var(--line);border-radius:8px;background:none;color:inherit;font:600 14px var(--f-body)}
 .s2-opts button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
-.s2-on .toast{z-index:80;bottom:calc(120px + env(safe-area-inset-bottom,0px))}
+.s2-on .toast{z-index:80;bottom:auto;top:calc(104px + env(safe-area-inset-top,0px))}   /* up top, clear of the transport and of sheets */
 .nx-ob{position:fixed;inset:0;z-index:75;background:var(--bg);color:var(--ink);display:flex;flex-direction:column;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 .nx-ob .in{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;justify-content:center;gap:14px;padding-top:24px;padding-bottom:24px}
 .nx-ob h1{font:700 26px/1.15 var(--f-display);margin:0;text-wrap:balance}
@@ -668,7 +668,8 @@ button.card-head{margin:0;width:100%;padding:10px 14px;border-radius:0;backgroun
 .nx-sw{width:46px;height:28px;border-radius:99px;background:var(--line);position:relative;flex:none;border:0}
 .nx-sw::after{content:"";position:absolute;left:3px;top:3px;width:22px;height:22px;border-radius:50%;background:var(--pad)}
 .nx-sw[aria-checked="true"]{background:var(--lcd-ink)} .nx-sw[aria-checked="true"]::after{left:21px}
-.nx-on .toast{z-index:80;bottom:calc(84px + env(safe-area-inset-bottom,0px))}
+.nx-on #recSheet{z-index:72}
+.nx-on .toast{z-index:80;bottom:auto;top:calc(64px + env(safe-area-inset-top,0px))}
 .nx-view button:focus-visible,.nx-nav button:focus-visible,.nx-sheet button:focus-visible,.nx-back:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
 </style>
 
@@ -817,7 +818,8 @@ button.card-head{margin:0;width:100%;padding:10px 14px;border-radius:0;backgroun
     <button class="nx-item" id="nxEmail" style="width:100%;background:none;border:0;border-bottom:1px solid var(--line);text-align:left"><span>Email news<small id="nxEmS">Hear about Noodle and what we build next</small></span><svg class="nx-ico" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
     <div class="nx-grp">Your setup</div>
     <button class="nx-item" id="nxVoice" style="width:100%;background:none;border:0;border-bottom:1px solid var(--line);text-align:left"><span>Voice check<small id="nxVoS">Hum two short tunes back, so Noodle learns how you sing</small></span><svg class="nx-ico" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
-    <button class="nx-item" id="nxTiming" style="width:100%;background:none;border:0;border-bottom:1px solid var(--line);text-align:left"><span>Mic timing<small>Fix notes that land late, and other mic settings</small></span><svg class="nx-ico" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
+    <button class="nx-item" id="nxTiming" style="width:100%;background:none;border:0;border-bottom:1px solid var(--line);text-align:left"><span>Mic and timing<small>Fix notes that land late, and other mic settings</small></span><svg class="nx-ico" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
+    <button class="nx-item" id="nxDrums" style="width:100%;background:none;border:0;border-bottom:1px solid var(--line);text-align:left"><span>Your drum sounds<small>Teach Noodle your own noises for each drum</small></span><svg class="nx-ico" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
     <div class="nx-grp">Studio</div>
     <button class="nx-item" id="nxClassic" style="width:100%;background:none;border:0;border-bottom:1px solid var(--line);text-align:left"><span>Classic studio<small id="nxClassicS"></small></span></button>
     <div class="nx-grp">About</div>
@@ -1070,7 +1072,7 @@ async function nxGo(v){ if(v!=='studio'){ flushSave(); if(recState) cancelRecord
   if(v==='projects') await nxRenderProjects(); if(v==='studio') window.scrollTo({top:0}); }
 const nxSongEmpty=()=>!S.title && !S.prompt && !S.tracks.some(t=>!t.ex&&!t.guide);
 async function nxNew(){ if(!nxSongEmpty() || S.tracks.length) await projNew(); await nxGo('studio'); }
-function nxSheet(html){ $('nxSheet').innerHTML='<div class="nx-g"><div class="nx-grab"></div>'+html+'</div>'; $('nxScrim').hidden=false; }
+function nxSheet(html){ $('toast').classList.remove('on'); $('nxSheet').innerHTML='<div class="nx-g"><div class="nx-grab"></div>'+html+'</div>'; $('nxScrim').hidden=false; }
 function nxClose(){ $('nxScrim').hidden=true; $('nxSheet').onclick=null; }
 async function nxMenu(id){ const p=(await projList()).find(x=>x.id===id); if(!p) return; const name=p.title||'Untitled';
   nxSheet(`<h2>${nxEsc(name)}</h2><button class="nx-act" data-a="rename">Rename</button><button class="nx-act" data-a="dup">Duplicate</button><button class="nx-act danger" data-a="del">Delete</button>`);
@@ -1120,7 +1122,7 @@ async function nxVoiceCheck(done){ const O=$('nxOb'), I=$('nxObIn'), A=$('nxObAc
       else if(tries<2){ if(await ask(`<h1>Let’s try that once more</h1><p class="sub">I couldn’t hear enough notes. Hum a little louder, closer to the phone.</p>`,[['vcRe','Try again','nx-primary'],['vcStop2','Stop the voice check','nx-ghost']])!==0) stop=true; } } }
   if(stop) return end();
   try{ if(learned) localStorage.setItem('noodle.voice',String(Date.now())); }catch(e){}
-  await ask(learned ? `<h1>All set</h1><p class="sub">${squeezeOn()?'You sing your jumps a little smaller than written, like most people. Noodle will read your tunes with that in mind.':'You sing your jumps true. Noodle will take your notes as you sing them.'}</p><p class="sub">You can run the voice check again any time in More.</p>`
+  await ask(learned ? `<h1>All set</h1><p class="sub">Thanks. Noodle knows your voice a little better now.</p><p class="sub">You can run the voice check again any time in More.</p>`
     : `<h1>That didn’t work this time</h1><p class="sub">I couldn’t hear the tunes clearly, so nothing changed. You can run the voice check again any time in More.</p>`,[['vcDone','Done','nx-primary']]);
   end(); }
 /* First launch: what Noodle is, then the two optional choices. Shown once. */
@@ -1166,24 +1168,25 @@ function s2DrawLane(lane,cv){ const W=cv.clientWidth, H=cv.clientHeight; if(!W||
     if(tr.notes && INST[tr.inst].kind==='pitched'){ const ps2=tr.notes.map(pitchOf); if(ps2.length){ const lo=Math.min(...ps2), hi=Math.max(...ps2), span=Math.max(5,hi-lo);
         tr.notes.forEach((nt,i)=>{ if(nt.s>=ps) return; const y=yIn+hIn*(1-(ps2[i]-lo)/span), xa=ix+nt.s*u, xb=Math.min(ix+iw, ix+Math.min(nt.s+nt.l,ps)*u-1); g.fillRect(xa, y, Math.max(1.5,xb-xa), 3.5); }); } }
     else if(tr.hits){ const rows=[...new Set(tr.hits.map(x=>x.d))]; tr.hits.forEach(x=>{ if(x.s>=ps) return; const i=rows.indexOf(x.d), y=yIn+hIn*(rows.length>1?i/(rows.length-1):0.5), xa=ix+x.s*u; g.fillRect(xa, y, Math.max(1.5,Math.min(u-1,ix+iw-xa)), 3.5); }); }
-    else { const raw=tr._raw; const N=Math.max(8,Math.floor(iw/3)); for(let i=0;i<N;i++){ let a=0.25; if(raw&&raw.x){ const i0=Math.floor(i/N*raw.x.length), i1=Math.floor((i+1)/N*raw.x.length); let m=0; for(let j=i0;j<i1;j+=16) m=Math.max(m,Math.abs(raw.x[j])); a=Math.min(1,m*2.2); } const bh=Math.max(2,a*(h-2*pad)); g.fillRect(ix+i*(iw/N), top+h/2-bh/2, 1.6, bh); } } } }
+    else { const raw=tr._raw; const N=Math.max(8,Math.floor(iw/3)); for(let i=0;i<N;i++){ let a=0.25; if(raw&&raw.x){ const a0=(tr.va||0)*raw.sr, span=ps*stepDur()*raw.sr, i0=Math.floor(a0+i/N*span), i1=Math.min(raw.x.length,Math.floor(a0+(i+1)/N*span)); let m=0; for(let j=i0;j<i1;j+=16) m=Math.max(m,Math.abs(raw.x[j])); a=Math.min(1,m*2.2); } const bh=Math.max(2,a*(h-2*pad)); g.fillRect(ix+i*(iw/N), top+h/2-bh/2, 1.6, bh); } } } }
   g.globalAlpha=1; }
 /* A new take replaces whatever it overlaps in its lane: covered parts go, partly covered parts are cut back, and a part it lands inside is split in two. */
 function s2Cut(tr, from, to){   /* keep steps [from,to) of a part (in its own steps), as a part starting at its old start + from */
   const fix=e=>{ const s0=e.s, e0=e.s+(e.l||1); if(e0<=from||s0>=to) return null; const o={...e, s:Math.max(s0,from)-from}; if(e.l!=null) o.l=Math.min(e0,to)-Math.max(s0,from); return o; };
   if(tr.notes) tr.notes=tr.notes.map(fix).filter(Boolean); if(tr.hits) tr.hits=tr.hits.map(fix).filter(Boolean);
+  if(tr.inst==='vox'){ tr.va=+((tr.va||0)+from*stepDur()).toFixed(4); if(tr.vn) tr.vn=tr.vn.map(v=>({...v,t:v.t-from*stepDur()})).filter(v=>v.t>=0&&v.t<(to-from)*stepDur()); tr._tuned=null; tr._pitch=null; }
   tr.off=(tr.off||0)+from; tr.len=Math.max(1,Math.round((to-from)/16)); tr.lenSet=true; tr.rep=false; tr._an=null; tr._takes=null; tr._versions=null; tr._dirty=true; if(tr.expr) tr.expr=0; }
 function s2Replace(nw){ const a=nw.off||0, b=a+pSteps(nw); let changed=false;
-  for(const t of S.tracks.slice()){ if(t===nw || t.guide || s2LaneId(t)!==s2LaneId(nw) || !hasContent(t) || t.inst==='vox') continue;
+  for(const t of S.tracks.slice()){ if(t===nw || t.guide || s2LaneId(t)!==s2LaneId(nw) || !hasContent(t)) continue;
     const n=pSteps(t)*pLoops(t), o=t.off||0, e=o+n; if(e<=a || o>=b) continue; changed=true;
-    if(pLoops(t)>1){ const base=t.notes?'notes':'hits', one=t[base].filter(x=>x.s<pSteps(t)), all=[]; for(let r=0;r<pLoops(t);r++) one.forEach(x=>all.push({...x,s:x.s+r*pSteps(t)})); t[base]=all; t.len=Math.round(n/16); }   /* a repeating part becomes one long part first */
+    if(pLoops(t)>1 && t.inst!=='vox'){ const base=t.notes?'notes':'hits', one=t[base].filter(x=>x.s<pSteps(t)), all=[]; for(let r=0;r<pLoops(t);r++) one.forEach(x=>all.push({...x,s:x.s+r*pSteps(t)})); t[base]=all; t.len=Math.round(n/16); }   /* a repeating part becomes one long part first */
     if(o>=a && e<=b){ disposeTrack(t); S.tracks=S.tracks.filter(x=>x!==t); if(editId===t.id) editId=null; continue; }
-    if(o<a && e>b){ const right=JSON.parse(JSON.stringify(t,(k,v)=>k[0]==='_'?undefined:v)); right.id=S.nextId++; right.lane=s2LaneId(t); delete right.sid; right._dirty=true; s2Cut(right, b-o, n); S.tracks.push(right); s2Cut(t, 0, a-o); continue; }
+    if(o<a && e>b){ const right=JSON.parse(JSON.stringify(t,(k,v)=>k[0]==='_'?undefined:v)); right.id=S.nextId++; right.lane=s2LaneId(t); delete right.sid; right._dirty=true; if(t._raw){ right._raw=t._raw; } s2Cut(right, b-o, n); if(right._raw) storeVox(right); S.tracks.push(right); s2Cut(t, 0, a-o); continue; }
     if(o<a) s2Cut(t, 0, a-o); else s2Cut(t, b-o, n); }
   if(changed){ S.tracks=S.tracks.filter(t=>hasContent(t)||t.guide||!S.tracks.some(o=>o!==t&&s2LaneId(o)===s2LaneId(t))); keyCache=null; } }
 /* after a take, a discard or a cancel: drop clips that ended up empty, fit the new clip's length to what was recorded, and end the song where its last part ends */
 function s2Tidy(){ const before=S.tracks.length; const lone=t=>!S.tracks.some(o=>o!==t&&s2LaneId(o)===s2LaneId(t)); S.tracks=S.tracks.filter(t=>{ if(hasContent(t)||t.guide||lone(t)) return true; disposeTrack(t); if(editId===t.id) editId=null; return false; });
-  const tr=S.tracks.find(t=>t.id===s2.recId); if(tr && hasContent(tr) && tr.inst!=='vox' && tr.off!=null && s2.recLen){ const last=Math.max(0,...(tr.notes||[]).map(n=>n.s+n.l),...(tr.hits||[]).map(h=>h.s+1)); tr.len=clamp(Math.ceil(last/16),1,s2.recLen); tr.lenSet=true; tr._dirty=true; s2Replace(tr); }
+  const tr=S.tracks.find(t=>t.id===s2.recId); if(tr && hasContent(tr) && tr.off!=null && s2.recLen){ const last=tr.inst==='vox' ? (tr._raw?Math.max(1,(tr._raw.x.length/tr._raw.sr-(tr.va||0)-0.3)/stepDur()):16) : Math.max(0,...(tr.notes||[]).map(n=>n.s+n.l),...(tr.hits||[]).map(h=>h.s+1)); tr.len=clamp(Math.ceil(last/16),1,s2.recLen); tr.lenSet=true; tr._dirty=true; s2Replace(tr); }
   if(s2.recPrev){ const end=Math.max(1,...S.tracks.filter(hasContent).map(t=>Math.floor((t.off||0)/16)+(t.off!=null&&t.len?t.len:s2.recPrev))); const nb=Math.min(64,S.tracks.some(hasContent)?end:s2.recPrev); if(nb!==S.bars){ S.bars=nb; syncTransport(); } }
   s2.recId=null; s2.recLen=0; s2.recPrev=0; if(S.tracks.length!==before) keyCache=null; save(); scheduleRender(); }
 function s2Render(){ if(!s2On()) return; const el=$('s2'), bars=S.bars, view=Math.max(bars+8, Math.ceil((window.innerWidth||400)/s2.barw));
@@ -1220,9 +1223,9 @@ function s2AddSheet(thenRecord){ nxSheet(`<h2>${thenRecord?'What are you recordi
 const S2_MAX=16;   /* longest single take, in bars */
 function s2Record(){ ensureCtx(); if(recState){ const r=recState; if(ctx.currentTime<r.start+0.4) cancelRecord(); else r.end=Math.min(r.end, ctx.currentTime-r.lat-0.05); return; }   /* tap again: stop and keep what was recorded */
   const L=s2Lane(s2.armId); if(!L||L.tracks[0].guide){ s2AddSheet(true); return; } const first=L.tracks[0]; let tr=first; takeBar=null;
-  if(first.inst!=='vox'){ const P=clamp(Math.floor(s2.cur+1e-6),0,63);   /* voice parts start at bar 1 for now */
+  { const P=clamp(Math.floor(s2.cur+1e-6),0,63);
     tr=L.tracks.find(t=>!hasContent(t));
-    if(!tr){ tr=mkTrack(first.inst,{id:S.nextId++, lane:L.id, sound:first.sound, vol:first.vol, mute:first.mute, solo:first.solo, send:first.send, tone:first.tone, oct:first.oct, sens:first.sens}); if(first.adsr) tr.adsr=first.adsr; S.tracks.push(tr); }
+    if(!tr){ tr=mkTrack(first.inst,{id:S.nextId++, lane:L.id, sound:first.sound, vol:first.vol, mute:first.mute, solo:first.solo, send:first.send, tone:first.tone, oct:first.oct, sens:first.sens}); if(first.adsr) tr.adsr=first.adsr; if(first.fx) tr.fx=Object.assign({},first.fx); S.tracks.push(tr); }
     s2.recPrev=S.bars; s2.recLen=Math.min(S2_MAX,64-P); tr.off=P*16; tr.rep=false; tr.len=s2.recLen; tr.lenSet=true; if(S.bars<P+tr.len){ S.bars=P+tr.len; syncTransport(); } save(); }
   s2.recId=tr.id; s2.post=true; S.activeId=tr.id; recordInto(tr.id); }
 /* The note editor: one part, full screen. The grid is the same one as before (tap to select, drag to move, double-tap or tap a seam to split), with bigger rows. */
@@ -1252,12 +1255,19 @@ function s2ShareSheet(){ if(!S.tracks.some(hasContent)){ toast('Record something
     await prepareShare(k); clearInterval(poll); lock(false); if(!$('s2ShSt')) return;
     if(shareFile){ st($('shMsg').textContent); $('s2ShGo').hidden=false; $('s2ShNow').hidden=$('shNow').hidden; } else st('That didn’t work here. Try the other option.'); }; }
 /* Move a part along its lane, in whole bars. It can't land on another part. */
-function s2MoveClip(tr, bars){ const off=(tr.off||0)+bars*16, len=pSteps(tr)*pLoops(tr); if(tr.inst==='vox'||pLoops(tr)>1) return false; if(off<0 || off+len>64*16) return false;
+function s2MoveClip(tr, bars){ const off=(tr.off||0)+bars*16, len=pSteps(tr)*pLoops(tr); if(pLoops(tr)>1) return false; if(off<0 || off+len>64*16) return false;
   const hit=S.tracks.some(t=>t!==tr&&s2LaneId(t)===s2LaneId(tr)&&hasContent(t)&&off<(t.off||0)+pSteps(t)*pLoops(t)&&(t.off||0)<off+len); if(hit) return false;
   const L=pBars(tr); tr.len=L; tr.lenSet=true; tr.rep=false; const need=Math.max(1,...S.tracks.filter(hasContent).map(t=>t===tr?off/16+L:Math.floor((t.off||0)/16)+(t.off!=null&&t.len?t.len:S.bars)));
   if(need>S.bars){ S.bars=Math.min(64,need); } tr.off=off; if(need<S.bars && S.tracks.filter(hasContent).every(t=>t.off!=null&&t.len)) S.bars=need; syncTransport(); tr._dirty=true; save(); scheduleRender(); return true; }
-function s2ClipSheet(tr){ const mv=tr.inst!=='vox'&&pLoops(tr)===1; nxSheet(`<h2>${nxEsc(s2Name(s2Lane(s2LaneId(tr))))}</h2><button class="nx-act" data-a="edit">Edit notes</button>${mv?'<button class="nx-act" data-a="ml">Move one bar earlier</button><button class="nx-act" data-a="mr">Move one bar later<small>Or press and hold the part on the timeline, then drag it</small></button>':''}<button class="nx-act danger" data-a="del">Delete this part</button>`);
-  $('nxSheet').onclick=e=>{ const b=e.target.closest('[data-a]'); if(!b) return; if(b.dataset.a==='ml'||b.dataset.a==='mr'){ if(s2MoveClip(tr,b.dataset.a==='ml'?-1:1)) renderTracks(); else toast('No room there'); return; } nxClose(); if(b.dataset.a==='edit') return s2Edit(tr);
+function s2TrimClip(tr, how){ if(pLoops(tr)>1) return false; const n=pSteps(tr), L=pBars(tr);
+  if(how==='start'||how==='end'){ if(L<2) return false; if(how==='start') s2Cut(tr,16,n); else s2Cut(tr,0,n-16); }
+  else { const off=tr.off||0, end=off+n+16; if(end>64*16) return false; if(S.tracks.some(t=>t!==tr&&s2LaneId(t)===s2LaneId(tr)&&hasContent(t)&&(t.off||0)<end&&(t.off||0)+pSteps(t)*pLoops(t)>off+n)) return false;
+    tr.off=off; tr.rep=false; tr.len=L+1; tr.lenSet=true; if(S.bars<end/16) S.bars=end/16; tr._dirty=true; }
+  if(S.tracks.filter(hasContent).every(t=>t.off!=null&&t.len)) S.bars=Math.max(1,...S.tracks.filter(hasContent).map(t=>Math.floor(t.off/16)+t.len));
+  syncTransport(); keyCache=null; save(); scheduleRender(); return true; }
+function s2ClipSheet(tr){ const mv=pLoops(tr)===1, b0=Math.floor((tr.off||0)/16)+1, b1=b0+pBars(tr)*pLoops(tr)-1; nxSheet(`<h2>${nxEsc(s2Name(s2Lane(s2LaneId(tr))))} <small style="font:500 12px var(--f-mono);color:var(--muted);text-transform:none">${b1>b0?'bars '+b0+'–'+b1:'bar '+b0}</small></h2>${tr.inst==='vox'?'':'<button class="nx-act" data-a="edit">Edit notes</button>'}${mv?'<div class="nx-grp" style="padding-top:10px">Move (or press and hold the part, then drag)</div><div class="s2-opts"><button data-a="ml">◀ One bar earlier</button><button data-a="mr">One bar later ▶</button></div><div class="nx-grp" style="padding-top:0">Length</div><div class="s2-opts"><button data-a="ts">Trim the first bar</button><button data-a="te">Trim the last bar</button><button data-a="ex">Add a bar</button></div>':''}<button class="nx-act danger" data-a="del">Delete this part</button>`);
+  $('nxSheet').onclick=e=>{ const b=e.target.closest('[data-a]'); if(!b) return; const a=b.dataset.a; if(a==='ml'||a==='mr'){ if(s2MoveClip(tr,a==='ml'?-1:1)){ renderTracks(); s2ClipSheet(tr); } else toast('No room there'); return; }
+    if(a==='ts'||a==='te'||a==='ex'){ if(s2TrimClip(tr,a==='ts'?'start':a==='te'?'end':'add')){ renderTracks(); s2ClipSheet(tr); } else toast(a==='ex'?'No room there':'It’s already one bar'); return; } nxClose(); if(b.dataset.a==='edit') return s2Edit(tr);
     const mates=S.tracks.filter(o=>o!==tr&&s2LaneId(o)===s2LaneId(tr)); if(mates.length){ if(tr.lane==null) mates.forEach(o=>{ o.lane=mates[0].id; }); s2.recPrev=0; deletePart(tr); }
     else { if(tr.notes) tr.notes=[]; if(tr.hits) tr.hits=[]; tr._an=null; tr._takes=null; tr._raw=null; tr._dirty=true; keyCache=null; save(); renderTracks(); scheduleRender(); toast('Part deleted'); } }; }
 function s2TrackSheet(L){ const tr=L.tracks[0], all=()=>S.tracks.filter(t=>s2LaneId(t)===L.id), I=INST[tr.inst], nm=nxEsc(s2Name(L));
@@ -1300,7 +1310,7 @@ function s2Init(){ const _rt=renderTracks; renderTracks=function(){ if(s2.post &
   { const T=$('s2In'); let hold=0, dr=null, sx=0, sy=0;
     const clipAt=(ln,x)=>{ const L=s2Lane(ln.dataset.ln), st=(x-ln.getBoundingClientRect().left)/s2.barw*16; return L&&L.tracks.find(t=>hasContent(t)&&st>=(t.off||0)&&st<(t.off||0)+pSteps(t)*pLoops(t)); };
     T.addEventListener('pointerdown',e=>{ const ln=e.target.closest('.s2-ln'); if(!ln||recState) return; sx=e.clientX; sy=e.clientY; clearTimeout(hold);
-      hold=setTimeout(()=>{ const tr=clipAt(ln,sx); if(!tr||tr.inst==='vox'||pLoops(tr)>1) return; dr={tr,ln,off0:tr.off||0,x0:sx,id:e.pointerId,moved:false}; s2.drag=true; try{ ln.setPointerCapture(e.pointerId); }catch(_){} try{ navigator.vibrate&&navigator.vibrate(10); }catch(_){} ln.style.outline='2px solid var(--s2-amber)'; },380); });
+      hold=setTimeout(()=>{ const tr=clipAt(ln,sx); if(!tr||pLoops(tr)>1) return; dr={tr,ln,off0:tr.off||0,x0:sx,id:e.pointerId,moved:false}; s2.drag=true; try{ ln.setPointerCapture(e.pointerId); }catch(_){} try{ navigator.vibrate&&navigator.vibrate(10); }catch(_){} ln.style.outline='2px solid var(--s2-amber)'; },380); });
     T.addEventListener('pointermove',e=>{ if(!dr){ if(Math.abs(e.clientX-sx)>8||Math.abs(e.clientY-sy)>8) clearTimeout(hold); return; }
       const nb=Math.round((e.clientX-dr.x0)/s2.barw), off=Math.max(0,dr.off0+nb*16); if(off!==(dr.tr.off||0)){ dr.tr.off=off; dr.moved=true; const L=s2Lane(s2LaneId(dr.tr)), cv=dr.ln.querySelector('canvas'); if(L&&cv) s2DrawLane(L,cv); } });
     const end=e=>{ clearTimeout(hold); if(!dr) return; const d=dr; dr=null; s2.drag=false; d.ln.style.outline=''; s2.noTap=Date.now(); const want=(d.tr.off||0)-d.off0; d.tr.off=d.off0; if(d.moved && want){ if(!s2MoveClip(d.tr,want/16)) toast('No room there'); } renderTracks(); };
@@ -1311,7 +1321,15 @@ function s2Init(){ const _rt=renderTracks; renderTracks=function(){ if(s2.post &
   tl.addEventListener('touchmove',e=>{ if(s2.drag){ e.preventDefault(); return; } if(e.touches.length===2&&d0){ e.preventDefault(); zoom(b0*dist(e.touches)/d0); } },{passive:false});
   tl.addEventListener('touchend',()=>{ d0=0; }); tl.addEventListener('wheel',e=>{ if(e.ctrlKey){ e.preventDefault(); zoom(s2.barw*(e.deltaY<0?1.1:0.9)); } },{passive:false});
   window.addEventListener('resize',()=>{ if(s2On()) s2Render(); }); tl.addEventListener('scroll',s2Clip,{passive:true});
-  $('nxTiming').onclick=async()=>{ await nxGo('studio'); s2Detail('timing'); };
+  const chk=(id,label,src)=>`<label class="nx-chk" style="font-weight:400;font-size:15px;align-items:flex-start"><input type="checkbox" id="${id}" ${$(src).checked?'checked':''}> <span>${label}</span></label>`;
+  $('nxTiming').onclick=()=>{ nxSheet(`<h2>Mic and timing</h2><button class="nx-primary" id="nxCal" style="margin:0 0 6px">Fix late notes: clap along for one loop</button><p style="color:var(--muted);font-size:13px;margin:0 0 8px">Wired headphones give the best timing. Bluetooth headphones add a delay.</p>
+      ${s2Fld('nxSens','Mic sensitivity',0,100,S.sens??55)}${chk('nxLa','Work out the mic delay automatically','latAuto')}${chk('nxPa','Play the other tracks while I record (wear headphones)','playAlong')}${chk('nxEc','Echo cancellation for drum and melody takes (only without headphones; it can swallow beatbox hits)','ec')}`);
+    $('nxSheet').onclick=null; $('nxCal').onclick=()=>{ nxClose(); ensureCtx(); openRec('calib'); startRecord(true); };
+    [['nxLa','latAuto'],['nxPa','playAlong'],['nxEc','ec']].forEach(([a,b])=>{ $(a).onchange=()=>{ if($(b).checked!==$(a).checked) $(b).click(); }; });
+    $('nxSens').onchange=e=>{ const k=$('sens'); if(k){ k.value=e.target.value; k.dispatchEvent(new Event('input',{bubbles:true})); k.dispatchEvent(new Event('change',{bubbles:true})); } else { S.sens=+e.target.value; save(); } }; };
+  $('nxDrums').onclick=()=>{ const rows=S.kit.slots.map(sl=>`<div class="nx-item" style="padding:10px 0"><span>${nxEsc(slotLabel(sl.id))}<small>${sl.ex&&sl.ex.length>=3?'Taught':'Say “'+nxEsc(sl.say||slotLabel(sl.id))+'”'}</small></span><button class="nx-ghost" data-teach="${sl.id}" style="width:auto;height:40px;padding:0 14px">${sl.ex&&sl.ex.length>=3?'Teach again':'Teach'}</button></div>`).join('');
+    nxSheet(`<h2>Your drum sounds</h2><p style="color:var(--muted);font-size:14px;margin:0 0 6px">Make your noise for a drum on every click, and Noodle learns to tell your sounds apart.</p>${rows}<button class="nx-primary" id="nxTeachAll">Teach them all</button>`);
+    $('nxSheet').onclick=e=>{ const b=e.target.closest('[data-teach]'); const all=e.target.closest('#nxTeachAll'); if(!b&&!all) return; nxClose(); ensureCtx(); startTeach(all?S.kit.slots.map(x=>x.id):[b.dataset.teach]); }; };
   const cb=$('nxClassic'), lab=()=>{ $('nxClassicS').textContent=s2Use()?'Off. Tap to use the old screen instead of the timeline.':'On. Tap to go back to the timeline.'; }; lab();
   cb.onclick=()=>{ try{ localStorage.setItem('noodle.studio',s2Use()?'classic':'timeline'); }catch(e){} lab(); };
   let seen=true; try{ seen=!!localStorage.getItem('noodle.onboard'); }catch(e){}
@@ -1388,8 +1406,8 @@ async function renderVox(tr){
       mk.connect(dl); dl.connect(g); g.connect(p); p.connect(oc.destination); }); }
   if(fx.echo>0){ const dl=oc.createDelay(2), fb=oc.createGain(), lp=oc.createBiquadFilter(), wet=oc.createGain(); dl.delayTime.value=stepDur()*2; fb.gain.value=0.35; lp.type='lowpass'; lp.frequency.value=4500; wet.gain.value=fx.echo/100*0.5;
     mk.connect(dl); dl.connect(lp); lp.connect(fb); fb.connect(dl); lp.connect(wet); wet.connect(oc.destination); }
-  const va=tr.va||0, PL=pSteps(tr)*stepDur(), SC=scOn(tr), reps=SC?pLoops(tr):1;
-  for(let r=0;r<reps;r++){ const sN=r?oc.createBufferSource():src; if(r){ sN.buffer=ab; sN.connect(hp); } const o=r*PL; if(va>=0) sN.start(o,va,PL); else sN.start(o-va,0,Math.max(0.01,PL+va)); }
+  const va=tr.va||0, PL=pSteps(tr)*stepDur(), SC=scOn(tr), reps=(SC&&!tr.off)?pLoops(tr):1, offT=(tr.off||0)*stepDur();
+  for(let r=0;r<reps;r++){ const sN=r?oc.createBufferSource():src; if(r){ sN.buffer=ab; sN.connect(hp); } const o=r*PL+offT; if(va>=0) sN.start(o,va,PL); else sN.start(o-va,0,Math.max(0.01,PL+va)); }
   const r=await oc.startRendering();
   for(let ch=0;ch<2;ch++){ const s2=r.getChannelData(ch), dst=b.getChannelData(ch); for(let i=0;i<s2.length;i++) dst[i%n]+=s2[i]; }
   if(SC) applyDuck(b,tr);
@@ -2446,7 +2464,7 @@ async function startRecord(calib=false, teach=null){
   t0=when+bar-P;
   // vocal takes pre-roll: the song's last bar plays under the count-in, so you hear the groove coming in, echo cancellation adapts
   // before you sing, and the count-in gives a clean stretch to measure this take's real delay
-  const preroll = along && !calib && !teach && S.inst==='vox', SL=loopLen(), poff=((SL-bar)%SL+SL)%SL;
+  const preroll = along && !calib && !teach && S.inst==='vox', SL=loopLen(), poff=(((tgp&&tgp.off?tgp.off:0)*stepDur()-bar)%SL+SL)%SL;   /* the bar before where this take starts */
   if(along) S.tracks.forEach(tr=>{ if(tr._buf && !tr.guide){ ensureNodes(tr); tr._src=preroll?startSrc(tr._buf,tr._g,when,poff):startSrc(tr._buf,tr._g,when+bar,P); } });
   if(!metroGain){ metroGain=ctx.createGain(); metroGain.connect(ctx.destination); }
   metroGain.gain.value=0.75; metroSrc=startSrc(metroBuf,metroGain,when,0); gateOpen(when);
