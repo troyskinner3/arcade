@@ -81,7 +81,16 @@ main{display:flex;flex-direction:column;gap:16px;padding-block:16px calc(110px +
 .rs-ready{display:flex;flex-direction:column;gap:12px}
 .rs-review{display:flex;flex-direction:column;gap:12px}
 .rs-msg{margin:0;font-size:16px;font-weight:600}
-#recSheet{z-index:45}
+#recSheet{z-index:45;--rad:10px}
+#recSheet .sheet-head{background:none;border-bottom:0;padding-top:14px;padding-bottom:4px}
+#recSheet .sheet-head h3{font-size:22px;line-height:1.2;font-weight:700;text-transform:none;letter-spacing:0}
+#recSheet #rsClose{width:40px;height:40px;border-radius:50%!important;border:1px solid var(--line);background:none}
+#recSheet .sheet-body{padding-top:8px;display:flex;flex-direction:column;gap:14px}
+#recSheet .hint{font-size:16px;line-height:1.5;margin:0;color:var(--muted)}
+#recSheet .recstatus{border-radius:14px!important}
+#recSheet .rec-btn,#recSheet .btn{border-radius:10px!important;min-height:50px;font-size:16px}
+#recSheet .rs-msg{font-size:17px;line-height:1.45}
+#recSheet .btn.primary{background:var(--lcd-ink);color:#1b1608;border-color:var(--lcd-ink)}
 #pickSheet{z-index:44}
 #recSheet .recstatus{padding:20px}
 #recSheet .beats span{width:26px!important;height:26px!important}
@@ -820,8 +829,6 @@ button.card-head{margin:0;width:100%;padding:10px 14px;border-radius:0;backgroun
     <button class="nx-item" id="nxVoice" style="width:100%;background:none;border:0;border-bottom:1px solid var(--line);text-align:left"><span>Voice check<small id="nxVoS">Hum two short tunes back, so Noodle learns how you sing</small></span><svg class="nx-ico" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
     <button class="nx-item" id="nxTiming" style="width:100%;background:none;border:0;border-bottom:1px solid var(--line);text-align:left"><span>Mic and timing<small>Fix notes that land late, and other mic settings</small></span><svg class="nx-ico" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
     <button class="nx-item" id="nxDrums" style="width:100%;background:none;border:0;border-bottom:1px solid var(--line);text-align:left"><span>Your drum sounds<small>Teach Noodle your own noises for each drum</small></span><svg class="nx-ico" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
-    <div class="nx-grp">Studio</div>
-    <button class="nx-item" id="nxClassic" style="width:100%;background:none;border:0;border-bottom:1px solid var(--line);text-align:left"><span>Classic studio<small id="nxClassicS"></small></span></button>
     <div class="nx-grp">About</div>
     <a class="nx-item" href="https://troyskinner3.github.io/arcade/noodle/privacy/" target="_blank" rel="noopener"><span>Privacy</span><svg class="nx-ico" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></a>
     <div class="nx-item"><span>Noodle<small>Hum it, sing it, beatbox it. From the makers of Tuttii.</small></span></div>
@@ -1146,7 +1153,7 @@ function nxInit(){ $('nxVoice').onclick=()=>nxVoiceCheck(); $('nxShSw').onclick=
 /* ---- Studio (timeline view). A new front on the same engine: parts are drawn as clips on a bar timeline; recording, playback and
    note reading are the existing ones. Note editing, export and timing still open the classic screens ("detail"), with a back button here. ---- */
 const s2={barw:44, armId:null, loop:false, detail:false, pos:-1, cur:0, recId:null, recLen:0, recPrev:0, post:false};
-const s2Use=()=>{ try{ return localStorage.getItem('noodle.studio')!=='classic'; }catch(e){ return true; } };
+const s2Use=()=>true;   /* the timeline is the only studio; the older screens underneath are only its engine */
 const s2On=()=>!$('s2').hidden;
 function s2Show(on){ if(!on&&s2.edId!=null){ s2.edId=null; $('s2Ed').hidden=true; $('s2EdBody').innerHTML=''; GRID_H=176; GRID_RH=15; GRID_DRUM=1; } $('s2').hidden=!on; document.body.classList.toggle('s2-on',on); if(on){ s2.detail=false; document.body.style.overflow='hidden'; if(editId!=null) closeEditor(); s2Render(); } }
 function s2Detail(what){ s2.detail=true; $('s2').hidden=true; document.body.classList.remove('s2-on'); document.body.style.overflow='';
@@ -1330,8 +1337,6 @@ function s2Init(){ const _rt=renderTracks; renderTracks=function(){ if(s2.post &
   $('nxDrums').onclick=()=>{ const rows=S.kit.slots.map(sl=>`<div class="nx-item" style="padding:10px 0"><span>${nxEsc(slotLabel(sl.id))}<small>${sl.ex&&sl.ex.length>=3?'Taught':'Say “'+nxEsc(sl.say||slotLabel(sl.id))+'”'}</small></span><button class="nx-ghost" data-teach="${sl.id}" style="width:auto;height:40px;padding:0 14px">${sl.ex&&sl.ex.length>=3?'Teach again':'Teach'}</button></div>`).join('');
     nxSheet(`<h2>Your drum sounds</h2><p style="color:var(--muted);font-size:14px;margin:0 0 6px">Make your noise for a drum on every click, and Noodle learns to tell your sounds apart.</p>${rows}<button class="nx-primary" id="nxTeachAll">Teach them all</button>`);
     $('nxSheet').onclick=e=>{ const b=e.target.closest('[data-teach]'); const all=e.target.closest('#nxTeachAll'); if(!b&&!all) return; nxClose(); ensureCtx(); startTeach(all?S.kit.slots.map(x=>x.id):[b.dataset.teach]); }; };
-  const cb=$('nxClassic'), lab=()=>{ $('nxClassicS').textContent=s2Use()?'Off. Tap to use the old screen instead of the timeline.':'On. Tap to go back to the timeline.'; }; lab();
-  cb.onclick=()=>{ try{ localStorage.setItem('noodle.studio',s2Use()?'classic':'timeline'); }catch(e){} lab(); };
   let seen=true; try{ seen=!!localStorage.getItem('noodle.onboard'); }catch(e){}
   if(nxResume || new URLSearchParams(location.search).has('studio')){ if(s2Use()) s2Show(true); } else { nxGo('projects'); if(!seen) nxOnboard(()=>nxNew()); } }
 function reloadRaw(){ S.tracks.filter(t=>((t.inst==='vox' && t.va!=null) || (t.expr>0 && t.exprAlign!=null)) && !t._raw).forEach(tr=>loadVox(tr).then(ok=>{ if(!ok) return; redrawTrack(tr); if(tr._row) renderTracks(); if(ctx) scheduleRender(); })); }
@@ -2479,10 +2484,10 @@ function openRec(mode='take', partId=null){
   flushSave(); rs={mode, pre:hist.cur, histLen:hist.undo.length};
   if(mode==='take'){ const tr=S.tracks.find(t=>t.id===partId)||activePart(); if(!tr){ pendingNew=true; renderTracks(); return; } S.target=tr.id; S.activeId=tr.id; S.inst=tr.inst; updateDock(); }
   const sh=$('recSheet'); sh.hidden=false; document.body.style.overflow='hidden';
-  $('rsTitle').textContent = mode==='calib'?'Calibrate timing' : mode==='teach'?'Teach your sounds' : 'Record into '+partName(S.tracks.find(t=>t.id===S.target));
-  $('rsHint').textContent = mode==='calib'?'Clap sharply on every click after the four count-in clicks.' : mode==='teach'?'Make each noise on every click after the count-in. It does one sound at a time.' : INST[S.inst].hint.split(/(?<=\.) /)[0];
+  $('rsTitle').textContent = mode==='calib'?'Fix late notes' : mode==='teach'?'Drum sounds' : 'Record into '+partName(S.tracks.find(t=>t.id===S.target));
+  $('rsHint').textContent = mode==='calib'?'After the four count-in clicks, clap sharply on every click.' : mode==='teach'?'Make each noise on every click after the count-in. It does one sound at a time.' : INST[S.inst].hint.split(/(?<=\.) /)[0];
   $('rsReview').hidden=true; $('rsReady').hidden=false; updateMergeRow();
-  $('detectRow').hidden = mode!=='take' || anyContent();
+  $('detectRow').hidden = mode!=='take' || anyContent(); $('importBtn').hidden = mode!=='take';
   if(window._showCal) window._showCal();
 }
 function closeRec(){ if(recState) cancelRecord(); S.target=null; $('recSheet').hidden=true; document.body.style.overflow=''; rs.mode=null; renderTracks(); }
@@ -2999,7 +3004,8 @@ async function importFile(file){
 /* ============================== UI ============================== */
 let lastMsg='';
 let toastQuiet=false;   /* the voice check shows its own messages */
-function toast(msg,ms=4200){ lastMsg=msg; if(toastQuiet) return; const t=$('toast'); t.textContent=msg; t.classList.add('on'); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('on'),ms); }
+function toast(msg,ms=4200){ lastMsg=msg; if(toastQuiet || !$('recSheet').hidden) return;   /* that screen shows its own messages */
+  const t=$('toast'); t.textContent=msg; t.classList.add('on'); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('on'),ms); }
 function showBusy(msg){ if(toastQuiet) return ()=>{}; const t=$('toast'); t.textContent=msg; t.classList.add('on'); clearTimeout(t._h); return ()=>{}; }
 function updateDock(){ const di=$('dockInst'), t=activePart(); if(di) di.textContent= t ? partName(t) : 'New part'; }
 function buildPads(){ updateDock(); }

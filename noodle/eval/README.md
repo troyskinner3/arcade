@@ -287,3 +287,5 @@ Real noise (DEMAND, CC BY 4.0: street traffic, cafeteria, bus, town square, park
   and **Your drum sounds** (teach each or all) as sheets in the new style; the calibration and teaching recorders are the existing ones. Messages show at the top of the screen, clear of the transport and sheets.
   `s2_rest.js`; all eval scripts pass; 31-take replay unchanged (3.88).
 - Not done: copying email signups into the marketing sheet (needs the sheet and the admin key once there are signups).
+- **Step 6 (shipped):** no classic-studio switch any more (the timeline is the only studio; the older screens remain in the page only as its engine and are not reachable).
+  The timing-fix and drum-teaching recorder (`#recSheet`) restyled to match (rounded, no Import button, its own messages instead of pop-ups). `recsheet_cal.js`: 16 simulated claps ~130 ms late → "Mic delay set to 151 ms".
