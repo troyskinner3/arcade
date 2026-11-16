@@ -330,3 +330,13 @@ Real noise (DEMAND, CC BY 4.0: street traffic, cafeteria, bus, town square, park
   were deleted with `tools/prune.js` (acorn: stub, then drop every top-level function nothing else names, until stable). All eval scripts pass; 31-take replay unchanged (3.88).
   **Still to remove (stage 3):** the old page markup (header, sections, record sheet's unused parts), its CSS, and the start-up code that wires those hidden elements; many engine functions still read values
   from those elements (`$('key')`, `$('bars')`, `$('recLabel')`, the hidden sliders the Studio's sheets write to), so each needs moving to plain state first.
+
+### Stage 3 cleanup log (removing the first prototype's page)
+How to work on it: one small step at a time; after each, `tools/suite.sh` from the scratchpad (also in `eval/tools/`) must print ALL PASS (18 scripts, replay 3.88); only then commit and push. `eval/tools/prune.js <file> s2TrimClip` deletes functions nothing names any more.
+- **Batch 1 (done):** removed the old "How it works" card, New song button, the header's back button and brand, the +/− tempo buttons, with their wiring and styles; `newSong` went with them (tests use `projNew`).
+- **Next batches, in a safe order:**
+  1. Markup nothing live reads: `guided`/`dropLine` (the owner's old test-link UI; `guidedUI` and `dropLineUI` already return when the element is missing), `genre`, `quant`, `loops`, `keyInfo`, `snapV`, `calBtn`, `playAlongRow`, `#tracks`, the dock (`.dock`, seek bar, fab) and the header transport.
+  2. Controls the Studio's sheets still write through (`key`, `scale`, `snapStr`, `mvol`/`mrev`/`mdrive`/`mpunch`, `bars`, `keyRef`, `metro`, `sens`, `latAuto`, `ec`, `playAlong`, `shAudio`/`shVideo`/`shMsg`/`shNow`/`shReady`/`exportBtn`, `songName`):
+     for each, give the Studio a direct function that changes the state (copy what the old `onchange` did), switch the sheet to it, then remove the element and its wiring.
+  3. Run `prune.js` after every batch; then prune CSS rules whose classes no longer appear in markup or script.
+  4. Last: `buildCard` is still used by the note editor (`s2EdMount`); trim it to the grid it shows (its hidden `.tquick` and `.ctl.insp` parts and their handlers can go).

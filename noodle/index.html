@@ -162,8 +162,6 @@ main{display:flex;flex-direction:column;gap:16px;padding-block:16px calc(110px +
 .ptools{border-top:0;padding-top:0}
 .prow-name{all:unset;cursor:pointer;display:flex;align-items:center;gap:6px;font-weight:700}
 .prow-name:focus-visible{outline:2px solid var(--focus);border-radius:6px}
-.onb .steps{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px}
-.onb h2{margin:0}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:14px}
 .card-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap}
 
@@ -524,8 +522,6 @@ input[type=range]::-moz-range-thumb{width:10px;height:18px;border-radius:1px;bac
 @media (max-width:760px){ .card{margin-inline:calc(-1 * max(16px, env(safe-area-inset-left,0px)))} }
 button.card-head{margin:0;width:100%;padding:10px 14px;border-radius:0;background:var(--hd)}
 .card .sec-body{padding:12px 14px 14px;gap:12px}
-.card.onb{padding:12px 14px;gap:10px;box-shadow:inset 3px 0 0 var(--lcd-ink)}
-.onb .steps{font-size:13px;gap:4px}
 .mixgrid{gap:8px 12px}
 .field{font-size:11px}
 .exopt{border-top:1px solid var(--line);padding-top:10px}
@@ -704,14 +700,10 @@ button.card-head{margin:0;width:100%;padding:10px 14px;border-radius:0;backgroun
 
 <header class="bar">
   <div class="wrap bar-in">
-    <button class="nx-back" id="nxBack" aria-label="Projects"><svg class="nx-ico" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
-    <div class="brand">N<span>oo</span>dle</div>
     <div class="transport">
       <div class="lcd" title="Tempo">
-        <button id="bpmDown" aria-label="Slower">−</button>
         <input id="bpm" type="number" inputmode="numeric" min="60" max="180" aria-label="Tempo in BPM">
         <span class="u">BPM</span>
-        <button id="bpmUp" aria-label="Faster">+</button>
       </div>
       <div class="lcd" title="Loop length">
         <select id="bars" aria-label="Loop length in bars"><option value="1">1</option><option value="2">2</option><option value="4">4</option><option value="8">8</option><option value="16">16</option></select>
@@ -725,20 +717,9 @@ button.card-head{margin:0;width:100%;padding:10px 14px;border-radius:0;backgroun
 <main class="wrap">
   <div class="namerow">
   <input class="songname" id="songName" type="text" maxlength="60" placeholder="Untitled song" aria-label="Song name" autocomplete="off" spellcheck="false">
-    <button class="newsong" id="newSong" title="Start a new song">New song</button>
   </div>
   <div class="guided" id="guided" hidden></div>
 
-  <section class="card onb" id="onb" hidden aria-labelledby="onbh">
-    <h2 id="onbh">How it works</h2>
-    <ol class="steps">
-      <li><b>Tap + Add part</b> and pick an instrument: drums, a melody instrument, or vocals.</li>
-      <li><b>Tap Record on it.</b> After four clicks, beatbox, sing, hum or whistle along with the click.</li>
-      <li><b>Tap a part</b> to open it, fix notes or change its sound. Export when you’re done.</li>
-    </ol>
-    <p class="small" id="onbEx">The parts below are an example groove: press play to hear them. Your first recording replaces them.</p>
-    <div class="recrow"><button class="btn primary" id="onbOk">Got it</button><button class="btn" id="clearEx">Clear example</button></div>
-  </section>
 
   <section class="tracks" id="tracks" aria-label="Parts"></section>
 
@@ -1020,13 +1001,6 @@ async function restoreSnap(sn){
 }
 /* New song: an empty song with default tempo, key and mix. Your setup stays (taught drum sounds, mic timing,
    learned preferences). Undo brings the old song back. */
-async function newSong(){
-  if(!S.tracks.length && !S.title) return;
-  flushSave(); if(playing){ stopAll(); playing=false; updatePlayBtn(); }
-  await projSaveCurrent();
-  const o=defaultState(); SETUP_KEYS.forEach(k=>{ if(k in S) o[k]=S[k]; }); o.tracks=[]; o.nextId=S.nextId; o.pid=projId();
-  takeBar=null; await restoreSnap({json:JSON.stringify(o), rt:new Map()}); save(); flushSave();
-  window.scrollTo({top:0}); toast('New song. Undo brings the last one back.'); }
 async function undo(){ flushSave(); if(!hist.undo.length) return; hist.redo.push(hist.cur); hist.cur=hist.undo.pop(); updateHistBtns(); await restoreSnap(hist.cur); toast('Undone'); }
 async function redo(){ flushSave(); if(!hist.redo.length) return; hist.undo.push(hist.cur); hist.cur=hist.redo.pop(); updateHistBtns(); await restoreSnap(hist.cur); toast('Redone'); }
 function syncAllInputs(){
@@ -1187,7 +1161,7 @@ function nxOnboard(done){ const O=$('nxOb'), I=$('nxObIn'), A=$('nxObActs'); O.h
     else { I.innerHTML=`<h1>Want news?</h1><p class="sub">${NX_EMAIL_TEXT}</p><input class="nx-txt" id="obEm" type="email" inputmode="email" autocomplete="email" placeholder="you@example.com" aria-label="Email address">`; A.innerHTML=`<button class="nx-primary" id="obE">Sign me up</button><button class="nx-ghost" id="obK">Skip</button>`;
       $('obK').onclick=finish; $('obE').onclick=async()=>{ const v=$('obEm').value.trim(); if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v)){ toast('That doesn’t look like an email address.'); return; } $('obE').disabled=true; const ok=await emailSignup(v,NX_EMAIL_TEXT); if(ok){ try{ localStorage.setItem('noodle.email',v); }catch(e){} finish(); } else { $('obE').disabled=false; toast('That didn’t go through. You can sign up later in More.'); } }; } };
   show(); }
-function nxInit(){ $('nxTrainCard').onclick=()=>nxTrain(); $('nxShSw').onclick=nxShareSheet; $('nxEmail').onclick=nxEmailSheet; nxMoreSync(); $('nxBack').onclick=()=>nxGo('projects'); $('nxTabP').onclick=()=>nxGo('projects'); $('nxTabM').onclick=()=>nxGo('more'); $('nxPlus').onclick=nxNew;
+function nxInit(){ $('nxTrainCard').onclick=()=>nxTrain(); $('nxShSw').onclick=nxShareSheet; $('nxEmail').onclick=nxEmailSheet; nxMoreSync(); $('nxTabP').onclick=()=>nxGo('projects'); $('nxTabM').onclick=()=>nxGo('more'); $('nxPlus').onclick=nxNew;
   $('nxQ').oninput=nxRenderProjects; $('nxScrim').onclick=e=>{ if(e.target===$('nxScrim')) nxClose(); };
   $('nxSort').onclick=e=>{ const b=e.target.closest('button'); if(!b) return; nxSortBy=b.dataset.s; [...$('nxSort').children].forEach(x=>x.setAttribute('aria-pressed',x===b)); nxRenderProjects(); };
   $('nxList').onclick=async e=>{ const m=e.target.closest('[data-menu]'), o=e.target.closest('[data-id]'); if(m) return nxMenu(m.dataset.menu); if(!o) return; if(o.dataset.id!==S.pid) await projOpen(o.dataset.id); nxGo('studio'); };
@@ -3707,7 +3681,6 @@ function init(){
   { const sn=$('songName'); sn.value=S.title||''; const setT=()=>{ document.title=(S.title?S.title+' · ':'')+'Noodle'; }; setT();
     sn.addEventListener('input',()=>{ S.title=sn.value.trim().slice(0,60)||undefined; setT(); save(); }); sn.addEventListener('keydown',e=>{ if(e.key==='Enter') sn.blur(); }); }
   $('play').addEventListener('pointerdown',e=>{ if(e.button) return; e.preventDefault(); togglePlay(); }); $('play').onclick=e=>{ if(e.detail===0) togglePlay(); }; updatePlayBtn();
-  $('newSong').onclick=newSong;
   $('undoBtn').onclick=()=>{ takeBar=null; undo(); }; $('redoBtn').onclick=()=>{ takeBar=null; redo(); };
   $('dockRec').onclick=()=>{ if(recState){ if(rs.mode==='take') cancelRecord(); return; } if(!$('recSheet').hidden) return; const t=activePart(); if(t) recordInto(t.id); else openPicker('new'); };
   $('rsClose').onclick=closeRec;
@@ -3719,9 +3692,7 @@ function init(){
   document.addEventListener('keydown',e=>{ if((e.key==='Delete'||e.key==='Backspace') && !/INPUT|SELECT|TEXTAREA/.test((e.target&&e.target.tagName)||'')){ const t=S.tracks.find(t=>t.id===editId); if(t&&t._sel){ e.preventDefault(); deleteSelNote(t); return; } }
     if(e.key==='Escape'){ if(!$('recSheet').hidden) closeRec(); else if(pickFor!=null){ pickFor=null; pendingNew=false; renderTracks(); } else if(editId!=null) closeEditor(); }
     if((e.metaKey||e.ctrlKey) && e.key.toLowerCase()==='z' && !/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName)){ e.preventDefault(); e.shiftKey?redo():undo(); } });
-  $('onbOk').onclick=()=>{ setOpen('onbHide',true); renderTracks(); };
   $('bpm').onchange=e=>setTempo(+e.target.value);
-  $('bpmDown').onclick=()=>setTempo(S.bpm-1); $('bpmUp').onclick=()=>setTempo(S.bpm+1);
   $('bars').onchange=e=>{ S.tracks.forEach(t=>{ if(!t.len) t.len=S.bars; }); S.bars=+e.target.value;
     updateStepInfo(); save(); renderTracks(); scheduleRender(); };
   $('metro').onclick=()=>{ S.metro=!S.metro; $('metro').setAttribute('aria-pressed',S.metro); if(metroGain&&!recState) metroGain.gain.value=S.metro?0.7:0; save(); };
@@ -3732,7 +3703,6 @@ function init(){
   $('mergeDrums').checked=S.mergeDrums; $('mergeDrums').onchange=e=>{ S.mergeDrums=e.target.checked; save(); };
   $('playAlong').checked=S.playAlong; $('playAlong').onchange=e=>{ S.playAlong=e.target.checked; save(); };
   $('keyRef').checked=!!S.keyRef; $('keyRef').onchange=e=>{ S.keyRef=e.target.checked; save(); };
-  $('clearEx').onclick=()=>{ S.tracks.filter(t=>t.ex).forEach(disposeTrack); S.tracks=S.tracks.filter(t=>!t.ex); keyChanged(); save(); renderTracks(); toast('Example cleared. Tap Undo to bring it back.'); };
   const showCal=()=>{ $('calNote').hidden=!( !S.calibrated && !$('recBtn').hidden && !isOpen('calHide',false) ); }; showCal(); window._showCal=showCal;
   $('calLater').onclick=()=>{ setOpen('calHide',true); showCal(); toast('You can calibrate any time under Timing & mic'); };
   $('calNow').onclick=()=>{ openRec('calib'); startRecord(true); };
