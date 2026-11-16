@@ -1,5 +1,5 @@
 // Remove dead code from noodle/index.html: stub the old part-row builder, then delete every top-level function / const-arrow that nothing else mentions (repeat until stable).
-// "Mentions" is counted on the whole file text (markup and strings included), so anything named anywhere else is kept.
+// "Mentions" is counted on the markup and the whole script (strings included), not the stylesheet, so anything named anywhere else is kept.
 const fs=require('fs'), acorn=require('acorn');
 const file=process.argv[2]; let html=fs.readFileSync(file,'utf8');
 const a=html.indexOf('<script>')+8, b=html.lastIndexOf('</script>'); let js=html.slice(a,b); const head=html.slice(0,a), tail=html.slice(b);
@@ -12,7 +12,7 @@ for(;;){ round++; const ast=parse(); const decls=[];
   for(const n of ast.body){
     if(n.type==='FunctionDeclaration') decls.push({name:n.id.name,start:n.start,end:n.end});
     else if(n.type==='VariableDeclaration' && n.declarations.length===1){ const d=n.declarations[0]; if(d.id.type==='Identifier' && d.init && (d.init.type==='ArrowFunctionExpression'||d.init.type==='FunctionExpression')) decls.push({name:d.id.name,start:n.start,end:n.end}); } }
-  const all=head+js+tail, off=head.length; const dead=[];
+  const all=head.replace(/<style>[\s\S]*?<\/style>/g,m=>' '.repeat(m.length))+js+tail, off=head.length; const dead=[];   /* a style rule with the same name is not a use */
   for(const d of decls){ if(KEEP.has(d.name)) continue; const re=new RegExp('(?<![\\w$.])'+d.name.replace(/\$/g,'\\$')+'(?![\\w$])','g'); let m, used=false;
     while((m=re.exec(all))){ const i=m.index; if(i>=off+d.start && i<off+d.end) continue; used=true; break; }
     if(!used){ // also catch obj.name style calls (e.g. window.name)

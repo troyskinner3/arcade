@@ -43,8 +43,6 @@ h2{font-family:var(--f-display);font-weight:500;font-size:13px;letter-spacing:.0
 /* transport */
 body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--lcd)}
 .bar{position:relative;z-index:5;background:var(--lcd);color:#e9ebef}
-
-main{display:flex;flex-direction:column;gap:16px;padding-block:16px calc(110px + env(safe-area-inset-bottom,0px))}
 /* bottom dock: undo / redo / play / record, always under your thumb */
 
 /* full-screen sheets: record screen and part editor */
@@ -70,9 +68,6 @@ main{display:flex;flex-direction:column;gap:16px;padding-block:16px calc(110px +
 #recSheet .reclabel{font-size:20px}
 /* parts list rows */
 
-.mini{position:relative;height:30px;border-radius:7px;background:var(--cell);overflow:hidden}
-.mini canvas{display:block;width:100%;height:100%}
-.rs-prev{height:56px}
 /* a part opens in place: the grid and its options appear right inside the row */
 
 /* pads */
@@ -136,28 +131,16 @@ main{display:flex;flex-direction:column;gap:16px;padding-block:16px calc(110px +
 .gridin{position:relative;touch-action:manipulation}
 .gridin canvas{display:block}
 .ph{position:absolute;top:0;width:2px;background:var(--ink);opacity:.7;pointer-events:none;left:0;display:none}
-.knob{display:flex;flex-direction:column;gap:0;min-width:0}
-.knob label{display:flex;justify-content:space-between;font-size:12px;color:var(--muted)}
-.knob label .kv{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
 input[type=range]{width:100%;accent-color:var(--c,var(--ink));height:28px;margin:0}
 .busy{font-size:13px;color:var(--muted)}
 .small{font-size:13px;color:var(--muted);margin:0;max-width:62ch}
 .chev{width:16px;height:16px;flex:none;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;transition:transform .18s}
 [aria-expanded="true"] > .chev, [aria-expanded="true"] .chev{transform:rotate(90deg)}
-.kp-head{all:unset;box-sizing:border-box;display:flex;align-items:center;gap:8px;cursor:pointer;width:100%}
-.kp-head:focus-visible{outline:2px solid var(--focus);outline-offset:2px;border-radius:6px}
-.kp-head b{margin-right:auto}
-.kp-body{display:flex;flex-direction:column;gap:10px}
-.tsum{font-size:12px;color:var(--muted);font-weight:500;white-space:nowrap}
 .notebar{display:flex;flex-direction:column;gap:6px;padding:8px;border-radius:10px;background:var(--cell);border:1px solid var(--c)}
 .notebar .nb-info{font-family:var(--f-mono);font-size:12px;color:var(--ink)}
 .notebar .ibtn{min-width:40px}
-.kp-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
 .slots{display:flex;flex-direction:column;gap:8px}
 .slot{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:8px;border-radius:10px;background:var(--panel);border:1px solid var(--line)}
-.slot .ssnd{flex:1 1 9em;min-width:0} .slot .ssay{flex:1 1 9em;min-width:0}
-.slot .sst{flex:1 1 auto;font-size:13px;color:var(--muted);white-space:nowrap} .slot .sst.ok{color:var(--ink);font-weight:600}
-.swarn{grid-column:1/-1;margin:0;font-size:13px;color:var(--rec)}
 .toast{position:fixed;left:50%;bottom:calc(92px + env(safe-area-inset-bottom,0px));transform:translateX(-50%) translateY(20px);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:12px;font-size:14px;opacity:0;pointer-events:none;transition:.2s;max-width:calc(100% - 32px);z-index:20}
 .toast.on{opacity:1;transform:translateX(-50%)}
 @media (max-width:420px){ .pad{min-height:58px;padding:8px} .pad b{font-size:13px} }
@@ -183,11 +166,9 @@ h2{font-family:var(--f-body);font-weight:600;font-size:11px;letter-spacing:.07em
 .bar{border-bottom:1px solid #000}
 
 /* the arrangement: parts are lanes, stacked with hairlines, edge to edge */
-main{gap:10px;padding-top:10px}
+
 .tracks{gap:0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);background:var(--line)}
 @media (max-width:760px){ .tracks{margin-inline:calc(-1 * max(16px, env(safe-area-inset-left,0px)))} }
-.tsum{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
-.mini{height:26px;border-radius:var(--rad);background:var(--cell);box-shadow:inset 0 0 0 1px var(--line)}
 .empty{border-radius:0;border:0;background:var(--hd)}
 
 /* faders */
@@ -198,7 +179,7 @@ input[type=range]::-moz-range-track{height:3px;background:color-mix(in srgb,var(
 input[type=range]::-moz-range-thumb{width:10px;height:18px;border-radius:1px;background:var(--pad);border:1px solid var(--line)}
 
 /* controls: square, flat, compact */
-.btn,.ibtn,.sel,.rec-btn,.note,.recstatus,.slot,.notebar,.toast,.ovw,.ovw-win,.gridwrap,.glabels,.banner,.pad,.mini{border-radius:var(--rad)!important}
+.btn,.ibtn,.sel,.rec-btn,.note,.recstatus,.slot,.notebar,.toast,.ovw,.ovw-win,.gridwrap,.glabels,.banner,.pad{border-radius:var(--rad)!important}
 .btn{min-height:36px;padding:0 12px;font-size:13px;font-weight:600;background:var(--pad);border-color:var(--line)}
 .btn.big{min-height:44px;font-size:14px}
 .btn.primary{background:var(--lcd-ink);color:#141414;border-color:var(--lcd-ink)}
@@ -231,12 +212,7 @@ input[type=range]::-moz-range-thumb{width:10px;height:18px;border-radius:1px;bac
 .glabels .pkey.blk.c{color:#fff}
 .glabels .pkey.hit{background:var(--lcd-ink);color:#141414}
 .guided{margin:8px 0 4px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--panel)}
-.guided .g-top{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.guided .g-top b{font-size:14px}.guided .g-top .g-n{color:var(--muted);font-size:13px;margin-right:auto}
 .guided select{flex:1;min-width:0;max-width:100%;padding:6px;border-radius:8px;border:1px solid var(--line);background:var(--pad);color:var(--ink);font:500 14px var(--f-body)}
-.guided .g-how{margin:8px 0 0;font-size:14px;color:var(--ink)}.guided .g-how small{display:block;color:var(--muted);margin-top:2px}
-.guided .g-row{display:flex;gap:8px;margin-top:8px;align-items:center}.guided .g-go{background:var(--accent,#f1c75b);border-color:transparent;color:#15171c}
-.newsong{flex:none;padding:5px 11px;border:1px solid var(--line,#3a3f48);border-radius:999px;background:transparent;color:var(--muted,#9aa1ad);font:600 13px var(--f-body);cursor:pointer}
-.newsong:active{opacity:.6}
 /* song progress bar, across the top of the dock */
 .seek{position:relative;height:20px;max-width:760px;margin:0 auto;touch-action:none;cursor:pointer}
 /* spotlight ruler above a vocal roll */
@@ -244,7 +220,6 @@ input[type=range]::-moz-range-thumb{width:10px;height:18px;border-radius:1px;bac
 /* inspector (More): labeled sections, one row per setting, labels in one column */
 
 .selbar{display:flex;align-items:center;gap:8px;margin-top:6px}.selbar[hidden]{display:none}.selbar .sb-n{font:600 13px var(--f-mono);color:var(--muted);margin-right:auto}.selbar .btn{padding:6px 14px;min-height:34px}
-.knob label{font-size:11px}
 .notebar{background:var(--panel);border-color:var(--c);padding:6px}
 .notebar .ibtn{min-width:34px}
 .slot{background:var(--panel2)}
@@ -423,12 +398,10 @@ input[type=range]::-moz-range-thumb{width:10px;height:18px;border-radius:1px;bac
 </style>
 
 
-<main class="wrap">
 
 
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
-</main>
 <section class="s2" id="s2" hidden>
   <div class="s2-top s2-g">
     <button class="s2-ib" id="s2Back" aria-label="Projects"><svg class="nx-ico" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
@@ -522,9 +495,7 @@ input[type=range]::-moz-range-thumb{width:10px;height:18px;border-radius:1px;bac
     </div>
     <div id="rsReview" class="rs-review" hidden>
       <p id="rsMsg" class="rs-msg"></p>
-      <div class="mini rs-prev"><canvas id="rsPrev"></canvas></div>
-      <p class="small" id="rsPlaying">Playing with your other parts.</p>
-      <div class="recrow"><button class="btn primary big" id="rsKeep">Keep</button><button class="btn big" id="rsRetry">Retry</button><button class="btn" id="rsDiscard">Discard</button></div>
+      <div class="recrow"><button class="btn primary big" id="rsKeep">Keep</button><button class="btn big" id="rsRetry">Retry</button></div>
     </div>
   </div>
 </div>
@@ -632,7 +603,7 @@ async function restoreSnap(sn){
   const keep={ui:S.ui, inst:S.inst}; const o=JSON.parse(sn.json); S=Object.assign(defaultState(),o,keep); S.master=Object.assign(defaultState().master,o.master||{});
   S.tracks.forEach(t=>{ const r=sn.rt.get(t.id); if(r) Object.assign(t,r); if(view.get(t.id)!=null) t._scrollX=view.get(t.id); t._dirty=true; });
   keyCache=null; scaleCache=null; persist(); hist.busy=false;
-  syncAllInputs(); renderTracks(); try{ guidedUI(); }catch(e){}
+  syncAllInputs(); renderTracks();
   if(ctx){ await renderDirty(); if(wasPlaying){ startAll(ctx.currentTime+0.05, ph*loopLen()); } }
 }
 /* New song: an empty song with default tempo, key and mix. Your setup stays (taught drum sounds, mic timing,
@@ -641,8 +612,6 @@ async function undo(){ flushSave(); if(!hist.undo.length) return; hist.redo.push
 async function redo(){ flushSave(); if(!hist.redo.length) return; hist.undo.push(hist.cur); hist.cur=hist.redo.pop(); await restoreSnap(hist.cur); toast('Redone'); }
 function syncAllInputs(){ applyMaster(); }   /* after loading a song: the master chain follows S.master */
 
-const isOpen=(k,def)=> (S.ui && k in S.ui) ? S.ui[k] : def;
-function setOpen(k,v){ S.ui=S.ui||{}; S.ui[k]=v; save(); }
 const CHEV='<svg class="chev" viewBox="0 0 20 20" aria-hidden="true"><path d="M7 5l5 5-5 5"/></svg>';
 /* ---- Vocals: kept as audio, polished with a classic pop / hip-hop chain ---- */
 const VOX_PRESETS={
@@ -2181,15 +2150,9 @@ function openRec(mode='take', partId=null){
   $('rsReview').hidden=true; $('rsReady').hidden=false;
 }
 function closeRec(){ if(recState) cancelRecord(); S.target=null; $('recSheet').hidden=true; document.body.style.overflow=''; rs.mode=null; renderTracks(); }
-function showReview(){
-  const changed = snapNow().json!==(rs.pre&&rs.pre.json);
+function showReview(){   /* after calibrating or teaching drum sounds */
   $('rsReady').hidden=true; $('rsReview').hidden=false; $('rsMsg').textContent=lastMsg||'';
-  const keep=$('rsKeep'), retry=$('rsRetry'), disc=$('rsDiscard');
-  if(rs.mode==='take'){
-    keep.textContent=changed?(drop&&S.prompt&&guidedNext()?'Keep · next take':'Keep'):'Close'; retry.hidden=false; disc.hidden=!changed; $('rsPlaying').hidden=!changed;
-    const tr=changed ? (()=>{ const before=new Map(JSON.parse(rs.pre.json).tracks.map(t=>[t.id,JSON.stringify(t)])); return S.tracks.find(t=>before.get(t.id)!==JSON.stringify(t,(k,v)=>k[0]==='_'?undefined:v)); })() : null;
-    $('rsPrev').parentElement.hidden=!tr; if(tr) requestAnimationFrame(()=>drawMini(tr,$('rsPrev')));
-  } else { keep.textContent='Done'; retry.hidden=rs.mode!=='calib'; disc.hidden=true; $('rsPlaying').hidden=true; $('rsPrev').parentElement.hidden=true; }
+  $('rsKeep').textContent='Done'; $('rsRetry').hidden=rs.mode!=='calib';
 }
 async function discardTake(p=rs){ if(snapNow().json!==p.pre.json){ await restoreSnap(p.pre); hist.cur=p.pre; hist.undo.length=p.histLen; hist.redo=[]; } }
 function cancelRecord(){ teachQueue=null; capturing=false; recState=null; stopAll(); setRecUI(false); dropMic(); toast('Recording cancelled'); if(rs.mode==='take'){ const r=rs.resume; S.target=null; rs.mode=null; if(r) restoreSnap(r.snap).then(()=>{ hist.cur=r.snap; takeBar=r.bar; renderTracks(); }); else renderTracks(); } }
@@ -2255,7 +2218,7 @@ function denoiseTake(x, sr, pre, over=2, flo=0.1){
     for(let i=0;i<n;i++){ out[f*h+i]+=re[i]/n*w[i]; ws[f*h+i]+=w[i]*w[i]; } }
   const y=new Float32Array(x.length); for(let i=0;i<x.length;i++) y[i]=out[n+i]/Math.max(ws[n+i],1e-6); return y; }
 async function finishRecord(){
-  const r=recState; capturing=false; recState=null; stopAll(); setRecUI(false); if(!r.teach) dropMic(); renderKitPanel();
+  const r=recState; capturing=false; recState=null; stopAll(); setRecUI(false); if(!r.teach) dropMic();
   let leak=0;
   if(r.inst==='vox' && !r.calib && !r.teach){ const m=measureTakeDelay(r); if(m!=null){ r.lat=m;
       const bar=r.start-r.countStart, cin=biquad(assemble(r.chunks, r.countStart+bar/2+m, r.start+m-0.02, ctx.sampleRate),'hp',150,0.707,ctx.sampleRate); let q=0; for(let i=0;i<cin.length;i++) q+=cin[i]*cin[i]; leak=Math.sqrt(q/Math.max(1,cin.length)); S.vocLat=S.vocLat==null?m:+(0.5*S.vocLat+0.5*m).toFixed(4); save(); } }
@@ -2314,55 +2277,17 @@ function finishTeach(x,sr,t){
   const sl=slotOf(t.d); if(!sl){ teachQueue=null; dropMic(); return; }
   const an=analyzeTake(x,sr,'kick',60,true); const cb=removeClickBleed(an.onsets,0.08);
   const ons=cb.ons.slice().sort((a,b)=>b.db-a.db).slice(0,12);
-  if(ons.length<3){ teachQueue=null; dropMic(); renderKitPanel(); toast(`I only heard ${ons.length} “${t.say}” sounds. Tap Teach and make it louder on every click.`); return; }
+  if(ons.length<3){ teachQueue=null; dropMic(); toast(`I only heard ${ons.length} “${t.say}” sounds. Tap Teach and make it louder on every click.`); return; }
   sl.ex=ons.map(o=>o.fv); const loud=ons[0]; sl.voice=encodeVoice(x,sr,Math.max(0,loud.t-0.005));
   scaleCache=null; teachQueue.shift();
-  if(teachQueue.length){ save(); renderKitPanel(); toast(`Got your “${t.say}”. Next: “${teachQueue[0].say}” on every click.`); nextTeach(); return; }
+  if(teachQueue.length){ save(); toast(`Got your “${t.say}”. Next: “${teachQueue[0].say}” on every click.`); nextTeach(); return; }
   teachQueue=null; dropMic(); save();
   let n=0; S.tracks.forEach(tr=>{ let hit=false; (tr._takes||[]).forEach(tk=>{ if(tk.inst==='kit'){ classifyKit(tk.an.onsets); hit=true; n++; } }); if(hit){ quantizeTrack(tr); tr._dirty=true; redrawTrack(tr); } });
   if(n) scheduleRender();
-  renderKitPanel();
+ 
   const w=kitWarnings();
   toast(Object.keys(w).length ? `Learned. Heads up: some sounds are easy to mix up (marked in Your kit).` : `Learned your sounds. Drum kit takes now sort by your own examples`+(n?' (this session’s takes were re-sorted).':'.'));
 }
-const noiseName=x=>x.say?`Your “${x.say}”`:`The noise for ${slotLabel(x.id)}`;
-function renderKitPanel(){
-  const p=$('kitPanel'); if(!p||recState||!p.isConnected) return; p.hidden=false;
-  const canTeach=!micOff, T=taughtSlots(), warn=T.length>=2?kitWarnings():{}, used=new Set(S.kit.slots.map(x=>x.sound));
-  const opts=sel=>Object.entries(SOUNDS).map(([k,v])=>`<option value="${k}" ${k===sel?'selected':''}>${v.label}</option>`).join('');
-  const untaught=S.kit.slots.filter(x=>!(x.ex&&x.ex.length>=3));
-  const kOpen=isOpen('kit',false);
-  p.innerHTML=`<button class="kp-head" aria-expanded="${kOpen}"><b>Your kit</b><span class="small">${S.kit.slots.length} sound${S.kit.slots.length>1?'s':''} · ${T.length} taught${kOpen?'':' · tap to edit'}</span>${CHEV}</button><div class="kp-body" ${kOpen?'':'hidden'}>
-    <p class="small">Each row is one sound: what it plays, and the noise you’ll make for it. ${canTeach?'Teach each noise so it can tell them apart.':'Teaching needs live recording, which this viewer doesn’t allow. Open the site in your browser to teach.'}</p>
-    <div class="slots">${S.kit.slots.map(x=>{ const taught=x.ex&&x.ex.length>=3; const w=warn[x.id];
-      return `<div class="slot" data-id="${x.id}">
-        <select class="sel ssnd" aria-label="Sound it plays">${opts(x.sound)}</select>
-        <input class="sel ssay" value="${(x.say||'').replace(/"/g,'&quot;')}" placeholder="Your noise (e.g. “tk” or a tongue click)" aria-label="Your noise" maxlength="24">
-        <span class="sst ${taught?'ok':''}">${taught?'✓ Taught':'Not taught'}</span>
-        <button class="ibtn sprev" aria-label="Preview sound">▶</button>
-        ${canTeach?`<button class="ibtn steach">${taught?'Re-teach':'Teach'}</button>`:''}
-        <button class="ibtn del sdel" aria-label="Remove sound" ${S.kit.slots.length<2?'disabled':''}>✕</button>
-        ${w?`<p class="swarn">${noiseName(x)} sounds a lot like ${noiseName(slotOf(w)).replace(/^Y/,'y').replace(/^T/,'t')}, so hits may land in the wrong row. Try a more different noise, or re-teach both.</p>`:''}
-      </div>`; }).join('')}</div>
-    <div class="recrow">
-      <button class="btn" id="addSlot" ${S.kit.slots.length>=MAX_SLOTS?'disabled':''}>+ Add sound</button>
-      ${canTeach&&untaught.length?`<button class="btn primary" id="teachAll">Teach ${untaught.length===S.kit.slots.length?'all':untaught.length} sound${untaught.length>1?'s':''}</button>`:''}
-      ${canTeach&&!untaught.length?`<button class="btn" id="teachAll">Re-teach all</button>`:''}
-    </div>
-    ${T.length<2?'<p class="small">Until two or more sounds are taught, takes are sorted by built-in rules: “B” kick, “ch” snare, “k” clap, “ts” hi-hat.</p>':untaught.length?'<p class="small">Sounds that aren’t taught yet won’t get any hits. Teach them, or remove them.</p>':''}</div>`;
-  p.querySelector('.kp-head').onclick=()=>{ setOpen('kit',!kOpen); renderKitPanel(); };
-  p.querySelectorAll('.slot').forEach(row=>{ const sl=slotOf(row.dataset.id);
-    row.querySelector('.ssnd').onchange=e=>{ sl.sound=e.target.value; kitChanged(); };
-    row.querySelector('.ssay').oninput=e=>{ sl.say=e.target.value; save(); };
-    row.querySelector('.sprev').onclick=()=>{ ensureCtx(); const o=ctx.createGain(); o.gain.value=0.8; o.connect(chain.input); drumHit(ctx,o,sl.id,ctx.currentTime+0.02,0.9,'Punchy',0.5); };
-    const tb=row.querySelector('.steach'); if(tb) tb.onclick=()=>startTeach([sl.id]);
-    const db=row.querySelector('.sdel'); db.onclick=()=>{ if(!db.dataset.arm){ db.dataset.arm='1'; db.textContent='Remove?'; setTimeout(()=>{ if(db.isConnected){ delete db.dataset.arm; db.textContent='✕'; } },2500); return; }
-      S.kit.slots=S.kit.slots.filter(z=>z!==sl); scaleCache=null; S.tracks.forEach(tr=>{ if(INST[tr.inst].kind==='drums'){ tr.hits=tr.hits.filter(h=>h.d!==sl.id); (tr._takes||[]).forEach(tk=>{ if(tk.inst==='kit') classifyKit(tk.an.onsets); }); quantizeTrack(tr); } }); kitChanged(); };
-  });
-  const as=$('addSlot'); if(as) as.onclick=()=>{ const free=Object.keys(SOUNDS).find(k=>!used.has(k)&&k!=='voice')||'openhat'; const id='c'+(S.kit.next++); S.kit.slots.push({id,sound:free,say:''}); kitChanged(); const inp=p.querySelector(`.slot[data-id="${id}"] .ssay`); if(inp) inp.focus(); };
-  const ta=$('teachAll'); if(ta) ta.onclick=()=>startTeach((untaught.length?untaught:S.kit.slots).map(x=>x.id));
-}
-function kitChanged(){ save(); S.tracks.forEach(tr=>{ if(INST[tr.inst].kind==='drums'){ tr._dirty=true; redrawTrack(tr); } }); scheduleRender(); renderKitPanel(); }
 function finishCalib(x,sr,pre){
   const ons=removeClickBleed(detectOnsets(biquad(biquad(x,'notch',1500,4,sr),'notch',2000,4,sr), sr, 60, 0.12), pre).ons;
   const beat=60/S.bpm, lo=-0.12*beat;
@@ -2534,16 +2459,6 @@ let shareFlushing=false;
 async function shareFlush(){ if(shareFlushing||!drop||!drop.api||navigator.onLine===false) return; shareFlushing=true;
   try{ const items=((await outbox.all())||[]).sort((a,b)=>a.at-b.at); for(const it of items){ const r=await shareSend(it); if(r==='retry') break; await outbox.del(it.sid); } }catch(e){} finally{ shareFlushing=false; try{ nxMoreSync(); }catch(e){} } }
 window.addEventListener('online',()=>shareFlush()); document.addEventListener('visibilitychange',()=>{ if(!document.hidden) shareFlush(); }); setTimeout(()=>shareFlush(),4000);
-function dropLineUI(){ const el=$('dropLine'); if(!el) return; try{ guidedUI(); }catch(e){}
-  if(!drop && /NoodleApp/.test(navigator.userAgent)){   /* inside the iPhone app (its own storage): paste the sharing link once */
-    el.hidden=false; el.innerHTML='<input id="dropPaste" type="url" placeholder="Paste your sharing link" style="width:100%;margin:4px 0" autocomplete="off"> <button class="btn" id="dropGo">Share my takes</button>';
-    $('dropGo').onclick=()=>{ try{ const q=new URL($('dropPaste').value.trim()).searchParams; if(!q.get('drop')) throw 0;
-      drop={url:q.get('drop'),k:q.get('k')||'',who:q.get('who')||''}; localStorage.setItem(DROP_KEY,JSON.stringify(drop)); dropLineUI(); toast('Takes will be shared.'); }catch(e){ toast('That link doesn’t look right.'); } };
-    return; }
-  el.hidden=!drop||!!drop.api; if(!drop||drop.api) return;   /* the service's opt-in gets its own screen */
-  el.innerHTML='Sharing your takes to help improve Noodle. <a href="#" id="dropOff">Stop</a>';
-  $('dropOff').onclick=e=>{ e.preventDefault(); drop=null; try{ localStorage.removeItem(DROP_KEY); }catch(_){} dropLineUI(); toast('Takes are no longer shared.'); }; }
-document.addEventListener('DOMContentLoaded',dropLineUI); setTimeout(dropLineUI,0);
 // once a day while sharing: which video tools this phone has (decides how videos get made)
 setTimeout(async()=>{ if(!drop) return; const day=new Date().toISOString().slice(0,10); try{ if(localStorage.getItem('noodle.diag')===day) return; localStorage.setItem('noodle.diag',day); }catch(e){}
   const r={ua:navigator.userAgent, VE:typeof VideoEncoder, AE:typeof AudioEncoder, MR:typeof MediaRecorder};
@@ -2578,7 +2493,7 @@ async function dropTake(x, sr, inst){ if(!drop) return;
   tr.sid=`${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}-${(drop&&drop.api?'':slug(S.title))||'untitled'}-${inst}`;
   tr.sidAt=d.toISOString(); tr.sidHeard=dropState(tr); tr.sidNoise=lastNoise; tr._dropSent=null; persist();
   if(S.prompt && !tr.guide && INST[tr.inst].kind==='pitched'){ learnSqueeze(tr); persist(); }
-  if(S.prompt && !tr.guide){ guidedDone.add(S.prompt); try{ localStorage.setItem('noodle.guided',JSON.stringify([...guidedDone])); }catch(e){} guidedUI(); }
+  if(S.prompt && !tr.guide){ guidedDone.add(S.prompt); try{ localStorage.setItem('noodle.guided',JSON.stringify([...guidedDone])); }catch(e){} }
   const wav=drop.api?null:await dropWavB64(x,sr), meta=dropMeta(tr); tr._dropSent=JSON.stringify(meta.now);
   const ok=await dropPost({sid:tr.sid, ...(drop.api?{pcm:{x,sr}}:{wav}), meta}); if(!ok) toast('Couldn’t send that take. It’ll still work here.'); }
 let dropTimer=0;
@@ -2641,15 +2556,7 @@ const GUIDED=[
   ['jumps-la','jumps','Sing it on “la”: big jumps away from the home note and back'], ['jumps-whistle','jumps','Whistle it'],
   ['beat','beat','Beatbox it: kick, snare, hats','kit'], ['drums-each','each','Beatbox each sound as shown: kicks, snares, then hats','kit'],
 ];
-const guidedNext=()=>GUIDED.find(g=>!guidedDone.has(g[0]) && g[0]!==S.prompt);
 let guidedDone=new Set(); try{ guidedDone=new Set(JSON.parse(localStorage.getItem('noodle.guided')||'[]')); }catch(e){}
-function guidedUI(){ const el=$('guided'); if(!el) return; el.hidden=!drop||!!drop.api; if(!drop||drop.api) return;
-  const cur=GUIDED.find(g=>g[0]===S.prompt), next=GUIDED.find(g=>!guidedDone.has(g[0]) && g[0]!==S.prompt)||GUIDED.find(g=>!guidedDone.has(g[0]));
-  el.innerHTML=`<div class="g-top"><b>Guided takes</b><span class="g-n">${guidedDone.size} of ${GUIDED.length} done</span></div>
-    <div class="g-row"><select id="gPick" aria-label="Pick a guided take">${GUIDED.map(g=>`<option value="${g[0]}" ${(cur?cur[0]:next&&next[0])===g[0]?'selected':''}>${guidedDone.has(g[0])?'✓ ':''}${g[0]}</option>`).join('')}</select>
-    <button class="newsong" id="gSet">${cur?'Restart':'Set up'}</button></div>
-    ${cur?`<p class="g-how">${cur[2]}<small>Play to hear the Guide, then record into Your take.</small></p>${next&&next[0]!==cur[0]?`<div class="g-row"><button class="newsong${guidedDone.has(cur[0])?' g-go':''}" id="gNext">Next: ${next[0]}</button></div>`:''}`:''}`;
-  $('gSet').onclick=()=>guidedSetup($('gPick').value); const nb=$('gNext'); if(nb) nb.onclick=()=>guidedSetup(next[0]); }
 async function guidedSetup(id){ const g=GUIDED.find(x=>x[0]===id); if(!g) return; const [,mel,how,inst0,bpm]=g, kit=inst0==='kit';
   flushSave(); await projSaveCurrent(); if(playing){ stopAll(); playing=false; }
   const keepKeys=['kit','calibrated','latAuto','latMs','ec','sens','snapStr','detailBias','vocLat','mergeDrums','replaceTonal','mig2','mig3','sq','keyRef','playAlong'];
@@ -2661,7 +2568,7 @@ async function guidedSetup(id){ const g=GUIDED.find(x=>x[0]===id); if(!g) return
     guide=mkTrack('lead',{id:nid++, name:'Guide', notes, sound:'Square', vol:60, send:10}); take=mkTrack('lead',{id:nid++, name:'Your take'}); }
   guide.guide=true; o.tracks=[guide,take]; o.nextId=nid; o.activeId=take.id;
   takeBar=null; await restoreSnap({json:JSON.stringify(o), rt:new Map()}); S.activeId=take.id; S.inst=take.inst; save(); flushSave();
-  guidedUI(); window.scrollTo({top:0}); toast(`${id}: ${how}`); }
+  toast(`${id}: ${how}`); }
 async function addTake(x, sr, inst, opt){ const r=await addTake0(x, sr, inst, opt); S.tracks.forEach(t=>{ if(t._raw&&t._raw.x===x){ t._versions=null; t._vi=0; t.reading=null; } }); try{ dropTake(x, sr, inst); }catch(e){} try{ repeatTip(x); }catch(e){} return r; }
 /* once: after the first melody take with a long held note, a tip for repeated notes */
 function repeatTip(x){ if(localStorage.getItem('noodle.tipRepeat')) return;
@@ -2784,14 +2691,7 @@ function changeInst(tr,k){ if(tr.inst===k) return; const from=INST[tr.inst], to=
   if(k==='kit'){ tr.hits.forEach(h=>{ if(!slotOf(h.d) && S.kit.slots.length<MAX_SLOTS && !S.kit.slots.some(x=>x.sound===h.d)) S.kit.slots.push({id:h.d,sound:h.d,say:''}); }); tr._an=null; tr._takes=null; }
   const was=partName(tr); tr.inst=k; if(!to.sounds.includes(tr.sound)) tr.sound=mkTrack(k).sound; if(from.kind==='pitched') tr.oct=to.oct||0;
   tr._dirty=true; keyCache=null; keyChanged(); save(); renderTracks(); scheduleRender(); toast(`${was} now plays ${to.label}`); }
-function knob(parent,{id,label,min,max,val,fmt,oninput,color,step=1}){
-  const w=document.createElement('div'); w.className='knob'; if(color) w.style.setProperty('--c',color);
-  w.innerHTML=`<label for="${id}"><span class="kl">${label}</span><span class="kv"></span></label><input type="range" id="${id}" min="${min}" max="${max}" step="${step}" value="${val}">`;
-  const inp=w.querySelector('input'), sp=w.querySelector('.kv'); const upd=()=>{ sp.textContent=fmt?fmt(+inp.value):inp.value; };
-  inp.addEventListener('input',()=>{ upd(); oninput(+inp.value); }); upd(); parent.appendChild(w); return inp;
-}
 const pct=v=>v+'%';
-function partCount(tr){ const k=INST[tr.inst].kind; return k==='audio' ? (tr._raw?(tr._raw.x.length/tr._raw.sr).toFixed(1)+' s take':'take not on this device') : k==='pitched' ? tr.notes.length+' notes' : tr.hits.length+' hits'; }
 function partName(tr){ if(tr.name) return tr.name; const same=S.tracks.filter(t=>t.inst===tr.inst); return INST[tr.inst].label+(same.length>1?' '+(same.indexOf(tr)+1):''); }
 let gridCW=16; try{ const z=+localStorage.getItem('noodle.zoom'); if(isFinite(z)&&z>0) gridCW=z; }catch(e){}
 const zoomCW=()=>isFinite(gridCW)&&gridCW>0?gridCW:16;
@@ -2835,24 +2735,6 @@ function wireGrid(tr,el){ const wrap=el.querySelector('.gridwrap'); if(!wrap) re
 }
 function renderTracks(){}   /* the Studio (s2Render) draws the tracks; this name is the redraw hook */
 /* small one-line picture of a part's pattern, for the parts list and the review step */
-function drawMini(tr,cv){
-  if(!cv||!cv.isConnected) return; const W=cv.clientWidth||300, H=cv.clientHeight||30, dpr=window.devicePixelRatio||1; cv.width=Math.round(W*dpr); cv.height=Math.round(H*dpr);
-  const g=cv.getContext('2d'); g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,W,H); const n=steps(), cw=W/n, col=INST[tr.inst].color;
-  g.fillStyle=cssVar('--beat'); for(let s=0;s<n;s+=8) g.fillRect(s*cw,0,cw*4,H);
-  g.fillStyle=cssVar('--barline'); for(let s=16;s<n;s+=16) g.fillRect(s*cw,0,1,H);
-  { const SP=spotRanges(); if(SP.length){ g.fillStyle=cssVar('--lcd-ink'); g.globalAlpha=0.18; SP.forEach(([a,b])=>g.fillRect(a*cw,0,(b-a)*cw,H)); g.globalAlpha=1; } }
-  g.fillStyle=col;
-  if(pBars(tr)<S.bars){ g.globalAlpha=0.25; for(let k=1;k<pLoops(tr);k++) g.fillRect(k*pSteps(tr)*cw,0,1.5,H); if(!pRep(tr)){ g.fillStyle=cssVar('--line'); g.globalAlpha=0.35; g.fillRect(pSteps(tr)*cw,0,W-pSteps(tr)*cw,H); g.fillStyle=col; } g.globalAlpha=1; }
-  const PL=pSteps(tr)*stepDur();
-  if(INST[tr.inst].kind==='audio'){ if(!tr._raw) return; const {x,sr}=tr._raw, va=tr.va||0, L=loopLen();
-    for(let px=0;px<W;px++){ let tt=px/W*L; const rep=Math.floor(tt/PL); if(rep>0&&!pRep(tr)) break; tt-=rep*PL; g.globalAlpha=rep?0.4:0.85; const a=Math.floor((va+tt)*sr), b2=Math.floor((va+tt+L/W)*sr); let m=0; for(let i=Math.max(0,a);i<Math.min(x.length,b2);i+=4) m=Math.max(m,Math.abs(x[i])); const h=Math.min(H-2,m*H*1.6); g.fillRect(px,(H-h)/2,1,Math.max(1,h)); }
-    g.globalAlpha=1; return; }
-  if(INST[tr.inst].kind==='pitched'){ const ps=tr.notes.map(pitchOf); if(!ps.length) return; const lo=Math.min(...ps)-1, hi=Math.max(...ps)+1, rh=Math.max(2,(H-4)/Math.max(6,hi-lo+1));
-    songEvents(tr,tr.notes).forEach(nt=>{ const y=H-2-(pitchOf(nt)-lo+1)*rh; g.globalAlpha=(0.5+0.5*nt.v)*(nt.r?0.45:1); g.fillRect(nt.s*cw+0.5,Math.max(1,y),Math.max(2,nt.l*cw-1),Math.max(2,rh-1)); }); }
-  else { const rows=INST[tr.inst].kind==='drums'?S.kit.slots.map(x=>x.id).reverse():[INST[tr.inst].drum]; const rh=(H-2)/Math.max(rows.length,1);
-    songEvents(tr,tr.hits).forEach(h=>{ const i=Math.max(0,rows.indexOf(h.d)); g.globalAlpha=(0.4+0.6*h.v)*(h.r?0.45:1); g.fillRect(h.s*cw+0.5,1+i*rh,Math.max(2,cw-1),Math.max(2,rh-1)); }); }
-  g.globalAlpha=1;
-}
 function buildCard(tr){
     const d=INST[tr.inst];
     const el=document.createElement('article'); el.className='track'; el.style.setProperty('--c',d.color); tr._el=el;
@@ -2876,7 +2758,7 @@ function buildCard(tr){
     drawGrid(tr);
     return el;
 }
-function redrawTrack(tr){ if(tr._cv&&tr._cv.isConnected) drawGrid(tr); if(tr._mini) drawMini(tr,tr._mini); const sm=tr._el&&tr._el.querySelector('.tsum'); if(sm) sm.textContent=partCount(tr); }
+function redrawTrack(tr){ if(tr._cv&&tr._cv.isConnected) drawGrid(tr); }
 let origSrc=null;
 let GRID_H=176, GRID_RH=15, GRID_DRUM=1;   /* grid height budget, tallest pitched row, drum row scale */
 function gridRows(tr){
@@ -3109,10 +2991,8 @@ function setTempo(b){ S.bpm=clamp(Math.round(b)||94,60,180); save(); scheduleRen
 function init(){
   
   $('rsClose').onclick=closeRec;
-  $('rsKeep').onclick=()=>{ const g=drop&&S.prompt&&$('rsKeep').textContent!=='Close', nx=g&&guidedNext(); closeRec();
-    if(nx) guidedSetup(nx[0]); else if(g){ guidedUI(); window.scrollTo({top:0,behavior:'smooth'}); toast(guidedDone.size>=GUIDED.length?'All guided takes done. Thank you!':'Saved.'); } };
-  $('rsDiscard').onclick=async()=>{ await discardTake(); closeRec(); toast('Take discarded'); };
-  $('rsRetry').onclick=async()=>{ if(rs.mode==='calib'){ showRetryReady(); startRecord(true); return; } await discardTake(); showRetryReady(); if(micOff) $('fileIn').click(); else startRecord(false); };
+  $('rsKeep').onclick=closeRec;
+  $('rsRetry').onclick=()=>{ showRetryReady(); startRecord(true); };
   window.showRetryReady=()=>{ $('rsReview').hidden=true; $('rsReady').hidden=false; };
   document.addEventListener('keydown',e=>{ if((e.key==='Delete'||e.key==='Backspace') && !/INPUT|SELECT|TEXTAREA/.test((e.target&&e.target.tagName)||'')){ const t=S.tracks.find(t=>t.id===s2.edId); if(t&&t._sel){ e.preventDefault(); deleteSelNote(t); return; } }
     if(e.key==='Escape'){ if(!$('recSheet').hidden) closeRec(); }
