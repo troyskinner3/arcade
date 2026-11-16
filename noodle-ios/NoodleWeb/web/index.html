@@ -718,22 +718,19 @@ button.card-head{margin:0;width:100%;padding:10px 14px;border-radius:0;backgroun
   <div class="namerow">
   <input class="songname" id="songName" type="text" maxlength="60" placeholder="Untitled song" aria-label="Song name" autocomplete="off" spellcheck="false">
   </div>
-  <div class="guided" id="guided" hidden></div>
 
 
   <section class="tracks" id="tracks" aria-label="Parts"></section>
 
   <section class="card" aria-labelledby="mixh">
-    <button class="card-head" data-sec="mix" aria-expanded="false" aria-controls="mixBody"><span class="hd"><h2 id="mixh">Mix &amp; global FX</h2></span><span class="hd"><span class="keyinfo" id="keyInfo"></span><svg class="chev" viewBox="0 0 20 20" aria-hidden="true"><path d="M7 5l5 5-5 5"/></svg></span></button>
+    <button class="card-head" data-sec="mix" aria-expanded="false" aria-controls="mixBody"><span class="hd"><h2 id="mixh">Mix &amp; global FX</h2></span><span class="hd"><svg class="chev" viewBox="0 0 20 20" aria-hidden="true"><path d="M7 5l5 5-5 5"/></svg></span></button>
     <div class="sec-body" id="mixBody">
     <div class="mixgrid">
-      <div class="field"><label for="genre">Style</label><select class="sel" id="genre"><option value="">Choose a style…</option><option>Pop</option><option>Hip hop</option><option>EDM</option><option>Rock</option><option>Lo-fi</option></select></div>
       <div class="field"><label for="key">Key</label><select class="sel" id="key"></select></div>
       <div class="field"><label for="scale">Snap notes to</label><select class="sel" id="scale">
         <option value="auto">Auto (major or minor)</option><option value="major">Major</option><option value="minor">Minor</option>
         <option value="pent-minor">Minor pentatonic</option><option value="pent-major">Major pentatonic</option><option value="blues">Blues</option><option value="dorian">Dorian</option><option value="mixolydian">Mixolydian</option><option value="lydian">Lydian</option><option value="phrygian">Phrygian</option><option value="phryg-dom">Phrygian dominant</option><option value="harm-minor">Harmonic minor</option><option value="mel-minor">Melodic minor</option><option value="locrian">Locrian</option><option value="chromatic">Any note (no snapping)</option></select></div>
-      <div class="field"><label for="snapStr">Snap strength <span class="snapv" id="snapV"></span></label><input type="range" id="snapStr" min="0" max="100" step="5" aria-label="How strongly recorded notes snap to the key"><span class="snapends"><span>Loose</span><span>Tight</span></span></div>
-      <div class="field"><label for="quant">Timing grid</label><select class="sel" id="quant"><option value="16">16th notes</option><option value="8">8th notes</option></select></div>
+      <div class="field"><label for="snapStr">Snap strength</label><input type="range" id="snapStr" min="0" max="100" step="5" aria-label="How strongly recorded notes snap to the key"><span class="snapends"><span>Loose</span><span>Tight</span></span></div>
     </div>
     <div class="knobs" id="masterKnobs"></div>
     </div>
@@ -742,7 +739,6 @@ button.card-head{margin:0;width:100%;padding:10px 14px;border-radius:0;backgroun
   <section class="card" aria-labelledby="exh">
     <button class="card-head" data-sec="export" aria-expanded="false" aria-controls="exportBody"><span class="hd"><h2 id="exh">Export</h2></span><span class="hd"><svg class="chev" viewBox="0 0 20 20" aria-hidden="true"><path d="M7 5l5 5-5 5"/></svg></span></button>
     <div class="sec-body" id="exportBody">
-    <div class="field"><label for="loops">Length</label><select class="sel" id="loops"><option value="1">Loop × 1</option><option value="2">Loop × 2</option><option value="4">Loop × 4</option><option value="8">Loop × 8</option></select></div>
     <div class="exopt">
       <h3>Share your song</h3>
       <p class="small">For Messages, CapCut, TikTok, Reels or anywhere else. Audio is a WAV file; video is a vertical clip with your parts moving to the beat.</p>
@@ -764,9 +760,7 @@ button.card-head{margin:0;width:100%;padding:10px 14px;border-radius:0;backgroun
     <label class="chk"><input type="checkbox" id="keyRef"> <span>Play the home chord during the count-in, so melody takes start in key</span></label>
     <label class="chk" id="playAlongRow"><input type="checkbox" id="playAlong"> <span>Play the other parts while I record (wear headphones so the mic doesn’t hear them)</span></label>
     <label class="chk"><input type="checkbox" id="latAuto"> <span>Estimate the mic delay automatically</span></label>
-    <p class="small" id="dropLine" hidden></p>
     <label class="chk"><input type="checkbox" id="ec"> <span>Echo cancellation for drum and melody takes (only if you record without headphones; it can swallow beatbox hits). Vocal takes always use it.</span></label>
-    <div class="recrow"><button class="btn" id="calBtn">Calibrate timing: clap along for one loop</button></div>
     <p class="small">If your hits keep landing late, calibrate. AirPods and other Bluetooth headphones add 150–300 ms of delay and switch your phone to a lower-quality mic; wired headphones give the best timing. Imported recordings line up on their first sound, so the delay setting only affects live recording.</p>
     </div>
   </section>
@@ -925,12 +919,6 @@ const STYLES={
   'Lo-fi':  {drums:'Lo-fi',  bass:'Sub',        lead:'Bell',     keys:'E-piano', pad:'Warm pad', arp:'Pluck',    vox:'Natural',  mix:{swing:45, drive:20, punch:40, rev:55}},
 };
 const styleSound=inst=>{ const st=S&&S.genre&&STYLES[S.genre]; if(!st) return null; const k=INST[inst].kind; return k==='drums'||k==='drum'?st.drums:st[inst]; };
-function applyStyle(name){
-  const st=STYLES[name]; if(!st) return; S.genre=name;
-  S.tracks.forEach(tr=>{ const snd=styleSound(tr.inst); if(snd && INST[tr.inst].sounds.includes(snd)){ tr.sound=snd; if(tr.inst==='vox') tr.fx=Object.assign({},VOX_PRESETS[snd]); tr._dirty=true; } });
-  S.swing=st.mix.swing; S.master.drive=st.mix.drive; S.master.punch=st.mix.punch; S.master.rev=st.mix.rev;
-  save(); syncAllInputs(); renderTracks(); S.tracks.forEach(t=>t._dirty=true); scheduleRender(); toast(name+' style: every part’s sound and the mix were set. Change any of them from here.');
-}
 const defaultKit=()=>({next:1, slots:[{id:'kick',sound:'kick',say:'B'},{id:'snare',sound:'snare',say:'ch'},{id:'clap',sound:'clap',say:'k'},{id:'hat',sound:'hat',say:'ts'}]});
 const slotOf=id=>S.kit.slots.find(x=>x.id===id);
 const soundOf=d=>{ const sl=slotOf(d); return sl?sl.sound:d; };
@@ -2610,7 +2598,7 @@ function afterTake(){
   const tr=S.tracks.find(t=>t.id===S.activeId); if(tr&&tr._row) requestAnimationFrame(()=>tr._row.scrollIntoView({block:'nearest',behavior:'smooth'}));
 }
 function setRecUI(on){ ['calNote','playAlongRow','detectRow','micNote','mergeRow','replaceRow'].forEach(id=>{ const el=$(id); if(!el) return; if(on){ el.dataset.wasHidden=el.hidden?'1':''; el.hidden=true; } else if(el.dataset.wasHidden!==undefined){ el.hidden=el.dataset.wasHidden==='1'; delete el.dataset.wasHidden; } });
- RSE.hidden=!on; $('recBtn').classList.toggle('live',on); $('recTxt').textContent=on?'Stop':'Start recording'; $('importBtn').disabled=on; $('calBtn').disabled=on;
+ RSE.hidden=!on; $('recBtn').classList.toggle('live',on); $('recTxt').textContent=on?'Stop':'Start recording'; $('importBtn').disabled=on;
  const dr=$('dockRec'); if(dr){ dr.classList.toggle('live',on); dr.querySelector('.dr-l').textContent=on?'Stop':'Record'; } }
 function assemble(chunks, a, b, sr){
   const n=Math.max(1,Math.round((b-a)*sr)), out=new Float32Array(n);
@@ -3670,8 +3658,7 @@ function gridTap(tr,e){
 }
 function syncTransport(){ $('bpm').value=S.bpm; $('bars').value=S.bars; $('metro').setAttribute('aria-pressed',S.metro); updateStepInfo(); }
 function updateStepInfo(){ const si=$('stepInfo'); if(si) si.textContent=`${S.bars} bar${S.bars>1?'s':''} · ${(loopLen()).toFixed(1)} s loop`; }
-function updateKeyInfo(){ const K=currentKey(); const has=S.tracks.some(t=>(INST[t.inst].kind==='pitched'&&t.notes.length)||(t.inst==='vox'&&(t.vn||[]).length));
-  $('keyInfo').innerHTML = K.none ? 'Notes play exactly as hummed' : `Playing in <b>${NOTE_NAMES[K.tonic]} ${SCALE_LABEL[K.scale]}</b>${S.key==='auto'&&has?' (detected)':''}`; }
+function updateKeyInfo(){}   /* the Studio shows the key itself (s2Chips) */
 function setTempo(b){ S.bpm=clamp(Math.round(b)||94,60,180); syncTransport(); save(); scheduleRender(); }
 function syncSettings(){ $('latAuto').checked=S.latAuto; $('ec').checked=S.ec; if(latInp){ latInp.value=S.latMs; latInp.disabled=S.latAuto; latInp.dispatchEvent(new Event('input')); } }
 let latInp=null;
@@ -3710,11 +3697,9 @@ function init(){
   // mix
   const ks=$('key'); ks.innerHTML='<option value="auto">Auto-detect</option>'+NOTE_NAMES.map((n,i)=>`<option value="${i}">${n}</option>`).join('');
   ks.value=S.key; ks.onchange=e=>{ S.key=e.target.value; keyChanged(); save(); S.tracks.forEach(redrawTrack); scheduleRender(); };
-  { const ss=$('snapStr'), sv=()=>{ const v=S.snapStr??100; $('snapV').textContent=v<=10?'loose':v>=100?'tight':v<40?'medium-loose':v<70?'medium':'medium-tight'; }; ss.value=S.snapStr??100; sv();
+  { const ss=$('snapStr'), sv=()=>{ const v=S.snapStr??100; void v; }; ss.value=S.snapStr??100; sv();
     ss.oninput=()=>{ S.snapStr=+ss.value; sv(); clearTimeout(ss._t); ss._t=setTimeout(()=>{ keyChanged(); save(); S.tracks.forEach(redrawTrack); scheduleRender(); },150); }; }
   $('scale').value=S.scale; $('scale').onchange=e=>{ S.scale=e.target.value; keyChanged(); save(); S.tracks.forEach(redrawTrack); scheduleRender(); };
-  $('genre').value=S.genre||''; $('genre').onchange=e=>{ if(e.target.value) applyStyle(e.target.value); };
-  $('quant').value=S.quant; $('quant').onchange=e=>{ S.quant=+e.target.value; S.tracks.forEach(t=>{ if(t._an){ quantizeTrack(t); t._dirty=true; redrawTrack(t);} }); save(); scheduleRender(); toast('Recorded parts re-snapped to '+(S.quant==8?'8th':'16th')+' notes'); };
   const mk=$('masterKnobs');
   knob(mk,{id:'swing',label:'Swing',min:0,max:100,val:S.swing,fmt:pct,oninput:v=>{S.swing=v;S.tracks.forEach(t=>t._dirty=true);save();scheduleRender();}});
   knob(mk,{id:'mrev',label:'Room size',min:0,max:100,val:S.master.rev,fmt:pct,oninput:v=>{S.master.rev=v;save();clearTimeout(mk._t);mk._t=setTimeout(applyMaster,120);}});
@@ -3722,7 +3707,6 @@ function init(){
   knob(mk,{id:'mpunch',label:'Punch',min:0,max:100,val:S.master.punch,fmt:pct,oninput:v=>{S.master.punch=v;save();applyMaster();}});
   knob(mk,{id:'mvol',label:'Master volume',min:0,max:100,val:S.master.vol,fmt:pct,oninput:v=>{S.master.vol=v;save();applyMaster();}});
   // export
-  $('loops').value=S.loops; $('loops').onchange=e=>{S.loops=+e.target.value;save();};
   $('exportBtn').onclick=exportZip; $('shAudio').onclick=()=>prepareShare('audio'); $('shVideo').onclick=()=>prepareShare('video'); $('shNow').onclick=shareNow; $('shSave').onclick=()=>{ if(shareFile) offerFile(shareFile.name, shareFile); };
   // timing
   const tk=$('timingKnobs');
@@ -3730,7 +3714,6 @@ function init(){
   knob(tk,{id:'sens',label:'Sensitivity for new takes',min:0,max:100,val:S.sens,fmt:pct,oninput:v=>{S.sens=v;save();}});
   $('latAuto').onchange=e=>{ S.latAuto=e.target.checked; save(); syncSettings(); };
   $('ec').onchange=e=>{ S.ec=e.target.checked; save(); dropMic(); };
-  $('calBtn').onclick=()=>{ openRec('calib'); startRecord(true); };
   document.querySelectorAll('button.card-head[data-sec]').forEach(btn=>{ const k='sec-'+btn.dataset.sec, card=btn.closest('.card'), body=document.getElementById(btn.getAttribute('aria-controls'));
     const set=o=>{ btn.setAttribute('aria-expanded',o); body.hidden=!o; card.classList.toggle('closed',!o); }; set(isOpen(k,false));
     btn.onclick=()=>{ const o=btn.getAttribute('aria-expanded')!=='true'; set(o); setOpen(k,o); }; });
