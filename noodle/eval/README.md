@@ -326,3 +326,7 @@ Real noise (DEMAND, CC BY 4.0: street traffic, cafeteria, bus, town square, park
 - **Checked:** `fx_test.js` (five synthetic gestures → riser, downlifter, sweep up, sweep down, impact; audio in the right bars), `fx_record.js` (record button with a simulated mic, second take, discard).
   No recordings of real people making these sounds exist yet, so accuracy on real voices is unknown; on the owner's sung takes it runs without errors and calls sung notes risers/downlifters, as expected.
 - Side fix: the old in-row editor is no longer built off-screen (`editId` kept null); it crashed for FX parts and was never visible.
+- **Removing the first prototype's screens, stage 1 and 2 (shipped):** the old part rows are no longer built at all (`renderTracks` is now an empty redraw hook that the Studio wraps; 9 KB gone) and six functions only they used
+  were deleted with `tools/prune.js` (acorn: stub, then drop every top-level function nothing else names, until stable). All eval scripts pass; 31-take replay unchanged (3.88).
+  **Still to remove (stage 3):** the old page markup (header, sections, record sheet's unused parts), its CSS, and the start-up code that wires those hidden elements; many engine functions still read values
+  from those elements (`$('key')`, `$('bars')`, `$('recLabel')`, the hidden sliders the Studio's sheets write to), so each needs moving to plain state first.
