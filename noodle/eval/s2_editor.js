@@ -9,13 +9,14 @@ const {chromium,devices}=require('playwright');
   await p.waitForTimeout(300); await p.screenshot({path:'results/ed0.png'});
   const lane=await p.$eval('.s2-ln canvas',e=>{ const r=e.getBoundingClientRect(); return {x:r.left,y:r.top+r.height/2}; });
   await p.mouse.click(lane.x+30,lane.y); await p.waitForTimeout(250); await p.tap('#s2CbEdit'); await p.waitForTimeout(600);
-  out.open=await p.evaluate(()=>({ed:!$('s2Ed').hidden, title:$('s2EdT').textContent, sub:$('s2EdS').textContent, cv:!!$('s2EdBody').querySelector('canvas'), rh:S.tracks[0]._grid&&S.tracks[0]._grid.rh, quickHidden:getComputedStyle($('s2EdBody').querySelector('.tquick')).display})); await p.screenshot({path:'results/ed1.png'});
+  out.open=await p.evaluate(()=>({ed:!$('s2Ed').hidden, title:$('s2EdT').textContent, sub:$('s2EdS').textContent, cv:!!$('s2EdBody').querySelector('canvas'), rh:S.tracks[0]._grid&&S.tracks[0]._grid.rh, quickGone:!$('s2EdBody').querySelector('.tquick')})); await p.screenshot({path:'results/ed1.png'});
   // select the third note (8 steps long), then Split
   const g=await p.evaluate(()=>{ const tr=S.tracks[0], G=tr._grid, r=tr._cv.getBoundingClientRect(), n=tr.notes[2], i=G.rows.indexOf(pitchOf(n)); return {x:r.left+G.gut+(n.s+1)*G.cw, y:r.top+1+i*G.rh+G.rh/2}; });
   await p.touchscreen.tap(g.x,g.y); await p.waitForTimeout(400); out.selected=await p.evaluate(()=>({sel:!!S.tracks[0]._sel, bar:!!($('s2EdBody').querySelector('.selbar')&&!$('s2EdBody').querySelector('.selbar').hidden)})); await p.screenshot({path:'results/ed2.png'});
   await p.tap('#s2EdBody .sb-split'); await p.waitForTimeout(500); out.split=await p.evaluate(()=>({notes:S.tracks[0].notes.length, stillEd:!$('s2Ed').hidden}));
   await p.tap('#s2EdVer'); await p.waitForTimeout(700); out.ver=await p.evaluate(()=>({toast:$('toast').textContent, vi:S.tracks[0]._vi||0})); if(await p.evaluate(()=>playing)) await p.tap('#s2EdPlay');
   await p.tap('#s2EdUndo'); await p.waitForTimeout(600); out.undo=await p.evaluate(()=>({stillEd:!$('s2Ed').hidden}));
+  { const gap=()=>p.evaluate(()=>{ const t=S.tracks.find(x=>x.id===s2.edId), ns=[...t.notes].sort((a,b)=>a.s-b.s); let g=0; for(let i=0;i<ns.length-1;i++) g+=Math.max(0,ns[i+1].s-(ns[i].s+ns[i].l)); return g; }); await p.evaluate(()=>{ const t=S.tracks.find(x=>x.id===s2.edId); t.notes[0].l=1; }); const g0=await gap(); await p.tap('#s2EdFill'); await p.waitForTimeout(400); out.fill={gapBefore:g0, gapAfter:await gap(), stillEd:await p.evaluate(()=>!$('s2Ed').hidden)}; if(await p.evaluate(()=>playing)) await p.tap('#s2EdPlay'); }
   await p.tap('#s2EdBack'); await p.waitForTimeout(300); out.back=await p.evaluate(()=>({ed:$('s2Ed').hidden, tl:!!document.querySelector('.s2-trk')}));
   // drums
   const kl=await p.$$eval('.s2-ln canvas',e=>{ const r=e[1].getBoundingClientRect(); return {x:r.left,y:r.top+r.height/2}; }); await p.mouse.click(kl.x+30,kl.y); await p.waitForTimeout(250); await p.tap('#s2CbEdit'); await p.waitForTimeout(600);
