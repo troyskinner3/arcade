@@ -3,7 +3,7 @@ const {chromium,devices}=require('playwright');
 (async()=>{ const b=await chromium.launch({args:['--autoplay-policy=no-user-gesture-required']}); const c=await b.newContext({...devices['iPhone 13'],colorScheme:'dark'}); const p=await c.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(e.message));
   await p.goto('http://localhost:8800/noodle-s2.html?studio'); await p.waitForTimeout(1000); const out={};
   await p.evaluate(()=>{ ensureCtx(); S.bars=6; const mk=(off,len,lane)=>{ const t=mkTrack('lead',{id:S.nextId++,off:off*16,len,rep:false,lenSet:true,notes:Array.from({length:len*4},(_,i)=>({s:i*4,l:4,p:60+i%5,v:.8,x:true}))}); if(lane!=null) t.lane=lane; return t; };
-    const a=mk(0,2), a2=mk(4,1,a.id); S.tracks.push(a,a2); save(); flushSave(); syncTransport(); renderTracks(); return ctx.resume(); });
+    const a=mk(0,2), a2=mk(4,1,a.id); S.tracks.push(a,a2); save(); flushSave(); renderTracks(); return ctx.resume(); });
   const st=()=>p.evaluate(()=>S.bars+' | '+S.tracks.map(t=>`${(t.off||0)/16}+${t.len}`).join(' '));
   out.start=await st();
   await p.tap('#s2Share'); await p.waitForTimeout(200); out.sheet=await p.$$eval('#nxSheet .nx-act',x=>x.map(e=>e.firstElementChild.firstChild.textContent)); await p.tap('#nxSheet [data-k="audio"]');

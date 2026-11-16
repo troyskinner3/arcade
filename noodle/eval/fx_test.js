@@ -9,7 +9,7 @@ const {chromium,devices}=require('playwright');
     const hiss=(t0,d,up)=>{ let y1=0,y2=0; for(let i=0;i<d*sr;i++){ const u=i/(d*sr), fc=(up?400*Math.pow(20,u):8000*Math.pow(1/20,u)), w=2*Math.PI*fc/sr, q=1.2, al=Math.sin(w)/(2*q), b0=al, a0=1+al, a1=-2*Math.cos(w), a2=1-al; const xn=rnd(); const y=(b0*xn - b0*(hiss.x2||0) - a1*y1 - a2*y2)/a0; hiss.x2=hiss.x1||0; hiss.x1=xn; y2=y1; y1=y; const env=Math.min(1,u*15)*Math.min(1,(1-u)*15); x[Math.round(t0*sr)+i]+=0.9*env*y; } };
     const burst=(t0,d)=>{ for(let i=0;i<d*sr;i++){ const u=i/(d*sr); x[Math.round(t0*sr)+i]+=0.5*rnd()*Math.exp(-u*5); } };
     glide(0.1,bar*0.95,140,430); glide(bar*1.5,bar*0.9,420,150); hiss(bar*3.05,bar*0.9,true); hiss(bar*4.5,bar*0.9,false); burst(bar*6,0.16);
-    const tr=S.tracks.find(t=>t.inst==='fx'); tr.off=0; tr.len=8; tr.rep=false; tr.lenSet=true; S.bars=8; syncTransport(); S.target=tr.id; await addTake(x,sr,'fx',{align:0,live:true}); S.target=null; if(playing) togglePlay();
+    const tr=S.tracks.find(t=>t.inst==='fx'); tr.off=0; tr.len=8; tr.rep=false; tr.lenSet=true; S.bars=8; S.target=tr.id; await addTake(x,sr,'fx',{align:0,live:true}); S.target=null; if(playing) togglePlay();
     await renderDirty(); const d=tr._buf.getChannelData(0), barN=Math.round(bar*sr), en=[]; for(let i=0;i<8;i++){ let e=0; for(let k=i*barN;k<(i+1)*barN;k+=5) e+=d[k]*d[k]; en.push(e>0.3?1:0); }
     return {events:tr.fxs.map(e=>`${e.k}@${(e.s/16).toFixed(2)}+${(e.l/16).toFixed(2)}`), audioBars:en.join(''), toast:$('toast').textContent, hasContent:hasContent(tr)}; });
   await p.evaluate(()=>renderTracks()); await p.waitForTimeout(300); await p.screenshot({path:'results/fx1.png'});

@@ -2,7 +2,7 @@
 const {chromium,devices}=require('playwright');
 (async()=>{ const b=await chromium.launch(); const c=await b.newContext({...devices['iPhone 13'],colorScheme:'dark'}); const p=await c.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(e.message));
   await p.goto('http://localhost:8800/noodle-s2.html?studio'); await p.waitForTimeout(1000); const out={};
-  await p.evaluate(()=>{ S.bars=4; const t=mkTrack('lead',{id:S.nextId++,off:16,len:2,rep:false,lenSet:true,notes:Array.from({length:8},(_,i)=>({s:i*4,l:4,p:60+i%5,v:.8,x:false}))}); S.tracks.push(t); save(); flushSave(); syncTransport(); renderTracks(); });
+  await p.evaluate(()=>{ S.bars=4; const t=mkTrack('lead',{id:S.nextId++,off:16,len:2,rep:false,lenSet:true,notes:Array.from({length:8},(_,i)=>({s:i*4,l:4,p:60+i%5,v:.8,x:false}))}); S.tracks.push(t); save(); flushSave(); renderTracks(); });
   const st=()=>p.evaluate(()=>S.bars+' | '+S.tracks.map(t=>`${(t.off||0)/16}+${t.len}:${(t.notes||[]).length}@${(t.notes||[]).length?t.notes[0].s:''}`).join(' '));
   const lane=await p.$eval('.s2-ln canvas',e=>{ const r=e.getBoundingClientRect(); return {x:r.left,y:r.top+r.height/2}; }); const X=bar=>lane.x+44*bar;
   out.start=await st(); await p.mouse.click(X(1.5),lane.y); await p.waitForTimeout(250);

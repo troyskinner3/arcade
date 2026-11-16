@@ -7,7 +7,7 @@ const {chromium}=require('playwright'); const fs=require('fs'); const AL=JSON.pa
   await p.evaluate(()=>{ drop={url:'http://localhost:9/',k:'x'}; localStorage.setItem('noodle.drop',JSON.stringify(drop)); });
   const res={};
   for(const {f,m} of metas){ const wav=f.replace('.json','.wav');
-    const r=await p.evaluate(async([wav,prompt,want,back,bpm,SUB])=>{ await guidedSetup(prompt); if(bpm){ S.bpm=bpm; syncTransport(); S.tracks.forEach(t=>t._dirty=true); }   /* the tempo the take was recorded at */
+    const r=await p.evaluate(async([wav,prompt,want,back,bpm,SUB])=>{ await guidedSetup(prompt); if(bpm){ S.bpm=bpm; S.tracks.forEach(t=>t._dirty=true); }   /* the tempo the take was recorded at */
       if(back){ const k=mkTrack('keys',{id:S.nextId++, name:'Backing', notes:back.map(n=>({...n,v:0.7,x:true}))}); S.tracks.splice(1,0,k); keyCache=null; } const ab=await ctx.decodeAudioData(await (await fetch('/data/'+SUB+'/'+wav)).arrayBuffer()); const x=mono(ab);
       // find the alignment that reproduces what the live take heard (start steps), then keep the take
       const best={al:want};

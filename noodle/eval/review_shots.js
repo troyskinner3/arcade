@@ -7,7 +7,7 @@ const {chromium,devices}=require('playwright');
   await p.evaluate(async()=>{ const mk=(title,bpm,tracks)=>{ S.title=title; S.bpm=bpm; tracks.forEach(t=>S.tracks.push(t)); };
     const L=(off,len,lane,inst='lead')=>{ const t=mkTrack(inst,{id:S.nextId++,off:off*16,len,rep:false,lenSet:true,notes:Array.from({length:len*4},(_,i)=>({s:i*4,l:i%3?4:3,p:57+[0,2,3,5,7,5,3,2][i%8],v:.8,x:false}))}); if(lane!=null) t.lane=lane; return t; };
     await projNew(); const a=L(0,2), a2=L(3,2,a.id), bs=L(0,4,null,'bass'); const k=mkTrack('kit',{id:S.nextId++,off:0,len:4,rep:false,lenSet:true,hits:Array.from({length:64},(_,i)=>i%8===0?{s:i,d:'kick',v:1}:i%8===4?{s:i,d:'snare',v:.9}:i%2===0?{s:i,d:'hat',v:.6}:null).filter(Boolean)});
-    S.bars=5; mk('Subway hook',110,[a,a2,bs,k]); a.notes[2].hs=[2]; save(); flushSave(); syncTransport(); await projSaveCurrent();
+    S.bars=5; mk('Subway hook',110,[a,a2,bs,k]); a.notes[2].hs=[2]; save(); flushSave(); await projSaveCurrent();
     await projNew(); mk('Rainy day bassline with a very long name that should cut off',92,[L(0,2,null,'bass')]); save(); flushSave(); await projSaveCurrent(); await nxRenderProjects(); });
   await p.waitForTimeout(300); await shot('2projects'); await p.tap('.nx-row:nth-child(2) .nx-dots'); await p.waitForTimeout(200); await shot('3project_menu'); await p.evaluate(()=>nxClose());
   await p.tap('.nx-row:has-text("Subway") .nx-open'); await p.waitForTimeout(700); await shot('4studio');

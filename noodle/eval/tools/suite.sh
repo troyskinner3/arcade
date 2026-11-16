@@ -9,6 +9,7 @@ for t in fx_test fx_record modes_test offline_test sheets_test train_test voice_
   out=$(timeout 170 node mm/$t.js 2>&1); r=$(echo "$out" | tail -3 | tr -d '\n' | tail -c 30)
   if echo "$out" | grep -q "Error\|Timeout\|at /tmp"; then echo "FAIL $t :: $r"; fail=1; elif echo "$r" | grep -q '\[\]$\|"errs": \[\] *}}$'; then echo "ok   $t"; else echo "FAIL $t :: $r"; fail=1; fi
 done
+rm -rf results/replay_suite   # a replay that crashes must not be scored from the last run's files
 node mm/replay_fast.js noodle-s2.html results/replay_suite >/dev/null 2>&1; sc=$(python3 tools/score_user.py results/replay_suite | tail -1 | grep -o '= [0-9.]* per'); echo "replay $sc"
 [ "$sc" = "= 3.88 per" ] || fail=1
 [ $fail = 0 ] && echo "ALL PASS" || echo "SUITE FAILED"

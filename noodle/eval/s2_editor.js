@@ -5,7 +5,7 @@ const {chromium,devices}=require('playwright');
   await p.evaluate(()=>{ S.bars=6; const a=mkTrack('lead',{id:S.nextId++,off:0,len:2,rep:false,lenSet:true,notes:[[0,4,60.2],[4,4,62.1],[8,8,64],[16,4,65.2],[20,4,67],[24,8,64.1]].map(([s,l,p])=>({s,l,p,v:.8}))});
     const a2=mkTrack('lead',{id:S.nextId++,lane:a.id,off:64,len:1,rep:false,lenSet:true,notes:[[0,8,60],[8,8,67]].map(([s,l,p])=>({s,l,p,v:.8}))});
     const k=mkTrack('kit',{id:S.nextId++,off:0,len:2,rep:false,lenSet:true,hits:[0,8,16,24].map(s=>({s,d:'kick',v:1})).concat([4,12,20,28].map(s=>({s,d:'snare',v:.9})),Array.from({length:16},(_,i)=>({s:i*2,d:'hat',v:.6})))});
-    S.tracks.push(a,a2,k); save(); flushSave(); syncTransport(); renderTracks(); });
+    S.tracks.push(a,a2,k); save(); flushSave(); renderTracks(); });
   await p.waitForTimeout(300); await p.screenshot({path:'results/ed0.png'});
   const lane=await p.$eval('.s2-ln canvas',e=>{ const r=e.getBoundingClientRect(); return {x:r.left,y:r.top+r.height/2}; });
   await p.mouse.click(lane.x+30,lane.y); await p.waitForTimeout(250); await p.tap('#s2CbEdit'); await p.waitForTimeout(600);
