@@ -786,11 +786,6 @@ button.card-head{margin:0;width:100%;padding:10px 14px;border-radius:0;backgroun
   <div class="sheet-body wrap">
     <p class="hint" id="rsHint"></p>
     <div id="rsReady" class="rs-ready">
-    <p class="note" id="micNote" hidden></p>
-    <div class="note calnote" id="calNote" hidden><p><b>First time recording here?</b> Calibrate once (about 10 seconds of clapping) so your hits land on the right steps. Bluetooth headphones like AirPods add a big delay, so calibrate with the headphones you’ll use.</p><span class="recrow" style="gap:8px"><button class="btn" id="calNow">Calibrate</button><button class="btn" id="calLater">Not now</button></span></div>
-    <label class="chk" id="mergeRow" hidden><input type="checkbox" id="mergeDrums"> <span>Layer this take onto my existing Drums part (turn off to make a separate part)</span></label>
-    <label class="chk" id="replaceRow" hidden><input type="checkbox" id="replaceTonal"> <span id="replaceTxt"></span></label>
-    <label class="chk" id="detectRow"><input type="checkbox" id="detectTempo" checked> <span>Set the tempo and loop length from this recording (first part only)</span></label>
     <div id="rsHome"><div class="recstatus" id="recStatus" hidden>
       <div class="row"><div class="beats" id="beats"><span></span><span></span><span></span><span></span></div><span class="reclabel" id="recLabel">Get ready</span></div>
       <div class="prog"><div id="recProg"></div></div>
@@ -798,7 +793,6 @@ button.card-head{margin:0;width:100%;padding:10px 14px;border-radius:0;backgroun
     </div></div>
     <div class="recrow">
       <button id="recBtn" class="rec-btn"><span class="dot"></span><span id="recTxt">Start recording</span></button>
-      <button id="importBtn" class="btn big">Import a recording</button>
       <input type="file" id="fileIn" accept="audio/*,video/*,.m4a,.mp3,.wav,.aac,.ogg,.webm,.caf" hidden>
     </div>
     </div>
@@ -2429,11 +2423,7 @@ function onHide(){
 }
 document.addEventListener('visibilitychange',()=>{ if(document.hidden){ onHide(); dropSync(); projSaveCurrent().catch(()=>{}); } });
 window.addEventListener('pagehide',onHide);
-function micBlocked(why){
-  micOff=true; const n=$('micNote'); n.hidden=false;
-  n.innerHTML = '<b>Live mic recording isn’t allowed inside the Claude viewer.</b> Record each part with your phone’s voice recorder instead, starting right on beat one. On iPhone, use Voice Memos, tap the recording, then Share → Save to Files. Then pick the instrument here and tap <b>Import a recording</b>.';
-  $('recBtn').hidden=true; $('playAlongRow').hidden=true;  $('importBtn').classList.add('primary'); const cn=$('calNote'); if(cn) cn.hidden=true;
-}
+function micBlocked(){ micOff=true; $('recBtn').hidden=true; }   /* no live mic here (blocked by the page or the person): recording asks for a file instead */
 // Safari/iOS don't report output delay; real iPhone takes measure about 0.1 s. autoAdj is learned from your own takes.
 const autoLat=()=>(ctx?(ctx.outputLatency?ctx.outputLatency+(ctx.baseLatency||0)+0.012:(ctx.baseLatency||0)+0.09):0.09)+(S.autoAdj||0);
 const latency=()=>S.latAuto?autoLat():S.latMs/1000;
@@ -2468,9 +2458,7 @@ function openRec(mode='take', partId=null){
   const sh=$('recSheet'); sh.hidden=false; document.body.style.overflow='hidden';
   $('rsTitle').textContent = mode==='calib'?'Fix late notes' : mode==='teach'?'Drum sounds' : 'Record into '+partName(S.tracks.find(t=>t.id===S.target));
   $('rsHint').textContent = mode==='calib'?'After the four count-in clicks, clap sharply on every click.' : mode==='teach'?'Make each noise on every click after the count-in. It does one sound at a time.' : INST[S.inst].hint.split(/(?<=\.) /)[0];
-  $('rsReview').hidden=true; $('rsReady').hidden=false; updateMergeRow();
-  $('detectRow').hidden = mode!=='take' || anyContent(); $('importBtn').hidden = mode!=='take';
-  if(window._showCal) window._showCal();
+  $('rsReview').hidden=true; $('rsReady').hidden=false;
 }
 function closeRec(){ if(recState) cancelRecord(); S.target=null; $('recSheet').hidden=true; document.body.style.overflow=''; rs.mode=null; renderTracks(); }
 function showReview(){
@@ -2511,8 +2499,8 @@ function afterTake(){
   S.target=null; rs.mode=null; renderTracks();
   const tr=S.tracks.find(t=>t.id===S.activeId); if(tr&&tr._row) requestAnimationFrame(()=>tr._row.scrollIntoView({block:'nearest',behavior:'smooth'}));
 }
-function setRecUI(on){ ['calNote','playAlongRow','detectRow','micNote','mergeRow','replaceRow'].forEach(id=>{ const el=$(id); if(!el) return; if(on){ el.dataset.wasHidden=el.hidden?'1':''; el.hidden=true; } else if(el.dataset.wasHidden!==undefined){ el.hidden=el.dataset.wasHidden==='1'; delete el.dataset.wasHidden; } });
- RSE.hidden=!on; $('recBtn').classList.toggle('live',on); $('recTxt').textContent=on?'Stop':'Start recording'; $('importBtn').disabled=on;
+function setRecUI(on){
+ RSE.hidden=!on; $('recBtn').classList.toggle('live',on); $('recTxt').textContent=on?'Stop':'Start recording';
  }
 function assemble(chunks, a, b, sr){
   const n=Math.max(1,Math.round((b-a)*sr)), out=new Float32Array(n);
@@ -2620,7 +2608,7 @@ function finishTeach(x,sr,t){
 const noiseName=x=>x.say?`Your “${x.say}”`:`The noise for ${slotLabel(x.id)}`;
 function renderKitPanel(){
   const p=$('kitPanel'); if(!p||recState||!p.isConnected) return; p.hidden=false;
-  const canTeach=!$('recBtn').hidden, T=taughtSlots(), warn=T.length>=2?kitWarnings():{}, used=new Set(S.kit.slots.map(x=>x.sound));
+  const canTeach=!micOff, T=taughtSlots(), warn=T.length>=2?kitWarnings():{}, used=new Set(S.kit.slots.map(x=>x.sound));
   const opts=sel=>Object.entries(SOUNDS).map(([k,v])=>`<option value="${k}" ${k===sel?'selected':''}>${v.label}</option>`).join('');
   const untaught=S.kit.slots.filter(x=>!(x.ex&&x.ex.length>=3));
   const kOpen=isOpen('kit',false);
@@ -2664,7 +2652,7 @@ function finishCalib(x,sr,pre){
   const md=median(dev), spread=median(dev.map(d=>Math.abs(d-md)));
   if(md<0.015){ toast('That measured almost no delay, which usually means the mic heard the click instead of your claps. Wear headphones and calibrate again.'); return; }
   if(spread>0.06){ toast('Those claps were too uneven to measure. Try again, clapping right on each click.'); return; }
-  S.latAuto=false; S.calibrated=true; S.latMs=clamp(Math.round(md*1000),-50,600); save(); if(window._showCal) window._showCal();
+  S.latAuto=false; S.calibrated=true; S.latMs=clamp(Math.round(md*1000),-50,600); save();
   toast('Mic delay set to '+S.latMs+' ms from '+dev.length+' claps');
 }
 /* Metronome bleed: when the click plays through the speaker, the mic hears it with machine-exact timing on every beat.
@@ -2977,7 +2965,7 @@ async function addTake0(x, sr, inst, opt){
     if(first===undefined){ toast(kind==='pitched'?'I couldn’t hear clear notes. Hum a little louder, or raise Mic sensitivity in More.':'I couldn’t hear any hits. Try a little louder, or raise Mic sensitivity in More.'); return; }
     an.align = opt.align!=null ? opt.align : Math.max(0,first-0.004); an.live=!!opt.live; an.notchUsed=!!opt.notch; an.base=an.align;
     let msg='', detBars=0;
-    if(!opt.live && $('detectTempo').checked && opt.first){
+    if(!opt.live && opt.first){
       const times = kind==='pitched'? an.notes.map(n=>n.t0) : an.onsets.map(o=>o.t), w = kind==='pitched'? an.notes.map(n=>n.v) : an.onsets.map(o=>o.v);
       const bpm=detectTempo(times,w);
       if(bpm){ S.bpm=bpm; const span=(Math.max(...times)-an.align)/stepDur(); const tg0=S.tracks.find(t=>t.id===S.target); detBars=(tg0&&tg0.lenSet)?tg0.len:([1,2,4,8,16].find(b=>b*16>=span+1)||16); S.bars=Math.max(S.bars,detBars); msg=` Tempo set to ${bpm} BPM, ${detBars} bar${detBars>1?'s':''}.`; syncTransport(); }
@@ -3080,7 +3068,6 @@ function updateDock(){}
 function buildPads(){ updateDock(); }
 /* instrument picker: grouped, with the mouth sounds and a one-line description */
 const PICK_GROUPS=[['Percussion',['kit','kick','snare','hat','clap']],['Melodic',['bass','lead','keys','pad','arp']],['Vocals',['vox']],['Ear candy',['fx']]];
-function updateMergeRow(){ ['mergeRow','replaceRow'].forEach(id=>{ const e=$(id); if(e) e.hidden=true; }); }
 /* ---- spotlight ruler (vocals): drag to create, drag edges to resize, drag the middle to move, tap to select then ✕ to remove ---- */
 function wireSpot(tr,el){ const bar=el.querySelector('.spotbar'); if(!bar) return; const N=()=>pSteps(tr);
   const snapN=()=>{ const w=bar.clientWidth||300, px=w/N(); return px>=8?1:px*4>=8?4:16; };
@@ -3586,19 +3573,13 @@ function init(){
   $('rsKeep').onclick=()=>{ const g=drop&&S.prompt&&$('rsKeep').textContent!=='Close', nx=g&&guidedNext(); closeRec();
     if(nx) guidedSetup(nx[0]); else if(g){ guidedUI(); window.scrollTo({top:0,behavior:'smooth'}); toast(guidedDone.size>=GUIDED.length?'All guided takes done. Thank you!':'Saved.'); } };
   $('rsDiscard').onclick=async()=>{ await discardTake(); closeRec(); toast('Take discarded'); };
-  $('rsRetry').onclick=async()=>{ if(rs.mode==='calib'){ showRetryReady(); startRecord(true); return; } await discardTake(); showRetryReady(); if($('recBtn').hidden) $('fileIn').click(); else startRecord(false); };
+  $('rsRetry').onclick=async()=>{ if(rs.mode==='calib'){ showRetryReady(); startRecord(true); return; } await discardTake(); showRetryReady(); if(micOff) $('fileIn').click(); else startRecord(false); };
   window.showRetryReady=()=>{ $('rsReview').hidden=true; $('rsReady').hidden=false; };
   document.addEventListener('keydown',e=>{ if((e.key==='Delete'||e.key==='Backspace') && !/INPUT|SELECT|TEXTAREA/.test((e.target&&e.target.tagName)||'')){ const t=S.tracks.find(t=>t.id===editId); if(t&&t._sel){ e.preventDefault(); deleteSelNote(t); return; } }
     if(e.key==='Escape'){ if(!$('recSheet').hidden) closeRec(); else if(pickFor!=null){ pickFor=null; pendingNew=false; renderTracks(); } else if(editId!=null) closeEditor(); }
     if((e.metaKey||e.ctrlKey) && e.key.toLowerCase()==='z' && !/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName)){ e.preventDefault(); e.shiftKey?redo():undo(); } });
   $('recBtn').onclick=()=>startRecord(false);
-  $('importBtn').onclick=()=>$('fileIn').click();
   $('fileIn').onchange=e=>{ const f=e.target.files[0]; e.target.value=''; if(f) importFile(f); };
-  $('replaceTonal').checked=S.replaceTonal; $('replaceTonal').onchange=e=>{ S.replaceTonal=e.target.checked; save(); };
-  $('mergeDrums').checked=S.mergeDrums; $('mergeDrums').onchange=e=>{ S.mergeDrums=e.target.checked; save(); };
-  const showCal=()=>{ $('calNote').hidden=!( !S.calibrated && !$('recBtn').hidden && !isOpen('calHide',false) ); }; showCal(); window._showCal=showCal;
-  $('calLater').onclick=()=>{ setOpen('calHide',true); showCal(); toast('You can calibrate any time under Timing & mic'); };
-  $('calNow').onclick=()=>{ openRec('calib'); startRecord(true); };
   if(!micAllowedByPage() || (window.self!==window.top && !(document.permissionsPolicy||document.featurePolicy))) micBlocked();
   renderTracks(); updateKeyInfo();
   let rw=0; window.addEventListener('resize',()=>{ clearTimeout(rw); rw=setTimeout(()=>S.tracks.forEach(redrawTrack),150); });
