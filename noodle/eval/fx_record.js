@@ -1,0 +1,15 @@
+// FX (beta) through the record button with a simulated mic: a rising glide then a short burst -> a riser and an impact, as a part on the timeline; a second take from bar 3 adds a second part
+const {chromium,devices}=require('playwright');
+(async()=>{ const b=await chromium.launch({args:['--use-fake-ui-for-media-stream','--autoplay-policy=no-user-gesture-required']}); const c=await b.newContext({...devices['iPhone 13'],permissions:['microphone'],colorScheme:'dark'}); const p=await c.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(e.message));
+  await p.addInitScript(()=>{ navigator.mediaDevices.getUserMedia=async()=>{ const cx=window.__ctx, dst=cx.createMediaStreamDestination(); window.__dst=dst; return dst.stream; }; });
+  await p.goto('http://localhost:8800/noodle-s2.html?studio'); await p.waitForTimeout(1000); const out={};
+  await p.evaluate(()=>{ ensureCtx(); window.__ctx=ctx; return ctx.resume(); });
+  const perform=async()=>{ await p.waitForFunction(()=>!!recState,null,{timeout:10000}); const w=await p.evaluate(()=>{ const r=recState, cx=window.__ctx, dst=window.__dst, bar=240/S.bpm;
+      const o=cx.createOscillator(), g=cx.createGain(); o.type='sawtooth'; o.frequency.setValueAtTime(150,r.start+0.05); o.frequency.exponentialRampToValueAtTime(440,r.start+bar*0.95); g.gain.value=0; g.gain.setTargetAtTime(0.2,r.start+0.05,0.03); g.gain.setTargetAtTime(0,r.start+bar*0.95,0.02); o.connect(g); g.connect(dst); o.start(r.start); o.stop(r.start+bar+0.2);
+      const n=cx.createBufferSource(), buf=cx.createBuffer(1,Math.round(cx.sampleRate*0.18),cx.sampleRate), d=buf.getChannelData(0); for(let i=0;i<d.length;i++) d[i]=(Math.random()*2-1)*0.5*Math.exp(-i/d.length*4); n.buffer=buf; n.connect(dst); n.start(r.start+bar*1.5);
+      return (r.start-cx.currentTime)+bar*2+0.3; }); await p.waitForTimeout(w*1000); await p.tap('#s2RecB'); await p.waitForFunction(()=>!$('s2Take').hidden,null,{timeout:25000}); await p.waitForTimeout(600); };
+  const st=()=>p.evaluate(()=>({bars:S.bars, parts:S.tracks.map(t=>`${t.inst}:${(t.off||0)/16}+${t.len}:${(t.fxs||[]).map(e=>e.k).join('/')}`)}));
+  await p.tap('#s2RecB'); await p.tap('#nxSheet [data-k="fx"]'); await perform(); out.first=await st(); out.toast=await p.$eval('#toast',e=>e.textContent); await p.tap('#s2TkOk'); if(await p.evaluate(()=>playing)) await p.tap('#s2Play');
+  const box=await p.$eval('#s2Marks',e=>{ const r=e.getBoundingClientRect(); return {x:r.left,y:r.top+10}; }); await p.evaluate(()=>{ $('s2Tl').scrollLeft=0; }); await p.mouse.click(box.x+44*2.3,box.y); await p.waitForTimeout(200);
+  await p.tap('#s2RecB'); await perform(); out.second=await st(); await p.screenshot({path:'results/fx3.png'}); await p.tap('#s2TkDel'); await p.waitForFunction(()=>S.tracks.length===1,null,{timeout:15000}).catch(()=>{}); out.afterDiscard=await st();
+  console.log(JSON.stringify(out,null,1),errs); await b.close(); })();

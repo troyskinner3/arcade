@@ -314,3 +314,15 @@ Real noise (DEMAND, CC BY 4.0: street traffic, cafeteria, bus, town square, park
 - **Modes and chord shapes (shipped):** scales added: Mixolydian, Lydian, Phrygian, Phrygian dominant, harmonic minor, melodic minor, Locrian (`SCALES`, `SCALE_LABEL`, `SCALE_REL` for the MIDI key signature).
   Chords are stacked from the song's scale, so each mode gives its own (G Mixolydian's 7th on G is G7; in G major it is Gmaj7). Chord shapes added: 11th, 6th, add 9, sus 2, sus 4. `modes_test.js`.
   Automatic key detection still chooses between major and minor only; a mode is picked by hand (tap KEY).
+
+### FX (beta) — Nov 16
+- **What it is:** a track type ("FX (beta)", under Ear candy) for risers, downlifters, noise sweeps and impacts made with the mouth. One take can hold several; each becomes an event `{s, l, k, v, c, a}`
+  with two 16-point curves from the voice (c drives pitch or brightness, a is loudness), so the effect follows the performance.
+- **Sorting (`fxAnalyze`, rules only):** sounds are found by loudness (same gate as notes; under 90 ms ignored); under 0.28 s = impact; mostly pitched = riser or downlifter by pitch change (±2 semitones; a held note counts as a riser unless it clearly fades);
+  mostly noisy = sweep up or down by change in zero-crossing rate (brightness), loudness as tie-break. Builds are stretched to end on the bar line when within a beat; hits land on the beat and ring.
+- **Sound (`fxPlay`, `renderFx`):** synthesized: riser/downlifter = two detuned oscillators + filtered noise over two octaves from the song's home note, low-pass opening with the curve; sweeps = band-passed noise 250 Hz–10 kHz; impact = sine drop + noise burst.
+  **Sample packs:** `FX_PACKS` maps a pack name to files per kind; a pack appears under the track's Sound, kinds it lacks use the synth, builds are aligned to end at the event's end. None shipped yet.
+- **Editing:** regions like any other part; "Edit FX" lists each event (change kind, length, remove).
+- **Checked:** `fx_test.js` (five synthetic gestures → riser, downlifter, sweep up, sweep down, impact; audio in the right bars), `fx_record.js` (record button with a simulated mic, second take, discard).
+  No recordings of real people making these sounds exist yet, so accuracy on real voices is unknown; on the owner's sung takes it runs without errors and calls sung notes risers/downlifters, as expected.
+- Side fix: the old in-row editor is no longer built off-screen (`editId` kept null); it crashed for FX parts and was never visible.
