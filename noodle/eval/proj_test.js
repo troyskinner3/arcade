@@ -7,7 +7,7 @@ const {chromium}=require('playwright'); const assert=require('assert');
     await projNew(); out.afterNew={tracks:S.tracks.length,title:S.title||'',pidDiffers:S.pid!==pidA};
     S.title='Song B'; S.tracks.push(mkTrack('bass',{id:S.nextId++, notes:[{s:0,l:8,p:40,v:0.8,x:true}]})); save(); flushSave(); const pidB=await projSaveCurrent();
     out.list=(await projList()).map(x=>`${x.title}|${x.bpm}|${x.parts.join('+')}|${x.current?'current':''}`);
-    out.openA=await projOpen(pidA); out.A={title:S.title,bpm:S.bpm,notes:S.tracks[0].notes.length,undo:hist.undo.length,domTitle:$('songName').value};
+    out.openA=await projOpen(pidA); out.A={title:S.title,bpm:S.bpm,notes:S.tracks[0].notes.length,undo:hist.undo.length,domTitle:$('s2Name').textContent};
     await projRename(pidB,'Song B2'); await projRename(pidA,'Song A2'); const dup=await projDuplicate(pidA);
     out.list2=(await projList()).map(x=>x.title).sort(); const d=JSON.parse((await projDb.get(dup)).json); out.dupIdsDiffer=d.tracks[0].id!==S.tracks[0].id && d.pid===dup;
     await projDelete(pidB); out.list3=(await projList()).map(x=>x.title).sort(); window.__pidA=pidA; return {...out,pidA,dup}; });

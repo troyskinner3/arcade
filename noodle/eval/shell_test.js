@@ -9,7 +9,7 @@ const {chromium,devices}=require('playwright');
   await p.tap('.nx-row:first-child .nx-dots'); await p.waitForTimeout(200); await p.screenshot({path:'results/nx2.png'}); await p.tap('[data-a="rename"]'); await p.fill('#nxRn','Rainy day bassline'); await p.tap('#nxRnOk'); await p.waitForTimeout(300);
   await p.tap('.nx-row:first-child .nx-dots'); await p.tap('[data-a="dup"]'); await p.waitForTimeout(400); out.afterDup=await p.$$eval('.nx-tt',r=>r.map(x=>x.textContent));
   const copyRow=await p.$('.nx-row:has-text("copy") .nx-dots'); await copyRow.tap(); await p.tap('[data-a="del"]'); await p.tap('#nxDelOk'); await p.waitForTimeout(400); out.afterDel=await p.$$eval('.nx-tt',r=>r.map(x=>x.textContent));
-  await p.tap('.nx-row:has-text("Subway") .nx-open'); await p.waitForTimeout(600); out.opened=await p.evaluate(()=>({at:nxAt,title:S.title,tracks:S.tracks.length,nav:$('nxNav').hidden,name:$('songName').value}));
+  await p.tap('.nx-row:has-text("Subway") .nx-open'); await p.waitForTimeout(600); out.opened=await p.evaluate(()=>({at:nxAt,title:S.title,tracks:S.tracks.length,nav:$('nxNav').hidden,name:$('s2Name').textContent}));
   await p.tap('#s2Back'); await p.waitForTimeout(300); await p.tap('#nxPlus'); await p.waitForTimeout(600); out.plus=await p.evaluate(()=>({at:nxAt,title:S.title||'',tracks:S.tracks.length}));
   await p.tap('#s2Back'); await p.waitForTimeout(300); out.emptyNotListed=await p.$$eval('.nx-tt',r=>r.length); await p.tap('#nxTabM'); await p.waitForTimeout(200); await p.screenshot({path:'results/nx3.png'});
   out.overflow=await p.evaluate(()=>document.documentElement.scrollWidth>innerWidth);
