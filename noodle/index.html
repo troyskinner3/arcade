@@ -1081,7 +1081,7 @@ function nxInit(){ $('nxTrainCard').onclick=()=>nxTrain(); $('nxShSw').onclick=n
 const s2={selId:null, barw:44, armId:null, loop:false, pos:-1, cur:0, recId:null, recLen:0, recPrev:0, post:false};
 const s2Use=()=>true;   /* the timeline is the only studio; the older screens underneath are only its engine */
 const s2On=()=>!$('s2').hidden;
-function s2Show(on){ if(!on&&s2.edId!=null){ s2.edId=null; $('s2Ed').hidden=true; $('s2EdBody').innerHTML=''; GRID_H=176; GRID_RH=15; GRID_DRUM=1; } $('s2').hidden=!on; document.body.classList.toggle('s2-on',on); if(on){ document.body.style.overflow='hidden'; if(editId!=null) closeEditor(); s2Render(); } }
+function s2Show(on){ if(!on&&s2.edId!=null){ s2.edId=null; $('s2Ed').hidden=true; $('s2EdBody').innerHTML=''; GRID_H=176; GRID_RH=15; GRID_DRUM=1; } $('s2').hidden=!on; document.body.classList.toggle('s2-on',on); if(on){ document.body.style.overflow='hidden'; s2Render(); } }
 /* A lane is one row of the timeline: one or more parts (clips) that share an instrument, sound and mix. tr.lane names the lane (default: the part itself). */
 const s2LaneId=t=>t.lane??t.id;
 function s2Lanes(){ const m=new Map(); S.tracks.forEach(t=>{ const k=s2LaneId(t); if(!m.has(k)) m.set(k,{id:k,tracks:[]}); m.get(k).tracks.push(t); }); return [...m.values()]; }
@@ -1115,12 +1115,12 @@ function s2Replace(nw){ const a=nw.off||0, b=a+pSteps(nw); let changed=false;
   for(const t of S.tracks.slice()){ if(t===nw || t.guide || s2LaneId(t)!==s2LaneId(nw) || !hasContent(t)) continue;
     const n=pSteps(t)*pLoops(t), o=t.off||0, e=o+n; if(e<=a || o>=b) continue; changed=true;
     if(pLoops(t)>1 && t.inst!=='vox'){ const base=t.notes?'notes':'hits', one=t[base].filter(x=>x.s<pSteps(t)), all=[]; for(let r=0;r<pLoops(t);r++) one.forEach(x=>all.push({...x,s:x.s+r*pSteps(t)})); t[base]=all; t.len=Math.round(n/16); }   /* a repeating part becomes one long part first */
-    if(o>=a && e<=b){ disposeTrack(t); S.tracks=S.tracks.filter(x=>x!==t); if(editId===t.id) editId=null; continue; }
+    if(o>=a && e<=b){ disposeTrack(t); S.tracks=S.tracks.filter(x=>x!==t); continue; }
     if(o<a && e>b){ const right=JSON.parse(JSON.stringify(t,(k,v)=>k[0]==='_'?undefined:v)); right.id=S.nextId++; right.lane=s2LaneId(t); delete right.sid; right._dirty=true; if(t._raw){ right._raw=t._raw; } s2Cut(right, b-o, n); if(right._raw) storeVox(right); S.tracks.push(right); s2Cut(t, 0, a-o); continue; }
     if(o<a) s2Cut(t, 0, a-o); else s2Cut(t, b-o, n); }
   if(changed){ S.tracks=S.tracks.filter(t=>hasContent(t)||t.guide||!S.tracks.some(o=>o!==t&&s2LaneId(o)===s2LaneId(t))); keyCache=null; } }
 /* after a take, a discard or a cancel: drop clips that ended up empty, fit the new clip's length to what was recorded, and end the song where its last part ends */
-function s2Tidy(){ const before=S.tracks.length; const lone=t=>!S.tracks.some(o=>o!==t&&s2LaneId(o)===s2LaneId(t)); S.tracks=S.tracks.filter(t=>{ if(hasContent(t)||t.guide||lone(t)) return true; disposeTrack(t); if(editId===t.id) editId=null; return false; });
+function s2Tidy(){ const before=S.tracks.length; const lone=t=>!S.tracks.some(o=>o!==t&&s2LaneId(o)===s2LaneId(t)); S.tracks=S.tracks.filter(t=>{ if(hasContent(t)||t.guide||lone(t)) return true; disposeTrack(t); return false; });
   const tr=S.tracks.find(t=>t.id===s2.recId); if(tr && hasContent(tr) && tr.off!=null && s2.recLen){ const last=tr.inst==='vox' ? (tr._raw?Math.max(1,(tr._raw.x.length/tr._raw.sr-(tr.va||0)-0.3)/stepDur()):16) : Math.max(0,...(tr.notes||[]).map(n=>n.s+n.l),...(tr.hits||[]).map(h=>h.s+1),...(tr.fxs||[]).map(e=>e.s+e.l)); tr.len=clamp(Math.ceil(last/16),1,s2.recLen); tr.lenSet=true; tr._dirty=true; s2Replace(tr); }
   if(s2.recPrev){ const end=Math.max(1,...S.tracks.filter(hasContent).map(t=>Math.floor((t.off||0)/16)+(t.off!=null&&t.len?t.len:s2.recPrev))); const nb=Math.min(64,S.tracks.some(hasContent)?end:s2.recPrev); if(nb!==S.bars){ S.bars=nb; } }
   s2.recId=null; s2.recLen=0; s2.recPrev=0; if(S.tracks.length!==before) keyCache=null; save(); scheduleRender(); }
@@ -1177,7 +1177,7 @@ function s2FxSheet(tr){ const ev=(tr.fxs||[]).slice().sort((a,b)=>a.s-b.s), off=
     else if(b=e.target.closest('[data-len]')){ const [i,d]=b.dataset.len.split(',').map(Number); ev[i].l=clamp(ev[i].l+d,2,ps-ev[i].s); done(); }
     else if(b=e.target.closest('[data-rm]')){ tr.fxs=tr.fxs.filter(x=>x!==ev[+b.dataset.rm]); if(!tr.fxs.length){ nxClose(); s2DeleteClip(tr); return; } done(); } }; }
 /* The note editor: one part, full screen. The grid is the same one as before (tap to select, drag to move, double-tap or tap a seam to split), with bigger rows. */
-function s2Edit(tr){ s2.edId=tr.id; S.activeId=tr.id; if(editId!=null) closeEditor(); $('s2Ed').hidden=false; s2EdMount(); }
+function s2Edit(tr){ s2.edId=tr.id; S.activeId=tr.id; $('s2Ed').hidden=false; s2EdMount(); }
 function s2EdMount(){ if(s2.edId==null) return; const tr=S.tracks.find(t=>t.id===s2.edId); if(!tr||!hasContent(tr)){ s2EdClose(); return; }
   const host=$('s2EdBody'), kind=INST[tr.inst].kind, avail=Math.max(200,(host.clientHeight||window.innerHeight*0.6)-90);
   GRID_H=Math.min(520,avail); GRID_RH=30; GRID_DRUM=kind==='pitched'?1:Math.min(2.2,Math.max(1,avail/(gridRows(tr).rows.length*gridRows(tr).rh)));
@@ -1263,7 +1263,7 @@ function s2Sheets(kind){ $('nxSheet').oninput=null;
     [['s2Mv','vol'],['s2Mr','rev'],['s2Md','drive'],['s2Mp','punch']].forEach(([id,k])=>{ $(id).oninput=e=>setMaster(k,e.target.value); }); $('nxSheet').onclick=null; }
   if(kind==='name'){ nxSheet(`<h2>Rename</h2><input class="nx-txt" id="s2Rn" maxlength="60" value="${nxEsc(S.title||'')}" placeholder="Untitled" aria-label="Project name"><button class="nx-primary" id="s2RnOk">Save</button>`); $('nxSheet').onclick=null;
     const ok=()=>{ S.title=$('s2Rn').value.trim(); save(); nxClose(); s2Render(); }; $('s2RnOk').onclick=ok; $('s2Rn').onkeydown=e=>{ if(e.key==='Enter') ok(); }; $('s2Rn').focus(); } }
-function s2Init(){ const _rt=renderTracks; renderTracks=function(){ if(s2.post && !recState && rs.mode==null){ s2.post=false; try{ s2Tidy(); }catch(e){} } editId=null;   /* the old in-row editor is never shown; don't build it */
+function s2Init(){ const _rt=renderTracks; renderTracks=function(){ if(s2.post && !recState && rs.mode==null){ s2.post=false; try{ s2Tidy(); }catch(e){} }
     /* the old part rows are no longer built (they were never shown) */ if(s2On()){ if(s2.edId!=null) s2EdMount(); else s2Render(); } };
   const _rd=redrawTrack; redrawTrack=function(tr){ _rd.apply(this,arguments); if(s2On()){ const L=s2Lane(s2LaneId(tr)), cv=L&&$('s2In').querySelector(`canvas[data-cv="${L.id}"]`); if(cv) s2DrawLane(L,cv); } };
   $('s2EdBack').onclick=s2EdClose; $('s2EdUndo').onclick=()=>undo(); $('s2EdRedo').onclick=()=>redo(); $('s2EdPlay').onclick=()=>togglePlay();
@@ -1323,7 +1323,7 @@ function s2Init(){ const _rt=renderTracks; renderTracks=function(){ if(s2.post &
     $('nxSheet').onclick=e=>{ const b=e.target.closest('[data-teach]'); const all=e.target.closest('#nxTeachAll'); if(!b&&!all) return; nxClose(); ensureCtx(); startTeach(all?S.kit.slots.map(x=>x.id):[b.dataset.teach]); }; };
   let seen=true; try{ seen=!!localStorage.getItem('noodle.onboard'); }catch(e){}
   if(nxResume || new URLSearchParams(location.search).has('studio')){ if(s2Use()) s2Show(true); } else { nxGo('projects'); if(!seen) nxOnboard(async()=>{ if(!((await projList())||[]).length) await nxExample(true); else await nxGo('projects'); }); } }
-function reloadRaw(){ S.tracks.filter(t=>((t.inst==='vox' && t.va!=null) || (t.expr>0 && t.exprAlign!=null)) && !t._raw).forEach(tr=>loadVox(tr).then(ok=>{ if(!ok) return; redrawTrack(tr); if(tr._row) renderTracks(); if(ctx) scheduleRender(); })); }
+function reloadRaw(){ S.tracks.filter(t=>((t.inst==='vox' && t.va!=null) || (t.expr>0 && t.exprAlign!=null)) && !t._raw).forEach(tr=>loadVox(tr).then(ok=>{ if(!ok) return; redrawTrack(tr); if(ctx) scheduleRender(); })); }
 function storeVox(tr){ const {x,sr}=tr._raw; const pcm=new Int16Array(x.length); for(let i=0;i<x.length;i++) pcm[i]=Math.max(-32767,Math.min(32767,Math.round(x[i]*32767))); takeStore.put('vox'+tr.id,{sr,pcm}); }
 async function loadVox(tr){ const r=await takeStore.get('vox'+tr.id); if(!r) return false; const x=new Float32Array(r.pcm.length); for(let i=0;i<x.length;i++) x[i]=r.pcm[i]/32767; tr._raw={x,sr:r.sr}; tr._dirty=true; return true; }
 /* pitch of the take every 10 ms (same hum tracker the melody parts use) */
@@ -2417,7 +2417,7 @@ function dropMic(){
 }
 function onHide(){
   pauseSilentSwitch();
-  if(recState){ capturing=false; recState=null; setRecUI(false); teachQueue=null; if(!$('recSheet').hidden){ $('recSheet').hidden=true; document.body.style.overflow=''; } if(rs.mode){ const r=rs.resume; rs.mode=null; S.target=null; if(r) restoreSnap(r.snap).then(()=>{ hist.cur=r.snap; takeBar=r.bar; editId=r.bar.id; renderTracks(); }); else renderTracks(); } }
+  if(recState){ capturing=false; recState=null; setRecUI(false); teachQueue=null; if(!$('recSheet').hidden){ $('recSheet').hidden=true; document.body.style.overflow=''; } if(rs.mode){ const r=rs.resume; rs.mode=null; S.target=null; if(r) restoreSnap(r.snap).then(()=>{ hist.cur=r.snap; takeBar=r.bar; renderTracks(); }); else renderTracks(); } }
   if(ctx){ stopAll(); if(origSrc){ try{origSrc.stop();}catch(e){} origSrc=null; } playing=false; try{ ctx.suspend(); }catch(e){} }
   dropMic();
 }
@@ -2454,7 +2454,6 @@ async function startRecord(calib=false, teach=null){
 let rs={mode:null, pre:null, histLen:0};
 function openRec(mode='take', partId=null){
   flushSave(); rs={mode, pre:hist.cur, histLen:hist.undo.length};
-  if(mode==='take'){ const tr=S.tracks.find(t=>t.id===partId)||activePart(); if(!tr){ pendingNew=true; renderTracks(); return; } S.target=tr.id; S.activeId=tr.id; S.inst=tr.inst; }
   const sh=$('recSheet'); sh.hidden=false; document.body.style.overflow='hidden';
   $('rsTitle').textContent = mode==='calib'?'Fix late notes' : mode==='teach'?'Drum sounds' : 'Record into '+partName(S.tracks.find(t=>t.id===S.target));
   $('rsHint').textContent = mode==='calib'?'After the four count-in clicks, clap sharply on every click.' : mode==='teach'?'Make each noise on every click after the count-in. It does one sound at a time.' : INST[S.inst].hint.split(/(?<=\.) /)[0];
@@ -2472,7 +2471,7 @@ function showReview(){
   } else { keep.textContent='Done'; retry.hidden=rs.mode!=='calib'; disc.hidden=true; $('rsPlaying').hidden=true; $('rsPrev').parentElement.hidden=true; }
 }
 async function discardTake(p=rs){ if(snapNow().json!==p.pre.json){ await restoreSnap(p.pre); hist.cur=p.pre; hist.undo.length=p.histLen; hist.redo=[]; } }
-function cancelRecord(){ teachQueue=null; capturing=false; recState=null; stopAll(); setRecUI(false); dropMic(); toast('Recording cancelled'); if(rs.mode==='take'){ const r=rs.resume; S.target=null; rs.mode=null; if(r) restoreSnap(r.snap).then(()=>{ hist.cur=r.snap; takeBar=r.bar; editId=r.bar.id; renderTracks(); }); else renderTracks(); } }
+function cancelRecord(){ teachQueue=null; capturing=false; recState=null; stopAll(); setRecUI(false); dropMic(); toast('Recording cancelled'); if(rs.mode==='take'){ const r=rs.resume; S.target=null; rs.mode=null; if(r) restoreSnap(r.snap).then(()=>{ hist.cur=r.snap; takeBar=r.bar; renderTracks(); }); else renderTracks(); } }
 /* ---- recording into a part happens on the part itself: count-in and meter show on its row, and the take lands there, already open ---- */
 const RSE=$('recStatus');
 let micOff=false, takeBar=null, bleedHint=false;
@@ -2481,23 +2480,23 @@ async function recordInto(id, resume=null){
   if(recState){ cancelRecord(); return; }
   const tr=S.tracks.find(t=>t.id===id); if(!tr) return;
   if(micOff){ importInto(id); return; }
-  flushSave(); rs={mode:'take', pre:hist.cur, histLen:hist.undo.length, resume}; takeBar=null; pickFor=null;
-  S.target=tr.id; S.activeId=tr.id; S.inst=tr.inst; if(hasContent(tr)) editId=tr.id; 
+  flushSave(); rs={mode:'take', pre:hist.cur, histLen:hist.undo.length, resume}; takeBar=null;
+  S.target=tr.id; S.activeId=tr.id; S.inst=tr.inst; 
   if((tr.len||S.bars)>S.bars){ S.bars=tr.len; save(); }
   await startRecord(false);
-  if(!recState){ S.target=null; rs.mode=null; if(resume) await restoreSnap(resume.snap).then(()=>{ hist.cur=resume.snap; takeBar=resume.bar; editId=resume.bar.id; }); }
-  renderTracks(); if(tr._row) tr._row.scrollIntoView({block:'nearest',behavior:'smooth'});
+  if(!recState){ S.target=null; rs.mode=null; if(resume) await restoreSnap(resume.snap).then(()=>{ hist.cur=resume.snap; takeBar=resume.bar; }); }
+  renderTracks();
 }
 function importInto(id){ lastNoise=null;
   const tr=S.tracks.find(t=>t.id===id); if(!tr) return;
-  flushSave(); rs={mode:'take', pre:hist.cur, histLen:hist.undo.length}; takeBar=null; pickFor=null;
+  flushSave(); rs={mode:'take', pre:hist.cur, histLen:hist.undo.length}; takeBar=null;
   S.target=tr.id; S.activeId=tr.id; S.inst=tr.inst; $('fileIn').click();
 }
 function afterTake(){
   const changed = rs.pre && snapNow().json!==rs.pre.json;
-  if(changed){ takeBar={id:S.activeId, pre:rs.pre, histLen:rs.histLen, hint:bleedHint, prevBars:s2.recPrev}; editId=S.activeId; } bleedHint=false;
+  if(changed){ takeBar={id:S.activeId, pre:rs.pre, histLen:rs.histLen, hint:bleedHint, prevBars:s2.recPrev}; } bleedHint=false;
   S.target=null; rs.mode=null; renderTracks();
-  const tr=S.tracks.find(t=>t.id===S.activeId); if(tr&&tr._row) requestAnimationFrame(()=>tr._row.scrollIntoView({block:'nearest',behavior:'smooth'}));
+  const tr=S.tracks.find(t=>t.id===S.activeId);
 }
 function setRecUI(on){
  RSE.hidden=!on; $('recBtn').classList.toggle('live',on); $('recTxt').textContent=on?'Stop':'Start recording';
@@ -2684,8 +2683,6 @@ function takeTimes(an,inst){ return INST[inst].kind==='pitched'? an.notes.map(n=
 function userTracks(){ return S.tracks.filter(t=>!t.ex); }
 const hasContent=t=>!!((t.hits&&t.hits.length)||(t.notes&&t.notes.length)||(t.fxs&&t.fxs.length)||t._raw||(t.inst==='vox'&&t.va!=null));
 const anyContent=()=>userTracks().some(hasContent);
-const activePart=()=>{ const a=S.tracks.find(t=>t.id===S.activeId); if(a&&!a.guide) return a; return S.tracks.find(t=>!t.guide&&(!a||t.inst===a.inst)) || [...userTracks()].reverse()[0] || null; };
-let pendingNew=false, pickFor=null;
 function dropExamples(keep){ if(keep) keep.ex=false; S.tracks.filter(t=>t.ex).forEach(disposeTrack); S.tracks=S.tracks.filter(t=>!t.ex); }
 /* ============ FX (beta): ear candy from mouth gestures ============
    One take can hold several gestures. Each becomes an event {s, l, k, v, c, a}: start and length in steps, kind, loudness, and two 16-point curves taken
@@ -3131,7 +3128,7 @@ function wireEnv(tr,el){ const pan=el.querySelector('.envpanel'); if(!pan) retur
 /* ---- part tools: length, repeat, duplicate, change instrument ---- */
 function instSwap(tr){ const fam=INST[tr.inst].kind==='pitched'?PICK_GROUPS[1][1]:INST[tr.inst].kind==='audio'?[]:PICK_GROUPS[0][1];
   if(!fam.length) return ''; return `<section class="isec"><h4>Instrument</h4><div class="pk-row pswap">${fam.map(k=>`<button class="chip swap${k===tr.inst?' on':''}" data-k="${k}" style="--c:${INST[k].color}" aria-pressed="${k===tr.inst}"><i></i>${INST[k].label}</button>`).join('')}</div></section>`; }
-function deletePart(tr){ const nm=partName(tr); disposeTrack(tr); S.tracks=S.tracks.filter(t=>t!==tr); if(editId===tr.id) editId=null; takeBar=null; keyChanged(); save(); applyAllMix(); renderTracks(); scheduleRender(); toast('Deleted '+nm+'. Tap Undo to bring it back.'); }
+function deletePart(tr){ const nm=partName(tr); disposeTrack(tr); S.tracks=S.tracks.filter(t=>t!==tr); takeBar=null; keyChanged(); save(); applyAllMix(); renderTracks(); scheduleRender(); toast('Deleted '+nm+'. Tap Undo to bring it back.'); }
 /* legato: every note lasts until the next note starts; the last one runs to the end of the part's loop */
 function fillGaps(tr){ const n=pSteps(tr), ns=tr.notes.filter(x=>x.s<n); if(!ns.length) return;
   const starts=[...new Set(ns.map(x=>x.s))].sort((a,b)=>a-b); let changed=0;
@@ -3141,7 +3138,7 @@ function fillGaps(tr){ const n=pSteps(tr), ns=tr.notes.filter(x=>x.s<n); if(!ns.
 function clearPart(tr){ if(!hasContent(tr)) return; const nm=partName(tr);
   if(tr.notes) tr.notes=[]; if(tr.hits) tr.hits=[]; tr._an=null; tr._takes=null; tr._raw=null; tr.takeN=0; tr._range=null;
   if(tr.inst==='vox'){ tr.va=null; tr.vn=[]; tr._tuned=null; tr._pitch=null; }
-  tr.ex=false; tr._sel=null; tr._draw=false; if(editId===tr.id) editId=null; takeBar=null; tr._dirty=true; keyChanged(); save(); renderTracks(); scheduleRender(); toast(`Cleared ${nm}. Tap Undo to bring it back.`); }
+  tr.ex=false; tr._sel=null; tr._draw=false; takeBar=null; tr._dirty=true; keyChanged(); save(); renderTracks(); scheduleRender(); toast(`Cleared ${nm}. Tap Undo to bring it back.`); }
 function setPartLen(tr,b){ const n=b*16;
   if(tr.hits) tr.hits=tr.hits.filter(h=>h.s<n); if(tr.notes){ tr.notes=tr.notes.filter(x=>x.s<n); tr.notes.forEach(x=>x.l=Math.min(x.l,n-x.s)); }
   tr.len=b; if(b>S.bars){ S.bars=b; toast(`Song is now ${b} bars`); }
@@ -3153,9 +3150,9 @@ function unrollPart(tr){ const n=pSteps(tr), k=S.bars/pBars(tr);
 function duplicatePart(tr){
   const c=JSON.parse(JSON.stringify(tr,(k,v)=>k[0]==='_'?undefined:v)); c.id=S.nextId++; c.ex=false; c.solo=false;
   if(tr._raw){ c._raw=tr._raw; if(tr.inst==='vox') storeVox(c); }
-  S.tracks.splice(S.tracks.indexOf(tr)+1,0,c); editId=c.id; S.activeId=c.id; c._dirty=true; keyChanged(); save(); renderTracks(); scheduleRender();
+  S.tracks.splice(S.tracks.indexOf(tr)+1,0,c); S.activeId=c.id; c._dirty=true; keyChanged(); save(); renderTracks(); scheduleRender();
   toast(`Duplicated ${partName(tr)}.`+(INST[tr.inst].kind==='audio'?'':' Pick a different instrument on the copy to layer a new sound.'));
-  requestAnimationFrame(()=>{ if(c._row) c._row.scrollIntoView({block:'nearest',behavior:'smooth'}); }); }
+ }
 function changeInst(tr,k){ if(tr.inst===k) return; const from=INST[tr.inst], to=INST[k];
   if(to.kind==='drum'){ const m=new Map(); tr.hits.forEach(h=>{ if(!m.has(h.s)||m.get(h.s).v<h.v) m.set(h.s,{...h,d:to.drum}); }); tr.hits=[...m.values()].sort((a,b)=>a.s-b.s); tr._an=null; tr._takes=null; }
   if(k==='kit'){ tr.hits.forEach(h=>{ if(!slotOf(h.d) && S.kit.slots.length<MAX_SLOTS && !S.kit.slots.some(x=>x.sound===h.d)) S.kit.slots.push({id:h.d,sound:h.d,say:''}); }); tr._an=null; tr._takes=null; }
@@ -3169,9 +3166,7 @@ function knob(parent,{id,label,min,max,val,fmt,oninput,color,step=1}){
 }
 const pct=v=>v+'%';
 function partCount(tr){ const k=INST[tr.inst].kind; return k==='audio' ? (tr._raw?(tr._raw.x.length/tr._raw.sr).toFixed(1)+' s take':'take not on this device') : k==='pitched' ? tr.notes.length+' notes' : tr.hits.length+' hits'; }
-function loopTag(tr){ const b=pBars(tr); return b<S.bars ? ` · ${b} bar${b>1?'s':''}${pRep(tr)?' ×'+pLoops(tr):', once'}` : ''; }
 function partName(tr){ if(tr.name) return tr.name; const same=S.tracks.filter(t=>t.inst===tr.inst); return INST[tr.inst].label+(same.length>1?' '+(same.indexOf(tr)+1):''); }
-let editId=null;
 let gridCW=16; try{ const z=+localStorage.getItem('noodle.zoom'); if(isFinite(z)&&z>0) gridCW=z; }catch(e){}
 const zoomCW=()=>isFinite(gridCW)&&gridCW>0?gridCW:16;
 function setZoom(tr,cw,anchorX){ const G=tr._grid, wrap=tr._cv&&tr._cv.parentElement.parentElement; if(!G||!wrap) return;
@@ -3213,13 +3208,6 @@ function wireGrid(tr,el){ const wrap=el.querySelector('.gridwrap'); if(!wrap) re
   if(zi) zi.onclick=()=>{ touched(); setZoom(tr,(tr._grid?tr._grid.cw:gridCW)*1.5); }; if(zo) zo.onclick=()=>{ touched(); setZoom(tr,(tr._grid?tr._grid.cw:gridCW)/1.5); };
 }
 function renderTracks(){}   /* the Studio (s2Render) draws the tracks; this name is the redraw hook */
-function openEditor(tr){
-  const was=S.tracks.find(t=>t.id===editId); if(was&&was!==tr){ was._cv=null; was._sel=null; }
-  if(!takeBar||takeBar.id!==tr.id) takeBar=null;
-  editId=tr.id; S.activeId=tr.id; pickFor=null; renderTracks();
-  requestAnimationFrame(()=>{ if(tr._row) tr._row.scrollIntoView({block:'nearest',behavior:'smooth'}); });
-}
-function closeEditor(){ const tr=S.tracks.find(t=>t.id===editId); editId=null; takeBar=null; if(tr){ tr._cv=null; tr._sel=null; } renderTracks(); }
 /* small one-line picture of a part's pattern, for the parts list and the review step */
 function drawMini(tr,cv){
   if(!cv||!cv.isConnected) return; const W=cv.clientWidth||300, H=cv.clientHeight||30, dpr=window.devicePixelRatio||1; cv.width=Math.round(W*dpr); cv.height=Math.round(H*dpr);
@@ -3277,7 +3265,7 @@ function buildCard(tr){
           ${!pitched&&(tr.takeN||1)>1?'<button class="ibtn undo">Undo last take</button>':''}</div></div></section>`:''}
         <section class="isec"><div class="ictl"><button class="ibtn pdup">Duplicate part</button></div></section>
       </div></div>`;
-    el.querySelector('.snd').onchange=e=>{ tr.sound=e.target.value; if(tr.inst==='vox'){ tr.fx=Object.assign({},VOX_PRESETS[tr.sound]); tr._dirty=true; save(); scheduleRender(); openEditor(tr); return; } tr._dirty=true; save(); scheduleRender(); };
+    el.querySelector('.snd').onchange=e=>{ tr.sound=e.target.value; if(tr.inst==='vox'){ tr.fx=Object.assign({},VOX_PRESETS[tr.sound]); tr._dirty=true; save(); scheduleRender(); renderTracks(); return; } tr._dirty=true; save(); scheduleRender(); };
     el.querySelector('.plen').onchange=e=>setPartLen(tr,+e.target.value);
     { const pn=el.querySelector('.pname'); pn.addEventListener('keydown',e=>{ if(e.key==='Enter') pn.blur(); }); pn.addEventListener('change',()=>{ tr.name=pn.value.trim().slice(0,32)||undefined; save(); renderTracks(); }); }
     const prp=el.querySelector('.prep'); if(prp) prp.onclick=()=>{ tr.rep=!pRep(tr); tr._dirty=true; save(); renderTracks(); scheduleRender(); };
@@ -3331,7 +3319,7 @@ function buildCard(tr){
     if(d.kind==='drums') requestAnimationFrame(renderKitPanel);
     return el;
 }
-function redrawTrack(tr){ if(tr._cv&&tr._cv.isConnected) drawGrid(tr); if(tr._mini) drawMini(tr,tr._mini); if(tr._row){ const rs2=tr._row.querySelector('.tsum'); if(rs2) rs2.textContent=partCount(tr)+loopTag(tr)+(tr.ex?' · example':''); } const sm=tr._el&&tr._el.querySelector('.tsum'); if(sm) sm.textContent=partCount(tr); }
+function redrawTrack(tr){ if(tr._cv&&tr._cv.isConnected) drawGrid(tr); if(tr._mini) drawMini(tr,tr._mini); const sm=tr._el&&tr._el.querySelector('.tsum'); if(sm) sm.textContent=partCount(tr); }
 function nudge(tr,dv){ if(tr.inst==='vox'){ tr.va=+((tr.va||0)-dv*stepDur()).toFixed(4); tr._dirty=true; save(); redrawTrack(tr); scheduleRender(); return; } const n=pSteps(tr); new Set([...(tr._takes||[]).map(t=>t.an), tr._an].filter(Boolean)).forEach(a=>a.align-=dv*stepDur()); if(tr.hits) tr.hits.forEach(h=>h.s=((h.s+dv)%n+n)%n); if(tr.notes){ tr.notes.forEach(x=>x.s=((x.s+dv)%n+n)%n); tr.notes.sort((a,b)=>a.s-b.s); } tr._dirty=true; save(); redrawTrack(tr); scheduleRender(); }
 let origSrc=null;
 function playOriginal(tr,btn){ ensureCtx(); if(origSrc){ try{origSrc.stop();}catch(e){} origSrc=null; btn.textContent='▶ Your take'; return; }
@@ -3573,8 +3561,8 @@ function init(){
   $('rsDiscard').onclick=async()=>{ await discardTake(); closeRec(); toast('Take discarded'); };
   $('rsRetry').onclick=async()=>{ if(rs.mode==='calib'){ showRetryReady(); startRecord(true); return; } await discardTake(); showRetryReady(); if(micOff) $('fileIn').click(); else startRecord(false); };
   window.showRetryReady=()=>{ $('rsReview').hidden=true; $('rsReady').hidden=false; };
-  document.addEventListener('keydown',e=>{ if((e.key==='Delete'||e.key==='Backspace') && !/INPUT|SELECT|TEXTAREA/.test((e.target&&e.target.tagName)||'')){ const t=S.tracks.find(t=>t.id===editId); if(t&&t._sel){ e.preventDefault(); deleteSelNote(t); return; } }
-    if(e.key==='Escape'){ if(!$('recSheet').hidden) closeRec(); else if(pickFor!=null){ pickFor=null; pendingNew=false; renderTracks(); } else if(editId!=null) closeEditor(); }
+  document.addEventListener('keydown',e=>{ if((e.key==='Delete'||e.key==='Backspace') && !/INPUT|SELECT|TEXTAREA/.test((e.target&&e.target.tagName)||'')){ const t=S.tracks.find(t=>t.id===s2.edId); if(t&&t._sel){ e.preventDefault(); deleteSelNote(t); return; } }
+    if(e.key==='Escape'){ if(!$('recSheet').hidden) closeRec(); }
     if((e.metaKey||e.ctrlKey) && e.key.toLowerCase()==='z' && !/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName)){ e.preventDefault(); e.shiftKey?redo():undo(); } });
   $('recBtn').onclick=()=>startRecord(false);
   $('fileIn').onchange=e=>{ const f=e.target.files[0]; e.target.value=''; if(f) importFile(f); };

@@ -11,8 +11,8 @@ const {chromium}=require('playwright'); const fs=require('fs'); const AL=JSON.pa
       if(back){ const k=mkTrack('keys',{id:S.nextId++, name:'Backing', notes:back.map(n=>({...n,v:0.7,x:true}))}); S.tracks.splice(1,0,k); keyCache=null; } const ab=await ctx.decodeAudioData(await (await fetch('/data/'+SUB+'/'+wav)).arrayBuffer()); const x=mono(ab);
       // find the alignment that reproduces what the live take heard (start steps), then keep the take
       const best={al:want};
-      const tr=activePart(); tr.notes=[]; S.target=tr.id; await addTake(x,ab.sampleRate,'lead',{align:best.al,notch:true,live:true}); S.target=null;
-      return {al:best.al, notes:activePart().notes.map(n=>({s:n.s,l:n.l,p:pitchOf(n),raw:+n.p,x:!!n.x,...(n.hs?{hs:n.hs}:{})})), squeeze:typeof squeezeOn==='function'?squeezeOn():null}; },[wav,m.prompt,AL[m.prompt],BACK?BACK[m.prompt]:null,m.bpm,SUB]);
+      const tr=(S.tracks.find(t=>t.id===S.activeId&&!t.guide)||S.tracks.find(t=>!t.guide)); tr.notes=[]; S.target=tr.id; await addTake(x,ab.sampleRate,'lead',{align:best.al,notch:true,live:true}); S.target=null;
+      return {al:best.al, notes:(S.tracks.find(t=>t.id===S.activeId&&!t.guide)||S.tracks.find(t=>!t.guide)).notes.map(n=>({s:n.s,l:n.l,p:pitchOf(n),raw:+n.p,x:!!n.x,...(n.hs?{hs:n.hs}:{})})), squeeze:typeof squeezeOn==='function'?squeezeOn():null}; },[wav,m.prompt,AL[m.prompt],BACK?BACK[m.prompt]:null,m.bpm,SUB]);
     res[m.prompt]={...m, heard:{notes:r.notes}, al:r.al, squeeze:r.squeeze}; process.stdout.write(r.squeeze?'S':'.'); }
   fs.mkdirSync(out,{recursive:true}); for(const [k,v] of Object.entries(res)) fs.writeFileSync(`${out}/2-${k}.json`,JSON.stringify(v));
   console.log('\nsq',JSON.stringify(await p.evaluate(()=>S.sq)),'errors',errs.slice(0,3)); await b.close(); })();
