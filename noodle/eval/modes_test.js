@@ -7,7 +7,7 @@ const {chromium,devices}=require('playwright');
     r.gMixo7=C(7,'mixolydian',67,'seventh'); r.gMajor7=C(7,'major',67,'seventh'); r.cLydianII=C(0,'lydian',62,'triad'); r.ePhrygianII=C(4,'phrygian',65,'triad'); r.aHarmV7=C(9,'harm-minor',64,'seventh'); r.ePhrygDomI=C(4,'phryg-dom',64,'triad');
     r.sus4=C(0,'major',60,'sus4'); r.sus2=C(0,'major',60,'sus2'); r.sixth=C(0,'major',60,'sixth'); r.add9=C(0,'major',60,'add9'); r.eleventh=C(0,'major',62,'eleventh'); r.minor6=C(9,'dorian',69,'sixth');
     setKey(7,'mixolydian'); r.snapFsharp=N(snap(66.1)); r.label=projKeyLabel()||(NOTE_NAMES[currentKey().tonic]+' '+SCALE_LABEL[currentKey().scale]); r.keysig=keySigBytes().slice(3).join(',');
-    setKey(2,'dorian'); r.keysigDdorian=keySigBytes().slice(3).join(','); r.options=[...$('scale').options].map(o=>o.textContent).length; r.chordTypes=Object.values(CHORD_TYPES).join(', '); return r; });
+    setKey(2,'dorian'); r.keysigDdorian=keySigBytes().slice(3).join(','); r.options=(SCALE_OPTS.match(/<option/g)||[]).length; r.chordTypes=Object.values(CHORD_TYPES).join(', '); return r; });
   await p.evaluate(()=>{ S.key='7'; S.scale='mixolydian'; keyCache=null; const t=mkTrack('keys',{id:S.nextId++,off:0,len:1,rep:false,lenSet:true,chordType:'seventh',notes:[{s:0,l:8,p:67,v:.8,x:true},{s:8,l:8,p:65,v:.8,x:true}]}); S.tracks.push(t); S.bars=1; save(); syncAllInputs(); renderTracks(); });
   await p.tap('#s2Key'); await p.waitForTimeout(200); await p.screenshot({path:'results/modes.png'}); out.sheetScale=await p.$eval('#s2Sc',e=>e.options[e.selectedIndex].textContent); out.chip=await p.$eval('#s2Key span',e=>e.textContent);
   console.log(JSON.stringify(out,null,1),errs); await b.close(); })();

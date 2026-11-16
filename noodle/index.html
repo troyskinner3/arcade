@@ -703,48 +703,6 @@ button.card-head{margin:0;width:100%;padding:10px 14px;border-radius:0;backgroun
 
 
 
-  <section class="card" aria-labelledby="mixh">
-    <button class="card-head" data-sec="mix" aria-expanded="false" aria-controls="mixBody"><span class="hd"><h2 id="mixh">Mix &amp; global FX</h2></span><span class="hd"><svg class="chev" viewBox="0 0 20 20" aria-hidden="true"><path d="M7 5l5 5-5 5"/></svg></span></button>
-    <div class="sec-body" id="mixBody">
-    <div class="mixgrid">
-      <div class="field"><label for="key">Key</label><select class="sel" id="key"></select></div>
-      <div class="field"><label for="scale">Snap notes to</label><select class="sel" id="scale">
-        <option value="auto">Auto (major or minor)</option><option value="major">Major</option><option value="minor">Minor</option>
-        <option value="pent-minor">Minor pentatonic</option><option value="pent-major">Major pentatonic</option><option value="blues">Blues</option><option value="dorian">Dorian</option><option value="mixolydian">Mixolydian</option><option value="lydian">Lydian</option><option value="phrygian">Phrygian</option><option value="phryg-dom">Phrygian dominant</option><option value="harm-minor">Harmonic minor</option><option value="mel-minor">Melodic minor</option><option value="locrian">Locrian</option><option value="chromatic">Any note (no snapping)</option></select></div>
-      <div class="field"><label for="snapStr">Snap strength</label><input type="range" id="snapStr" min="0" max="100" step="5" aria-label="How strongly recorded notes snap to the key"><span class="snapends"><span>Loose</span><span>Tight</span></span></div>
-    </div>
-    <div class="knobs" id="masterKnobs"></div>
-    </div>
-  </section>
-
-  <section class="card" aria-labelledby="exh">
-    <button class="card-head" data-sec="export" aria-expanded="false" aria-controls="exportBody"><span class="hd"><h2 id="exh">Export</h2></span><span class="hd"><svg class="chev" viewBox="0 0 20 20" aria-hidden="true"><path d="M7 5l5 5-5 5"/></svg></span></button>
-    <div class="sec-body" id="exportBody">
-    <div class="exopt">
-      <h3>Share your song</h3>
-      <p class="small">For Messages, CapCut, TikTok, Reels or anywhere else. Audio is a WAV file; video is a vertical clip with your parts moving to the beat.</p>
-      <div class="recrow"><button class="btn primary" id="shAudio">Share audio</button><button class="btn" id="shVideo">Share video</button></div>
-      <div class="note shready" id="shReady" hidden><p id="shMsg"></p><div class="recrow"><button class="btn primary" id="shNow">Share</button><button class="btn" id="shSave">Save to Files</button></div></div>
-    </div>
-    <div class="exopt">
-      <h3>Producer pack (.zip)</h3>
-      <p class="small">For Logic, Ableton, FL Studio or GarageBand: every part as a 24-bit WAV starting at bar 1, your raw vocal, MIDI for each part with tempo and key, and step-by-step import notes.</p>
-      <div class="recrow"><button class="btn" id="exportBtn">Download producer pack</button></div>
-    </div>
-    </div>
-  </section>
-
-  <section class="card" aria-labelledby="timh">
-    <button class="card-head" data-sec="timing" aria-expanded="false" aria-controls="timingBody"><span class="hd"><h2 id="timh">Timing &amp; mic</h2></span><span class="hd"><svg class="chev" viewBox="0 0 20 20" aria-hidden="true"><path d="M7 5l5 5-5 5"/></svg></span></button>
-    <div class="sec-body" id="timingBody">
-    <div class="knobs" id="timingKnobs"></div>
-    <label class="chk"><input type="checkbox" id="keyRef"> <span>Play the home chord during the count-in, so melody takes start in key</span></label>
-    <label class="chk" id="playAlongRow"><input type="checkbox" id="playAlong"> <span>Play the other parts while I record (wear headphones so the mic doesn’t hear them)</span></label>
-    <label class="chk"><input type="checkbox" id="latAuto"> <span>Estimate the mic delay automatically</span></label>
-    <label class="chk"><input type="checkbox" id="ec"> <span>Echo cancellation for drum and melody takes (only if you record without headphones; it can swallow beatbox hits). Vocal takes always use it.</span></label>
-    <p class="small">If your hits keep landing late, calibrate. AirPods and other Bluetooth headphones add 150–300 ms of delay and switch your phone to a lower-quality mic; wired headphones give the best timing. Imported recordings line up on their first sound, so the delay setting only affects live recording.</p>
-    </div>
-  </section>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 </main>
 <section class="s2" id="s2" hidden>
@@ -963,12 +921,7 @@ async function restoreSnap(sn){
    learned preferences). Undo brings the old song back. */
 async function undo(){ flushSave(); if(!hist.undo.length) return; hist.redo.push(hist.cur); hist.cur=hist.undo.pop(); updateHistBtns(); await restoreSnap(hist.cur); toast('Undone'); }
 async function redo(){ flushSave(); if(!hist.redo.length) return; hist.undo.push(hist.cur); hist.cur=hist.redo.pop(); updateHistBtns(); await restoreSnap(hist.cur); toast('Redone'); }
-function syncAllInputs(){
-  const setv=(id,v)=>{ const e=$(id); if(e && String(e.value)!==String(v)){ e.value=v; } };
-  setv('genre',S.genre||''); setv('key',S.key); setv('scale',S.scale); setv('quant',S.quant); setv('loops',S.loops);
-  [['swing',S.swing],['mrev',S.master.rev],['mdrive',S.master.drive],['mpunch',S.master.punch],['mvol',S.master.vol],['sens',S.sens],['lat',S.latMs]].forEach(([id,v])=>{ const e=$(id); if(e){ e.value=v; e.dispatchEvent(new Event('input')); } });
-  applyMaster(); syncSettings();
-}
+function syncAllInputs(){ applyMaster(); }   /* after loading a song: the master chain follows S.master */
 
 const isOpen=(k,def)=> (S.ui && k in S.ui) ? S.ui[k] : def;
 function setOpen(k,v){ S.ui=S.ui||{}; S.ui[k]=v; save(); }
@@ -1193,7 +1146,7 @@ function s2Render(){ if(!s2On()) return; const el=$('s2'), bars=S.bars, view=Mat
   s2.pos=-1; s2Chips(); s2Seek(); s2Clip(); }
 /* keep the playhead out from under the track headers, and the header panel as tall as the timeline */
 function s2Clip(){ const tl=$('s2Tl'), a=$('s2Ph'), b=$('s2PhH'); if(!a) return; $('s2').style.setProperty('--s2-sideh',Math.max(0,tl.clientHeight-26)+'px'); const hid=Math.max(0,s2.pos)*s2.barw<tl.scrollLeft-1?'hidden':'visible'; a.style.visibility=hid; b.style.visibility=hid; }
-function s2Chips(){ const b=$('s2Bpm').lastElementChild, k=$('s2Key').lastElementChild, kl=projKeyLabel()||'Auto'; if(b.textContent!==String(S.bpm)) b.textContent=S.bpm; if(k.textContent!==kl) k.textContent=kl;
+function s2Chips(){ const b=$('s2Bpm').lastElementChild, k=$('s2Key').lastElementChild, kl=projKeyLabel()||(S.key!=='auto'?(NOTE_NAMES[+S.key]+' '+(SCALE_LABEL[S.scale]||'')).trim():'Auto');   /* a key picked before anything is recorded still shows */ if(b.textContent!==String(S.bpm)) b.textContent=S.bpm; if(k.textContent!==kl) k.textContent=kl;
   const m=$('s2Metro'), on=String(!!S.metro); if(m.getAttribute('aria-pressed')!==on) m.setAttribute('aria-pressed',on); }
 /* called every frame: playhead, position readout, recording banner, stop at the end when Loop is off */
 function s2Tick(frac){ if(!s2On()) return; const bars=S.bars, live=playing||!!recState; if(live) s2.cur=clamp(frac,0,1)*bars; const pos=live?s2.cur:s2.cur;
@@ -1253,9 +1206,9 @@ function s2ShareSheet(){ if(!S.tracks.some(hasContent)){ toast('Record something
   $('nxSheet').onclick=async e=>{ const b=e.target.closest('[data-k]'); if(!b||b.disabled) return; const k=b.dataset.k; S.loops=1; lock(true); $('s2ShGo').hidden=true;
     S.exportedAt=new Date().toISOString(); save(); try{ dropSync(true); }catch(e){}   /* exporting says: these notes are what I meant */
     if(k==='daw'){ st('Preparing your tracks…'); bar('ind'); await exportZip(); bar(null); st('Done. Look for the .zip in your downloads or the share sheet.'); lock(false); return; }
-    st(k==='video'?'Making your video…':'Making your audio…'); bar('ind'); shareFile=null; let total=0; const poll=setInterval(()=>{ const m=/(\d+) s/.exec($('shVideo').textContent); if(m){ const left=+m[1]; total=Math.max(total,left); if(total>1){ bar('pct',1-left/total); st('Making your video… about '+left+' s left'); } } },250);
-    await prepareShare(k); clearInterval(poll); bar(null); lock(false); if(!$('s2ShSt')) return;
-    if(shareFile){ st($('shMsg').textContent); $('s2ShGo').hidden=false; $('s2ShNow').hidden=$('shNow').hidden; } else st('That didn’t work here. Try the other option.'); }; }
+    st(k==='video'?'Making your video…':'Making your audio…'); bar('ind'); shareFile=null; let total=0; const prog=sec=>{ const left=Math.ceil(sec); total=Math.max(total,left); if(total>1){ bar('pct',1-left/total); st('Making your video… about '+left+' s left'); } };
+    await prepareShare(k,prog); bar(null); lock(false); if(!$('s2ShSt')) return;
+    if(shareFile){ st(shareMsg); $('s2ShGo').hidden=false; $('s2ShNow').hidden=!shareCan; } else st('That didn’t work here. Try the other option.'); }; }
 /* Move a part along its lane, in whole bars. It can't land on another part. */
 function s2MoveClip(tr, bars){ const off=(tr.off||0)+bars*16, len=pSteps(tr)*pLoops(tr); if(pLoops(tr)>1) return false; if(off<0 || off+len>64*16) return false;
   const hit=S.tracks.some(t=>t!==tr&&s2LaneId(t)===s2LaneId(tr)&&hasContent(t)&&off<(t.off||0)+pSteps(t)*pLoops(t)&&(t.off||0)<off+len); if(hit) return false;
@@ -1307,14 +1260,13 @@ function s2TrackSheet(L){ const tr=L.tracks[0], all=()=>S.tracks.filter(t=>s2Lan
     if(id.startsWith('s2Fx_')){ const k=id.slice(5); each(t=>{ t.fx=Object.assign(fxOf(t),{[k]:+v}); t._tuned=null; t._dirty=true; }); rerender(); }
     if(id==='s2Chd'){ each(t=>{ t.chordType=v; delete t.chords; t._dirty=true; }); rerender(); renderTracks(); }
     if(id==='s2Expr'){ each(t=>{ t.expr=+v; if(t.expr>0&&t._raw){ if(t._an) t.exprAlign=t._an.align; storeVox(t); } t._dirty=true; }); rerender(); } }; }
-function s2Bind(id,src,ev='input'){ const a=$(id), b=$(src); if(!a||!b) return; a.addEventListener(ev,()=>{ b.value=a.value; b.dispatchEvent(new Event(ev,{bubbles:true})); if(ev!=='change') b.dispatchEvent(new Event('change',{bubbles:true})); }); }
 function s2Sheets(kind){ $('nxSheet').oninput=null;
   if(kind==='tempo'){ nxSheet(`<h2>Tempo</h2>${s2Fld('s2T','Tempo',60,180,S.bpm)}<label class="nx-chk" style="font-weight:400;font-size:15px"><input type="checkbox" id="s2Arp" ${S.keyRef?'checked':''}> <span>Play the home chord during the count-in</span></label>`);
-    $('s2T').onchange=e=>setTempo(+e.target.value); $('s2Arp').onchange=()=>$('keyRef').click(); $('nxSheet').onclick=null; }
-  if(kind==='key'){ nxSheet(`<h2>Key and snap</h2><div class="s2-fld"><label for="s2K">Key</label><select class="nx-txt" id="s2K">${$('key').innerHTML}</select></div><div class="s2-fld"><label for="s2Sc">Snap notes to</label><select class="nx-txt" id="s2Sc">${$('scale').innerHTML}</select></div>${s2Fld('s2Sn','Snap strength',0,100,S.snapStr??100,5)}`);
-    $('s2K').value=$('key').value; $('s2Sc').value=$('scale').value; s2Bind('s2K','key','change'); s2Bind('s2Sc','scale','change'); s2Bind('s2Sn','snapStr'); $('nxSheet').onclick=null; }
+    $('s2T').onchange=e=>setTempo(+e.target.value); $('s2Arp').onchange=e=>{ S.keyRef=e.target.checked; save(); }; $('nxSheet').onclick=null; }
+  if(kind==='key'){ nxSheet(`<h2>Key and snap</h2><div class="s2-fld"><label for="s2K">Key</label><select class="nx-txt" id="s2K">${keyOpts()}</select></div><div class="s2-fld"><label for="s2Sc">Snap notes to</label><select class="nx-txt" id="s2Sc">${SCALE_OPTS}</select></div>${s2Fld('s2Sn','Snap strength',0,100,S.snapStr??100,5)}`);
+    $('s2K').value=S.key; $('s2Sc').value=S.scale; $('s2K').onchange=e=>setKey(e.target.value); $('s2Sc').onchange=e=>setScale(e.target.value); $('s2Sn').oninput=e=>setSnap(e.target.value); $('nxSheet').onclick=null; }
   if(kind==='mix'){ nxSheet(`<h2>Mix</h2>${s2Fld('s2Mv','Master volume',0,100,S.master.vol)}${s2Fld('s2Mr','Reverb',0,100,S.master.rev)}${s2Fld('s2Md','Drive',0,100,S.master.drive)}${s2Fld('s2Mp','Punch',0,100,S.master.punch)}`);
-    s2Bind('s2Mv','mvol'); s2Bind('s2Mr','mrev'); s2Bind('s2Md','mdrive'); s2Bind('s2Mp','mpunch'); $('nxSheet').onclick=null; }
+    [['s2Mv','vol'],['s2Mr','rev'],['s2Md','drive'],['s2Mp','punch']].forEach(([id,k])=>{ $(id).oninput=e=>setMaster(k,e.target.value); }); $('nxSheet').onclick=null; }
   if(kind==='name'){ nxSheet(`<h2>Rename</h2><input class="nx-txt" id="s2Rn" maxlength="60" value="${nxEsc(S.title||'')}" placeholder="Untitled" aria-label="Project name"><button class="nx-primary" id="s2RnOk">Save</button>`); $('nxSheet').onclick=null;
     const ok=()=>{ S.title=$('s2Rn').value.trim(); save(); nxClose(); s2Render(); }; $('s2RnOk').onclick=ok; $('s2Rn').onkeydown=e=>{ if(e.key==='Enter') ok(); }; $('s2Rn').focus(); } }
 function s2Init(){ const _rt=renderTracks; renderTracks=function(){ if(s2.post && !recState && rs.mode==null){ s2.post=false; try{ s2Tidy(); }catch(e){} } editId=null;   /* the old in-row editor is never shown; don't build it */
@@ -1366,12 +1318,12 @@ function s2Init(){ const _rt=renderTracks; renderTracks=function(){ if(s2.post &
   tl.addEventListener('touchmove',e=>{ if(s2.drag){ e.preventDefault(); return; } if(e.touches.length===2&&d0){ e.preventDefault(); zoom(b0*dist(e.touches)/d0); } },{passive:false});
   tl.addEventListener('touchend',()=>{ d0=0; }); tl.addEventListener('wheel',e=>{ if(e.ctrlKey){ e.preventDefault(); zoom(s2.barw*(e.deltaY<0?1.1:0.9)); } },{passive:false});
   window.addEventListener('resize',()=>{ if(s2On()) s2Render(); }); tl.addEventListener('scroll',s2Clip,{passive:true});
-  const chk=(id,label,src)=>`<label class="nx-chk" style="font-weight:400;font-size:15px;align-items:flex-start"><input type="checkbox" id="${id}" ${$(src).checked?'checked':''}> <span>${label}</span></label>`;
+  const chk=(id,label,src)=>`<label class="nx-chk" style="font-weight:400;font-size:15px;align-items:flex-start"><input type="checkbox" id="${id}" ${S[src]?'checked':''}> <span>${label}</span></label>`;
   $('nxTiming').onclick=()=>{ nxSheet(`<h2>Mic and timing</h2><button class="nx-primary" id="nxCal" style="margin:0 0 6px">Fix late notes: clap along for one loop</button><p style="color:var(--muted);font-size:13px;margin:0 0 8px">Wired headphones give the best timing. Bluetooth headphones add a delay.</p>
       ${s2Fld('nxSens','Mic sensitivity',0,100,S.sens??55)}${chk('nxLa','Work out the mic delay automatically','latAuto')}${chk('nxPa','Play the other tracks while I record (wear headphones)','playAlong')}${chk('nxEc','Echo cancellation for drum and melody takes (only without headphones; it can swallow beatbox hits)','ec')}`);
     $('nxSheet').onclick=null; $('nxCal').onclick=()=>{ nxClose(); ensureCtx(); openRec('calib'); startRecord(true); };
-    [['nxLa','latAuto'],['nxPa','playAlong'],['nxEc','ec']].forEach(([a,b])=>{ $(a).onchange=()=>{ if($(b).checked!==$(a).checked) $(b).click(); }; });
-    $('nxSens').onchange=e=>{ const k=$('sens'); if(k){ k.value=e.target.value; k.dispatchEvent(new Event('input',{bubbles:true})); k.dispatchEvent(new Event('change',{bubbles:true})); } else { S.sens=+e.target.value; save(); } }; };
+    [['nxLa','latAuto'],['nxPa','playAlong'],['nxEc','ec']].forEach(([a,b])=>{ $(a).onchange=e=>{ S[b]=e.target.checked; save(); if(b==='ec') dropMic(); }; });
+    $('nxSens').onchange=e=>{ S.sens=+e.target.value; save(); }; };
   $('nxDrums').onclick=()=>{ const rows=S.kit.slots.map(sl=>`<div class="nx-item" style="padding:10px 0"><span>${nxEsc(slotLabel(sl.id))}<small>${sl.ex&&sl.ex.length>=3?'Taught':'Say “'+nxEsc(sl.say||slotLabel(sl.id))+'”'}</small></span><button class="nx-ghost" data-teach="${sl.id}" style="width:auto;height:40px;padding:0 14px">${sl.ex&&sl.ex.length>=3?'Teach again':'Teach'}</button></div>`).join('');
     nxSheet(`<h2>Your drum sounds</h2><p style="color:var(--muted);font-size:14px;margin:0 0 6px">Make your noise for a drum on every click, and Noodle learns to tell your sounds apart.</p>${rows}<button class="nx-primary" id="nxTeachAll">Teach them all</button>`);
     $('nxSheet').onclick=e=>{ const b=e.target.closest('[data-teach]'); const all=e.target.closest('#nxTeachAll'); if(!b&&!all) return; nxClose(); ensureCtx(); startTeach(all?S.kit.slots.map(x=>x.id):[b.dataset.teach]); }; };
@@ -2712,7 +2664,7 @@ function finishCalib(x,sr,pre){
   const md=median(dev), spread=median(dev.map(d=>Math.abs(d-md)));
   if(md<0.015){ toast('That measured almost no delay, which usually means the mic heard the click instead of your claps. Wear headphones and calibrate again.'); return; }
   if(spread>0.06){ toast('Those claps were too uneven to measure. Try again, clapping right on each click.'); return; }
-  S.latAuto=false; S.calibrated=true; S.latMs=clamp(Math.round(md*1000),-50,600); save(); syncSettings(); if(window._showCal) window._showCal();
+  S.latAuto=false; S.calibrated=true; S.latMs=clamp(Math.round(md*1000),-50,600); save(); if(window._showCal) window._showCal();
   toast('Mic delay set to '+S.latMs+' ms from '+dev.length+' claps');
 }
 /* Metronome bleed: when the click plays through the speaker, the mic hears it with machine-exact timing on every beat.
@@ -3515,7 +3467,7 @@ let learnToldThisSession=false;
 function learnNote(msg){ if(learnToldThisSession) return; learnToldThisSession=true; toast(msg); }
 function learnFromPitchFix(a,b){ const K=currentKey(); if(K.none||a===b||Math.abs(a-b)>2) return; const ink=m=>K.set.includes(((m-K.tonic)%12+12)%12);
   let d=0; if(!ink(a)&&ink(b)) d=5; else if(ink(a)&&!ink(b)) d=-5; if(!d) return;
-  S.snapStr=clamp((S.snapStr??100)+d,0,100); const ss=$('snapStr'); if(ss){ ss.value=S.snapStr; ss.dispatchEvent(new Event('input')); } save();
+  S.snapStr=clamp((S.snapStr??100)+d,0,100); setSnap(S.snapStr); save();
   learnNote(d>0?'Noted: recorded notes will snap a little more to the key. Change it any time: tap KEY.':'Noted: recorded notes will keep a little more of what you sang. Change it any time: tap KEY.'); }
 function learnDetail(d){ S.detailBias=clamp((S.detailBias||0)+d,-30,30); save(); if(S.detailBias<=-6) learnNote('Noted: future takes will lean toward fewer, longer notes.'); }
 /* Replacing a wrong note is often easier as "draw the right one, delete the old one" (either order) than dragging it.
@@ -3618,11 +3570,16 @@ function gridTap(tr,e){
     else if(tr.hits.some(h=>h.s===s&&h.d===row)) drumHit(ctx,out,row,ctx.currentTime+0.01,0.85,tr.sound,tr.tone/100); }
 }
 function syncTransport(){}   /* tempo, length and metronome live in S; the Studio draws them */
+const SCALE_OPTS='<option value="auto">Auto (major or minor)</option><option value="major">Major</option><option value="minor">Minor</option><option value="pent-minor">Minor pentatonic</option><option value="pent-major">Major pentatonic</option><option value="blues">Blues</option><option value="dorian">Dorian</option><option value="mixolydian">Mixolydian</option><option value="lydian">Lydian</option><option value="phrygian">Phrygian</option><option value="phryg-dom">Phrygian dominant</option><option value="harm-minor">Harmonic minor</option><option value="mel-minor">Melodic minor</option><option value="locrian">Locrian</option><option value="chromatic">Any note (no snapping)</option>';
+const keyOpts=()=>'<option value="auto">Auto-detect</option>'+NOTE_NAMES.map((n,i)=>`<option value="${i}">${n}</option>`).join('');
+function keyEdited(){ keyChanged(); save(); S.tracks.forEach(redrawTrack); scheduleRender(); }
+function setKey(v){ S.key=v; keyEdited(); }
+function setScale(v){ S.scale=v; keyEdited(); }
+let snapT=0; function setSnap(v){ S.snapStr=clamp(+v,0,100); clearTimeout(snapT); snapT=setTimeout(keyEdited,150); }
+let mrevT=0; function setMaster(k,v){ S.master[k]=+v; save(); if(k==='rev'){ clearTimeout(mrevT); mrevT=setTimeout(applyMaster,120); } else applyMaster(); }
 function toggleMetro(){ S.metro=!S.metro; if(metroGain&&!recState) metroGain.gain.value=S.metro?0.7:0; save(); }
 function updateKeyInfo(){}   /* the Studio shows the key itself (s2Chips) */
 function setTempo(b){ S.bpm=clamp(Math.round(b)||94,60,180); syncTransport(); save(); scheduleRender(); }
-function syncSettings(){ $('latAuto').checked=S.latAuto; $('ec').checked=S.ec; if(latInp){ latInp.value=S.latMs; latInp.disabled=S.latAuto; latInp.dispatchEvent(new Event('input')); } }
-let latInp=null;
 function init(){
   updateDock(); syncTransport();
   $('rsClose').onclick=closeRec;
@@ -3639,36 +3596,10 @@ function init(){
   $('fileIn').onchange=e=>{ const f=e.target.files[0]; e.target.value=''; if(f) importFile(f); };
   $('replaceTonal').checked=S.replaceTonal; $('replaceTonal').onchange=e=>{ S.replaceTonal=e.target.checked; save(); };
   $('mergeDrums').checked=S.mergeDrums; $('mergeDrums').onchange=e=>{ S.mergeDrums=e.target.checked; save(); };
-  $('playAlong').checked=S.playAlong; $('playAlong').onchange=e=>{ S.playAlong=e.target.checked; save(); };
-  $('keyRef').checked=!!S.keyRef; $('keyRef').onchange=e=>{ S.keyRef=e.target.checked; save(); };
   const showCal=()=>{ $('calNote').hidden=!( !S.calibrated && !$('recBtn').hidden && !isOpen('calHide',false) ); }; showCal(); window._showCal=showCal;
   $('calLater').onclick=()=>{ setOpen('calHide',true); showCal(); toast('You can calibrate any time under Timing & mic'); };
   $('calNow').onclick=()=>{ openRec('calib'); startRecord(true); };
   if(!micAllowedByPage() || (window.self!==window.top && !(document.permissionsPolicy||document.featurePolicy))) micBlocked();
-  // mix
-  const ks=$('key'); ks.innerHTML='<option value="auto">Auto-detect</option>'+NOTE_NAMES.map((n,i)=>`<option value="${i}">${n}</option>`).join('');
-  ks.value=S.key; ks.onchange=e=>{ S.key=e.target.value; keyChanged(); save(); S.tracks.forEach(redrawTrack); scheduleRender(); };
-  { const ss=$('snapStr'), sv=()=>{ const v=S.snapStr??100; void v; }; ss.value=S.snapStr??100; sv();
-    ss.oninput=()=>{ S.snapStr=+ss.value; sv(); clearTimeout(ss._t); ss._t=setTimeout(()=>{ keyChanged(); save(); S.tracks.forEach(redrawTrack); scheduleRender(); },150); }; }
-  $('scale').value=S.scale; $('scale').onchange=e=>{ S.scale=e.target.value; keyChanged(); save(); S.tracks.forEach(redrawTrack); scheduleRender(); };
-  const mk=$('masterKnobs');
-  knob(mk,{id:'swing',label:'Swing',min:0,max:100,val:S.swing,fmt:pct,oninput:v=>{S.swing=v;S.tracks.forEach(t=>t._dirty=true);save();scheduleRender();}});
-  knob(mk,{id:'mrev',label:'Room size',min:0,max:100,val:S.master.rev,fmt:pct,oninput:v=>{S.master.rev=v;save();clearTimeout(mk._t);mk._t=setTimeout(applyMaster,120);}});
-  knob(mk,{id:'mdrive',label:'Drive',min:0,max:100,val:S.master.drive,fmt:pct,oninput:v=>{S.master.drive=v;save();applyMaster();}});
-  knob(mk,{id:'mpunch',label:'Punch',min:0,max:100,val:S.master.punch,fmt:pct,oninput:v=>{S.master.punch=v;save();applyMaster();}});
-  knob(mk,{id:'mvol',label:'Master volume',min:0,max:100,val:S.master.vol,fmt:pct,oninput:v=>{S.master.vol=v;save();applyMaster();}});
-  // export
-  $('exportBtn').onclick=exportZip; $('shAudio').onclick=()=>prepareShare('audio'); $('shVideo').onclick=()=>prepareShare('video'); $('shNow').onclick=shareNow; $('shSave').onclick=()=>{ if(shareFile) offerFile(shareFile.name, shareFile); };
-  // timing
-  const tk=$('timingKnobs');
-  latInp=knob(tk,{id:'lat',label:'Mic delay',min:-50,max:600,val:S.latMs,fmt:v=>S.latAuto?'auto':v+' ms',oninput:v=>{S.latMs=v;save();}});
-  knob(tk,{id:'sens',label:'Sensitivity for new takes',min:0,max:100,val:S.sens,fmt:pct,oninput:v=>{S.sens=v;save();}});
-  $('latAuto').onchange=e=>{ S.latAuto=e.target.checked; save(); syncSettings(); };
-  $('ec').onchange=e=>{ S.ec=e.target.checked; save(); dropMic(); };
-  document.querySelectorAll('button.card-head[data-sec]').forEach(btn=>{ const k='sec-'+btn.dataset.sec, card=btn.closest('.card'), body=document.getElementById(btn.getAttribute('aria-controls'));
-    const set=o=>{ btn.setAttribute('aria-expanded',o); body.hidden=!o; card.classList.toggle('closed',!o); }; set(isOpen(k,false));
-    btn.onclick=()=>{ const o=btn.getAttribute('aria-expanded')!=='true'; set(o); setOpen(k,o); }; });
-  syncSettings();
   renderTracks(); updateKeyInfo();
   let rw=0; window.addEventListener('resize',()=>{ clearTimeout(rw); rw=setTimeout(()=>S.tracks.forEach(redrawTrack),150); });
   try{ matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>S.tracks.forEach(redrawTrack)); new MutationObserver(()=>S.tracks.forEach(redrawTrack)).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']}); }catch(e){}
@@ -3766,7 +3697,6 @@ const fileSafe=t=>t.replace(/[\/\\:*?"<>|]/g,'-');
 /* Producer pack: a folder you can drop into any DAW */
 async function exportZip(){
   ensureCtx(); if(!S.tracks.length){ toast('Add a part first'); return; }
-  const btn=$('exportBtn'); btn.disabled=true; btn.textContent='Preparing…';
   try{
     const sr=ctx.sampleRate, L=loopLen(), n=Math.round(L*sr), K=S.loops, len=n*K+Math.round(2.5*sr), top=fileSafe(songTitle())+'/';
     const mix=await renderMix(K,false);
@@ -3783,7 +3713,7 @@ async function exportZip(){
     files.push({name:top+'READ ME - how to import.txt',data:new TextEncoder().encode(packReadme(parts,K))});
     await offerFile(fileSafe(songTitle())+'.zip', zip(files));
   } catch(e){ toast('Export failed: '+(e&&e.message||e)); }
-  finally{ btn.disabled=false; btn.textContent='Download producer pack'; }
+  finally{}
 }
 function packReadme(parts,K){
   const Kk=currentKey(), kR=SCALE_REL[Kk.scale], kSame=(!Kk.none&&kR&&!['major','minor','pent-major','pent-minor','blues'].includes(Kk.scale)) ? ` (set your DAW's key to ${NOTE_NAMES[(Kk.tonic+kR[0])%12]} major${['harm-minor','mel-minor','phryg-dom'].includes(Kk.scale)?', the closest match; one note of this scale sits outside it':', which has the same notes'})` : '',
@@ -3823,19 +3753,16 @@ ${map}
 `:''}`;
 }
 /* ---- share your song: audio (WAV) or a vertical video, through the phone's share sheet ---- */
-let shareFile=null;
-async function prepareShare(kind){
+let shareFile=null, shareMsg='', shareCan=false;
+async function prepareShare(kind,onProg){
   ensureCtx(); if(!S.tracks.length){ toast('Add a part first'); return; }
-  const btnA=$('shAudio'), btnV=$('shVideo'); btnA.disabled=btnV.disabled=true; $('shReady').hidden=true;
   try{
     const mix=await renderMix(S.loops,true), base=fileSafe(songTitle());
     if(kind==='audio'){ shareFile=new File([wavBytes(mix,16)], base+'.wav', {type:'audio/wav'}); }
-    else { const blob=await recordVideo(mix, sec=>{ btnV.textContent='Making video… '+Math.ceil(sec)+' s'; }); const ext=blob.type.includes('mp4')?'mp4':'webm'; shareFile=new File([blob], base+'.'+ext, {type:blob.type}); }
+    else { const blob=await recordVideo(mix, sec=>{ if(onProg) onProg(sec); }); const ext=blob.type.includes('mp4')?'mp4':'webm'; shareFile=new File([blob], base+'.'+ext, {type:blob.type}); }
     const canShare=!!(navigator.canShare && navigator.canShare({files:[shareFile]}));
-    $('shNow').hidden=!canShare; $('shMsg').textContent=`Your ${kind==='audio'?'audio':'video'} is ready (${(shareFile.size/1048576).toFixed(1)} MB, ${Math.round(mix.duration)} s). `+(canShare?(kind==='video'?'Tap Share to save it to Photos or send it to Messages, CapCut, TikTok and more.':'Tap Share to send it to Messages, CapCut, TikTok and more.'):'Save it, then add it to any app.');
-    $('shReady').hidden=false; $('shReady').scrollIntoView({block:'nearest'});
+    shareCan=canShare; shareMsg=`Your ${kind==='audio'?'audio':'video'} is ready (${(shareFile.size/1048576).toFixed(1)} MB, ${Math.round(mix.duration)} s). `+(canShare?(kind==='video'?'Tap Share to save it to Photos or send it to Messages, CapCut, TikTok and more.':'Tap Share to send it to Messages, CapCut, TikTok and more.'):'Save it, then add it to any app.');
   } catch(e){ toast((kind==='video'?'Video export':'Export')+' didn’t work here: '+(e&&e.message||e)); }
-  finally{ btnA.disabled=btnV.disabled=false; btnV.textContent='Share video'; }
 }
 async function shareNow(){ if(!shareFile) return; try{ await navigator.share({files:[shareFile], title:songTitle(), text:'Made with Noodle'}); } catch(e){ if(e&&e.name!=='AbortError') toast('Sharing didn’t open. Tap Save to Files instead.'); } }
 /* real-time render of a 720x1280 clip: the parts as lanes with a moving playhead, pulsing on each beat */

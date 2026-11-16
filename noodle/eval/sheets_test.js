@@ -1,0 +1,20 @@
+// the Studio's sheets change the song directly: mix, key and snap, tempo and count-in chord, mic and timing
+const {chromium,devices}=require('playwright');
+(async()=>{ const b=await chromium.launch({args:['--autoplay-policy=no-user-gesture-required']}); const c=await b.newContext({...devices['iPhone 13'],colorScheme:'dark'}); const p=await c.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(e.message));
+  await p.goto('http://localhost:8800/noodle-s2.html?studio'); await p.waitForTimeout(900); const out={};
+  const set=(id,v,ev)=>p.evaluate(([id,v,ev])=>{ const e=$(id); if(e.type==='checkbox') e.checked=v; else e.value=v; e.dispatchEvent(new Event(ev,{bubbles:true})); },[id,v,ev]);
+  await p.evaluate(()=>{ ensureCtx(); return ctx.resume(); });
+  await p.tap('#s2Mix'); await set('s2Mv',30,'input'); await set('s2Mr',70,'input'); await set('s2Md',20,'input'); await set('s2Mp',40,'input'); await p.waitForTimeout(250);
+  out.mix=await p.evaluate(()=>({...S.master})); await p.evaluate(()=>nxClose());
+  await p.tap('#s2Key'); await set('s2K','7','change'); await set('s2Sc','lydian','change'); await set('s2Sn',40,'input'); await p.waitForTimeout(300);
+  await p.evaluate(()=>nxClose()); await p.waitForTimeout(150); out.key=await p.evaluate(()=>({key:S.key, scale:S.scale, snap:S.snapStr, chip:$('s2Key').textContent.trim()}));
+  await p.tap('#s2Key'); out.keyReopen=await p.evaluate(()=>({k:$('s2K').value, sc:$('s2Sc').value, sn:$('s2Sn').value})); await p.evaluate(()=>nxClose());
+  await p.tap('#s2Bpm'); await set('s2T',120,'change'); const arp0=await p.evaluate(()=>!!S.keyRef); await set('s2Arp',!arp0,'change');
+  out.arpFlipped=(await p.evaluate(()=>!!S.keyRef))!==arp0; await p.evaluate(()=>nxClose()); await p.waitForTimeout(150); out.tempo=await p.evaluate(()=>({bpm:S.bpm, chip:$('s2Bpm').textContent.trim()}));
+  await p.tap('#s2Metro'); out.metro=await p.evaluate(()=>S.metro); await p.waitForTimeout(100); out.metroBtn=await p.$eval('#s2Metro',e=>e.getAttribute('aria-pressed'));
+  await p.tap('#s2Back'); await p.waitForTimeout(300); await p.evaluate(()=>nxGo('more')); await p.waitForTimeout(300); const before=await p.evaluate(()=>({la:!!S.latAuto, pa:!!S.playAlong, ec:!!S.ec}));
+  await p.evaluate(()=>$('nxTiming').click()); await p.waitForTimeout(200); out.micShown=await p.evaluate(()=>({la:$('nxLa').checked, pa:$('nxPa').checked, ec:$('nxEc').checked})); out.micMatches=JSON.stringify(out.micShown)===JSON.stringify(before);
+  await set('nxLa',!before.la,'change'); await set('nxPa',!before.pa,'change'); await set('nxEc',!before.ec,'change'); await set('nxSens',80,'change');
+  const after=await p.evaluate(()=>({la:!!S.latAuto, pa:!!S.playAlong, ec:!!S.ec, sens:S.sens})); out.micFlipped=after.la!==before.la&&after.pa!==before.pa&&after.ec!==before.ec; out.sens=after.sens;
+  await p.waitForTimeout(1200); await p.reload(); await p.waitForTimeout(900); out.kept=await p.evaluate(()=>({sens:S.sens, vol:S.master.vol, key:S.key, scale:S.scale, bpm:S.bpm}));
+  console.log(JSON.stringify(out,null,1),errs); await b.close(); })();
