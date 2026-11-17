@@ -1303,6 +1303,11 @@ function slotDist(f, sl, sc, skip=-1){
   ds.sort((a,b)=>a-b); const k=Math.min(2,ds.length); let s=0; for(let i=0;i<k;i++) s+=ds[i]; return k?s/k:1e18;
 }
 function nearestSlot(f, slots, sc, own=null, skip=-1){ let best=null,bd=1e18; for(const sl of slots){ const d=slotDist(f,sl,sc, sl===own?skip:-1); if(d<bd){bd=d;best=sl;} } return best; }
+/* A "kick" 30 dB quieter than the take's other kicks is a breath, a lip sound or the room, not a kick. Kicks only: hi-hats really are that much quieter than kicks
+   (the owner's phone takes: kicks -3 to -20 dB, hats -31 to -41, faint false kicks -42 to -56). On the AVP freestyles this removes no real hit. */
+const FAINT_KICK_DB=30;
+function dropFaintKicks(ons){ const isKick=o=>{ const sl=slotOf(o.cls); return (sl?sl.sound:o.cls)==='kick'; }, k=ons.filter(isKick).map(o=>o.db).sort((a,b)=>a-b); if(k.length<3) return;
+  const top=k[Math.floor((k.length-1)*0.75)]; for(let i=ons.length-1;i>=0;i--) if(isKick(ons[i]) && ons[i].db<top-FAINT_KICK_DB) ons.splice(i,1); }
 function classifyKit(ons){
   const T=taughtSlots();
   if(T.length>=2 && ons.every(o=>o.fv)){ const sc=featScale(); ons.forEach(o=>{ o.cls=nearestSlot(o.fv,T,sc).id; }); return; }
@@ -1585,7 +1590,7 @@ function analyzeTake(x, sr, inst, sens, notch){
   const kind=INST[inst].kind;
   const ons=detectOnsets(y, sr, sens, kind==='pitched'?0.09:0.035);
   let notes=null;
-  if(kind==='drums') classifyKit(ons);
+  if(kind==='drums'){ classifyKit(ons); dropFaintKicks(ons); }
   if(kind==='pitched'){ notes=trackNotes(yHp, sr, ons, sens);
     // Fewer notes: a quick re-attack on the same pitch ("la-la" on one note) becomes one held note
     if(NT.mergeSame>0 && notes.length>1){ const keep=[notes[0]]; for(let i=1;i<notes.length;i++){ const a=keep[keep.length-1], n=notes[i]; if(Math.abs(n.p-a.p)<0.5 && n.t0-a.t1<NT.mergeSame){ a.t1=n.t1; a.db=Math.max(a.db,n.db); } else keep.push(n); }

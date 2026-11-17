@@ -1,0 +1,8 @@
+// AVP freestyles through today's Noodle: every hit found, with its time, today's label, loudness and the full sound fingerprint (for trying other ways to sort them)
+const {chromium}=require('playwright'); const fs=require('fs'); const D='data/avp/AVP_Dataset';
+(async()=>{ const b=await chromium.launch(); const p=await b.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(e.message)); await p.goto('http://localhost:8800/noodle-s2.html'); await p.waitForTimeout(800); const out=[];
+  for(const mode of ['Fixed','Personal']) for(const pd of fs.readdirSync(`${D}/${mode}`).filter(x=>/^Participant_/.test(x))){ const k=+pd.split('_')[1], dir=`${D}/${mode}/${pd}`, wav=`${dir}/P${k}_Improvisation_${mode}.wav`; if(!fs.existsSync(wav)) continue;
+    const r=await p.evaluate(async(u)=>{ const ab=await new OfflineAudioContext(1,1,44100).decodeAudioData(await (await fetch('/'+u)).arrayBuffer()); const x=mono(ab), sr=ab.sampleRate; S.kit=defaultKit(); scaleCache=null; const ons=analyzeTake(x,sr,'kit',55,false).onsets;
+      return ons.map(o=>({t:+o.t.toFixed(4), cls:o.cls, db:+o.db.toFixed(1), low:+o.low.toFixed(3), cen:Math.round(o.cen), dur:+o.dur.toFixed(4), fv:o.fv?o.fv.map(v=>+v.toFixed(3)):null})); },wav);
+    out.push({mode,k,truth:fs.readFileSync(wav.replace('.wav','.csv'),'utf8').trim().split('\n').map(l=>l.split(',')).filter(x=>x.length>=2).map(x=>[+x[0],x[1].trim()]),ons:r}); process.stdout.write('.'); }
+  fs.writeFileSync('results/avp_feat.json',JSON.stringify(out)); console.log('\n',out.length,'takes',out.reduce((a,r)=>a+r.ons.length,0),'hits; errors',errs.slice(0,3)); await b.close(); })();
