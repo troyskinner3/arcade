@@ -6,7 +6,7 @@ const {chromium,devices}=require('playwright');
     await p.goto('http://localhost:8800/noodle-s2.html'); await p.waitForTimeout(900);
     await p.evaluate(async()=>{ ensureCtx(); window.__ctx=ctx; await ctx.resume(); S.title='My song'; S.tracks.push(mkTrack('lead',{id:S.nextId++,notes:[{s:0,l:4,p:60,v:.8,x:true}]})); save(); flushSave(); await projSaveCurrent(); });
     await p.evaluate(()=>{ nxVoiceCheck(); }); await p.waitForTimeout(300); if(K===0.75) await p.screenshot({path:'results/vc0.png'}); await p.tap('#vcGo');
-    for(let i=0;i<2;i++){ await p.waitForFunction(()=>!!recState,null,{timeout:30000}); if(K===0.75&&i===0) await p.screenshot({path:'results/vc1.png'});
+    for(let i=0;i<2;i++){ await p.waitForSelector('#vcRecNow',{timeout:30000}); await p.waitForTimeout(500); await p.tap('#vcRecNow'); await p.waitForFunction(()=>!!recState,null,{timeout:30000}); if(K===0.75&&i===0) await p.screenshot({path:'results/vc1.png'});
       await p.evaluate((K)=>{ const r=recState, sd=60/S.bpm/4, g=S.tracks.find(t=>t.guide).notes, p0=g[0].p; const cx=window.__ctx, dst=window.__dst;
         g.forEach(n=>{ const midi=(p0-12)+K*(n.p-p0), hz=440*Math.pow(2,(midi-69)/12), t=r.start+n.s*sd, du=n.l*sd; const o=cx.createOscillator(), a=cx.createGain(); o.type='sawtooth'; o.frequency.value=hz; a.gain.value=0; a.gain.setTargetAtTime(0.15,t,0.01); a.gain.setTargetAtTime(0,t+du-0.06,0.012); o.connect(a); a.connect(dst); o.start(t); o.stop(t+du+0.1); }); },K);
       await p.waitForFunction(()=>!recState,null,{timeout:30000}); await p.waitForTimeout(600); }

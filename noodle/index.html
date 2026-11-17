@@ -388,6 +388,8 @@ input[type=range]::-moz-range-thumb{width:10px;height:18px;border-radius:1px;bac
 .nx-ob .brand2{font:700 15px var(--f-display);color:var(--muted)}
 .nx-chk{display:flex;gap:12px;align-items:center;font:600 16px var(--f-body);padding:6px 0} .nx-chk input{width:24px;height:24px;flex:none;accent-color:var(--lcd-ink)}
 .nx-ob .acts{flex:none;display:flex;flex-direction:column;gap:8px;padding-bottom:16px}
+.nx-roll{display:block;width:100%;height:156px;border-radius:10px;overflow:hidden;background:var(--cell)}
+.nx-ob .nx-chk{font:400 14px var(--f-body);color:var(--muted);align-items:flex-start}
 .nx-bar{height:8px;border-radius:4px;background:var(--line);overflow:hidden} .nx-bar i{display:block;height:100%;width:0;background:var(--lcd-ink)}
 .nx-ghost{width:100%;height:48px;border-radius:10px;border:1px solid var(--line);background:none;color:inherit;font:600 16px var(--f-body)}
 .nx-primary:disabled{opacity:.4}
@@ -724,12 +726,30 @@ function nxEmailSheet(){ let em=''; try{ em=localStorage.getItem('noodle.email')
   if(em) $('nxEmOff').onclick=async()=>{ const ok=await emailRemove(em); if(ok){ try{ localStorage.removeItem('noodle.email'); }catch(e){} nxClose(); nxMoreSync(); toast('You’re off the list.'); } else toast('That didn’t go through. Try again in a moment.'); }; }
 /* Voice check: Noodle plays a short tune, you hum it back, twice. From how wide you sing the jumps it learns your interval profile (S.sq),
    which decides whether your takes get the whole-line reading. If you share takes, these two are sent like any other, with the tune they answer. */
-const NX_TUNES=['scale-hum','ode-hum'];   /* the first-launch voice check */
-const NX_TITLES={scale:'Up and down the scale',twinkle:'Twinkle, Twinkle',mary:'Mary Had a Little Lamb',ode:'Ode to Joy',jingle:'Jingle Bells',frere:'Frère Jacques',birthday:'Happy Birthday',birthday2:'Happy Birthday, the ending',long:'One long note',
+const NX_TUNES=['steps-hum','ode-hum'];   /* the first-launch voice check */
+const NX_TITLES={steps:'Up and back, twice',scale:'Up and down the scale',twinkle:'Twinkle, Twinkle',mary:'Mary Had a Little Lamb',ode:'Ode to Joy',jingle:'Jingle Bells',frere:'Frère Jacques',birthday:'Happy Birthday',birthday2:'Happy Birthday, the ending',long:'One long note',
   row:'Row, Row, Row Your Boat',london:'London Bridge',yankee:'Yankee Doodle',saints:'When the Saints',farm:'Old MacDonald',buns:'Hot Cross Buns',joy:'Joy to the World',susanna:'Oh! Susanna',taps:'Taps',kumbaya:'Kumbaya',michael:'Michael, Row the Boat Ashore',
   arpeggio:'Up and down a chord',jumps:'Big jumps',beat:'A drum beat',each:'Kick, snare, hat'};
 const nxTune=id=>{ const g=GUIDED.find(x=>x[0]===id)||[id,'','']; return {title:NX_TITLES[g[1]]||g[1], how:g[2]||'', kit:g[3]==='kit'}; };
 const nxTuneDone=id=>{ guidedDone.add(id); try{ localStorage.setItem('noodle.guided',JSON.stringify([...guidedDone])); }catch(e){} };
+/* The tune to sing back, drawn as a piano roll: keys down the side, one bar per note, a playhead that moves while it plays and while you record.
+   It shows the shape and timing to aim for. Your own take is never drawn over it: Noodle is learning how you sing, not marking you. */
+function nxRoll(cv, id){ const g=GUIDED.find(x=>x[0]===id)||[], kit=g[3]==='kit', ev=[]; const DR=['hat','snare','kick'];
+  if(kit) (G_DRUM[g[1]]||[]).forEach(([st,d])=>ev.push({s:st,l:1.4,r:DR.indexOf(d)})); else { let t=0; (G_MEL[g[1]]||[]).forEach(([pp,l])=>{ if(pp!=null) ev.push({s:t,l,p:pp}); t+=l; }); }
+  const N=64, hi=kit?0:Math.max(...ev.map(e=>e.p))+1, lo=kit?0:Math.min(...ev.map(e=>e.p))-1, rows=kit?3:hi-lo+1, BLACK=[1,3,6,8,10];
+  const draw=frac=>{ const dpr=window.devicePixelRatio||1, W=cv.clientWidth||300, H=cv.clientHeight||150; if(cv.width!==Math.round(W*dpr)||cv.height!==Math.round(H*dpr)){ cv.width=Math.round(W*dpr); cv.height=Math.round(H*dpr); }
+    const c=cv.getContext('2d'), cs=getComputedStyle(cv), v=n=>cs.getPropertyValue(n).trim(); c.setTransform(dpr,0,0,dpr,0,0); c.clearRect(0,0,W,H);
+    const kw=kit?46:22, rh=H/rows, sw=(W-kw)/N, amber=v('--lcd-ink')||'#f1c75b';
+    for(let r=0;r<rows;r++){ const blk=!kit&&BLACK.includes(((hi-r)%12+12)%12); c.fillStyle=blk?v('--beat'):v('--cell'); c.fillRect(kw,r*rh,W-kw,rh); c.fillStyle=kit?v('--panel'):blk?'#15171c':'#f3f4f6'; c.fillRect(0,r*rh,kw-2,rh-(kit||blk?0:1));
+      if(kit){ c.fillStyle=v('--muted'); c.font='600 11px '+(v('--f-mono')||'monospace'); c.textBaseline='middle'; c.fillText(['Hat','Snare','Kick'][r],6,r*rh+rh/2); } }
+    for(let b=0;b<=N;b+=4){ c.fillStyle=b%16===0?v('--barline'):v('--line'); c.globalAlpha=b%16===0?0.9:0.5; c.fillRect(kw+b*sw-(b===N?1:0),0,1,H); } c.globalAlpha=1;
+    const ph=frac>=0?clamp(frac,0,1)*N:-1;
+    ev.forEach(e=>{ const y=(kit?e.r:hi-e.p)*rh, x=kw+e.s*sw, w=Math.max(3,e.l*sw-1.5), on=ph>=e.s&&ph<e.s+Math.max(e.l,2); c.fillStyle=amber; c.globalAlpha=on?1:ph>e.s?0.45:0.8; const hh=Math.max(4,Math.min(rh-2,14)), yy=y+(rh-hh)/2; c.beginPath(); if(c.roundRect) c.roundRect(x,yy,w,hh,Math.min(3,hh/2)); else c.rect(x,yy,w,hh); c.fill(); }); c.globalAlpha=1;
+    if(ph>=0){ c.fillStyle=v('--ink'); c.fillRect(kw+ph*sw-1,0,2,H); } };
+  draw(-1); return draw; }
+let guideAlong=false;   /* the tune plays quietly under the take (hum-along screens, headphones) */
+const alongPref=()=>{ try{ const v=localStorage.getItem('noodle.along'); return v==null?null:v==='1'; }catch(e){ return null; } };
+async function headphonesLikely(){ try{ const ds=await navigator.mediaDevices.enumerateDevices(); return ds.some(d=>/airpod|headphone|headset|earbud|earphone|buds|bluetooth|hands-?free/i.test(d.label||'')); }catch(e){ return false; } }
 /* "Teach Noodle your voice": three tunes at a time, picking up where you left off (all 50, then round again) */
 async function nxTrain(){ for(;;){ let next=GUIDED.map(g=>g[0]).filter(id=>!guidedDone.has(id)); if(!next.length){ next=GUIDED.map(g=>g[0]); }
     const r=await nxVoiceCheck(null,{tunes:next.slice(0,3), train:true}); if(r!=='more') break; } }
@@ -744,13 +764,20 @@ async function nxVoiceCheck(done, opt={}){ const TUNES=opt.tunes||NX_TUNES; let 
   ensureCtx(); if(micOff){ await end(); toast('The microphone isn’t available here.'); return 'done'; }
   for(let i=0;i<TUNES.length && !stop;i++){ let tries=0, good=false; const tu=nxTune(TUNES[i]);
     while(!good && !stop && tries<2){ tries++; await guidedSetup(TUNES[i]); const take=S.tracks.find(t=>!t.guide);
-      I.innerHTML=`<p class="sub">Tune ${i+1} of ${TUNES.length} · ${nxEsc(tu.title)}</p><h1 id="vcH">Listen</h1><div class="nx-bar"><i id="vcP"></i></div><p class="sub" id="vcS">Just listen this time.</p><p id="vcHow" style="font-weight:600">Then: ${nxEsc(tu.how)}</p>`; A.innerHTML=`<button class="nx-ghost" id="vcStop">Stop</button>`; $('vcStop').onclick=()=>{ stop=true; };
-      await renderDirty(); const L=loopLen(); startAll(ctx.currentTime+0.15,0); playing=true; const t1=performance.now();
-      while(performance.now()-t1<(L+0.3)*1000 && !stop){ $('vcP').style.width=Math.min(100,(performance.now()-t1)/(L*10))+'%'; await wait(60); }
-      stopAll(); playing=false; if(stop) break;
-      $('vcH').textContent='Your turn'; $('vcS').textContent='After four clicks.'; $('vcHow').textContent=tu.how; $('vcP').style.width='0%';
-      await recordInto(take.id); if(!recState){ await end(); toast('The microphone isn’t available here.'); return; }
-      while((recState||rs.mode) && !stop){ const r=recState; if(r&&ctx){ $('vcS').textContent=$('recLabel').textContent; $('vcP').style.width=clamp((ctx.currentTime-r.start)/(r.end-r.start)*100,0,100)+'%'; } else $('vcS').textContent='Listening to your take…'; await wait(80); }
+      I.innerHTML=`<p class="sub">Tune ${i+1} of ${TUNES.length} · ${nxEsc(tu.title)}</p><h1 id="vcH">Listen</h1><canvas class="nx-roll" id="vcRoll" aria-label="The tune as a piano roll"></canvas><p class="sub" id="vcS">Just listen.</p><p id="vcHow" style="font-weight:600">Then: ${nxEsc(tu.how)}</p><label class="nx-chk"><input type="checkbox" id="vcAlong"> <span>Play the tune while I record (with headphones on)</span></label>`;
+      { const pref=alongPref(), box=$('vcAlong'); box.checked=!!pref; if(pref==null) headphonesLikely().then(h=>{ if(h&&$('vcAlong')===box&&alongPref()==null) box.checked=true; }); box.onchange=()=>{ try{ localStorage.setItem('noodle.along',box.checked?'1':'0'); }catch(e){} }; }
+      const roll=nxRoll($('vcRoll'),TUNES[i]), pick=acts=>new Promise(res=>{ A.innerHTML=acts.map(([id,label,cls])=>`<button class="${cls}" id="${id}">${label}</button>`).join(''); acts.forEach(([id],k)=>{ $(id).onclick=()=>res(k); }); });
+      const listen=async()=>{ let skip=false; $('vcH').textContent='Listen'; $('vcS').textContent='Just listen.'; A.innerHTML=`<button class="nx-primary" id="vcRecNow">Record now</button><button class="nx-ghost" id="vcStop">Stop</button>`; $('vcStop').onclick=()=>{ stop=true; }; $('vcRecNow').onclick=()=>{ skip=true; };
+        await renderDirty(); const L=loopLen(), tS=ctx.currentTime+0.15; startAll(tS,0); playing=true;
+        while(ctx.currentTime<tS+L+0.2 && !stop && !skip){ roll((ctx.currentTime-tS)/L); await wait(40); }
+        stopAll(); playing=false; roll(-1); return skip; };
+      let go=await listen();
+      while(!go && !stop){ $('vcH').textContent='Your turn'; $('vcS').textContent='Listen as many times as you like.'; $('vcHow').textContent=tu.how;
+        const k=await pick([['vcRec','Record','nx-primary'],['vcAgain','Listen again','nx-ghost'],['vcStop','Stop','nx-ghost']]); if(k===0) go=true; else if(k===1) go=await listen(); else stop=true; }
+      if(stop) break;
+      $('vcH').textContent='Your turn'; $('vcS').textContent='After four clicks.'; $('vcHow').textContent=tu.how; A.innerHTML=`<button class="nx-ghost" id="vcStop">Stop</button>`; $('vcStop').onclick=()=>{ stop=true; }; $('vcAlong').disabled=true;
+      guideAlong=$('vcAlong').checked; try{ await recordInto(take.id); } finally{ guideAlong=false; } if(!recState){ await end(); toast('The microphone isn’t available here.'); return; }
+      while((recState||rs.mode) && !stop){ const r=recState; if(r&&ctx){ $('vcS').textContent=$('recLabel').textContent; roll(ctx.currentTime<r.start?-1:(ctx.currentTime-r.start)/(r.end-r.start)); } else { $('vcS').textContent='Listening to your take…'; roll(-1); } await wait(40); }
       if(stop) break; if(playing){ stopAll(); playing=false; } takeBar=null;
       const tk=S.tracks.find(t=>!t.guide); good=!!(tk&&(tu.kit ? (tk.hits||[]).length>=4 : /^long-/.test(TUNES[i]) ? (tk.notes||[]).length>=1 : (tk.notes||[]).length>=5));
       if(good){ if(!drop && tk.notes && !tu.kit){ learnSqueeze(tk); persist(); } nxTuneDone(TUNES[i]); learned++; }   /* when sharing is on, sending the take already counted it */
@@ -2150,6 +2177,7 @@ async function startRecord(calib=false, teach=null){
   // before you sing, and the count-in gives a clean stretch to measure this take's real delay
   const preroll = along && !calib && !teach && S.inst==='vox', SL=loopLen(), poff=(((tgp&&tgp.off?tgp.off:0)*stepDur()-bar)%SL+SL)%SL;   /* the bar before where this take starts */
   if(along) S.tracks.forEach(tr=>{ if(tr._buf && !tr.guide){ ensureNodes(tr); tr._src=preroll?startSrc(tr._buf,tr._g,when,poff):startSrc(tr._buf,tr._g,when+bar,P); } });
+  if(guideAlong && !calib && !teach) S.tracks.forEach(tr=>{ if(tr._buf && tr.guide){ ensureNodes(tr); tr._src=startSrc(tr._buf,tr._g,when+bar,P); } });   /* hum-along screens: the tune under your take */
   if(!metroGain){ metroGain=ctx.createGain(); metroGain.connect(ctx.destination); }
   metroGain.gain.value=0.75; metroSrc=startSrc(metroBuf,metroGain,when,0); gateOpen(when);
   let arp=false; if(S.keyRef && !calib && !teach && INST[S.inst].kind==='pitched'){ const K=keyKnown(); if(K){ playKeyArp(K, when, bar); arp=true; } }
@@ -2528,6 +2556,7 @@ function dropSync(force){ if(!drop) return; clearTimeout(dropTimer);
   S.tracks.forEach(tr=>{ if(!tr.sid) return; const now=JSON.stringify(dropState(tr)); if(now===tr._dropSent && !force) return; tr._dropSent=now; dropPost({sid:tr.sid, meta:dropMeta(tr)}); }); }
 /* ---- Guided takes (only while sharing is on): a 4-bar guide to listen to, then you record the same thing ---- */
 const G_MEL={   // [midi, steps] (16 steps a bar, 4 bars)
+  steps:   [[60,4],[62,4],[64,4],[65,4],[67,4],[65,4],[64,4],[62,4],[60,4],[62,4],[64,4],[65,4],[64,4],[62,4],[60,8]],   /* the first tune anyone meets: next-door notes only, five notes wide, the same shape twice (and enough rising steps for the voice profile) */
   scale:   [[60,4],[62,4],[64,4],[65,4],[67,4],[69,4],[71,4],[72,4],[71,4],[69,4],[67,4],[65,4],[64,4],[62,4],[60,8]],
   twinkle: [[62,4],[62,4],[69,4],[69,4],[71,4],[71,4],[69,8],[67,4],[67,4],[66,4],[66,4],[64,4],[64,4],[62,8]],
   mary:    [[64,4],[62,4],[60,4],[62,4],[64,4],[64,4],[64,8],[62,4],[62,4],[62,8],[64,4],[67,4],[67,8]],
@@ -2556,6 +2585,7 @@ const G_DRUM={
   each: [[0,'kick'],[4,'kick'],[8,'kick'],[12,'kick'],[16,'snare'],[20,'snare'],[24,'snare'],[28,'snare'],[32,'hat'],[36,'hat'],[40,'hat'],[44,'hat'],[48,'kick'],[52,'snare'],[56,'hat'],[60,'hat']],
 };
 const GUIDED=[
+  ['steps-hum','steps','Hum it: “mm”'],
   ['scale-hum','scale','Hum it: “mm”'], ['scale-la','scale','Sing it on “la”'],
   ['twinkle-hum','twinkle','Hum it: “mm”'], ['twinkle-words','twinkle','Sing the words (Twinkle twinkle little star…)'], ['twinkle-whistle','twinkle','Whistle it'],
   ['twinkle-da','twinkle','Sing “da” on every note'], ['twinkle-soft','twinkle','Sing it quietly and breathily'], ['twinkle-scoops','twinkle','Slide up into each note'],
