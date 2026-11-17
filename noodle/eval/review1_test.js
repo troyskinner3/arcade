@@ -1,5 +1,5 @@
 // Nov 17 phone review: sheets close with X and a swipe down; scrolling during playback is left alone; the take message sits above the controls and any tap removes it;
-// a take of silence adds nothing; a thump at the stop tap adds no hit; playback after a take starts at the take
+// a take of silence adds nothing; a thump at the stop tap adds no hit; playback after a take starts at the take; the metronome leaking into the mic adds no hits
 const {chromium,devices}=require('playwright');
 (async()=>{ const b=await chromium.launch({args:['--use-fake-ui-for-media-stream','--autoplay-policy=no-user-gesture-required']}); const c=await b.newContext({...devices['iPhone 13'],permissions:['microphone'],colorScheme:'dark'}); const p=await c.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(e.message));
   await p.addInitScript(()=>{ navigator.mediaDevices.getUserMedia=async()=>{ const cx=window.__ctx, dst=cx.createMediaStreamDestination(); window.__dst=dst;
@@ -16,6 +16,7 @@ const {chromium,devices}=require('playwright');
   const rec=async(inst,perform,stopAfterBars)=>{ await p.tap('#s2RecB'); if(inst) await p.tap(`#nxSheet [data-k="${inst}"]`); await p.waitForFunction(()=>!!recState,null,{timeout:10000});
     const w=await p.evaluate(([perform,bars])=>{ const r=recState, cx=window.__ctx, dst=window.__dst, bar=240/S.bpm, hit=(t,amp,lowpass)=>{ const n=cx.createBufferSource(), buf=cx.createBuffer(1,Math.round(cx.sampleRate*0.12),cx.sampleRate), d=buf.getChannelData(0); let y=0; for(let i=0;i<d.length;i++){ const v=(Math.random()*2-1)*Math.exp(-i/d.length*5); y=lowpass?y+0.05*(v-y):v; d[i]=(lowpass?y*4:v)*amp; } n.buffer=buf; n.connect(dst); n.start(t); };
         if(perform==='hits') for(let i=0;i<4;i++) hit(r.start+i*bar/4+0.02,0.5,false);
+        if(window.__leak){ const beat=60/S.bpm, lb=cx.createBuffer(1,Math.round(cx.sampleRate*beat),cx.sampleRate), ld=lb.getChannelData(0); for(let i=0;i<0.012*cx.sampleRate;i++) ld[i]=(Math.random()*2-1)*0.02*Math.exp(-i/(0.003*cx.sampleRate)); const m=cx.createBufferSource(); m.buffer=lb; m.loop=true; m.connect(dst); m.start(r.countStart+0.06); window.__leakSrc=m; }   /* the click from the phone speaker reaching the mic 60 ms late, as on the owner's phone */
         window.__thump=(t)=>hit(t,0.6,true); return (r.start-cx.currentTime)+bar*bars; },[perform,stopAfterBars]); await p.waitForTimeout(w*1000); };
   const stop=async(thump)=>{ if(thump) await p.evaluate(()=>window.__thump(window.__ctx.currentTime+0.005)); await p.tap('#s2RecB'); await p.waitForFunction(()=>!recState&&!$('s2').classList.contains('recording'),null,{timeout:25000}); await p.waitForTimeout(900); };
   // 1. silence
@@ -30,6 +31,11 @@ const {chromium,devices}=require('playwright');
   await rec(null,'hits',1.5); await stop(false); await p.waitForTimeout(300); out.playFrom=await p.evaluate(()=>({playing, bar:+(s2.cur+1).toFixed(1), off:S.tracks.filter(hasContent).map(t=>(t.off||0)/16)}));
   // 4. scrolling during playback is left alone
   out.scroll=await p.evaluate(async()=>{ if(!playing) await togglePlay(); S.bars=Math.max(S.bars,8); const tl=$('s2Tl'); await new Promise(r=>setTimeout(r,300)); tl.dispatchEvent(new WheelEvent('wheel',{bubbles:true,deltaX:40})); tl.scrollLeft=900; const a=tl.scrollLeft; await new Promise(r=>setTimeout(r,900)); const b=tl.scrollLeft; await togglePlay(); await new Promise(r=>setTimeout(r,100)); await togglePlay(); await new Promise(r=>setTimeout(r,400)); const c=tl.scrollLeft; await togglePlay(); return {setTo:a, afterAWhile:b, followsAgainOnNextPlay:c!==b}; });
+  // 5. the metronome leaking into the mic: a silent take adds nothing, and a take with four hits keeps just the four
+  await p.evaluate(()=>{ window.__leak=true; }); const before=await p.evaluate(()=>S.tracks.filter(hasContent).length);
+  await rec(null,'none',2); await stop(false); await p.evaluate(()=>{ try{ window.__leakSrc.stop(); }catch(e){} }); out.leakSilent={added:await p.evaluate(()=>S.tracks.filter(hasContent).length)-before, toast:await p.$eval('#toast',e=>e.textContent)};
+  await p.evaluate(()=>{ S.tracks=[]; s2.armId=null; s2.cur=0; playFrom=0; save(); renderTracks(); }); await rec('kit','hits',2); await stop(false); await p.evaluate(()=>{ try{ window.__leakSrc.stop(); }catch(e){} window.__leak=false; });
+  out.leakHits=await p.evaluate(()=>{ const t=S.tracks.find(hasContent); return t?{n:t.hits.length, steps:t.hits.map(h=>h.s).join(',')}:null; }); out.leakToast=await p.$eval('#toast',e=>e.textContent); if(await p.evaluate(()=>playing)) await p.tap('#s2Play'); if(await p.evaluate(()=>!$('s2Take').hidden)) await p.tap('#s2TkOk');
   out.header=await p.evaluate(()=>{ const th=document.querySelector('.s2-th'), nm=document.querySelector('.s2-nm'); return {more:!!nm.querySelector('.mo'), line:getComputedStyle(th).boxShadow!=='none', nameBg:getComputedStyle(nm).backgroundColor}; });
   await p.screenshot({path:'results/r1_studio.png'}); await p.tap('.s2-nm'); await p.waitForTimeout(200); await p.screenshot({path:'results/r1_sheet.png'});
   console.log(JSON.stringify(out,null,1),errs); await b.close(); })();

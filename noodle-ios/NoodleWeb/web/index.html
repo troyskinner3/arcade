@@ -2280,11 +2280,11 @@ async function finishRecord(){
   bleedHint=false; if(r.inst==='vox' && leak>0){ const h=biquad(x,'hp',150,0.707,sr); let q=0; for(let i=0;i<h.length;i++) q+=h[i]*h[i]; const voice=Math.sqrt(q/Math.max(1,h.length)); bleedHint = voice>0 && leak/voice>0.15; }
   if(r.calib){ finishCalib(x,sr,pre); showReview(); return; }
   if(r.teach){ finishTeach(x,sr,r.teach); if(!teachQueue) showReview(); return; }
-  const nf=countInFloor(r);
+  const nf=countInFloor(r); try{ const ck=countInClick(r,sr,pre); if(ck) x.click=ck; }catch(e){}
   if(takeIsSilence(x,sr,nf)){ lastNoise=null; toast('Nothing recorded: Noodle only heard the room.'); flushSave(); if(takeMode()) afterTake(); else showReview(); return; }
   const fd=frameDbs(x,sr), top=fd.length?fd[Math.floor((fd.length-1)*0.99)]:null; lastNoise = nf!=null&&top!=null ? {floor:+nf.toFixed(1), top:+top.toFixed(1)} : null;
   if(lastNoise && lastNoise.top-lastNoise.floor<NOISY_DB && INST[r.inst].kind==='pitched'){   /* noisy: clean the take before reading notes from it */
-    try{ x=denoiseTake(x, sr, assemble(r.chunks, r.countStart+r.lat+0.05, r.start+r.lat-0.05, sr)); lastNoise.den=1; }catch(e){} }
+    try{ const ck=x.click; x=denoiseTake(x, sr, assemble(r.chunks, r.countStart+r.lat+0.05, r.start+r.lat-0.05, sr)); if(ck) x.click=ck; lastNoise.den=1; }catch(e){} }
   await addTake(x, sr, r.inst, {align:pre, notch:true, live:true});
   if(lastNoise){ const loud=lastNoise.top-lastNoise.floor; if(loud>=NOISY_DB && INST[r.inst].kind==='pitched'){ S.voxTop=+(S.voxTop==null?lastNoise.top:0.7*S.voxTop+0.3*lastNoise.top).toFixed(1); save(); }   /* your usual level, for the count-in check */
     if(loud<NOISY_DB) toast((lastMsg?lastMsg+' ':'')+(lastNoise.den?'Noisy here, so Noodle cleaned it up. Holding the phone closer gives cleaner notes.':'Noisy here: hold the phone closer and retake for cleaner notes.'),6000); }
@@ -2354,15 +2354,25 @@ function finishCalib(x,sr,pre){
   S.latAuto=false; S.calibrated=true; S.latMs=clamp(Math.round(md*1000),-50,600); save();
   toast('Mic delay set to '+S.latMs+' ms from '+dev.length+' claps');
 }
+const CLICK_TOL=0.006, CLICK_DB=8;
+/* The click as the mic hears it, measured on the count-in (four clicks, nothing else expected): where in the beat it lands and how loud. Null when it can't be heard (headphones) or the count-in isn't clean. */
+function countInClick(r, sr, pre){ if(r.calib||r.teach||r.preroll||r.arp) return null; const beat=(r.start-r.countStart)/4;
+  let y=biquad(assemble(r.chunks, r.countStart+r.lat-pre, r.start+r.lat-pre, sr),'hp',45,0.707,sr); for(const f of [1500,2000]){ y=biquad(y,'notch',f,4,sr); y=biquad(y,'notch',f,4,sr); }
+  const ons=detectOnsets(y, sr, S.sens??55, 0.035); let best=[];
+  for(const o of ons){ const ph=(((o.t-pre)%beat)+beat)%beat, m=ons.filter(q=>{ const d=(((q.t-pre-ph)%beat)+beat*1.5)%beat-beat/2; return Math.abs(d)<0.004; }); if(m.length>best.length) best=m; }
+  if(best.length<3) return null; const ph=median(best.map(o=>(((o.t-pre)%beat)+beat)%beat)); if(ph>0.25) return null;   /* a leak arrives within a quarter second of the beat */
+  return {ph, db:median(best.map(o=>o.db)), n:best.length}; }
 /* Metronome bleed: when the click plays through the speaker, the mic hears it with machine-exact timing on every beat.
    Find the phase where many onsets sit within a few ms of a perfect beat comb, and drop those (they're quieter than your hits). */
-function removeClickBleed(ons, pre){
+function removeClickBleed(ons, pre, dur, click){
+  if(click){   /* the count-in told us exactly when the click reaches the mic and how loud: drop what sits on that moment at about that loudness (your own hits on the beat are far louder) */
+    const beat=60/S.bpm, keep=ons.filter(o=>{ const d=(((o.t-pre-click.ph)%beat)+beat*1.5)%beat-beat/2; return !(Math.abs(d)<CLICK_TOL && o.db<=click.db+CLICK_DB); }); return {ons:keep, removed:ons.length-keep.length}; }
   if(ons.length<4) return {ons, removed:0};
   const beat=60/S.bpm; let best=null;
   for(const o of ons){ const ph=(((o.t-pre)%beat)+beat)%beat;
     const m=ons.filter(q=>{ const d=(((q.t-pre-ph)%beat)+beat*1.5)%beat-beat/2; return Math.abs(d)<0.0025; });
     if(!best||m.length>best.length) best=m; }
-  const beats=Math.round(loopLen()/beat);
+  const beats=Math.round((dur||loopLen())/beat);   /* beats in this take (it used to count the whole song, so in a long song the leak was never recognised) */
   if(!best || best.length<Math.max(4,beats*0.75)) return {ons, removed:0};
   const loud=median(ons.map(o=>o.db)), bleedDb=median(best.map(o=>o.db));
   const others=ons.filter(o=>!best.includes(o));
@@ -2651,7 +2661,8 @@ async function addTake0(x, sr, inst, opt){
       const bpm=detectTempo(times,w);
       if(bpm){ S.bpm=bpm; const span=(Math.max(...times)-an.align)/stepDur(); const tg0=S.tracks.find(t=>t.id===S.target); detBars=(tg0&&tg0.lenSet)?tg0.len:([1,2,4,8,16].find(b=>b*16>=span+1)||16); S.bars=Math.max(S.bars,detBars); msg=` Tempo set to ${bpm} BPM, ${detBars} bar${detBars>1?'s':''}.`; }
     }
-    if(opt.live){ const cb=removeClickBleed(an.onsets, an.align); if(cb.removed){ an.onsets=cb.ons; an.bleed=cb.removed; if(kind!=='pitched'&&an.onsets[0]) first=an.onsets[0].t; } }
+    if(opt.live){ const cb=removeClickBleed(an.onsets, an.align, x.length/sr, x.click); if(cb.removed){ an.onsets=cb.ons; an.bleed=cb.removed; if(kind!=='pitched'&&an.onsets[0]) first=an.onsets[0].t; } }
+    if(kind!=='pitched' && !an.onsets.length){ toast('Nothing recorded: Noodle only heard the metronome click.'); return; }
     if(opt.first) guessFix=null;   // starting over: re-learn the mic delay
     const unCal = opt.live && S.latAuto && !S.calibrated;
     const preFit = an.align + (unCal && guessFix!=null && kind!=='pitched' ? guessFix : 0);
