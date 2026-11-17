@@ -271,6 +271,7 @@ input[type=range]::-moz-range-thumb{width:10px;height:18px;border-radius:1px;bac
 .nx-sheet h2{font:700 17px/1.25 var(--f-display);margin:8px 0 10px;overflow-wrap:anywhere;text-transform:none;letter-spacing:0}
 .nx-grab{width:40px;height:4px;border-radius:2px;background:var(--line);margin:0 auto 6px}
 .nx-sheet{position:relative} .nx-sheet.drag{transition:none} .nx-sheet h2{padding-right:44px}
+.s2-sheet .s2-recb{opacity:.35;pointer-events:none} .s2-sheet .nx-sheet{padding-bottom:14px}
 .nx-x{position:absolute;top:10px;right:max(10px,env(safe-area-inset-right,0px));width:36px;height:36px;border-radius:50%;border:0;background:var(--cell);color:var(--ink);display:grid;place-items:center;z-index:1}
 .nx-x svg{width:14px;height:14px;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;fill:none}
 .nx-act{display:flex;align-items:center;width:100%;padding:14px 0;border:0;border-bottom:1px solid var(--line);background:none;color:inherit;font:600 16px var(--f-body);text-align:left}
@@ -373,6 +374,8 @@ input[type=range]::-moz-range-thumb{width:10px;height:18px;border-radius:1px;bac
 .s2-edbar{display:flex;align-items:center;gap:8px;padding-top:8px;padding-bottom:10px;flex:none;background:var(--s2-panel)}
 .s2-edbar button{height:44px;padding:0 14px!important;border:1px solid var(--s2-line)!important;border-radius:10px;font-weight:600!important;font-size:14px!important}
 .s2-edbar .s2-play{width:64px;padding:0!important;display:grid!important;place-items:center}
+.s2-edbar .s2-info{width:28px;height:28px;padding:0!important;border-radius:50%;margin-left:-4px;font:italic 700 14px Georgia,serif!important;color:var(--s2-muted)!important;display:grid!important;place-items:center;flex:none}
+.s2-edbar #s2EdMine{background:var(--s2-amber)!important;color:var(--s2-amber-ink)!important;border-color:var(--s2-amber)!important}
 .s2-fld{display:flex;align-items:center;gap:12px;padding:8px 0}
 .s2-fld label{width:112px;flex:none;color:var(--muted);font-size:14px} .s2-fld input[type=range]{flex:1;min-width:0} .s2-fld output{width:44px;text-align:right;font:500 13px var(--f-mono)}
 .s2-opts{display:flex;flex-wrap:wrap;gap:6px;padding-bottom:12px}
@@ -436,7 +439,8 @@ input[type=range]::-moz-range-thumb{width:10px;height:18px;border-radius:1px;bac
     <div class="s2-edh s2-g" id="s2EdHint"></div>
     <div class="s2-edbar s2-g">
       <button class="s2-play" id="s2EdPlay" aria-label="Play"><svg class="nx-ico" viewBox="0 0 24 24" id="s2EdPlayI"><path d="M7 4l13 8-13 8V4z" fill="currentColor"/></svg></button>
-      <button id="s2EdVer">Other readings</button>
+      <button id="s2EdVer">Another version</button><button class="s2-info" id="s2EdVerI" aria-label="What is Another version?">i</button>
+      <button id="s2EdMine" hidden>Mine</button>
       <button id="s2EdFill">Fill gaps</button>
     </div>
   </div>
@@ -692,14 +696,18 @@ async function nxGo(v){ if(v!=='studio'){ flushSave(); if(recState) cancelRecord
   if(v==='projects') await nxRenderProjects(); if(v==='studio') window.scrollTo({top:0}); }
 const nxSongEmpty=()=>!S.title && !S.prompt && !S.tracks.some(t=>!t.ex&&!t.guide);
 async function nxNew(){ if(!nxSongEmpty() || S.tracks.length) await projNew(); await nxGo('studio'); }
-function nxSheet(html){ $('toast').classList.remove('on'); $('nxSheet').onchange=null; $('nxSheet').innerHTML='<button class="nx-x" id="nxX" aria-label="Close"><svg viewBox="0 0 14 14"><path d="M2 2l10 10M12 2L2 12"/></svg></button><div class="nx-g"><div class="nx-grab"></div>'+html+'</div>'; $('nxSheet').style.transform=''; $('nxSheet').scrollTop=0; $('nxScrim').hidden=false; $('nxX').onclick=e=>{ e.stopPropagation(); nxClose(); }; }
+function nxSheet(html){ $('toast').classList.remove('on'); $('nxSheet').onchange=null; $('nxSheet').innerHTML='<button class="nx-x" id="nxX" aria-label="Close"><svg viewBox="0 0 14 14"><path d="M2 2l10 10M12 2L2 12"/></svg></button><div class="nx-g"><div class="nx-grab"></div>'+html+'</div>'; $('nxSheet').style.transform=''; $('nxSheet').scrollTop=0; sheetAboveTransport(); $('nxScrim').hidden=false; $('nxX').onclick=e=>{ e.stopPropagation(); nxClose(); }; }
 /* a sheet follows the finger down and closes past a third of the way (not while a slider or a scrolled list is being used) */
 function nxSheetSwipe(){ const sh=$('nxSheet'); let y0=null, dy=0;
   sh.addEventListener('touchstart',e=>{ y0=null; if(e.touches.length!==1||sh.scrollTop>0||e.target.closest('input,select,textarea')) return; y0=e.touches[0].clientY; dy=0; },{passive:true});
   sh.addEventListener('touchmove',e=>{ if(y0==null) return; dy=e.touches[0].clientY-y0; if(dy<=0){ if(dy<-6){ y0=null; sh.style.transform=''; } return; } if(e.cancelable) e.preventDefault(); sh.classList.add('drag'); sh.style.transform=`translateY(${dy}px)`; },{passive:false});
   const end=()=>{ if(y0==null) return; y0=null; sh.classList.remove('drag'); if(dy>Math.min(140,sh.clientHeight/3)) nxClose(); sh.style.transform=''; dy=0; };
   sh.addEventListener('touchend',end); sh.addEventListener('touchcancel',end); }
-function nxClose(){ $('nxScrim').hidden=true; $('nxSheet').onclick=null; $('nxSheet').oninput=null; $('nxSheet').onchange=null; }
+/* In the Studio's timeline a sheet stops above the transport, so Play, rewind, loop and the metronome keep working while you try sounds (changes are heard as you make them) */
+function sheetAboveTransport(){ const sc=$('nxScrim'), tr=document.querySelector('.s2-tr'); let b=0;
+  try{ if(s2On() && $('s2Ed').hidden && tr && tr.offsetParent){ b=Math.max(0,window.innerHeight-tr.getBoundingClientRect().top); } }catch(e){}
+  sc.style.bottom=b?b+'px':''; document.body.classList.toggle('s2-sheet',!!b); }
+function nxClose(){ $('nxScrim').hidden=true; $('nxScrim').style.bottom=''; document.body.classList.remove('s2-sheet'); $('nxSheet').onclick=null; $('nxSheet').oninput=null; $('nxSheet').onchange=null; }
 async function nxMenu(id){ const p=(await projList()).find(x=>x.id===id); if(!p) return; const name=p.title||'Untitled';
   nxSheet(`<h2>${nxEsc(name)}</h2><button class="nx-act" data-a="rename">Rename</button><button class="nx-act" data-a="dup">Duplicate</button><button class="nx-act danger" data-a="del">Delete</button>`);
   $('nxSheet').onclick=async e=>{ const a=e.target.closest('[data-a]'); if(!a) return; const k=a.dataset.a;
@@ -927,7 +935,7 @@ function s2EdMount(){ if(s2.edId==null) return; const tr=S.tracks.find(t=>t.id==
   const sx=tr._cv&&tr._cv.isConnected?tr._cv.parentElement.parentElement.scrollLeft:0; host.innerHTML=''; host.appendChild(buildCard(tr));
   requestAnimationFrame(()=>{ if(tr._cv&&tr._cv.isConnected){ drawGrid(tr); if(sx){ tr._autoScroll=true; tr._cv.parentElement.parentElement.scrollLeft=sx; } } });
   const b0=Math.floor((tr.off||0)/16)+1, b1=b0+pBars(tr)-1; $('s2EdT').textContent=s2Name(s2Lane(s2LaneId(tr))); $('s2EdS').textContent=(b1>b0?`Bars ${b0}–${b1}`:`Bar ${b0}`)+' · '+(tr.notes?tr.notes.length+' notes':tr.hits?tr.hits.length+' hits':'audio');
-  const pit=kind==='pitched'&&tr.inst!=='arp'; $('s2EdVer').hidden=!pit; $('s2EdFill').hidden=!pit;
+  const pit=kind==='pitched'&&tr.inst!=='arp'; $('s2EdVer').hidden=!pit; $('s2EdVerI').hidden=!pit; $('s2EdFill').hidden=!pit; if(pit){ if(tr._vi && verSig(tr)!==tr._verSig) tr._vi=0; verUI(tr); } else $('s2EdMine').hidden=true;
   $('s2EdHint').textContent=kind==='pitched'?'Tap a note to select it, drag to move. Double-tap a note, or tap a faint seam, to split it.':tr.hits?'Tap a square to add or remove a hit.':'';
   $('s2EdUndo').disabled=!hist.undo.length; $('s2EdRedo').disabled=!hist.redo.length; }
 function s2EdClose(){ const tr=S.tracks.find(t=>t.id===s2.edId); if(tr){ tr._cv=null; tr._sel=null; } s2.edId=null; GRID_H=176; GRID_RH=15; GRID_DRUM=1; $('s2Ed').hidden=true; $('s2EdBody').innerHTML=''; s2Render(); }
@@ -1011,7 +1019,9 @@ function s2Init(){ const _rt=renderTracks; renderTracks=function(){ if(s2.post &
   const _rd=redrawTrack; redrawTrack=function(tr){ _rd.apply(this,arguments); if(s2On()){ const L=s2Lane(s2LaneId(tr)), cv=L&&$('s2In').querySelector(`canvas[data-cv="${L.id}"]`); if(cv) s2DrawLane(L,cv); } };
   $('s2EdBack').onclick=s2EdClose; $('s2EdUndo').onclick=()=>undo(); $('s2EdRedo').onclick=()=>redo(); $('s2EdPlay').onclick=()=>togglePlay();
   $('s2EdFill').onclick=()=>{ const tr=S.tracks.find(t=>t.id===s2.edId); if(tr) fillGaps(tr); };
-  $('s2EdVer').onclick=()=>{ const tr=S.tracks.find(t=>t.id===s2.edId); if(!tr) return; if(!tr._versions) tr._versions=takeVersions(tr); if(tr._versions.length<2){ toast('No other likely readings of this part.'); return; } const i=((tr._vi||0)+1)%tr._versions.length; applyVersion(tr,i); toast(i?`Reading ${i+1} of ${tr._versions.length}`:'Back to what Noodle heard'); };
+  $('s2EdVer').onclick=()=>{ const tr=S.tracks.find(t=>t.id===s2.edId); if(!tr) return; verNext(tr); };
+  $('s2EdMine').onclick=()=>{ const tr=S.tracks.find(t=>t.id===s2.edId); if(tr) verMine(tr); };
+  $('s2EdVerI').onclick=()=>nxSheet(`<h2>Another version</h2><p style="font-size:15px;margin:0 0 10px">The same recording can be heard more than one way: in a different key, or with bigger jumps between notes. Noodle shows the one it thinks you meant.</p><p style="font-size:15px;margin:0 0 10px">Tap <b>Another version</b> to hear the next most likely one, and keep tapping to go through them. Your recording isn’t changed.</p><p style="font-size:15px;margin:0 0 6px"><b>Mine</b> puts your notes back exactly as they were, including anything you changed by hand.</p>`);
   $('s2CbEdit').onclick=()=>{ const t=S.tracks.find(x=>x.id===s2.selId); if(t){ if(t.inst==='fx') s2FxSheet(t); else s2Edit(t); } };
   $('s2CbDup').onclick=()=>{ const t=S.tracks.find(x=>x.id===s2.selId); if(!t) return; const c=s2DupClip(t); if(c){ s2.selId=c.id; renderTracks(); const tl=$('s2Tl'), x0=(c.off/16)*s2.barw, x1=x0+pBars(c)*s2.barw, hw=parseFloat(getComputedStyle($('s2')).getPropertyValue('--s2-hdr')); if(x1>tl.scrollLeft+tl.clientWidth-hw-12) tl.scrollLeft=Math.max(0,x1-(tl.clientWidth-hw)+24); else if(x0<tl.scrollLeft) tl.scrollLeft=Math.max(0,x0-12); } else toast('No room for a copy'); };
   $('s2CbDel').onclick=()=>{ const t=S.tracks.find(x=>x.id===s2.selId); if(t) s2DeleteClip(t); };
@@ -1750,15 +1760,26 @@ function takeVersions(tr){
   cands.sort((a,b)=>b.sc-a.sc);
   const cur=rec.map(n=>n.qk==='V'?Math.round(n.p):pitchOf(n));
   const diff=(a,b)=>{ let d=0; for(let i=1;i<a.length;i++) if(a[i]-a[i-1]!==b[i]-b[i-1]) d++; return d; };   /* how many steps of the melody differ */
-  const out=[{q:null,label:'as heard'}], kept=[cur];
+  const out=[{q:null,label:'mine'}], kept=[cur];
   for(const c of cands){ if(kept.some(k=>diff(k,c.q)<2)) continue; kept.push(c.q); out.push(c); if(out.length>=4) break; }
   return out; }
+/* "Another version": the cycle starts from your notes as they are right now (with your edits), saved as Mine; editing while on a
+   version makes that your new Mine the next time you tap. */
+const verSig=tr=>JSON.stringify(tr.notes.map(n=>[n.s,n.l,n.p,n.x?1:0,n.q??null,n.qk||'']));
+function verMine(tr){ const m=tr._mine; if(!m) return; tr.notes=JSON.parse(m.notes); tr.reading=m.reading; S.key=m.key; S.scale=m.scale; S.keyByVersion=m.kbv; tr._sel=null; tr._vi=0;
+  tr._dirty=true; keyChanged(); keyCache=m.kc; tr._verSig=verSig(tr); save(); renderTracks(); scheduleRender(); verUI(tr); toast('Back to your notes.'); }
+function verNext(tr){ if(!tr._versions || verSig(tr)!==tr._verSig){ tr._mine={notes:JSON.stringify(tr.notes), reading:tr.reading||null, key:S.key, scale:S.scale, kbv:S.keyByVersion??null, kc:currentKey()};   /* kc: the key the notes are heard in right now, so Mine sounds exactly as before */ tr._versions=takeVersions(tr); tr._vi=0; }
+  const V=tr._versions; if(V.length<2){ toast('This part has no other likely version.'); return; }
+  const i=((tr._vi||0)+1)%V.length;
+  if(i===0){ verMine(tr); return; }
+  applyVersion(tr,i); verUI(tr); toast(`Version ${i+1} of ${V.length}. Tap again for the next, or Mine to go back.`); }
+function verUI(tr){ const on=!!(tr&&tr._vi); $('s2EdMine').hidden=!on; $('s2EdFill').hidden=on||!(INST[tr.inst].kind==='pitched'&&tr.inst!=='arp'); $('s2EdVer').textContent=on?`Version ${tr._vi+1} of ${tr._versions.length}`:'Another version'; }
 function applyVersion(tr, i){
   const V=tr._versions; if(!V||!V[i]) return; tr._vi=i; const v=V[i], rec=tr.notes.filter(n=>!n.x).sort((a,b)=>a.s-b.s);
   if(v.q){ rec.forEach((n,k)=>{ n.q=v.q[k]; n.qk='V'; }); tr.reading={tonic:v.tonic,scale:v.scale,squeeze:v.squeeze};
     if(S.key==='auto' || S.keyByVersion===tr.id){ S.key=String(v.tonic); S.scale=v.scale; S.keyByVersion=tr.id; } }   /* the song keeps this scale for later takes */
   else { rec.forEach(n=>{ delete n.q; delete n.qk; }); tr.reading=null; if(S.keyByVersion===tr.id){ S.key='auto'; S.scale='auto'; S.keyByVersion=null; } }
-  keyCache=null; tr._dirty=true; keyChanged(); syncAllInputs(); save(); renderTracks(); scheduleRender();
+  keyCache=null; tr._dirty=true; keyChanged(); syncAllInputs(); tr._verSig=verSig(tr); save(); renderTracks(); scheduleRender();
   if(!playing) togglePlay(); }
 /* Personal interval width, measured on guided takes (sung vs the Guide). The squeeze is only allowed for someone whose
    own takes show it, so people who sing intervals accurately are never "corrected". */

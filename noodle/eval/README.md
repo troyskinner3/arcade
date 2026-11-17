@@ -332,7 +332,7 @@ Real noise (DEMAND, CC BY 4.0: street traffic, cafeteria, bus, town square, park
   from those elements (`$('key')`, `$('bars')`, `$('recLabel')`, the hidden sliders the Studio's sheets write to), so each needs moving to plain state first.
 
 ### Stage 3 cleanup log (removing the first prototype's page)
-How to work on it: one small step at a time; after each, `tools/suite.sh` from the scratchpad (also in `eval/tools/`) must print ALL PASS (22 scripts, replay 3.88); only then commit and push. `eval/tools/prune.js <file> s2TrimClip` deletes functions nothing names any more.
+How to work on it: one small step at a time; after each, `tools/suite.sh` from the scratchpad (also in `eval/tools/`) must print ALL PASS (23 scripts, replay 3.88); only then commit and push. `eval/tools/prune.js <file> s2TrimClip` deletes functions nothing names any more.
 - **Batch 1 (done):** removed the old "How it works" card, New song button, the header's back button and brand, the +/− tempo buttons, with their wiring and styles; `newSong` went with them (tests use `projNew`).
 - **Batch 2 (done):** removed the owner's old test-link UI (`guided`, `dropLine`), the `genre`, `quant` and `loops` rows, `keyInfo`, `snapV`, the old calibrate button, with their wiring; `applyStyle` went with them.
 - **Batch 3 (done):** removed the old header (tempo, length, metronome fields), the bottom dock (seek bar, undo/redo, play, record), the song-name field and the old parts container. The Studio's metronome button now calls `toggleMetro`; `syncTransport`, `updatePlayBtn`, `updateDock` and `updateHistBtns` are empty hooks to delete once nothing calls them. `proj_test` and `shell_test` read the title from the Studio.
@@ -374,3 +374,10 @@ How to work on it: one small step at a time; after each, `tools/suite.sh` from t
   A cut for *all* faint hits was not shipped: at 25 dB it helps AVP (F1 0.725 → 0.741, 0.825 → 0.842) but on the owner's phone the real hi-hats sit 26–35 dB under the kicks and would be lost.
 - **Drum teach offer (shipped, owner's call):** the first time someone records a Drum kit with fewer than two taught sounds, a sheet offers "Teach my sounds" (kick, snare, hi-hat on every click, about 20 s) or "Not now" (straight to recording). Shown once (`noodle.kitOffer`); More → Your drum sounds stays available. After teaching, the Studio says "Learned. Now tap record for your beat." `kitoffer_test.js`.
   Evidence: AVP right drum 63% / 56% untaught → 79% / 77% taught. The owner's `drums A`–`D` takes (before and after teaching) will measure it on a phone.
+
+### Phone review, round 2 — Nov 17
+- **"Other readings" → "Another version" (shipped):** an ⓘ next to it opens a short explanation. Tapping cycles the likely versions ("Version 2 of 4"); **Mine** appears while on a version and puts the notes back exactly as they were, hand edits included (`verNext`, `verMine`, `verUI`).
+  How Mine works: the first tap saves the part's notes, its reading, the song key settings and the key the notes are heard in (`tr._mine`). Editing while on a version makes that the new Mine at the next tap. Going all the way round the cycle also lands on Mine.
+  Found while testing: Noodle's key guess is kept until something resets it, so a part can be heard in a key a fresh guess would not pick. Mine keeps the key that was being heard, so it sounds the same as before.
+- **Play under open sheets (shipped):** in the Studio timeline every sheet stops just above the transport, so Play, rewind, loop and the metronome work while a sheet is open, and sound changes are heard as you make them. Record is dimmed while a sheet is open. (`sheetAboveTransport`)
+- `round2_test.js`. Suite: 23 scripts, replay 3.88.
