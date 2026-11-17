@@ -375,11 +375,14 @@ input[type=range]::-moz-range-thumb{width:10px;height:18px;border-radius:1px;bac
 .s2-ed{position:absolute;inset:0;z-index:8;background:var(--s2-bg);display:flex;flex-direction:column;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 .s2-edt{flex:1;min-width:0;padding:6px 4px;text-align:left} .s2-edt b{display:block;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis} .s2-edt small{color:var(--s2-muted);font:500 12px var(--f-mono)}
 .s2-edb{flex:1;min-height:0;overflow-y:auto;padding-top:4px}
+.fxg{overflow-x:auto;overscroll-behavior-x:contain} .fxg-in{position:relative;width:max-content} .fxg canvas{display:block;border-radius:8px}
+.fxg-ph{position:absolute;left:0;top:0;width:2px;margin-left:-1px;background:var(--s2-amber);display:none;pointer-events:none}
 .s2-edb .track{border:0;background:none;padding:0;margin:0;box-shadow:none}
 .s2-edh{color:var(--s2-muted);font-size:12.5px;padding-top:8px;padding-bottom:2px}
 .s2-edbar{display:flex;align-items:center;gap:8px;padding-top:8px;padding-bottom:10px;flex:none;background:var(--s2-panel)}
 .s2-edbar button{height:44px;padding:0 14px!important;border:1px solid var(--s2-line)!important;border-radius:10px;font-weight:600!important;font-size:14px!important}
 .s2-edbar .s2-play{width:64px;padding:0!important;display:grid!important;place-items:center}
+.s2-edbar button[hidden]{display:none!important}
 .s2-edbar .s2-info{width:28px;height:28px;padding:0!important;border-radius:50%;margin-left:-4px;font:italic 700 14px Georgia,serif!important;color:var(--s2-muted)!important;display:grid!important;place-items:center;flex:none}
 .s2-edbar #s2EdMine{background:var(--s2-amber)!important;color:var(--s2-amber-ink)!important;border-color:var(--s2-amber)!important}
 .s2-fld{display:flex;align-items:center;gap:12px;padding:8px 0}
@@ -591,7 +594,7 @@ function exampleTracks(){
 function mkTrack(inst, o={}){
   const d = INST[inst];
   return Object.assign({id:0, inst, sound:d.sounds[0], vol:80, pan:0, send:15, tone:50, mute:false, solo:false,
-    oct:d.oct||0, sens:S0sens(), ex:false, ...(styleSound(inst)&&d.sounds.includes(styleSound(inst))?{sound:styleSound(inst)}:{}), hits:d.kind==='pitched'||d.kind==='audio'?undefined:[], notes:d.kind==='pitched'?[]:undefined, ...(inst==='fx'?{hits:[],fxs:[],send:30}:d.kind==='audio'?(()=>{ const pr=(styleSound('vox')&&VOX_PRESETS[styleSound('vox')])?styleSound('vox'):'Pop'; return {fx:Object.assign({},VOX_PRESETS[pr]), sound:pr}; })():{})}, o);
+    oct:d.oct||0, sens:S0sens(), ex:false, ...(styleSound(inst)&&d.sounds.includes(styleSound(inst))?{sound:styleSound(inst)}:{}), hits:d.kind==='pitched'||d.kind==='audio'?undefined:[], notes:d.kind==='pitched'?[]:undefined, ...(inst==='fx'?{hits:[],fxs:[],send:30,vol:45}:d.kind==='audio'?(()=>{ const pr=(styleSound('vox')&&VOX_PRESETS[styleSound('vox')])?styleSound('vox'):'Pop'; return {fx:Object.assign({},VOX_PRESETS[pr]), sound:pr}; })():{})}, o);
 }
 function S0sens(){ return (typeof S!=='undefined' && S) ? S.sens : 55; }
 function defaultState(){
@@ -887,7 +890,7 @@ function s2Render(){ if(!s2On()) return; const el=$('s2'), bars=S.bars, view=Mat
   const tk=takeBar&&!recState; $('s2Take').hidden=!tk; if(s2.selId!=null||tk||recState||(s2.empty&&!s2Lane(s2.empty.lane))) s2.empty=null;
   { const t=S.tracks.find(x=>x.id===s2.selId), show=!!t&&!tk&&!recState, em=!!s2.empty; $('s2Clip').hidden=!show&&!em; $('s2CbNew').hidden=!em; ['s2CbEdit','s2CbDup','s2CbDel'].forEach(id=>{ $(id).hidden=em; });
     if(em){ const L=s2Lane(s2.empty.lane); $('s2CbL').innerHTML=`<b>${nxEsc(s2Name(L))}</b>${partWhere({off:s2.empty.at,len:newPartLen(L,s2.empty.at)/16,rep:false})} · empty`; }
-    if(show){ $('s2CbL').innerHTML=`<b>${nxEsc(s2Name(s2Lane(s2LaneId(t))))}</b>${partWhere(t)}`; $('s2CbEdit').hidden=t.inst==='vox'; $('s2CbEdit').lastChild.textContent=t.inst==='fx'?'Edit FX':'Edit notes'; } }
+    if(show){ $('s2CbL').innerHTML=`<b>${nxEsc(s2Name(s2Lane(s2LaneId(t))))}</b>${partWhere(t)}`; $('s2CbEdit').hidden=t.inst==='vox'; $('s2CbEdit').lastChild.textContent=t.inst==='fx'?'Edit FX':t.hits&&t.inst!=='fx'?'Edit hits':'Edit notes'; } }
   s2.pos=-1; s2Chips(); s2Seek(); s2Clip(); { const t=$('toast'); if(t.classList.contains('on')) toastPlace(t); } }
 /* keep the playhead out from under the track headers, and the header panel as tall as the timeline */
 function s2Clip(){ const tl=$('s2Tl'), a=$('s2Ph'), b=$('s2PhH'); if(!a) return; $('s2').style.setProperty('--s2-sideh',Math.max(0,tl.clientHeight-26)+'px'); const hid=Math.max(0,s2.pos)*s2.barw<tl.scrollLeft-1?'hidden':'visible'; a.style.visibility=hid; b.style.visibility=hid; }
@@ -897,7 +900,8 @@ const barsTxt=b=>{ const w=Math.floor(b+1e-9), f=+(b-w).toFixed(3), F={0.5:'½',
 function s2Chips(){ { const sp=$('s2Snap').lastElementChild, v=fracTxt(snapBars()); if(sp.textContent!==v) sp.textContent=v; } const b=$('s2Bpm').lastElementChild, k=$('s2Key').lastElementChild, kl=projKeyLabel()||(S.key!=='auto'?(NOTE_NAMES[+S.key]+' '+(SCALE_LABEL[S.scale]||'')).trim():'Auto');   /* a key picked before anything is recorded still shows */ if(b.textContent!==String(S.bpm)) b.textContent=S.bpm; if(k.textContent!==kl) k.textContent=kl;
   const m=$('s2Metro'), on=String(!!S.metro); if(m.getAttribute('aria-pressed')!==on) m.setAttribute('aria-pressed',on); }
 /* called every frame: playhead, position readout, recording banner, stop at the end when Loop is off */
-function s2Tick(frac){ if(!s2On()) return; const bars=S.bars, live=playing||!!recState; if(live) s2.cur=clamp(frac,0,1)*bars; const pos=live?s2.cur:s2.cur;
+function s2Tick(frac){ if(!s2On()) return;
+  if(s2.edId!=null){ const t=S.tracks.find(x=>x.id===s2.edId); if(t&&t._fxg&&t._fxph&&t._fxph.isConnected){ const st=clamp(frac,0,1)*S.bars*16-(t.off||0), G=t._fxg, on=(playing||!!recState)&&st>=0&&st<G.ps; t._fxph.style.display=on?'block':'none'; if(on) t._fxph.style.transform=`translateX(${G.gut+st*G.cw}px)`; } } const bars=S.bars, live=playing||!!recState; if(live) s2.cur=clamp(frac,0,1)*bars; const pos=live?s2.cur:s2.cur;
   if(playing && !recState && !s2.loop && ctx && ctx.currentTime-t0>=loopLen()-0.03){ togglePlay().then(()=>{ playFrom=0; s2.cur=0; }); }
   if(Math.abs(pos-s2.pos)>0.002){ s2.pos=pos; const a=$('s2Ph'), b=$('s2PhH'); if(a){ a.style.left=`calc(var(--s2-hdr) + ${pos} * var(--s2-barw))`; b.style.left=`calc(${pos} * var(--s2-barw))`; }
     $('s2Pos').textContent=(Math.floor(pos)+1)+'.'+(Math.floor((pos%1)*4)+1); s2Clip();
@@ -933,24 +937,54 @@ function s2Record(){ ensureCtx(); s2.selId=null; if(recState){ const r=recState;
     s2.recPrev=S.bars; s2.recLen=Math.min(S2_MAX,64-P); tr.off=P*16; tr.rep=false; tr.len=s2.recLen; tr.lenSet=true; if(S.bars<P+tr.len){ S.bars=P+tr.len; } save(); }
   s2.recId=tr.id; s2.post=true; S.activeId=tr.id; recordInto(tr.id); }
 /* An FX part's events: change what each one is, how long it lasts, or remove it */
-function s2FxSheet(tr){ const ev=(tr.fxs||[]).slice().sort((a,b)=>a.s-b.s), off=tr.off||0, at=e=>{ const st=e.s+off; return (Math.floor(st/16)+1)+'.'+(Math.floor((st%16)/4)+1); };
-  if(!ev.length){ nxClose(); return; }
-  nxSheet(`<h2>FX in this part</h2>${ev.map((e,i)=>`<div style="padding:10px 0;border-bottom:1px solid var(--line)"><div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><b style="flex:1;font:700 15px var(--f-body)">${FX_KINDS[e.k]} <small style="font:500 12px var(--f-mono);color:var(--muted)">at ${at(e)} · ${(e.l/4).toFixed(e.l%4?1:0)} beats</small></b><button class="nx-ghost" data-len="${i},-2" style="width:40px;height:36px" aria-label="Shorter">−</button><button class="nx-ghost" data-len="${i},2" style="width:40px;height:36px" aria-label="Longer">+</button><button class="nx-ghost" data-rm="${i}" style="width:40px;height:36px;color:var(--rec)" aria-label="Remove">✕</button></div><div class="s2-opts" style="padding:0">${Object.entries(FX_KINDS).map(([k,n])=>`<button data-kind="${i},${k}" aria-pressed="${k===e.k}">${n}</button>`).join('')}</div></div>`).join('')}`);
-  const done=()=>{ tr._dirty=true; save(); renderTracks(); scheduleRender(); if((tr.fxs||[]).length) s2FxSheet(tr); else nxClose(); };
-  $('nxSheet').onclick=e=>{ let b; const ps=pSteps(tr);
-    if(b=e.target.closest('[data-kind]')){ const [i,k]=b.dataset.kind.split(','); ev[+i].k=k; done(); }
-    else if(b=e.target.closest('[data-len]')){ const [i,d]=b.dataset.len.split(',').map(Number); ev[i].l=clamp(ev[i].l+d,2,ps-ev[i].s); done(); }
-    else if(b=e.target.closest('[data-rm]')){ tr.fxs=tr.fxs.filter(x=>x!==ev[+b.dataset.rm]); if(!tr.fxs.length){ nxClose(); s2DeleteClip(tr); return; } done(); } }; }
 /* The note editor: one part, full screen. The grid is the same one as before (tap to select, drag to move, double-tap or tap a seam to split), with bigger rows. */
+/* FX editor: one row per kind, like the drum kit. Each effect is a bar from where it starts to where it ends, with the shape of your voice drawn inside.
+   Tap an empty spot to add one (a build lasts a bar, an impact a beat); tap one to remove it; drag it to move it or change its kind; drag its right end to make it longer or shorter. */
+const FX_ROWS=['riser','down','sweepUp','sweepDown','impact'];
+function fxNew(k, s, ps){ const N=16, up=k==='riser'||k==='sweepUp', l=k==='impact'?Math.min(4,ps-s):Math.min(16,ps-s);
+  return {s, l:Math.max(1,l), k, v:0.8, c:Array.from({length:N},(_,i)=>+(up?i/(N-1):1-i/(N-1)).toFixed(3)), a:Array.from({length:N},(_,i)=>k==='impact'?+(1-i/N).toFixed(3):0.8)}; }
+function fxGridMount(tr, host){ const ps=pSteps(tr), wrap=document.createElement('div'); wrap.className='fxg'; wrap.innerHTML='<div class="fxg-in"><canvas></canvas><div class="fxg-ph"></div></div>'; host.appendChild(wrap);
+  const cv=wrap.querySelector('canvas'), ph=wrap.querySelector('.fxg-ph'), H=Math.max(220,Math.min(420,(host.clientHeight||400)-24)), gut=86, rh=H/FX_ROWS.length, W0=Math.max((host.clientWidth||340)-2, gut+ps*9), cw=(W0-gut)/ps, W=gut+cw*ps;
+  const G={gut,cw,rh,W,H,ps}; tr._fxg=G; tr._fxph=ph;
+  const draw=()=>{ const dpr=Math.min(2,window.devicePixelRatio||1); cv.width=Math.round(W*dpr); cv.height=Math.round(H*dpr); cv.style.width=W+'px'; cv.style.height=H+'px'; ph.style.height=H+'px';
+    const g=cv.getContext('2d'), cs=getComputedStyle($('s2')), v=n=>cs.getPropertyValue(n).trim(), col=INST.fx.color; g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,W,H);
+    FX_ROWS.forEach((k,r)=>{ g.fillStyle=r%2?v('--s2-lane2'):v('--s2-lane'); g.fillRect(gut,r*rh,W-gut,rh); g.fillStyle=v('--s2-panel'); g.fillRect(0,r*rh,gut-2,rh-1); g.fillStyle=v('--s2-ink'); g.font='600 12px '+(v('--f-body')||'sans-serif'); g.textBaseline='middle'; g.fillText(FX_KINDS[k],8,r*rh+rh/2); });
+    for(let st=0;st<=ps;st+=4){ g.fillStyle=st%16===0?v('--s2-ink'):v('--s2-line'); g.globalAlpha=st%16===0?0.35:0.8; g.fillRect(gut+st*cw-(st===ps?1:0),0,1,H); } g.globalAlpha=1;
+    (tr.fxs||[]).forEach(e=>{ const r=FX_ROWS.indexOf(e.k); if(r<0||e.s>=ps) return; const x=gut+e.s*cw+1, w=Math.max(6,Math.min(e.l,ps-e.s)*cw-2), y=r*rh+5, h=rh-10, sel=tr._fxSel===e;
+      g.fillStyle=col; g.globalAlpha=0.28; g.beginPath(); if(g.roundRect) g.roundRect(x,y,w,h,5); else g.rect(x,y,w,h); g.fill(); g.globalAlpha=1; g.strokeStyle=sel?v('--s2-amber'):col; g.lineWidth=sel?2.5:1.5; g.stroke();
+      g.fillStyle=col; g.beginPath(); const y0=y+h-3, hh=h-8;   /* the shape of your voice */
+      if(e.k==='impact'){ g.moveTo(x+3,y0); g.lineTo(x+3,y0-hh); g.lineTo(x+w-3,y0); }
+      else { const C=e.c||[0,1], up=e.k==='riser'||e.k==='sweepUp'; g.moveTo(x+3,y0); for(let i=0;i<C.length;i++){ const lin=i/(C.length-1), yv=0.6*C[i]+0.4*(up?lin:1-lin); g.lineTo(x+3+(w-6)*lin, y0-hh*(0.1+0.9*yv)); } g.lineTo(x+w-3,y0); }
+      g.closePath(); g.globalAlpha=0.85; g.fill(); g.globalAlpha=1;
+      g.fillStyle=v('--s2-ink'); g.globalAlpha=0.6; g.fillRect(x+w-6,y+h/2-8,2.5,16); g.globalAlpha=1; }); };   /* the grip at the right end */
+  const at=ev=>{ const R=cv.getBoundingClientRect(), x=ev.clientX-R.left, y=ev.clientY-R.top; return {x, y, st:Math.floor((x-gut)/cw), row:clamp(Math.floor(y/rh),0,FX_ROWS.length-1)}; };
+  const hitAt=q=>(tr.fxs||[]).slice().reverse().find(e=>FX_ROWS.indexOf(e.k)===q.row && q.x>=gut+e.s*cw-4 && q.x<=gut+(e.s+e.l)*cw+4);
+  const changed=()=>{ tr.blank=tr.blank||!(tr.fxs||[]).length; tr._dirty=true; save(); scheduleRender(); draw(); const L=s2Lane(s2LaneId(tr)), lc=L&&$('s2In').querySelector(`canvas[data-cv="${L.id}"]`); if(lc) s2DrawLane(L,lc); $('s2EdS').textContent=partWhere(tr)+' · '+(tr.fxs||[]).length+' FX'; };
+  let d=null;
+  cv.style.touchAction='pan-x';
+  cv.addEventListener('pointerdown',ev=>{ const q=at(ev); if(q.x<gut||q.st<0||q.st>=ps) return; flushSave(); const e=hitAt(q); d={q, e, s0:e&&e.s, l0:e&&e.l, k0:e&&e.k, moved:false, mode:e&&q.x>gut+(e.s+e.l)*cw-16?'len':'move', id:ev.pointerId}; if(e){ tr._fxSel=e; draw(); try{ cv.setPointerCapture(ev.pointerId); }catch(_){} } });
+  cv.addEventListener('pointermove',ev=>{ if(!d||!d.e||ev.pointerId!==d.id) return; const q=at(ev), ds=Math.round((q.x-d.q.x)/cw);
+    if(!d.moved && Math.abs(q.x-d.q.x)<6 && Math.abs(q.y-d.q.y)<8) return; d.moved=true; ev.preventDefault();
+    if(d.mode==='len') d.e.l=clamp(d.l0+ds,1,ps-d.e.s);
+    else { d.e.s=clamp(d.s0+ds,0,ps-1); d.e.l=Math.min(d.l0,ps-d.e.s); d.e.k=FX_ROWS[q.row]; }
+    draw(); });
+  const up=ev=>{ if(!d) return; const q=d; d=null;
+    if(q.e && q.moved){ if(q.e.k!==q.k0) logEdit(tr,{k:'fxkind',s:q.e.s,from:q.k0,to:q.e.k}); changed(); return; }
+    if(q.e){ tr.fxs=tr.fxs.filter(x=>x!==q.e); tr._fxSel=null; logEdit(tr,{k:'fxdel',s:q.e.s,kind:q.e.k}); changed(); return; }
+    if(ev.type==='pointercancel') return;
+    const k=FX_ROWS[q.q.row], e=fxNew(k,q.q.st,ps); tr.fxs=(tr.fxs||[]).concat([e]); tr._fxSel=e; logEdit(tr,{k:'fxadd',s:e.s,kind:k}); changed(); };
+  cv.addEventListener('pointerup',up); cv.addEventListener('pointercancel',up);
+  draw(); }
 function s2Edit(tr){ s2.edId=tr.id; S.activeId=tr.id; $('s2Ed').hidden=false; s2EdMount(); }
 function s2EdMount(){ if(s2.edId==null) return; const tr=S.tracks.find(t=>t.id===s2.edId); if(!tr||!hasContent(tr)){ s2EdClose(); return; }
   const host=$('s2EdBody'), kind=INST[tr.inst].kind, avail=Math.max(200,(host.clientHeight||window.innerHeight*0.6)-90);
-  GRID_H=Math.min(520,avail); GRID_RH=30; GRID_DRUM=kind==='pitched'?1:Math.min(2.2,Math.max(1,avail/(gridRows(tr).rows.length*gridRows(tr).rh)));
-  const sx=tr._cv&&tr._cv.isConnected?tr._cv.parentElement.parentElement.scrollLeft:0; host.innerHTML=''; host.appendChild(buildCard(tr));
-  requestAnimationFrame(()=>{ if(tr._cv&&tr._cv.isConnected){ drawGrid(tr); if(sx){ tr._autoScroll=true; tr._cv.parentElement.parentElement.scrollLeft=sx; } } });
-  $('s2EdT').textContent=s2Name(s2Lane(s2LaneId(tr))); $('s2EdS').textContent=partWhere(tr)+' · '+(tr.notes?tr.notes.length+' notes':tr.hits?tr.hits.length+' hits':'audio');
+  GRID_H=Math.min(520,avail); GRID_RH=30; GRID_DRUM=kind==='pitched'||tr.inst==='fx'?1:Math.min(2.2,Math.max(1,avail/(gridRows(tr).rows.length*gridRows(tr).rh)));
+  if(tr.inst==='fx'){ const sx=host.querySelector('.fxg')?host.querySelector('.fxg').scrollLeft:0; host.innerHTML=''; tr._cv=null; fxGridMount(tr,host); if(sx) host.querySelector('.fxg').scrollLeft=sx; }
+  else { const sx=tr._cv&&tr._cv.isConnected?tr._cv.parentElement.parentElement.scrollLeft:0; host.innerHTML=''; host.appendChild(buildCard(tr));
+  requestAnimationFrame(()=>{ if(tr._cv&&tr._cv.isConnected){ drawGrid(tr); if(sx){ tr._autoScroll=true; tr._cv.parentElement.parentElement.scrollLeft=sx; } } }); }
+  $('s2EdT').textContent=s2Name(s2Lane(s2LaneId(tr))); $('s2EdS').textContent=partWhere(tr)+' · '+(tr.inst==='fx'?(tr.fxs||[]).length+' FX':tr.notes?tr.notes.length+' notes':tr.hits?tr.hits.length+' hits':'audio');
   const pit=kind==='pitched'&&tr.inst!=='arp'; $('s2EdVer').hidden=!pit; $('s2EdVerI').hidden=!pit; $('s2EdFill').hidden=!pit; if(pit){ if(tr._vi && verSig(tr)!==tr._verSig) tr._vi=0; verUI(tr); } else $('s2EdMine').hidden=true;
-  $('s2EdHint').textContent=kind==='pitched'?'Tap a note to select it, drag to move. Double-tap a note, or tap a faint seam, to split it.':tr.hits?'Tap a square to add or remove a hit.':'';
+  $('s2EdHint').textContent=tr.inst==='fx'?'Tap to add an effect, tap one to remove it. Drag it to move it or change its kind; drag its right end to change its length.':kind==='pitched'?'Tap a note to select it, drag to move. Double-tap a note, or tap a faint seam, to split it.':tr.hits?'Tap a square to add or remove a hit.':'';
   $('s2EdUndo').disabled=!hist.undo.length; $('s2EdRedo').disabled=!hist.redo.length; }
 function s2EdClose(){ const tr=S.tracks.find(t=>t.id===s2.edId); if(tr){ tr._cv=null; tr._sel=null; } s2.edId=null; GRID_H=176; GRID_RH=15; GRID_DRUM=1; $('s2Ed').hidden=true; $('s2EdBody').innerHTML=''; s2Render(); }
 /* Share, inside the Studio. A linear song is exported once through (Loop is only for listening). */
@@ -978,7 +1012,7 @@ function s2NewPart(){ const e=s2.empty; if(!e) return; const L=s2Lane(e.lane); s
   if(!tr){ tr=mkTrack(first.inst,{id:S.nextId++, lane:L.id, sound:first.sound, vol:first.vol, mute:first.mute, solo:first.solo, send:first.send, tone:first.tone, oct:first.oct, sens:first.sens}); if(first.adsr) tr.adsr=first.adsr; if(first.chordType) tr.chordType=first.chordType; S.tracks.push(tr); }
   tr.off=e.at; tr.len=len/16; tr.lenSet=true; tr.rep=false; tr.blank=true; if(tr.notes) tr.notes=[]; if(tr.hits) tr.hits=[]; if(tr.fxs) tr.fxs=[]; tr._dirty=true;
   const end=Math.ceil((e.at+len)/16-1e-9); if(S.bars<end) S.bars=Math.min(64,end); S.activeId=tr.id; s2.selId=tr.id; save(); renderTracks(); scheduleRender();
-  if(tr.inst==='fx') s2FxSheet(tr); else s2Edit(tr); }
+  s2Edit(tr); }
 function s2MoveClip(tr, bars){ const off=Math.round((tr.off||0)+bars*16), len=pSteps(tr)*pLoops(tr); if(pLoops(tr)>1) return false; if(off<0 || off+len>64*16) return false;
   const hit=S.tracks.some(t=>t!==tr&&s2LaneId(t)===s2LaneId(tr)&&hasContent(t)&&off<(t.off||0)+pSteps(t)*pLoops(t)&&(t.off||0)<off+len); if(hit) return false;
   const L=pBars(tr); tr.len=L; tr.lenSet=true; tr.rep=false; const need=Math.ceil(Math.max(1,...S.tracks.filter(hasContent).map(t=>t===tr?off/16+L:(t.off||0)/16+(t.off!=null&&t.len?t.len:S.bars)))-1e-9);
@@ -1046,7 +1080,7 @@ function s2Init(){ const _rt=renderTracks; renderTracks=function(){ if(s2.post &
   $('s2EdVer').onclick=()=>{ const tr=S.tracks.find(t=>t.id===s2.edId); if(!tr) return; verNext(tr); };
   $('s2EdMine').onclick=()=>{ const tr=S.tracks.find(t=>t.id===s2.edId); if(tr) verMine(tr); };
   $('s2EdVerI').onclick=()=>nxSheet(`<h2>Another version</h2><p style="font-size:15px;margin:0 0 10px">The same recording can be heard more than one way: in a different key, or with bigger jumps between notes. Noodle shows the one it thinks you meant.</p><p style="font-size:15px;margin:0 0 10px">Tap <b>Another version</b> to hear the next most likely one, and keep tapping to go through them. Your recording isn’t changed.</p><p style="font-size:15px;margin:0 0 6px"><b>Mine</b> puts your notes back exactly as they were, including anything you changed by hand.</p>`);
-  $('s2CbEdit').onclick=()=>{ const t=S.tracks.find(x=>x.id===s2.selId); if(t){ if(t.inst==='fx') s2FxSheet(t); else s2Edit(t); } };
+  $('s2CbEdit').onclick=()=>{ const t=S.tracks.find(x=>x.id===s2.selId); if(t) s2Edit(t); };
   $('s2CbDup').onclick=()=>{ const t=S.tracks.find(x=>x.id===s2.selId); if(!t) return; const c=s2DupClip(t); if(c){ s2.selId=c.id; renderTracks(); const tl=$('s2Tl'), x0=(c.off/16)*s2.barw, x1=x0+pBars(c)*s2.barw, hw=parseFloat(getComputedStyle($('s2')).getPropertyValue('--s2-hdr')); if(x1>tl.scrollLeft+tl.clientWidth-hw-12) tl.scrollLeft=Math.max(0,x1-(tl.clientWidth-hw)+24); else if(x0<tl.scrollLeft) tl.scrollLeft=Math.max(0,x0-12); } else toast('No room for a copy'); };
   $('s2CbNew').onclick=s2NewPart; $('s2CbDel').onclick=()=>{ const t=S.tracks.find(x=>x.id===s2.selId); if(t) s2DeleteClip(t); };
   $('s2Back').onclick=()=>nxGo('projects'); $('s2Name').onclick=()=>s2Sheets('name'); $('s2Undo').onclick=()=>undo(); $('s2Redo').onclick=()=>redo();
@@ -1074,7 +1108,7 @@ function s2Init(){ const _rt=renderTracks; renderTracks=function(){ if(s2.post &
       const o=g.off+(g.mode==='r'?0:d), w=g.len+(g.mode==='r'?d:g.mode==='l'?-d:0); g.sel.style.left=`calc(${o} * var(--s2-barw))`; g.sel.style.width=`calc(${w} * var(--s2-barw))`; },true);
     const fin=e=>{ if(!g) return; const q=g; g=null; s2.drag=false; s2.noTap=Date.now(); let ok=true;
       if(q.d){ ok = q.mode==='m' ? s2MoveClip(q.tr,q.d) : q.mode==='l' ? s2ResizeClip(q.tr,q.d,0) : s2ResizeClip(q.tr,0,q.d); if(!ok) toast('No room there'); }
-      else if(q.mode==='m' && e.type==='pointerup' && q.tr.inst!=='vox'){ renderTracks(); if(q.tr.inst==='fx') s2FxSheet(q.tr); else s2Edit(q.tr); return; }   /* tap the selected part: edit its notes */
+      else if(q.mode==='m' && e.type==='pointerup' && q.tr.inst!=='vox'){ renderTracks(); s2Edit(q.tr); return; }   /* tap the selected part: edit its notes */
       renderTracks(); };
     T.addEventListener('pointerup',fin,true); T.addEventListener('pointercancel',fin,true); }
   { const T=$('s2In'); let hold=0, dr=null, sx=0, sy=0;

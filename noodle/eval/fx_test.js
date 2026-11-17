@@ -1,4 +1,4 @@
-// FX (beta): five synthetic mouth gestures in one take -> riser, downlifter, sweep up, sweep down, impact; rendered audio; the part's sheet; region edits
+// FX (beta): five synthetic mouth gestures in one take -> riser, downlifter, sweep up, sweep down, impact; rendered audio; the part opens in the FX grid; region edits
 const {chromium,devices}=require('playwright');
 (async()=>{ const b=await chromium.launch({args:['--autoplay-policy=no-user-gesture-required']}); const c=await b.newContext({...devices['iPhone 13'],colorScheme:'dark'}); const p=await c.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(e.message));
   await p.goto('http://localhost:8800/noodle-s2.html?studio'); await p.waitForTimeout(900); const out={};
@@ -15,8 +15,7 @@ const {chromium,devices}=require('playwright');
   await p.evaluate(()=>renderTracks()); await p.waitForTimeout(300); await p.screenshot({path:'results/fx1.png'});
   const lane=await p.$eval('.s2-ln canvas',e=>{ const r=e.getBoundingClientRect(); return {x:r.left,y:r.top+r.height/2}; }); await p.mouse.click(lane.x+40,lane.y); await p.waitForTimeout(250);
   out.bar=await p.$eval('#s2CbEdit',e=>e.textContent.trim()); await p.tap('#s2CbEdit'); await p.waitForTimeout(250); await p.screenshot({path:'results/fx2.png'});
-  out.sheetRows=await p.$$eval('#nxSheet [data-rm]',x=>x.length); await p.tap('#nxSheet [data-kind="0,sweepUp"]'); await p.waitForTimeout(300); await p.tap('#nxSheet [data-len="0,2"]'); await p.waitForTimeout(300); await p.tap('#nxSheet [data-rm="4"]'); await p.waitForTimeout(300);
-  out.afterEdit=await p.evaluate(()=>S.tracks.find(t=>t.inst==='fx').fxs.map(e=>`${e.k}+${e.l}`)); await p.evaluate(()=>nxClose());
+  out.grid=await p.evaluate(()=>({editor:!$('s2Ed').hidden, rows:FX_ROWS.length, events:S.tracks.find(t=>t.inst==='fx').fxs.length, sub:$('s2EdS').textContent})); await p.tap('#s2EdBack'); await p.waitForTimeout(250);   /* editing in the grid: fxgrid_test.js */
   out.regionOps=await p.evaluate(()=>{ const t=S.tracks.find(t=>t.inst==='fx'); const a=s2ResizeClip(t,0,-2), n1=t.fxs.length, len=t.len; const c=s2DupClip(t); return {trimEnd:a, events:n1, len, copy:!!c&&c.fxs.length, bars:S.bars}; });
   out.exportOk=await p.evaluate(async()=>{ try{ const mix=await renderMix(1,true); return mix.duration>5; }catch(e){ return String(e); } });
   out.midiSkips=await p.evaluate(()=>{ try{ return midiBytes(S.tracks).length>0; }catch(e){ return String(e); } });
