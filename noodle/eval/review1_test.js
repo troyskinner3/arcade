@@ -1,0 +1,35 @@
+// Nov 17 phone review: sheets close with X and a swipe down; scrolling during playback is left alone; the take message sits above the controls and any tap removes it;
+// a take of silence adds nothing; a thump at the stop tap adds no hit; playback after a take starts at the take
+const {chromium,devices}=require('playwright');
+(async()=>{ const b=await chromium.launch({args:['--use-fake-ui-for-media-stream','--autoplay-policy=no-user-gesture-required']}); const c=await b.newContext({...devices['iPhone 13'],permissions:['microphone'],colorScheme:'dark'}); const p=await c.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(e.message));
+  await p.addInitScript(()=>{ navigator.mediaDevices.getUserMedia=async()=>{ const cx=window.__ctx, dst=cx.createMediaStreamDestination(); window.__dst=dst;
+    /* a quiet room: steady hiss at about -70 dB */ const n=cx.createBufferSource(), buf=cx.createBuffer(1,cx.sampleRate*2,cx.sampleRate), d=buf.getChannelData(0); for(let i=0;i<d.length;i++) d[i]=(Math.random()*2-1)*0.0005; n.buffer=buf; n.loop=true; n.connect(dst); n.start(); return dst.stream; }; });
+  await p.goto('http://localhost:8800/noodle-s2.html?studio'); await p.waitForTimeout(1000); const out={};
+  await p.evaluate(()=>{ ensureCtx(); window.__ctx=ctx; return ctx.resume(); });
+  // sheets
+  await p.tap('#s2Bpm'); await p.waitForTimeout(150); out.sheetX=await p.evaluate(()=>!!$('nxX')&&!$('nxScrim').hidden); await p.tap('#nxX'); out.closedByX=await p.evaluate(()=>$('nxScrim').hidden);
+  const swipe=async(dy)=>p.evaluate(async(dy)=>{ const sh=$('nxSheet'), r=sh.getBoundingClientRect(), x=r.left+r.width/2, y=r.top+20, mk=(type,yy)=>{ const t=new Touch({identifier:1,target:sh.querySelector('h2')||sh,clientX:x,clientY:yy}); (sh.querySelector('h2')||sh).dispatchEvent(new TouchEvent(type,{bubbles:true,cancelable:true,touches:type==='touchend'?[]:[t],changedTouches:[t]})); };
+    mk('touchstart',y); for(let i=1;i<=6;i++){ mk('touchmove',y+dy*i/6); await new Promise(r=>setTimeout(r,16)); } const moved=sh.style.transform; mk('touchend',y+dy); return moved; },dy);
+  await p.tap('#s2Key'); await p.waitForTimeout(150); out.smallSwipe={moved:await swipe(40), closed:await p.evaluate(()=>$('nxScrim').hidden)}; out.bigSwipe={moved:await swipe(260), closed:await p.evaluate(()=>$('nxScrim').hidden)};
+  await p.tap('#s2Mix'); await p.waitForTimeout(150); out.sliderDragKeepsOpen=await p.evaluate(()=>{ const sh=$('nxSheet'), el=$('s2Mv'), r=el.getBoundingClientRect(), mk=(type,yy)=>{ const t=new Touch({identifier:1,target:el,clientX:r.left+20,clientY:yy}); el.dispatchEvent(new TouchEvent(type,{bubbles:true,cancelable:true,touches:type==='touchend'?[]:[t],changedTouches:[t]})); }; mk('touchstart',r.top+5); mk('touchmove',r.top+300); mk('touchend',r.top+300); return !$('nxScrim').hidden; }); await p.evaluate(()=>nxClose());
+  // record helpers
+  const rec=async(inst,perform,stopAfterBars)=>{ await p.tap('#s2RecB'); if(inst) await p.tap(`#nxSheet [data-k="${inst}"]`); await p.waitForFunction(()=>!!recState,null,{timeout:10000});
+    const w=await p.evaluate(([perform,bars])=>{ const r=recState, cx=window.__ctx, dst=window.__dst, bar=240/S.bpm, hit=(t,amp,lowpass)=>{ const n=cx.createBufferSource(), buf=cx.createBuffer(1,Math.round(cx.sampleRate*0.12),cx.sampleRate), d=buf.getChannelData(0); let y=0; for(let i=0;i<d.length;i++){ const v=(Math.random()*2-1)*Math.exp(-i/d.length*5); y=lowpass?y+0.05*(v-y):v; d[i]=(lowpass?y*4:v)*amp; } n.buffer=buf; n.connect(dst); n.start(t); };
+        if(perform==='hits') for(let i=0;i<4;i++) hit(r.start+i*bar/4+0.02,0.5,false);
+        window.__thump=(t)=>hit(t,0.6,true); return (r.start-cx.currentTime)+bar*bars; },[perform,stopAfterBars]); await p.waitForTimeout(w*1000); };
+  const stop=async(thump)=>{ if(thump) await p.evaluate(()=>window.__thump(window.__ctx.currentTime+0.005)); await p.tap('#s2RecB'); await p.waitForFunction(()=>!recState&&!$('s2').classList.contains('recording'),null,{timeout:25000}); await p.waitForTimeout(900); };
+  // 1. silence
+  await rec('kit','none',1.5); await stop(false); out.silent={parts:await p.evaluate(()=>S.tracks.filter(hasContent).length), toast:await p.$eval('#toast',e=>e.textContent), takeBar:await p.evaluate(()=>!$('s2Take').hidden)};
+  // 2. four hits in bar 1, then a thump as the stop button is tapped during bar 2
+  await rec(null,'hits',1.5); await stop(true); out.hits=await p.evaluate(()=>{ const t=S.tracks.find(hasContent); return t?{n:t.hits.length, steps:t.hits.map(h=>h.s).join(','), lastStep:Math.max(...t.hits.map(h=>h.s))}:null; });
+  out.toast=await p.evaluate(()=>{ const t=$('toast'), r=t.getBoundingClientRect(), tl=$('s2Tl').getBoundingClientRect(), bot=document.querySelector('.s2-bot').getBoundingClientRect(); return {on:t.classList.contains('on'), text:t.textContent.slice(0,40), insideTimeline:r.bottom<=tl.bottom+1&&r.top>tl.top+tl.height/2, aboveControls:r.bottom<=bot.top+1}; });
+  await p.screenshot({path:'results/r1_take.png'}); await p.mouse.click(200,300); await p.waitForTimeout(350); out.toastAfterTap=await p.evaluate(()=>$('toast').classList.contains('on'));
+  await p.tap('#s2TkOk'); if(await p.evaluate(()=>playing)) await p.tap('#s2Play');
+  // 3. a take from bar 5 plays back from bar 5
+  const box=await p.$eval('#s2Marks',e=>{ const r=e.getBoundingClientRect(); return {x:r.left,y:r.top+10}; }); await p.evaluate(()=>{ $('s2Tl').scrollLeft=0; }); const bw=await p.evaluate(()=>s2.barw); await p.mouse.click(box.x+bw*4.3,box.y); await p.waitForTimeout(200);
+  await rec(null,'hits',1.5); await stop(false); await p.waitForTimeout(300); out.playFrom=await p.evaluate(()=>({playing, bar:+(s2.cur+1).toFixed(1), off:S.tracks.filter(hasContent).map(t=>(t.off||0)/16)}));
+  // 4. scrolling during playback is left alone
+  out.scroll=await p.evaluate(async()=>{ if(!playing) await togglePlay(); S.bars=Math.max(S.bars,8); const tl=$('s2Tl'); await new Promise(r=>setTimeout(r,300)); tl.dispatchEvent(new WheelEvent('wheel',{bubbles:true,deltaX:40})); tl.scrollLeft=900; const a=tl.scrollLeft; await new Promise(r=>setTimeout(r,900)); const b=tl.scrollLeft; await togglePlay(); await new Promise(r=>setTimeout(r,100)); await togglePlay(); await new Promise(r=>setTimeout(r,400)); const c=tl.scrollLeft; await togglePlay(); return {setTo:a, afterAWhile:b, followsAgainOnNextPlay:c!==b}; });
+  out.header=await p.evaluate(()=>{ const th=document.querySelector('.s2-th'), nm=document.querySelector('.s2-nm'); return {more:!!nm.querySelector('.mo'), line:getComputedStyle(th).boxShadow!=='none', nameBg:getComputedStyle(nm).backgroundColor}; });
+  await p.screenshot({path:'results/r1_studio.png'}); await p.tap('.s2-nm'); await p.waitForTimeout(200); await p.screenshot({path:'results/r1_sheet.png'});
+  console.log(JSON.stringify(out,null,1),errs); await b.close(); })();

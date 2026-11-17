@@ -1,0 +1,11 @@
+// takeIsSilence on the owner's real takes (must never say silence) and on background-only clips (should, when steady)
+const {chromium}=require('playwright'); const fs=require('fs');
+(async()=>{ const D=__dirname+'/../data'; const b=await chromium.launch(); const p=await b.newPage(); await p.goto('http://localhost:8800/noodle-s2.html'); await p.waitForTimeout(900);
+  const takes=fs.readdirSync(D+'/user').filter(f=>/\.wav$/.test(f)); const files=[]; for(const d of fs.readdirSync(D+'/noise')){ const dir=D+'/noise/'+d; if(!fs.statSync(dir).isDirectory()) continue; for(const f of fs.readdirSync(dir).filter(f=>/\.wav$/.test(f)).slice(0,4)) files.push('noise/'+d+'/'+f); }
+  const r=await p.evaluate(async([takes,files])=>{ ensureCtx(); const out={real:0,realSil:[],bg:0,bgSil:0,quiet:[]}; const load=async f=>{ const ab=await ctx.decodeAudioData(await (await fetch('/data/'+f)).arrayBuffer()); return [mono(ab),ab.sampleRate]; };
+    for(const f of takes){ const [x,sr]=await load('user/'+f); const fd=frameDbs(x,sr); for(const nf of [null, fd[Math.floor((fd.length-1)*0.05)], -75, -60]){ out.real++; if(takeIsSilence(x,sr,nf)) out.realSil.push(f+' nf='+nf); } }
+    for(const f of files){ let all,sr; try{ [all,sr]=await load(f); }catch(e){ continue; } for(let k=0;k<8;k++){ const s=Math.floor((k+0.5)*all.length/9), seg=all.slice(s,s+10*sr); if(seg.length<10*sr) continue; const fd=frameDbs(seg.slice(0,2*sr),sr); out.bg++; if(takeIsSilence(seg.slice(2*sr),sr,fd[Math.floor((fd.length-1)*0.3)])) out.bgSil++; } }
+    const sr=ctx.sampleRate; for(const [lvl,bump] of [[0.0003,0],[0.0003,4],[0.0003,12],[0.001,4],[0.001,30],[0.003,3]]){ let seed=5; const rnd=()=>{ seed=(seed*16807)%2147483647; return seed/1073741823.5-1; }; const seg=new Float32Array(10*sr); for(let i=0;i<seg.length;i++) seg[i]=rnd()*lvl; for(let k=0;k<5;k++){ const at=Math.floor((2.5+k*1.3)*sr); for(let i=0;i<0.03*sr;i++) seg[at+i]+=rnd()*lvl*bump*Math.exp(-i/(0.008*sr)); }
+      const fd=frameDbs(seg.slice(0,2*sr),sr), nf=fd[Math.floor((fd.length-1)*0.3)]; out.quiet.push(`room ${nf.toFixed(0)} dB, blips x${bump}: ${takeIsSilence(seg.slice(2*sr),sr,nf)?'silence':'kept'}`); }
+    return out; },[takes,files]);
+  console.log(JSON.stringify(r,null,1)); await b.close(); })();

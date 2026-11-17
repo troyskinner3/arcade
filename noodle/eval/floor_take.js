@@ -1,0 +1,9 @@
+// Whole-take loudness over the count-in background (top 1% frame minus the count-in's 30th percentile) for background-only recordings
+const {chromium}=require('playwright'); const fs=require('fs');
+(async()=>{ const D=__dirname+'/../data'; const b=await chromium.launch(); const p=await b.newPage();
+  await p.goto('http://localhost:8800/noodle-s2.html'); await p.waitForTimeout(900);
+  const files=[]; for(const d of fs.readdirSync(D+'/noise')){ const dir=D+'/noise/'+d; if(!fs.statSync(dir).isDirectory()) continue; for(const f of fs.readdirSync(dir).filter(f=>/\.wav$/.test(f)).slice(0,4)) files.push('noise/'+d+'/'+f); }
+  const r=await p.evaluate(async(files)=>{ ensureCtx(); const out=[]; for(const f of files){ let ab; try{ ab=await ctx.decodeAudioData(await (await fetch('/data/'+f)).arrayBuffer()); }catch(e){ continue; } const all=mono(ab), sr=ab.sampleRate;
+      for(let k=0;k<8;k++){ const s=Math.floor((k+0.5)*all.length/9), seg=all.slice(s,s+10*sr); if(seg.length<10*sr) continue; const fd=frameDbs(seg.slice(0,2*sr),sr), floor=fd[Math.floor((fd.length-1)*0.3)], td=frameDbs(seg.slice(2*sr),sr); out.push({f:f.split('/')[1], d:+(td[Math.floor((td.length-1)*0.99)]-floor).toFixed(1), d90:+(td[Math.floor((td.length-1)*0.9)]-floor).toFixed(1)}); } } return out; },files);
+  const by={}; r.forEach(x=>{ (by[x.f]=by[x.f]||[]).push(x.d); }); for(const k in by){ const a=by[k].sort((x,y)=>x-y); console.log(k,'n',a.length,'min',a[0],'median',a[a.length>>1],'max',a[a.length-1]); }
+  const a=r.map(x=>x.d).sort((x,y)=>x-y), q=v=>a[Math.floor((a.length-1)*v)]; console.log('ALL top1%-floor: p50',q(.5),'p90',q(.9),'p95',q(.95),'max',q(1)); const c=r.map(x=>x.d90).sort((x,y)=>x-y); console.log('ALL top10%-floor: p50',c[c.length>>1],'p95',c[Math.floor((c.length-1)*.95)],'max',c[c.length-1]); await b.close(); })();
