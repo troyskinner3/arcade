@@ -332,7 +332,7 @@ Real noise (DEMAND, CC BY 4.0: street traffic, cafeteria, bus, town square, park
   from those elements (`$('key')`, `$('bars')`, `$('recLabel')`, the hidden sliders the Studio's sheets write to), so each needs moving to plain state first.
 
 ### Stage 3 cleanup log (removing the first prototype's page)
-How to work on it: one small step at a time; after each, `tools/suite.sh` from the scratchpad (also in `eval/tools/`) must print ALL PASS (24 scripts, replay 3.88); only then commit and push. `eval/tools/prune.js <file> s2TrimClip` deletes functions nothing names any more.
+How to work on it: one small step at a time; after each, `tools/suite.sh` from the scratchpad (also in `eval/tools/`) must print ALL PASS (25 scripts, replay 3.88); only then commit and push. `eval/tools/prune.js <file> s2TrimClip` deletes functions nothing names any more.
 - **Batch 1 (done):** removed the old "How it works" card, New song button, the header's back button and brand, the +/− tempo buttons, with their wiring and styles; `newSong` went with them (tests use `projNew`).
 - **Batch 2 (done):** removed the owner's old test-link UI (`guided`, `dropLine`), the `genre`, `quant` and `loops` rows, `keyInfo`, `snapV`, the old calibrate button, with their wiring; `applyStyle` went with them.
 - **Batch 3 (done):** removed the old header (tempo, length, metronome fields), the bottom dock (seek bar, undo/redo, play, record), the song-name field and the old parts container. The Studio's metronome button now calls `toggleMetro`; `syncTransport`, `updatePlayBtn`, `updateDock` and `updateHistBtns` are empty hooks to delete once nothing calls them. `proj_test` and `shell_test` read the title from the Studio.
@@ -383,4 +383,7 @@ How to work on it: one small step at a time; after each, `tools/suite.sh` from t
 - **Snap (shipped):** a SNAP chip next to KEY cycles 1 → ½ → ¼ → ⅛ bar (per project, `S.snap`, default 1). Dragging a part, or its grips, moves in snap steps; the shortest part is one snap step.
   Parts can now be a fraction of a bar long and start inside a bar (`pBars` allows fractions; `s2Cut` keeps exact lengths); the song itself still ends on a whole bar (every song-length update rounds up). Labels read "From bar 2½ · 1½ bars" when a part isn't on whole bars (`partWhere`, `barsTxt`).
   A part narrower than 40 px keeps its grips outside its edges, so its middle can still be grabbed to move it. To make room in the top row, a long key name shortens with "…" and the Mix button is tighter. Recording still starts on a whole bar.
-- `round2_test.js`, `snap_test.js`. Suite: 24 scripts, replay 3.88.
+- **Empty parts (shipped):** tap an empty spot in a track's lane: a dashed outline appears where a part would go (at the snap step you tapped) and the bar below offers **New part**. That makes a 1-bar empty part (shorter if the next part starts sooner) and opens the editor to draw notes or hits.
+  An empty part you made is a real part (`tr.blank`, counted by `hasContent`): it can be selected, moved, trimmed, duplicated and deleted, survives a reload, and a recording over it replaces it like any part. Vocal lanes don't offer it (there is nothing to draw). A tap that only deselects a part doesn't offer one; tapping the same spot again dismisses it.
+  Found along the way: the clip bar's buttons ignored `hidden` (the stylesheet forced them visible), so "Edit notes" also showed on vocal parts, where it did nothing. Fixed.
+- `round2_test.js`, `snap_test.js`, `blank_test.js`. Suite: 25 scripts, replay 3.88.

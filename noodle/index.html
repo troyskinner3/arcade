@@ -350,6 +350,8 @@ input[type=range]::-moz-range-thumb{width:10px;height:18px;border-radius:1px;bac
 .s2-clip span b{display:block;font:700 14px var(--f-body);color:var(--s2-ink)}
 .s2-clip button{height:40px;padding:0 12px!important;border:1px solid var(--s2-line)!important;border-radius:8px;font-weight:600!important;font-size:14px!important;display:flex!important;align-items:center;gap:6px;flex:none}
 .s2-clip .go{background:var(--s2-amber)!important;color:var(--s2-amber-ink)!important;border-color:var(--s2-amber)!important}
+.s2-ghost{position:absolute;top:4px;bottom:4px;border:2px dashed var(--s2-amber);border-radius:7px;pointer-events:none;z-index:1;box-sizing:border-box}
+.s2-clip button[hidden]{display:none!important}   /* the bar's buttons come and go (Edit on vocals, New part on an empty spot) */
 .s2-clip .del{color:var(--rec)!important;width:40px;padding:0!important;justify-content:center}
 .s2-clip .nx-ico{width:18px;height:18px}
 .s2-add{display:flex;height:48px}
@@ -452,6 +454,7 @@ input[type=range]::-moz-range-thumb{width:10px;height:18px;border-radius:1px;bac
   <div class="s2-bot">
     <div class="s2-rec s2-g" id="s2Rec" hidden><span id="s2RecL"></span></div>
     <div class="s2-clip s2-g" id="s2Clip" hidden><span id="s2CbL"></span>
+      <button class="go" id="s2CbNew" hidden><svg class="nx-ico" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>New part</button>
       <button class="go" id="s2CbEdit"><svg class="nx-ico" viewBox="0 0 24 24"><path d="M4 20l4-1L19 8l-3-3L5 16l-1 4z"/></svg>Edit notes</button>
       <button id="s2CbDup"><svg class="nx-ico" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 00-2-2H6a2 2 0 00-2 2v8a2 2 0 002 2h2"/></svg>Duplicate</button>
       <button class="del" id="s2CbDel" aria-label="Delete this part"><svg class="nx-ico" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg></button></div>
@@ -876,12 +879,15 @@ function s2Render(){ if(!s2On()) return; const el=$('s2'), bars=S.bars, view=Mat
   const anySolo=S.tracks.some(t=>t.solo);
   let h=`<div class="s2-ruler"><div class="s2-corner"></div><div class="s2-marks" id="s2Marks">${Array.from({length:view},(_,i)=>`<span class="s2-mk${i>=bars?' out':''}" style="left:calc(${i} * var(--s2-barw))">${i+1}</span>`).join('')}<span class="s2-phh" id="s2PhH"></span></div></div><div class="s2-side"></div>`;
   const lanes=s2Lanes();
-  lanes.forEach(L=>{ const tr=L.tracks[0], nm=nxEsc(s2Name(L)); h+=`<div class="s2-trk${(tr.mute||(anySolo&&!tr.solo))?' dim':''}"><div class="s2-th"><button class="s2-nm" data-t="${L.id}"><i style="background:${INST[tr.inst].color}"></i><span>${nm}</span><b class="mo" aria-hidden="true"><svg viewBox="0 0 12 12"><circle cx="2" cy="6" r="1.2"/><circle cx="6" cy="6" r="1.2"/><circle cx="10" cy="6" r="1.2"/></svg></b></button><div class="s2-ct">${tr.guide?'':`<button class="s2-arm" data-arm="${L.id}" aria-pressed="${String(s2.armId)===String(L.id)}" aria-label="Record into ${nm}"><i></i></button>`}<button class="s2-ms" data-m="${L.id}" aria-pressed="${!!tr.mute}" aria-label="Mute ${nm}">M</button><button class="s2-ms so" data-s="${L.id}" aria-pressed="${!!tr.solo}" aria-label="Solo ${nm}">S</button></div></div><div class="s2-ln" data-ln="${L.id}"><canvas data-cv="${L.id}"></canvas>${(()=>{ const t=L.tracks.find(x=>x.id===s2.selId&&hasContent(x)); return t?`<div class="s2-sel${pBars(t)*pLoops(t)*s2.barw<40?' narrow':''}" id="s2Sel" style="left:calc(${(t.off||0)/16} * var(--s2-barw));width:calc(${pBars(t)*pLoops(t)} * var(--s2-barw))">${pLoops(t)>1?'':'<i class="hl"></i><i class="hr"></i>'}</div>`:''; })()}</div></div>`; });
+  lanes.forEach(L=>{ const tr=L.tracks[0], nm=nxEsc(s2Name(L)); h+=`<div class="s2-trk${(tr.mute||(anySolo&&!tr.solo))?' dim':''}"><div class="s2-th"><button class="s2-nm" data-t="${L.id}"><i style="background:${INST[tr.inst].color}"></i><span>${nm}</span><b class="mo" aria-hidden="true"><svg viewBox="0 0 12 12"><circle cx="2" cy="6" r="1.2"/><circle cx="6" cy="6" r="1.2"/><circle cx="10" cy="6" r="1.2"/></svg></b></button><div class="s2-ct">${tr.guide?'':`<button class="s2-arm" data-arm="${L.id}" aria-pressed="${String(s2.armId)===String(L.id)}" aria-label="Record into ${nm}"><i></i></button>`}<button class="s2-ms" data-m="${L.id}" aria-pressed="${!!tr.mute}" aria-label="Mute ${nm}">M</button><button class="s2-ms so" data-s="${L.id}" aria-pressed="${!!tr.solo}" aria-label="Solo ${nm}">S</button></div></div><div class="s2-ln" data-ln="${L.id}"><canvas data-cv="${L.id}"></canvas>${s2.empty&&String(s2.empty.lane)===String(L.id)?`<div class="s2-ghost" style="left:calc(${s2.empty.at/16} * var(--s2-barw));width:calc(${newPartLen(L,s2.empty.at)/16} * var(--s2-barw))"></div>`:''}${(()=>{ const t=L.tracks.find(x=>x.id===s2.selId&&hasContent(x)); return t?`<div class="s2-sel${pBars(t)*pLoops(t)*s2.barw<40?' narrow':''}" id="s2Sel" style="left:calc(${(t.off||0)/16} * var(--s2-barw));width:calc(${pBars(t)*pLoops(t)} * var(--s2-barw))">${pLoops(t)>1?'':'<i class="hl"></i><i class="hr"></i>'}</div>`:''; })()}</div></div>`; });
   if(!S.tracks.length) h+=`<div class="s2-hint"><b>New project</b>Tap record, then pick what you're recording.</div>`;
   h+=`<div class="s2-add"><button id="s2Add">+ Add track</button></div><div class="s2-ph" id="s2Ph"></div>`;
   $('s2In').innerHTML=h; lanes.forEach(L=>{ const cv=$('s2In').querySelector(`canvas[data-cv="${L.id}"]`); if(cv) s2DrawLane(L,cv); });
   if(s2.selId!=null && !S.tracks.some(t=>t.id===s2.selId&&hasContent(t))) s2.selId=null;
-  const tk=takeBar&&!recState; $('s2Take').hidden=!tk; { const t=S.tracks.find(x=>x.id===s2.selId), show=!!t&&!tk&&!recState; $('s2Clip').hidden=!show; if(show){ $('s2CbL').innerHTML=`<b>${nxEsc(s2Name(s2Lane(s2LaneId(t))))}</b>${partWhere(t)}`; $('s2CbEdit').hidden=t.inst==='vox'; $('s2CbEdit').lastChild.textContent=t.inst==='fx'?'Edit FX':'Edit notes'; } }
+  const tk=takeBar&&!recState; $('s2Take').hidden=!tk; if(s2.selId!=null||tk||recState||(s2.empty&&!s2Lane(s2.empty.lane))) s2.empty=null;
+  { const t=S.tracks.find(x=>x.id===s2.selId), show=!!t&&!tk&&!recState, em=!!s2.empty; $('s2Clip').hidden=!show&&!em; $('s2CbNew').hidden=!em; ['s2CbEdit','s2CbDup','s2CbDel'].forEach(id=>{ $(id).hidden=em; });
+    if(em){ const L=s2Lane(s2.empty.lane); $('s2CbL').innerHTML=`<b>${nxEsc(s2Name(L))}</b>${partWhere({off:s2.empty.at,len:newPartLen(L,s2.empty.at)/16,rep:false})} · empty`; }
+    if(show){ $('s2CbL').innerHTML=`<b>${nxEsc(s2Name(s2Lane(s2LaneId(t))))}</b>${partWhere(t)}`; $('s2CbEdit').hidden=t.inst==='vox'; $('s2CbEdit').lastChild.textContent=t.inst==='fx'?'Edit FX':'Edit notes'; } }
   s2.pos=-1; s2Chips(); s2Seek(); s2Clip(); { const t=$('toast'); if(t.classList.contains('on')) toastPlace(t); } }
 /* keep the playhead out from under the track headers, and the header panel as tall as the timeline */
 function s2Clip(){ const tl=$('s2Tl'), a=$('s2Ph'), b=$('s2PhH'); if(!a) return; $('s2').style.setProperty('--s2-sideh',Math.max(0,tl.clientHeight-26)+'px'); const hid=Math.max(0,s2.pos)*s2.barw<tl.scrollLeft-1?'hidden':'visible'; a.style.visibility=hid; b.style.visibility=hid; }
@@ -965,6 +971,14 @@ function s2ShareSheet(){ if(!S.tracks.some(hasContent)){ toast('Record something
 /* Move a part along its lane, in whole bars. It can't land on another part. */
 /* where a part sits, for labels: "Bars 3–4", or with fractions "From bar 3½ · 1½ bars" */
 function partWhere(t){ const st=(t.off||0)/16, len=pBars(t)*pLoops(t); if(st%1===0 && len%1===0){ const b0=st+1, b1=st+len; return b1>b0?`Bars ${b0}–${b1}`:`Bar ${b0}`; } return `From bar ${barsTxt(st+1)} · ${barsTxt(len)} bar${len>1?'s':''}`; }
+/* A new empty part: one bar (shorter if the next part starts sooner), at the snap step you tapped. Reuses the lane's empty track when it has one. */
+function newPartLen(L, at){ const next=Math.min(64*16,...L.tracks.filter(t=>hasContent(t)&&(t.off||0)>at).map(t=>t.off||0)); return Math.max(1,Math.min(16,next-at)); }
+function s2NewPart(){ const e=s2.empty; if(!e) return; const L=s2Lane(e.lane); s2.empty=null; if(!L) return; const first=L.tracks[0], len=newPartLen(L,e.at);
+  let tr=L.tracks.find(t=>!hasContent(t));
+  if(!tr){ tr=mkTrack(first.inst,{id:S.nextId++, lane:L.id, sound:first.sound, vol:first.vol, mute:first.mute, solo:first.solo, send:first.send, tone:first.tone, oct:first.oct, sens:first.sens}); if(first.adsr) tr.adsr=first.adsr; if(first.chordType) tr.chordType=first.chordType; S.tracks.push(tr); }
+  tr.off=e.at; tr.len=len/16; tr.lenSet=true; tr.rep=false; tr.blank=true; if(tr.notes) tr.notes=[]; if(tr.hits) tr.hits=[]; if(tr.fxs) tr.fxs=[]; tr._dirty=true;
+  const end=Math.ceil((e.at+len)/16-1e-9); if(S.bars<end) S.bars=Math.min(64,end); S.activeId=tr.id; s2.selId=tr.id; save(); renderTracks(); scheduleRender();
+  if(tr.inst==='fx') s2FxSheet(tr); else s2Edit(tr); }
 function s2MoveClip(tr, bars){ const off=Math.round((tr.off||0)+bars*16), len=pSteps(tr)*pLoops(tr); if(pLoops(tr)>1) return false; if(off<0 || off+len>64*16) return false;
   const hit=S.tracks.some(t=>t!==tr&&s2LaneId(t)===s2LaneId(tr)&&hasContent(t)&&off<(t.off||0)+pSteps(t)*pLoops(t)&&(t.off||0)<off+len); if(hit) return false;
   const L=pBars(tr); tr.len=L; tr.lenSet=true; tr.rep=false; const need=Math.ceil(Math.max(1,...S.tracks.filter(hasContent).map(t=>t===tr?off/16+L:(t.off||0)/16+(t.off!=null&&t.len?t.len:S.bars)))-1e-9);
@@ -988,7 +1002,7 @@ function s2DupClip(tr){ if(pLoops(tr)>1) return null; const len=pSteps(tr), mate
   if(tr._raw){ c._raw=tr._raw; storeVox(c); } S.tracks.push(c); if(S.bars<(at+len)/16) S.bars=Math.ceil((at+len)/16-1e-9); keyCache=null; save(); scheduleRender(); return c; }
 function s2DeleteClip(tr){ const mates=S.tracks.filter(o=>o!==tr&&s2LaneId(o)===s2LaneId(tr)); s2.selId=null;
   if(mates.length){ if(tr.lane==null) mates.forEach(o=>{ o.lane=mates[0].id; }); s2.recPrev=0; deletePart(tr); }
-  else { if(tr.notes) tr.notes=[]; if(tr.hits) tr.hits=[]; if(tr.fxs) tr.fxs=[]; tr._an=null; tr._takes=null; if(tr._raw){ tr._raw=null; tr.va=null; takeStore.del('vox'+tr.id); } tr._dirty=true; keyCache=null; save(); renderTracks(); scheduleRender(); toast('Part deleted'); } }
+  else { tr.blank=false; if(tr.notes) tr.notes=[]; if(tr.hits) tr.hits=[]; if(tr.fxs) tr.fxs=[]; tr._an=null; tr._takes=null; if(tr._raw){ tr._raw=null; tr.va=null; takeStore.del('vox'+tr.id); } tr._dirty=true; keyCache=null; save(); renderTracks(); scheduleRender(); toast('Part deleted'); } }
 function s2TrackSheet(L){ const tr=L.tracks[0], all=()=>S.tracks.filter(t=>s2LaneId(t)===L.id), I=INST[tr.inst], nm=nxEsc(s2Name(L)), pit=I.kind==='pitched';
   const fam=pit?PICK_GROUPS[1][1]:I.kind==='audio'?[]:PICK_GROUPS[0][1], hasVoice=all().some(t=>t._raw&&(t._an||t.exprAlign!=null))&&tr.inst!=='arp';
   const dot=k=>`<i style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${INST[k].color};margin-right:6px"></i>`;
@@ -1034,7 +1048,7 @@ function s2Init(){ const _rt=renderTracks; renderTracks=function(){ if(s2.post &
   $('s2EdVerI').onclick=()=>nxSheet(`<h2>Another version</h2><p style="font-size:15px;margin:0 0 10px">The same recording can be heard more than one way: in a different key, or with bigger jumps between notes. Noodle shows the one it thinks you meant.</p><p style="font-size:15px;margin:0 0 10px">Tap <b>Another version</b> to hear the next most likely one, and keep tapping to go through them. Your recording isn’t changed.</p><p style="font-size:15px;margin:0 0 6px"><b>Mine</b> puts your notes back exactly as they were, including anything you changed by hand.</p>`);
   $('s2CbEdit').onclick=()=>{ const t=S.tracks.find(x=>x.id===s2.selId); if(t){ if(t.inst==='fx') s2FxSheet(t); else s2Edit(t); } };
   $('s2CbDup').onclick=()=>{ const t=S.tracks.find(x=>x.id===s2.selId); if(!t) return; const c=s2DupClip(t); if(c){ s2.selId=c.id; renderTracks(); const tl=$('s2Tl'), x0=(c.off/16)*s2.barw, x1=x0+pBars(c)*s2.barw, hw=parseFloat(getComputedStyle($('s2')).getPropertyValue('--s2-hdr')); if(x1>tl.scrollLeft+tl.clientWidth-hw-12) tl.scrollLeft=Math.max(0,x1-(tl.clientWidth-hw)+24); else if(x0<tl.scrollLeft) tl.scrollLeft=Math.max(0,x0-12); } else toast('No room for a copy'); };
-  $('s2CbDel').onclick=()=>{ const t=S.tracks.find(x=>x.id===s2.selId); if(t) s2DeleteClip(t); };
+  $('s2CbNew').onclick=s2NewPart; $('s2CbDel').onclick=()=>{ const t=S.tracks.find(x=>x.id===s2.selId); if(t) s2DeleteClip(t); };
   $('s2Back').onclick=()=>nxGo('projects'); $('s2Name').onclick=()=>s2Sheets('name'); $('s2Undo').onclick=()=>undo(); $('s2Redo').onclick=()=>redo();
   $('s2Share').onclick=s2ShareSheet; $('s2Bpm').onclick=()=>s2Sheets('tempo'); $('s2Key').onclick=()=>s2Sheets('key'); $('s2Snap').onclick=()=>{ const i=SNAPS.indexOf(snapBars()); S.snap=SNAPS[(i+1)%SNAPS.length]; save(); s2Chips(); toast(`Parts move and trim by ${S.snap===1?'1 bar':fracTxt(S.snap)+' bar'}.`); }; $('s2Mix').onclick=()=>s2Sheets('mix');
   $('s2Play').onclick=()=>togglePlay(); $('s2RecB').onclick=s2Record; $('s2Metro').onclick=toggleMetro;
@@ -1049,7 +1063,9 @@ function s2Init(){ const _rt=renderTracks; renderTracks=function(){ if(s2.post &
     else if(b=g('m')){ const L=s2Lane(b.dataset.m), v=!L.tracks[0].mute; L.tracks.forEach(t=>{ t.mute=v; }); save(); applyAllMix(); s2Render(); }
     else if(b=g('s')){ const L=s2Lane(b.dataset.s), v=!L.tracks[0].solo; L.tracks.forEach(t=>{ t.solo=v; }); save(); applyAllMix(); s2Render(); }
     else if(b=g('t')) s2TrackSheet(s2Lane(b.dataset.t));
-    else if(b=g('ln')){ if(recState || Date.now()-(s2.noTap||0)<400) return; const L=s2Lane(b.dataset.ln), st=(e.clientX-b.getBoundingClientRect().left)/s2.barw*16, t=L.tracks.find(t=>hasContent(t)&&st>=(t.off||0)&&st<(t.off||0)+pSteps(t)*pLoops(t)); s2.selId=t?t.id:null; s2Render(); }
+    else if(b=g('ln')){ if(recState || Date.now()-(s2.noTap||0)<400) return; const L=s2Lane(b.dataset.ln), st=(e.clientX-b.getBoundingClientRect().left)/s2.barw*16, t=L.tracks.find(t=>hasContent(t)&&st>=(t.off||0)&&st<(t.off||0)+pSteps(t)*pLoops(t)); const had=s2.selId!=null; s2.selId=t?t.id:null;
+      { const at=Math.floor(st/(16*snapBars()))*Math.round(16*snapBars()), same=s2.empty&&String(s2.empty.lane)===String(L.id)&&s2.empty.at===at;
+        s2.empty = !t && !had && !same && L.tracks[0].inst!=='vox' && !L.tracks[0].guide ? {lane:L.id, at} : null; } s2Render(); }   /* an empty spot: offer a new part there (tap it again, or anywhere else, to dismiss; a tap that only deselects doesn't offer) */
     else if(e.target.id==='s2Add') s2AddSheet(false); };
   { const T=$('s2In'); let g=null;
     T.addEventListener('pointerdown',e=>{ const sel=e.target.closest('.s2-sel'); if(!sel||recState) return; const tr=S.tracks.find(x=>x.id===s2.selId); if(!tr) return; e.stopPropagation();
@@ -2436,7 +2452,7 @@ function fitAlign(times, align){
 function takeTimes(an,inst){ return INST[inst].kind==='pitched'? an.notes.map(n=>n.t0) : an.onsets.map(o=>o.t); }
 /* ============================== takes → tracks ============================== */
 function userTracks(){ return S.tracks.filter(t=>!t.ex); }
-const hasContent=t=>!!((t.hits&&t.hits.length)||(t.notes&&t.notes.length)||(t.fxs&&t.fxs.length)||t._raw||(t.inst==='vox'&&t.va!=null));
+const hasContent=t=>!!((t.hits&&t.hits.length)||(t.notes&&t.notes.length)||(t.fxs&&t.fxs.length)||t._raw||(t.inst==='vox'&&t.va!=null)||t.blank);   /* blank: an empty part you made to draw in */
 const anyContent=()=>userTracks().some(hasContent);
 function dropExamples(keep){ if(keep) keep.ex=false; S.tracks.filter(t=>t.ex).forEach(disposeTrack); S.tracks=S.tracks.filter(t=>!t.ex); }
 /* ============ FX (beta): ear candy from mouth gestures ============
