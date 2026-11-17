@@ -2,7 +2,7 @@
 // a take of silence adds nothing; a thump at the stop tap adds no hit; playback after a take starts at the take; the metronome leaking into the mic adds no hits
 const {chromium,devices}=require('playwright');
 (async()=>{ const b=await chromium.launch({args:['--use-fake-ui-for-media-stream','--autoplay-policy=no-user-gesture-required']}); const c=await b.newContext({...devices['iPhone 13'],permissions:['microphone'],colorScheme:'dark'}); const p=await c.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(e.message));
-  await p.addInitScript(()=>{ navigator.mediaDevices.getUserMedia=async()=>{ const cx=window.__ctx, dst=cx.createMediaStreamDestination(); window.__dst=dst;
+  await p.addInitScript(()=>{ try{ localStorage.setItem('noodle.kitOffer','1'); }catch(e){} navigator.mediaDevices.getUserMedia=async()=>{ const cx=window.__ctx, dst=cx.createMediaStreamDestination(); window.__dst=dst;
     /* a quiet room: steady hiss at about -70 dB */ const n=cx.createBufferSource(), buf=cx.createBuffer(1,cx.sampleRate*2,cx.sampleRate), d=buf.getChannelData(0); for(let i=0;i<d.length;i++) d[i]=(Math.random()*2-1)*0.0005; n.buffer=buf; n.loop=true; n.connect(dst); n.start(); return dst.stream; }; });
   await p.goto('http://localhost:8800/noodle-s2.html?studio'); await p.waitForTimeout(1000); const out={};
   await p.evaluate(()=>{ ensureCtx(); window.__ctx=ctx; return ctx.resume(); });

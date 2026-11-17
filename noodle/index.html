@@ -893,9 +893,18 @@ function s2AddSheet(thenRecord){ const mine=thenRecord?s2Lanes().filter(L=>!L.tr
   $('nxSheet').onclick=e=>{ const ln=e.target.closest('[data-lane]'); if(ln){ nxClose(); s2.armId=s2Lane(ln.dataset.lane).id; s2Render(); s2Record(); return; }
     const b=e.target.closest('[data-k]'); if(!b) return; nxClose(); const tr=mkTrack(b.dataset.k,{id:S.nextId++}); S.tracks.push(tr); S.activeId=tr.id; s2.armId=tr.id; keyCache=null; save(); renderTracks(); if(thenRecord) s2Record(); else toast(tr.inst==='fx'?'FX: try a rising “woooop”, a falling one, a “shhh”, or a short “pshh”.':'Ready: tap record',tr.inst==='fx'?6000:4200); }; }
 const TAP_CUT=0.25;   /* seconds before the stop tap that are thrown away: reaching for the button and the tap itself thump the mic, and were heard as kicks */
+/* The first time someone records a drum kit without having taught their sounds: offer to learn their kick, snare and hi-hat first.
+   Measured on 28 amateur beatboxers (AVP): the right drum 63% / 56% of the time untaught, 79% / 77% taught. Offered once; More → Your drum sounds any time. */
+const kitOfferDue=()=>{ if(micOff || taughtSlots().length>=2) return false; try{ return !localStorage.getItem('noodle.kitOffer'); }catch(e){ return false; } };
+function kitOffer(){ try{ localStorage.setItem('noodle.kitOffer','1'); }catch(e){}
+  const say=id=>{ const sl=slotOf(id)||S.kit.slots.find(x=>x.sound===id); return sl?nxEsc(sl.say||slotLabel(sl.id)):''; };
+  nxSheet(`<h2>Teach Noodle your drum sounds?</h2><p style="color:var(--muted);font-size:15px;margin:0 0 4px">Everyone beatboxes differently. Make each sound on every click: kick (“${say('kick')}”), snare (“${say('snare')}”), then hi-hat (“${say('hat')}”).</p><p style="color:var(--muted);font-size:15px;margin:0 0 6px">About 20 seconds. Your drum takes come out right more often.</p><button class="nx-primary" id="kitTeach">Teach my sounds</button><button class="nx-ghost" id="kitSkip" style="width:100%;margin-top:8px">Not now</button>`);
+  $('kitSkip').onclick=()=>{ nxClose(); s2Record(); };
+  $('kitTeach').onclick=()=>{ nxClose(); ensureCtx(); s2.afterTeach=true; startTeach(['kick','snare','hat'].map(k=>(slotOf(k)||S.kit.slots.find(x=>x.sound===k)||{}).id).filter(Boolean)); }; }
 const S2_MAX=16;   /* longest single take, in bars */
 function s2Record(){ ensureCtx(); s2.selId=null; if(recState){ const r=recState; if(ctx.currentTime<r.start+0.4) cancelRecord(); else { r.end=Math.min(r.end, ctx.currentTime-r.lat-0.05); r.cut=ctx.currentTime-TAP_CUT; } return; }   /* tap again: stop and keep what was recorded */
   const L=s2Lane(s2.armId); if(!L||L.tracks[0].guide){ s2AddSheet(true); return; } const first=L.tracks[0]; let tr=first; takeBar=null;
+  if(first.inst==='kit' && kitOfferDue()){ kitOffer(); return; }
   { const P=clamp(Math.floor(s2.cur+1e-6),0,63);
     tr=L.tracks.find(t=>!hasContent(t));
     if(!tr){ tr=mkTrack(first.inst,{id:S.nextId++, lane:L.id, sound:first.sound, vol:first.vol, mute:first.mute, solo:first.solo, send:first.send, tone:first.tone, oct:first.oct, sens:first.sens}); if(first.adsr) tr.adsr=first.adsr; if(first.fx) tr.fx=Object.assign({},first.fx); S.tracks.push(tr); }
@@ -2199,7 +2208,7 @@ function openRec(mode='take', partId=null){
   $('rsHint').textContent = mode==='calib'?'After the four count-in clicks, clap sharply on every click.' : mode==='teach'?'Make each noise on every click after the count-in. It does one sound at a time.' : INST[S.inst].hint.split(/(?<=\.) /)[0];
   $('rsReview').hidden=true; $('rsReady').hidden=false;
 }
-function closeRec(){ if(recState) cancelRecord(); S.target=null; $('recSheet').hidden=true; document.body.style.overflow=''; rs.mode=null; renderTracks(); }
+function closeRec(){ if(s2.afterTeach){ s2.afterTeach=false; setTimeout(()=>{ if(s2On()) toast(taughtSlots().length>=2?'Learned. Now tap record for your beat.':'Tap record when you’re ready.'); },60); } if(recState) cancelRecord(); S.target=null; $('recSheet').hidden=true; document.body.style.overflow=''; rs.mode=null; renderTracks(); }
 function showReview(){   /* after calibrating or teaching drum sounds */
   $('rsReady').hidden=true; $('rsReview').hidden=false; $('rsMsg').textContent=lastMsg||'';
   $('rsKeep').textContent='Done'; $('rsRetry').hidden=rs.mode!=='calib';
