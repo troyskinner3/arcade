@@ -332,7 +332,7 @@ Real noise (DEMAND, CC BY 4.0: street traffic, cafeteria, bus, town square, park
   from those elements (`$('key')`, `$('bars')`, `$('recLabel')`, the hidden sliders the Studio's sheets write to), so each needs moving to plain state first.
 
 ### Stage 3 cleanup log (removing the first prototype's page)
-How to work on it: one small step at a time; after each, `tools/suite.sh` from the scratchpad (also in `eval/tools/`) must print ALL PASS (23 scripts, replay 3.88); only then commit and push. `eval/tools/prune.js <file> s2TrimClip` deletes functions nothing names any more.
+How to work on it: one small step at a time; after each, `tools/suite.sh` from the scratchpad (also in `eval/tools/`) must print ALL PASS (24 scripts, replay 3.88); only then commit and push. `eval/tools/prune.js <file> s2TrimClip` deletes functions nothing names any more.
 - **Batch 1 (done):** removed the old "How it works" card, New song button, the header's back button and brand, the +/− tempo buttons, with their wiring and styles; `newSong` went with them (tests use `projNew`).
 - **Batch 2 (done):** removed the owner's old test-link UI (`guided`, `dropLine`), the `genre`, `quant` and `loops` rows, `keyInfo`, `snapV`, the old calibrate button, with their wiring; `applyStyle` went with them.
 - **Batch 3 (done):** removed the old header (tempo, length, metronome fields), the bottom dock (seek bar, undo/redo, play, record), the song-name field and the old parts container. The Studio's metronome button now calls `toggleMetro`; `syncTransport`, `updatePlayBtn`, `updateDock` and `updateHistBtns` are empty hooks to delete once nothing calls them. `proj_test` and `shell_test` read the title from the Studio.
@@ -380,4 +380,7 @@ How to work on it: one small step at a time; after each, `tools/suite.sh` from t
   How Mine works: the first tap saves the part's notes, its reading, the song key settings and the key the notes are heard in (`tr._mine`). Editing while on a version makes that the new Mine at the next tap. Going all the way round the cycle also lands on Mine.
   Found while testing: Noodle's key guess is kept until something resets it, so a part can be heard in a key a fresh guess would not pick. Mine keeps the key that was being heard, so it sounds the same as before.
 - **Play under open sheets (shipped):** in the Studio timeline every sheet stops just above the transport, so Play, rewind, loop and the metronome work while a sheet is open, and sound changes are heard as you make them. Record is dimmed while a sheet is open. (`sheetAboveTransport`)
-- `round2_test.js`. Suite: 23 scripts, replay 3.88.
+- **Snap (shipped):** a SNAP chip next to KEY cycles 1 → ½ → ¼ → ⅛ bar (per project, `S.snap`, default 1). Dragging a part, or its grips, moves in snap steps; the shortest part is one snap step.
+  Parts can now be a fraction of a bar long and start inside a bar (`pBars` allows fractions; `s2Cut` keeps exact lengths); the song itself still ends on a whole bar (every song-length update rounds up). Labels read "From bar 2½ · 1½ bars" when a part isn't on whole bars (`partWhere`, `barsTxt`).
+  A part narrower than 40 px keeps its grips outside its edges, so its middle can still be grabbed to move it. To make room in the top row, a long key name shortens with "…" and the Mix button is tighter. Recording still starts on a whole bar.
+- `round2_test.js`, `snap_test.js`. Suite: 24 scripts, replay 3.88.

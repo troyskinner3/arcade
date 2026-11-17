@@ -306,6 +306,9 @@ input[type=range]::-moz-range-thumb{width:10px;height:18px;border-radius:1px;bac
 .s2-lcd{background:#0d0f12;color:#f1c75b;border-radius:6px;padding:6px 10px;font:700 15px var(--f-mono);font-variant-numeric:tabular-nums;min-width:56px;text-align:center;flex:none}
 .s2-chip{border:1px solid var(--s2-line)!important;border-radius:6px;padding:7px 9px!important;font:500 13px var(--f-mono)!important;white-space:nowrap;flex:none}
 .s2-chip small{color:var(--s2-muted);font-size:11px;margin-right:4px}
+#s2Key{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis}   /* a long key name shortens; the row never runs off the screen */
+#s2Mix{gap:4px;padding:0 8px!important}   /* a little tighter, so the key name fits next to SNAP */
+@media (max-width:370px){ .s2-chip small{display:none} }
 .s2-mix{margin-left:auto;height:34px;padding:0 10px!important;border:1px solid var(--s2-line)!important;border-radius:6px;display:flex;align-items:center;gap:6px;font-weight:600!important;font-size:13px!important;flex:none}
 .s2-tl{flex:1;min-height:0;overflow:auto;position:relative;border-top:1px solid var(--s2-line);border-bottom:1px solid var(--s2-line);touch-action:pan-x pan-y;overscroll-behavior:contain;background:var(--s2-lane)}
 .s2-in{position:relative;width:calc(var(--s2-hdr) + var(--s2-view) * var(--s2-barw));min-width:100%;min-height:100%}
@@ -340,6 +343,7 @@ input[type=range]::-moz-range-thumb{width:10px;height:18px;border-radius:1px;bac
 .s2-sel{position:absolute;top:4px;bottom:4px;border:2px solid var(--s2-amber);border-radius:7px;touch-action:none;z-index:1;cursor:grab;box-sizing:border-box}
 .s2-sel i{position:absolute;top:-2px;bottom:-2px;width:26px;touch-action:none;cursor:ew-resize}
 .s2-sel .hl{left:-13px} .s2-sel .hr{right:-13px}
+.s2-sel.narrow .hl{left:-27px} .s2-sel.narrow .hr{right:-27px}   /* a short part keeps its middle free for moving it */
 .s2-sel i::after{content:"";position:absolute;left:9px;top:50%;width:8px;height:26px;margin-top:-13px;border-radius:4px;background:var(--s2-amber);box-shadow:0 0 0 2px var(--s2-bg)}
 .s2-clip{display:flex;align-items:center;gap:8px;padding-top:8px}
 .s2-clip span{flex:1;min-width:0;font:500 12px var(--f-mono);color:var(--s2-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -425,7 +429,8 @@ input[type=range]::-moz-range-thumb{width:10px;height:18px;border-radius:1px;bac
     <span class="s2-lcd" id="s2Pos">1.1</span>
     <button class="s2-chip" id="s2Bpm"><small>BPM</small><span></span></button>
     <button class="s2-chip" id="s2Key"><small>KEY</small><span></span></button>
-    <button class="s2-mix" id="s2Mix"><svg class="nx-ico" viewBox="0 0 24 24" style="width:18px;height:18px"><path d="M6 3v18M12 3v18M18 3v18"/><path d="M4 8h4M10 15h4M16 10h4" stroke-width="3"/></svg>Mix</button>
+    <button class="s2-chip" id="s2Snap" aria-label="Snap: how far parts move and trim"><small>SNAP</small><span>1</span></button>
+    <button class="s2-mix" id="s2Mix" aria-label="Mix"><svg class="nx-ico" viewBox="0 0 24 24" style="width:18px;height:18px"><path d="M6 3v18M12 3v18M18 3v18"/><path d="M4 8h4M10 15h4M16 10h4" stroke-width="3"/></svg>Mix</button>
   </div>
   <div class="s2-tl" id="s2Tl"><div class="s2-in" id="s2In"></div></div>
   <div class="s2-ed" id="s2Ed" hidden>
@@ -850,7 +855,7 @@ function s2Cut(tr, from, to){   /* keep steps [from,to) of a part (in its own st
   if(tr.notes) tr.notes=tr.notes.map(fix).filter(Boolean); if(tr.hits) tr.hits=tr.hits.map(fix).filter(Boolean); if(tr.fxs) tr.fxs=tr.fxs.map(fix).filter(Boolean);
   if(tr.inst==='vox'){ tr.va=+((tr.va||0)+from*stepDur()).toFixed(4); if(tr.vn) tr.vn=tr.vn.map(v=>({...v,t:v.t-from*stepDur()})).filter(v=>v.t>=0&&v.t<(to-from)*stepDur()); tr._tuned=null; tr._pitch=null; }
   tr.cutAt=Date.now();   /* its notes were cut by a later take or a trim, not corrected */
-  tr.off=(tr.off||0)+from; tr.len=Math.max(1,Math.round((to-from)/16)); tr.lenSet=true; tr.rep=false; tr._an=null; tr._takes=null; tr._versions=null; tr._dirty=true; if(tr.expr) tr.expr=0; }
+  tr.off=(tr.off||0)+from; tr.len=Math.max(1/16,(to-from)/16); tr.lenSet=true; tr.rep=false; tr._an=null; tr._takes=null; tr._versions=null; tr._dirty=true; if(tr.expr) tr.expr=0; }
 function s2Replace(nw){ const a=nw.off||0, b=a+pSteps(nw); let changed=false;
   for(const t of S.tracks.slice()){ if(t===nw || t.guide || s2LaneId(t)!==s2LaneId(nw) || !hasContent(t)) continue;
     const n=pSteps(t)*pLoops(t), o=t.off||0, e=o+n; if(e<=a || o>=b) continue; changed=true;
@@ -862,7 +867,7 @@ function s2Replace(nw){ const a=nw.off||0, b=a+pSteps(nw); let changed=false;
 /* after a take, a discard or a cancel: drop clips that ended up empty, fit the new clip's length to what was recorded, and end the song where its last part ends */
 function s2Tidy(){ const before=S.tracks.length; const lone=t=>!S.tracks.some(o=>o!==t&&s2LaneId(o)===s2LaneId(t)); S.tracks=S.tracks.filter(t=>{ if(hasContent(t)||t.guide||lone(t)) return true; disposeTrack(t); return false; });
   const tr=S.tracks.find(t=>t.id===s2.recId); if(tr && hasContent(tr) && tr.off!=null && s2.recLen){ const last=tr.inst==='vox' ? (tr._raw?Math.max(1,(tr._raw.x.length/tr._raw.sr-(tr.va||0)-0.3)/stepDur()):16) : Math.max(0,...(tr.notes||[]).map(n=>n.s+n.l),...(tr.hits||[]).map(h=>h.s+1),...(tr.fxs||[]).map(e=>e.s+e.l)); tr.len=clamp(Math.ceil(last/16),1,s2.recLen); tr.lenSet=true; tr._dirty=true; s2Replace(tr); }
-  if(s2.recPrev){ const end=Math.max(1,...S.tracks.filter(hasContent).map(t=>Math.floor((t.off||0)/16)+(t.off!=null&&t.len?t.len:s2.recPrev))); const nb=Math.min(64,S.tracks.some(hasContent)?end:s2.recPrev); if(nb!==S.bars){ S.bars=nb; } }
+  if(s2.recPrev){ const end=Math.ceil(Math.max(1,...S.tracks.filter(hasContent).map(t=>(t.off||0)/16+(t.off!=null&&t.len?t.len:s2.recPrev)))-1e-9); const nb=Math.min(64,S.tracks.some(hasContent)?end:s2.recPrev); if(nb!==S.bars){ S.bars=nb; } }
   s2.recId=null; s2.recLen=0; s2.recPrev=0; if(S.tracks.length!==before) keyCache=null; save(); scheduleRender(); }
 function s2Render(){ if(!s2On()) return; const el=$('s2'), bars=S.bars, view=Math.max(bars+8, Math.ceil((window.innerWidth||400)/s2.barw));
   el.style.setProperty('--s2-bars',bars); el.style.setProperty('--s2-view',view); el.style.setProperty('--s2-barw',s2.barw+'px');
@@ -871,16 +876,19 @@ function s2Render(){ if(!s2On()) return; const el=$('s2'), bars=S.bars, view=Mat
   const anySolo=S.tracks.some(t=>t.solo);
   let h=`<div class="s2-ruler"><div class="s2-corner"></div><div class="s2-marks" id="s2Marks">${Array.from({length:view},(_,i)=>`<span class="s2-mk${i>=bars?' out':''}" style="left:calc(${i} * var(--s2-barw))">${i+1}</span>`).join('')}<span class="s2-phh" id="s2PhH"></span></div></div><div class="s2-side"></div>`;
   const lanes=s2Lanes();
-  lanes.forEach(L=>{ const tr=L.tracks[0], nm=nxEsc(s2Name(L)); h+=`<div class="s2-trk${(tr.mute||(anySolo&&!tr.solo))?' dim':''}"><div class="s2-th"><button class="s2-nm" data-t="${L.id}"><i style="background:${INST[tr.inst].color}"></i><span>${nm}</span><b class="mo" aria-hidden="true"><svg viewBox="0 0 12 12"><circle cx="2" cy="6" r="1.2"/><circle cx="6" cy="6" r="1.2"/><circle cx="10" cy="6" r="1.2"/></svg></b></button><div class="s2-ct">${tr.guide?'':`<button class="s2-arm" data-arm="${L.id}" aria-pressed="${String(s2.armId)===String(L.id)}" aria-label="Record into ${nm}"><i></i></button>`}<button class="s2-ms" data-m="${L.id}" aria-pressed="${!!tr.mute}" aria-label="Mute ${nm}">M</button><button class="s2-ms so" data-s="${L.id}" aria-pressed="${!!tr.solo}" aria-label="Solo ${nm}">S</button></div></div><div class="s2-ln" data-ln="${L.id}"><canvas data-cv="${L.id}"></canvas>${(()=>{ const t=L.tracks.find(x=>x.id===s2.selId&&hasContent(x)); return t?`<div class="s2-sel" id="s2Sel" style="left:calc(${(t.off||0)/16} * var(--s2-barw));width:calc(${pBars(t)*pLoops(t)} * var(--s2-barw))">${pLoops(t)>1?'':'<i class="hl"></i><i class="hr"></i>'}</div>`:''; })()}</div></div>`; });
+  lanes.forEach(L=>{ const tr=L.tracks[0], nm=nxEsc(s2Name(L)); h+=`<div class="s2-trk${(tr.mute||(anySolo&&!tr.solo))?' dim':''}"><div class="s2-th"><button class="s2-nm" data-t="${L.id}"><i style="background:${INST[tr.inst].color}"></i><span>${nm}</span><b class="mo" aria-hidden="true"><svg viewBox="0 0 12 12"><circle cx="2" cy="6" r="1.2"/><circle cx="6" cy="6" r="1.2"/><circle cx="10" cy="6" r="1.2"/></svg></b></button><div class="s2-ct">${tr.guide?'':`<button class="s2-arm" data-arm="${L.id}" aria-pressed="${String(s2.armId)===String(L.id)}" aria-label="Record into ${nm}"><i></i></button>`}<button class="s2-ms" data-m="${L.id}" aria-pressed="${!!tr.mute}" aria-label="Mute ${nm}">M</button><button class="s2-ms so" data-s="${L.id}" aria-pressed="${!!tr.solo}" aria-label="Solo ${nm}">S</button></div></div><div class="s2-ln" data-ln="${L.id}"><canvas data-cv="${L.id}"></canvas>${(()=>{ const t=L.tracks.find(x=>x.id===s2.selId&&hasContent(x)); return t?`<div class="s2-sel${pBars(t)*pLoops(t)*s2.barw<40?' narrow':''}" id="s2Sel" style="left:calc(${(t.off||0)/16} * var(--s2-barw));width:calc(${pBars(t)*pLoops(t)} * var(--s2-barw))">${pLoops(t)>1?'':'<i class="hl"></i><i class="hr"></i>'}</div>`:''; })()}</div></div>`; });
   if(!S.tracks.length) h+=`<div class="s2-hint"><b>New project</b>Tap record, then pick what you're recording.</div>`;
   h+=`<div class="s2-add"><button id="s2Add">+ Add track</button></div><div class="s2-ph" id="s2Ph"></div>`;
   $('s2In').innerHTML=h; lanes.forEach(L=>{ const cv=$('s2In').querySelector(`canvas[data-cv="${L.id}"]`); if(cv) s2DrawLane(L,cv); });
   if(s2.selId!=null && !S.tracks.some(t=>t.id===s2.selId&&hasContent(t))) s2.selId=null;
-  const tk=takeBar&&!recState; $('s2Take').hidden=!tk; { const t=S.tracks.find(x=>x.id===s2.selId), show=!!t&&!tk&&!recState; $('s2Clip').hidden=!show; if(show){ const b0=Math.floor((t.off||0)/16)+1, b1=b0+pBars(t)*pLoops(t)-1; $('s2CbL').innerHTML=`<b>${nxEsc(s2Name(s2Lane(s2LaneId(t))))}</b>${b1>b0?'Bars '+b0+'–'+b1:'Bar '+b0}`; $('s2CbEdit').hidden=t.inst==='vox'; $('s2CbEdit').lastChild.textContent=t.inst==='fx'?'Edit FX':'Edit notes'; } }
+  const tk=takeBar&&!recState; $('s2Take').hidden=!tk; { const t=S.tracks.find(x=>x.id===s2.selId), show=!!t&&!tk&&!recState; $('s2Clip').hidden=!show; if(show){ $('s2CbL').innerHTML=`<b>${nxEsc(s2Name(s2Lane(s2LaneId(t))))}</b>${partWhere(t)}`; $('s2CbEdit').hidden=t.inst==='vox'; $('s2CbEdit').lastChild.textContent=t.inst==='fx'?'Edit FX':'Edit notes'; } }
   s2.pos=-1; s2Chips(); s2Seek(); s2Clip(); { const t=$('toast'); if(t.classList.contains('on')) toastPlace(t); } }
 /* keep the playhead out from under the track headers, and the header panel as tall as the timeline */
 function s2Clip(){ const tl=$('s2Tl'), a=$('s2Ph'), b=$('s2PhH'); if(!a) return; $('s2').style.setProperty('--s2-sideh',Math.max(0,tl.clientHeight-26)+'px'); const hid=Math.max(0,s2.pos)*s2.barw<tl.scrollLeft-1?'hidden':'visible'; a.style.visibility=hid; b.style.visibility=hid; }
-function s2Chips(){ const b=$('s2Bpm').lastElementChild, k=$('s2Key').lastElementChild, kl=projKeyLabel()||(S.key!=='auto'?(NOTE_NAMES[+S.key]+' '+(SCALE_LABEL[S.scale]||'')).trim():'Auto');   /* a key picked before anything is recorded still shows */ if(b.textContent!==String(S.bpm)) b.textContent=S.bpm; if(k.textContent!==kl) k.textContent=kl;
+const SNAPS=[1,0.5,0.25,0.125], snapBars=()=>SNAPS.includes(S.snap)?S.snap:1, fracTxt=v=>({1:'1',0.5:'½',0.25:'¼',0.125:'⅛'})[v]||String(v);
+/* a length in bars, for labels: 2, 1½, ¾ … */
+const barsTxt=b=>{ const w=Math.floor(b+1e-9), f=+(b-w).toFixed(3), F={0.5:'½',0.25:'¼',0.75:'¾',0.125:'⅛',0.375:'⅜',0.625:'⅝',0.875:'⅞'}[f]||(f?'.'+String(f).slice(2):''); return (w||!F?w:'')+F; };
+function s2Chips(){ { const sp=$('s2Snap').lastElementChild, v=fracTxt(snapBars()); if(sp.textContent!==v) sp.textContent=v; } const b=$('s2Bpm').lastElementChild, k=$('s2Key').lastElementChild, kl=projKeyLabel()||(S.key!=='auto'?(NOTE_NAMES[+S.key]+' '+(SCALE_LABEL[S.scale]||'')).trim():'Auto');   /* a key picked before anything is recorded still shows */ if(b.textContent!==String(S.bpm)) b.textContent=S.bpm; if(k.textContent!==kl) k.textContent=kl;
   const m=$('s2Metro'), on=String(!!S.metro); if(m.getAttribute('aria-pressed')!==on) m.setAttribute('aria-pressed',on); }
 /* called every frame: playhead, position readout, recording banner, stop at the end when Loop is off */
 function s2Tick(frac){ if(!s2On()) return; const bars=S.bars, live=playing||!!recState; if(live) s2.cur=clamp(frac,0,1)*bars; const pos=live?s2.cur:s2.cur;
@@ -934,7 +942,7 @@ function s2EdMount(){ if(s2.edId==null) return; const tr=S.tracks.find(t=>t.id==
   GRID_H=Math.min(520,avail); GRID_RH=30; GRID_DRUM=kind==='pitched'?1:Math.min(2.2,Math.max(1,avail/(gridRows(tr).rows.length*gridRows(tr).rh)));
   const sx=tr._cv&&tr._cv.isConnected?tr._cv.parentElement.parentElement.scrollLeft:0; host.innerHTML=''; host.appendChild(buildCard(tr));
   requestAnimationFrame(()=>{ if(tr._cv&&tr._cv.isConnected){ drawGrid(tr); if(sx){ tr._autoScroll=true; tr._cv.parentElement.parentElement.scrollLeft=sx; } } });
-  const b0=Math.floor((tr.off||0)/16)+1, b1=b0+pBars(tr)-1; $('s2EdT').textContent=s2Name(s2Lane(s2LaneId(tr))); $('s2EdS').textContent=(b1>b0?`Bars ${b0}–${b1}`:`Bar ${b0}`)+' · '+(tr.notes?tr.notes.length+' notes':tr.hits?tr.hits.length+' hits':'audio');
+  $('s2EdT').textContent=s2Name(s2Lane(s2LaneId(tr))); $('s2EdS').textContent=partWhere(tr)+' · '+(tr.notes?tr.notes.length+' notes':tr.hits?tr.hits.length+' hits':'audio');
   const pit=kind==='pitched'&&tr.inst!=='arp'; $('s2EdVer').hidden=!pit; $('s2EdVerI').hidden=!pit; $('s2EdFill').hidden=!pit; if(pit){ if(tr._vi && verSig(tr)!==tr._verSig) tr._vi=0; verUI(tr); } else $('s2EdMine').hidden=true;
   $('s2EdHint').textContent=kind==='pitched'?'Tap a note to select it, drag to move. Double-tap a note, or tap a faint seam, to split it.':tr.hits?'Tap a square to add or remove a hit.':'';
   $('s2EdUndo').disabled=!hist.undo.length; $('s2EdRedo').disabled=!hist.redo.length; }
@@ -955,27 +963,29 @@ function s2ShareSheet(){ if(!S.tracks.some(hasContent)){ toast('Record something
     await prepareShare(k,prog); bar(null); lock(false); if(!$('s2ShSt')) return;
     if(shareFile){ st(shareMsg); $('s2ShGo').hidden=false; $('s2ShNow').hidden=!shareCan; } else st('That didn’t work here. Try the other option.'); }; }
 /* Move a part along its lane, in whole bars. It can't land on another part. */
-function s2MoveClip(tr, bars){ const off=(tr.off||0)+bars*16, len=pSteps(tr)*pLoops(tr); if(pLoops(tr)>1) return false; if(off<0 || off+len>64*16) return false;
+/* where a part sits, for labels: "Bars 3–4", or with fractions "From bar 3½ · 1½ bars" */
+function partWhere(t){ const st=(t.off||0)/16, len=pBars(t)*pLoops(t); if(st%1===0 && len%1===0){ const b0=st+1, b1=st+len; return b1>b0?`Bars ${b0}–${b1}`:`Bar ${b0}`; } return `From bar ${barsTxt(st+1)} · ${barsTxt(len)} bar${len>1?'s':''}`; }
+function s2MoveClip(tr, bars){ const off=Math.round((tr.off||0)+bars*16), len=pSteps(tr)*pLoops(tr); if(pLoops(tr)>1) return false; if(off<0 || off+len>64*16) return false;
   const hit=S.tracks.some(t=>t!==tr&&s2LaneId(t)===s2LaneId(tr)&&hasContent(t)&&off<(t.off||0)+pSteps(t)*pLoops(t)&&(t.off||0)<off+len); if(hit) return false;
-  const L=pBars(tr); tr.len=L; tr.lenSet=true; tr.rep=false; const need=Math.max(1,...S.tracks.filter(hasContent).map(t=>t===tr?off/16+L:Math.floor((t.off||0)/16)+(t.off!=null&&t.len?t.len:S.bars)));
+  const L=pBars(tr); tr.len=L; tr.lenSet=true; tr.rep=false; const need=Math.ceil(Math.max(1,...S.tracks.filter(hasContent).map(t=>t===tr?off/16+L:(t.off||0)/16+(t.off!=null&&t.len?t.len:S.bars)))-1e-9);
   if(need>S.bars){ S.bars=Math.min(64,need); } tr.off=off; if(need<S.bars && S.tracks.filter(hasContent).every(t=>t.off!=null&&t.len)) S.bars=need; tr._dirty=true; save(); scheduleRender(); return true; }
 /* Trim or extend a part by whole bars: ds moves its start (+ later, - earlier), de moves its end (+ later, - earlier). Never onto another part. */
 function s2ResizeClip(tr, ds, de){ if(pLoops(tr)>1 || (!ds&&!de)) return false; let n=pSteps(tr); const off=tr.off||0, a=off+16*ds, b=off+n+16*de;
-  if(b-a<16 || a<0 || b>64*16) return false; if(S.tracks.some(t=>t!==tr&&s2LaneId(t)===s2LaneId(tr)&&hasContent(t)&&(t.off||0)<b&&(t.off||0)+pSteps(t)*pLoops(t)>a)) return false;
+  if(b-a<Math.round(16*Math.min(1,snapBars())) || a<0 || b>64*16) return false; if(S.tracks.some(t=>t!==tr&&s2LaneId(t)===s2LaneId(tr)&&hasContent(t)&&(t.off||0)<b&&(t.off||0)+pSteps(t)*pLoops(t)>a)) return false;
   if(tr.inst!=='vox'){ const lo=Math.max(0,16*ds), hi=n+Math.min(0,16*de); if(![...(tr.notes||[]),...(tr.hits||[]),...(tr.fxs||[])].some(x=>x.s<hi&&x.s+(x.l||1)>lo)) return false; }   /* a trim never leaves a part with nothing in it */
-  tr.len=pBars(tr); tr.lenSet=true; tr.rep=false; if(S.bars<b/16) S.bars=b/16;
+  tr.len=pBars(tr); tr.lenSet=true; tr.rep=false; if(S.bars<b/16) S.bars=Math.ceil(b/16-1e-9);
   if(ds>0) s2Cut(tr,16*ds,n);
   else if(ds<0){ const k=-ds*16; if(tr.notes) tr.notes.forEach(x=>{ x.s+=k; }); if(tr.hits) tr.hits.forEach(x=>{ x.s+=k; }); if(tr.fxs) tr.fxs.forEach(x=>{ x.s+=k; }); if(tr.inst==='vox'){ tr.va=+((tr.va||0)-k*stepDur()).toFixed(4); if(tr.vn) tr.vn.forEach(v=>{ v.t+=k*stepDur(); }); tr._tuned=null; tr._pitch=null; } tr.off=off-k; tr.len+=-ds; }
   n=tr.len*16; if(de<0) s2Cut(tr,0,n+16*de); else if(de>0) tr.len+=de;
   tr._an=null; tr._takes=null; tr._dirty=true;
-  if(S.tracks.filter(hasContent).every(t=>t.off!=null&&t.len)) S.bars=Math.max(1,...S.tracks.filter(hasContent).map(t=>Math.floor(t.off/16)+t.len));
+  if(S.tracks.filter(hasContent).every(t=>t.off!=null&&t.len)) S.bars=Math.ceil(Math.max(1,...S.tracks.filter(hasContent).map(t=>t.off/16+t.len))-1e-9);
   keyCache=null; save(); scheduleRender(); return true; }
 const s2TrimClip=(tr,how)=>how==='start'?(pBars(tr)<2?false:s2ResizeClip(tr,1,0)):how==='end'?(pBars(tr)<2?false:s2ResizeClip(tr,0,-1)):s2ResizeClip(tr,0,1);
 /* A copy of a part, placed right after it (or in the next gap that fits) on the same track. */
 function s2DupClip(tr){ if(pLoops(tr)>1) return null; const len=pSteps(tr), mates=S.tracks.filter(t=>s2LaneId(t)===s2LaneId(tr)&&hasContent(t)).sort((x,y)=>(x.off||0)-(y.off||0));
   let at=(tr.off||0)+len; for(const m of mates){ const o=m.off||0, e=o+pSteps(m)*pLoops(m); if(o<at+len && e>at) at=e; } if(at+len>64*16) return null;
   const c=JSON.parse(JSON.stringify(tr,(k,v)=>k[0]==='_'?undefined:v)); c.id=S.nextId++; c.lane=s2LaneId(tr); c.off=at; c.len=pBars(tr); c.lenSet=true; c.rep=false; delete c.sid; delete c.sidAt; delete c.sidHeard; delete c.ed; c.copyOf=tr.id; c._dirty=true;
-  if(tr._raw){ c._raw=tr._raw; storeVox(c); } S.tracks.push(c); if(S.bars<(at+len)/16) S.bars=(at+len)/16; keyCache=null; save(); scheduleRender(); return c; }
+  if(tr._raw){ c._raw=tr._raw; storeVox(c); } S.tracks.push(c); if(S.bars<(at+len)/16) S.bars=Math.ceil((at+len)/16-1e-9); keyCache=null; save(); scheduleRender(); return c; }
 function s2DeleteClip(tr){ const mates=S.tracks.filter(o=>o!==tr&&s2LaneId(o)===s2LaneId(tr)); s2.selId=null;
   if(mates.length){ if(tr.lane==null) mates.forEach(o=>{ o.lane=mates[0].id; }); s2.recPrev=0; deletePart(tr); }
   else { if(tr.notes) tr.notes=[]; if(tr.hits) tr.hits=[]; if(tr.fxs) tr.fxs=[]; tr._an=null; tr._takes=null; if(tr._raw){ tr._raw=null; tr.va=null; takeStore.del('vox'+tr.id); } tr._dirty=true; keyCache=null; save(); renderTracks(); scheduleRender(); toast('Part deleted'); } }
@@ -1026,7 +1036,7 @@ function s2Init(){ const _rt=renderTracks; renderTracks=function(){ if(s2.post &
   $('s2CbDup').onclick=()=>{ const t=S.tracks.find(x=>x.id===s2.selId); if(!t) return; const c=s2DupClip(t); if(c){ s2.selId=c.id; renderTracks(); const tl=$('s2Tl'), x0=(c.off/16)*s2.barw, x1=x0+pBars(c)*s2.barw, hw=parseFloat(getComputedStyle($('s2')).getPropertyValue('--s2-hdr')); if(x1>tl.scrollLeft+tl.clientWidth-hw-12) tl.scrollLeft=Math.max(0,x1-(tl.clientWidth-hw)+24); else if(x0<tl.scrollLeft) tl.scrollLeft=Math.max(0,x0-12); } else toast('No room for a copy'); };
   $('s2CbDel').onclick=()=>{ const t=S.tracks.find(x=>x.id===s2.selId); if(t) s2DeleteClip(t); };
   $('s2Back').onclick=()=>nxGo('projects'); $('s2Name').onclick=()=>s2Sheets('name'); $('s2Undo').onclick=()=>undo(); $('s2Redo').onclick=()=>redo();
-  $('s2Share').onclick=s2ShareSheet; $('s2Bpm').onclick=()=>s2Sheets('tempo'); $('s2Key').onclick=()=>s2Sheets('key'); $('s2Mix').onclick=()=>s2Sheets('mix');
+  $('s2Share').onclick=s2ShareSheet; $('s2Bpm').onclick=()=>s2Sheets('tempo'); $('s2Key').onclick=()=>s2Sheets('key'); $('s2Snap').onclick=()=>{ const i=SNAPS.indexOf(snapBars()); S.snap=SNAPS[(i+1)%SNAPS.length]; save(); s2Chips(); toast(`Parts move and trim by ${S.snap===1?'1 bar':fracTxt(S.snap)+' bar'}.`); }; $('s2Mix').onclick=()=>s2Sheets('mix');
   $('s2Play').onclick=()=>togglePlay(); $('s2RecB').onclick=s2Record; $('s2Metro').onclick=toggleMetro;
   $('s2Rew').onclick=()=>{ if(recState) return; playFrom=0; s2.cur=0; $('s2Tl').scrollLeft=0; if(playing&&ctx) startAll(ctx.currentTime+0.02,0); };
   $('s2Loop').onclick=e=>{ s2.loop=!s2.loop; e.currentTarget.setAttribute('aria-pressed',s2.loop); toast(s2.loop?'Loop on':'Loop off'); };
@@ -1044,7 +1054,7 @@ function s2Init(){ const _rt=renderTracks; renderTracks=function(){ if(s2.post &
   { const T=$('s2In'); let g=null;
     T.addEventListener('pointerdown',e=>{ const sel=e.target.closest('.s2-sel'); if(!sel||recState) return; const tr=S.tracks.find(x=>x.id===s2.selId); if(!tr) return; e.stopPropagation();
       g={tr,sel,x0:e.clientX,mode:e.target.classList.contains('hl')?'l':e.target.classList.contains('hr')?'r':'m',off:(tr.off||0)/16,len:pBars(tr)*pLoops(tr),d:0}; s2.drag=true; try{ sel.setPointerCapture(e.pointerId); }catch(_){} },true);
-    T.addEventListener('pointermove',e=>{ if(!g) return; let d=Math.round((e.clientX-g.x0)/s2.barw); if(g.mode==='m') d=Math.max(-g.off,d); if(g.mode==='l') d=Math.min(g.len-1,Math.max(-g.off,d)); if(g.mode==='r') d=Math.max(1-g.len,d); g.d=d;
+    T.addEventListener('pointermove',e=>{ if(!g) return; const G=snapBars(); let d=Math.round((e.clientX-g.x0)/s2.barw/G)*G; if(g.mode==='m') d=Math.max(-g.off,d); if(g.mode==='l') d=Math.min(g.len-G,Math.max(-g.off,d)); if(g.mode==='r') d=Math.max(G-g.len,d); d=+d.toFixed(4); g.d=d;
       const o=g.off+(g.mode==='r'?0:d), w=g.len+(g.mode==='r'?d:g.mode==='l'?-d:0); g.sel.style.left=`calc(${o} * var(--s2-barw))`; g.sel.style.width=`calc(${w} * var(--s2-barw))`; },true);
     const fin=e=>{ if(!g) return; const q=g; g=null; s2.drag=false; s2.noTap=Date.now(); let ok=true;
       if(q.d){ ok = q.mode==='m' ? s2MoveClip(q.tr,q.d) : q.mode==='l' ? s2ResizeClip(q.tr,q.d,0) : s2ResizeClip(q.tr,0,q.d); if(!ok) toast('No room there'); }
@@ -1056,7 +1066,7 @@ function s2Init(){ const _rt=renderTracks; renderTracks=function(){ if(s2.post &
     T.addEventListener('pointerdown',e=>{ const ln=e.target.closest('.s2-ln'); if(!ln||recState||e.target.closest('.s2-sel')) return; sx=e.clientX; sy=e.clientY; clearTimeout(hold);
       hold=setTimeout(()=>{ const tr=clipAt(ln,sx); if(!tr||pLoops(tr)>1) return; dr={tr,ln,off0:tr.off||0,x0:sx,id:e.pointerId,moved:false}; s2.drag=true; try{ ln.setPointerCapture(e.pointerId); }catch(_){} try{ navigator.vibrate&&navigator.vibrate(10); }catch(_){} ln.style.outline='2px solid var(--s2-amber)'; },380); });
     T.addEventListener('pointermove',e=>{ if(!dr){ if(Math.abs(e.clientX-sx)>8||Math.abs(e.clientY-sy)>8) clearTimeout(hold); return; }
-      const nb=Math.round((e.clientX-dr.x0)/s2.barw), off=Math.max(0,dr.off0+nb*16); if(off!==(dr.tr.off||0)){ dr.tr.off=off; dr.moved=true; const L=s2Lane(s2LaneId(dr.tr)), cv=dr.ln.querySelector('canvas'); if(L&&cv) s2DrawLane(L,cv); } });
+      const G=snapBars(), nb=Math.round((e.clientX-dr.x0)/s2.barw/G)*G, off=Math.max(0,Math.round(dr.off0+nb*16)); if(off!==(dr.tr.off||0)){ dr.tr.off=off; dr.moved=true; const L=s2Lane(s2LaneId(dr.tr)), cv=dr.ln.querySelector('canvas'); if(L&&cv) s2DrawLane(L,cv); } });
     const end=e=>{ clearTimeout(hold); if(!dr) return; const d=dr; dr=null; s2.drag=false; d.ln.style.outline=''; s2.noTap=Date.now(); const want=(d.tr.off||0)-d.off0; d.tr.off=d.off0; if(d.moved && want){ if(!s2MoveClip(d.tr,want/16)) toast('No room there'); else s2.selId=d.tr.id; } renderTracks(); };
     T.addEventListener('pointerup',end); T.addEventListener('pointercancel',end); }
   const tl=$('s2Tl'); let d0=0,b0=0,zt=0; const dist=t=>Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY);
@@ -1161,7 +1171,7 @@ const stepDur = ()=>60/S.bpm/4;
 const loopLen = ()=>steps()*stepDur();
 /* Each part has its own length (tr.len, in bars). BARS in the header is the song length.
    A shorter part repeats to fill the song unless its repeat is turned off (tr.rep===false). */
-const pBars = tr=>Math.max(1,Math.min(tr.len||S.bars, S.bars-Math.floor((tr.off||0)/16)));
+const pBars = tr=>Math.max(Math.min(1,tr.len||1),Math.min(tr.len||S.bars, S.bars-(tr.off||0)/16))   /* whole bars unless the snap made it a fraction */;
 const pSteps = tr=>pBars(tr)*16;
 const pRep = tr=>tr.rep!==false;
 const pLoops = tr=>pRep(tr)?Math.max(1,Math.round(S.bars/pBars(tr))):1;
