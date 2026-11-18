@@ -503,6 +503,7 @@ input[type=range]::-moz-range-thumb{width:10px;height:18px;border-radius:1px;bac
     <button class="nx-item" id="nxDrums" style="width:100%;background:none;border:0;border-bottom:1px solid var(--line);text-align:left"><span>Your drum sounds<small>Teach Noodle your own noises for each drum</small></span><svg class="nx-ico" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
     <div class="nx-grp">About</div>
     <a class="nx-item" href="https://troyskinner3.github.io/arcade/noodle/privacy/" target="_blank" rel="noopener"><span>Privacy</span><svg class="nx-ico" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></a>
+    <button class="nx-item" id="nxCredits" style="width:100%;background:none;border:0;border-bottom:1px solid var(--line);text-align:left"><span>Sound credits<small>The recorded instruments and who made them</small></span><svg class="nx-ico" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
     <div class="nx-item"><span>Noodle<small>Hum it, sing it, beatbox it. From the makers of Tuttii.</small></span></div>
   </div></div>
 </section>
@@ -1172,6 +1173,7 @@ function s2Init(){ const _rt=renderTracks; renderTracks=function(){ if(s2.post &
     $('nxSheet').onclick=null; $('nxCal').onclick=()=>{ nxClose(); ensureCtx(); openRec('calib'); startRecord(true); };
     [['nxLa','latAuto'],['nxPa','playAlong'],['nxEc','ec']].forEach(([a,b])=>{ $(a).onchange=e=>{ S[b]=e.target.checked; save(); if(b==='ec') dropMic(); }; });
     $('nxSens').onchange=e=>{ S.sens=+e.target.value; save(); }; };
+  $('nxCredits').onclick=()=>nxSheet(`<h2>Sound credits</h2><p style="color:var(--muted);font-size:14px;margin:0 0 10px">Noodle's recorded instruments come from open sample libraries. Thank you to their makers.</p>${SOUND_CREDITS.map(c=>`<div class="nx-item" style="padding:10px 0;display:block"><b>${nxEsc(c.sound)}</b><small>${nxEsc(c.lib)} by ${nxEsc(c.by)} · <a href="${c.url}" target="_blank" rel="noopener" style="color:inherit">${nxEsc(c.lic)}</a></small></div>`).join('')}`);
   $('nxDrums').onclick=()=>{ const rows=S.kit.slots.map(sl=>`<div class="nx-item" style="padding:10px 0"><span>${nxEsc(slotLabel(sl.id))}<small>${sl.ex&&sl.ex.length>=3?'Taught':'Say “'+nxEsc(sl.say||slotLabel(sl.id))+'”'}</small></span><button class="nx-ghost" data-teach="${sl.id}" style="width:auto;height:40px;padding:0 14px">${sl.ex&&sl.ex.length>=3?'Teach again':'Teach'}</button></div>`).join('');
     nxSheet(`<h2>Your drum sounds</h2><p style="color:var(--muted);font-size:14px;margin:0 0 6px">Make your noise for a drum on every click, and Noodle learns to tell your sounds apart.</p>${rows}<button class="nx-primary" id="nxTeachAll">Teach them all</button>`);
     $('nxSheet').onclick=e=>{ const b=e.target.closest('[data-teach]'); const all=e.target.closest('#nxTeachAll'); if(!b&&!all) return; nxClose(); ensureCtx(); teachBack=true; startTeach(all?S.kit.slots.map(x=>x.id):[b.dataset.teach]); }; };
@@ -2125,7 +2127,32 @@ function drumHit(c,out,drumId,t,v,style,T){
 }
 let EXPR_DET=null;   // Follow my voice: a pitch-bend curve (cents) every oscillator of the next voice follows
 let ENV_OVR=null, ENV_LAST=null;   // a part's own ADSR (replaces the sound's), and the last envelope a sound asked for
+/* ---- Sampled instruments: real recordings, played back at the right pitch and loudness ----
+   Built by samples/build_samples.py from open libraries (see samples/CREDITS.md). Each instrument loads the first time a song uses it;
+   until then (or if it can't load) the synthesized sound of the same name plays, so nothing ever goes silent. */
+const SAMPLED={'Piano':'piano'};
+const SOUND_CREDITS=[   /* shown in More > Sound credits (required by CC BY; CC0 libraries are listed too, as thanks) */
+  {sound:'Piano', lib:'Salamander Grand Piano', by:'Alexander Holm', lic:'CC BY 3.0', url:'https://creativecommons.org/licenses/by/3.0/'},
+];   /* sound name -> folder in samples/ */
+const SMP={};
+function smpReady(sound){ const k=SAMPLED[sound]; return !!(k && SMP[k] && SMP[k].ok); }
+function loadSampled(sound){ const k=SAMPLED[sound]; if(!k) return Promise.resolve(false); if(SMP[k]) return SMP[k].p;
+  const e=SMP[k]={ok:false}; e.p=(async()=>{ try{
+      const meta=await (await fetch(`samples/${k}/map.json`)).json(), dc=new OfflineAudioContext(2,1,32000);   /* decoded at 32 kHz: everything up to 16 kHz, a third less memory than 48 kHz */
+      const one=async f=>{ const ab=await (await fetch(`samples/${k}/${f}`)).arrayBuffer(); const b=await new Promise((res,rej)=>{ const q=dc.decodeAudioData(ab,res,rej); if(q&&q.then) q.then(res,rej); });
+        const d=b.getChannelData(0); let pk=0; for(let i=0;i<Math.min(d.length,b.sampleRate*0.3);i++) pk=Math.max(pk,Math.abs(d[i]));   /* where the note starts: MP3 adds a little silence first */
+        let i0=0; const th=pk*0.01; while(i0<d.length && Math.abs(d[i0])<th) i0++; b.off=Math.max(0,i0/b.sampleRate-0.001); return b; };
+      e.layers=[]; for(const L of meta.layers){ const map=new Map(); await Promise.all(Object.entries(L.notes).map(async([mm,f])=>{ map.set(+mm, await one(f)); })); e.layers.push({maxV:L.maxV, map, roots:[...map.keys()].sort((a,b)=>a-b)}); }
+      e.meta=meta; e.ok=true; return true; }catch(err){ console.error('samples',k,err); return false; } })(); return e.p; }
+function sampleVoice(c,out,sound,t,dur,m,v,T,fromM){ const e=SMP[SAMPLED[sound]], L=e.layers.find(x=>v<=x.maxV+1e-9)||e.layers[e.layers.length-1];
+  let root=L.roots[0]; for(const r of L.roots) if(Math.abs(r-m)<Math.abs(root-m)) root=r; const buf=L.map.get(root), rel=e.meta.release||0.25;
+  const src=c.createBufferSource(); src.buffer=buf; const rate=Math.pow(2,(m-root)/12);
+  if(fromM!==null && fromM!==m){ const gt=Math.min(0.09,Math.max(0.03,dur*0.35)); src.playbackRate.setValueAtTime(rate*Math.pow(2,(fromM-m)/12),t); src.playbackRate.exponentialRampToValueAtTime(rate,t+gt); } else src.playbackRate.value=rate;
+  const lp=c.createBiquadFilter(); lp.type='lowpass'; lp.Q.value=0.5; lp.frequency.value=Math.min(20000,1500*Math.pow(13,T));   /* Brightness: 1.5 kHz to the full sound; 50 = about 5.4 kHz */
+  const g=c.createGain(), gv=(e.meta.gain||1)*(0.3+0.7*v); g.gain.setValueAtTime(gv,t); g.gain.setTargetAtTime(0,t+dur,rel/4);
+  src.connect(lp); lp.connect(g); g.connect(out); const avail=(buf.duration-buf.off)/rate; src.start(t,buf.off); src.stop(t+Math.min(avail,dur+rel*2)+0.01); }
 function voice(c,out,sound,t,dur,m,v,T,fromM=null){
+  if(SAMPLED[sound]){ if(smpReady(sound)){ sampleVoice(c,out,sound,t,dur,m,v,T,fromM); return; } loadSampled(sound); }
   const f=mtof(m), g=c.createGain(); g.connect(out); const oscs=[];
   const osc=(type,freq,det=0,dest=g,gain=1)=>{ const o=c.createOscillator(); o.type=type; o.frequency.value=freq; o.detune.value=det; if(gain!==1){ const gg=c.createGain(); gg.gain.value=gain; o.connect(gg); gg.connect(dest);} else o.connect(dest); oscs.push(o); return o; };
   const lp=(fr,q=0.7)=>{ const b=c.createBiquadFilter(); b.type='lowpass'; b.frequency.value=fr; b.Q.value=q; b.connect(g); return b; };
@@ -2185,6 +2212,7 @@ function exprCurves(tr, nt, dur, target){ const E=exprFrames(tr); if(!E) return 
   return {bend:sm(bend,2),gain:sm(gain,2),cut:sm(cut,3)}; }
 function stepTime(s){ const sd=stepDur(); return (s + (s%2===1 ? (S.swing/100)*0.5 : 0))*sd; }
 async function renderStem(tr){
+  if(SAMPLED[tr.sound] && !smpReady(tr.sound)) await loadSampled(tr.sound);
   if(tr.inst==='vox') return renderVox(tr);
   if(tr.inst==='fx') return renderFx(tr);
   const sr=ctx.sampleRate, L=bufLen(tr), PN=pSteps(tr), n=Math.round(L*sr), tail=3, oc=new OfflineAudioContext(2,n+tail*sr,sr), T=tr.tone/100;

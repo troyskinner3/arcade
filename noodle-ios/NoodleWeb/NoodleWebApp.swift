@@ -16,7 +16,7 @@ let webRoot = Bundle.main.url(forResource: "web", withExtension: nil)   // folde
 /* Serves the bundled web app at noodle://app/<path> */
 final class BundleSchemeHandler: NSObject, WKURLSchemeHandler {
   static let types = ["html": "text/html", "js": "text/javascript", "css": "text/css", "json": "application/json",
-                      "woff2": "font/woff2", "png": "image/png", "svg": "image/svg+xml", "wav": "audio/wav", "txt": "text/plain"]
+                      "woff2": "font/woff2", "png": "image/png", "svg": "image/svg+xml", "wav": "audio/wav", "mp3": "audio/mpeg", "txt": "text/plain"]
   func webView(_ webView: WKWebView, start task: WKURLSchemeTask) {
     guard let url = task.request.url, let root = webRoot else { task.didFailWithError(URLError(.fileDoesNotExist)); return }
     var path = url.path; if path.isEmpty || path == "/" { path = "/index.html" }
