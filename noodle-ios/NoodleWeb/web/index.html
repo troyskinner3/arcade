@@ -612,13 +612,15 @@ let S = defaultState();
 })();
 let saveTimer=0;
 function persist(){ try{ localStorage.setItem(STORE_KEY, JSON.stringify(S,(k,v)=>k[0]==='_'?undefined:v)); }catch(e){} try{ projSoon(); }catch(e){} }
-function save(){ clearTimeout(saveTimer); saveTimer=setTimeout(()=>{ saveTimer=0; persist(); histCommit(); dropSoon(); },300); }
+function save(){ clearTimeout(saveTimer); saveTimer=setTimeout(()=>{ saveTimer=0; persist(); histCommit(); dropSoon(); },300); histUI(); }
+/* Undo and Redo are lit as soon as there is something to undo (a change waiting to be saved counts), in the Studio and in the editor */
+function histUI(){ const u=!hist.undo.length&&!saveTimer, r=!hist.redo.length; ['s2Undo','s2EdUndo'].forEach(id=>{ const e=$(id); if(e&&e.disabled!==u) e.disabled=u; }); ['s2Redo','s2EdRedo'].forEach(id=>{ const e=$(id); if(e&&e.disabled!==r) e.disabled=r; }); }
 /* Undo / redo: every saved change becomes a step (rapid changes such as a slider drag merge into one).
    A step remembers the song plus the recordings behind each part, so undoing a deleted part brings its take back. */
 const hist={undo:[],redo:[],cur:null,busy:false};
 function snapNow(){ const json=JSON.stringify(S,function(k,v){ if(k[0]==='_') return undefined; if(this===S && (k==='ui'||k==='inst')) return undefined; return v; }); const rt=new Map(); S.tracks.forEach(t=>rt.set(t.id,{_raw:t._raw,_an:t._an,_takes:t._takes,_range:t._range})); return {json,rt}; }
 function histCommit(){ if(hist.busy) return; const sn=snapNow(); if(!hist.cur){ hist.cur=sn; return; } if(sn.json===hist.cur.json){ hist.cur.rt=sn.rt; return; }
-  hist.undo.push(hist.cur); if(hist.undo.length>80) hist.undo.shift(); hist.redo=[]; hist.cur=sn; }
+  hist.undo.push(hist.cur); if(hist.undo.length>80) hist.undo.shift(); hist.redo=[]; hist.cur=sn; histUI(); }
 function flushSave(){ if(saveTimer){ clearTimeout(saveTimer); saveTimer=0; persist(); histCommit(); } }
 /* the Studio draws its own undo/redo state */
 async function restoreSnap(sn){
@@ -633,8 +635,8 @@ async function restoreSnap(sn){
 }
 /* New song: an empty song with default tempo, key and mix. Your setup stays (taught drum sounds, mic timing,
    learned preferences). Undo brings the old song back. */
-async function undo(){ flushSave(); if(!hist.undo.length) return; hist.redo.push(hist.cur); hist.cur=hist.undo.pop(); await restoreSnap(hist.cur); toast('Undone'); }
-async function redo(){ flushSave(); if(!hist.redo.length) return; hist.undo.push(hist.cur); hist.cur=hist.redo.pop(); await restoreSnap(hist.cur); toast('Redone'); }
+async function undo(){ flushSave(); if(!hist.undo.length) return; hist.redo.push(hist.cur); hist.cur=hist.undo.pop(); await restoreSnap(hist.cur); histUI(); toast('Undone'); }
+async function redo(){ flushSave(); if(!hist.redo.length) return; hist.undo.push(hist.cur); hist.cur=hist.redo.pop(); await restoreSnap(hist.cur); histUI(); toast('Redone'); }
 function syncAllInputs(){ applyMaster(); }   /* after loading a song: the master chain follows S.master */
 
 const CHEV='<svg class="chev" viewBox="0 0 20 20" aria-hidden="true"><path d="M7 5l5 5-5 5"/></svg>';
@@ -986,13 +988,13 @@ function fxGridMount(tr, host){ const ps=pSteps(tr), wrap=document.createElement
 function s2Edit(tr){ s2.edId=tr.id; S.activeId=tr.id; $('s2Ed').hidden=false; s2EdMount(); }
 function s2EdMount(){ if(s2.edId==null) return; const tr=S.tracks.find(t=>t.id===s2.edId); if(!tr||!hasContent(tr)){ s2EdClose(); return; }
   const host=$('s2EdBody'), kind=INST[tr.inst].kind, avail=Math.max(200,(host.clientHeight||window.innerHeight*0.6)-90);
-  GRID_H=Math.min(520,avail); GRID_RH=30; GRID_DRUM=kind==='pitched'||tr.inst==='fx'?1:Math.min(2.2,Math.max(1,avail/(gridRows(tr).rows.length*gridRows(tr).rh)));
+  GRID_H=Math.min(520,avail); GRID_RH=30; GRID_DRUM=kind==='pitched'||tr.inst==='fx'?1:Math.min(36,Math.max(30,avail/gridRows(tr).rows.length))/gridRows(tr).rh;   /* drum rows as tall as the note editor's rows (a little taller when there's room), so hits read as notes */
   if(tr.inst==='fx'){ const sx=host.querySelector('.fxg')?host.querySelector('.fxg').scrollLeft:0; host.innerHTML=''; tr._cv=null; fxGridMount(tr,host); if(sx) host.querySelector('.fxg').scrollLeft=sx; }
   else { const sx=tr._cv&&tr._cv.isConnected?tr._cv.parentElement.parentElement.scrollLeft:0; host.innerHTML=''; host.appendChild(buildCard(tr));
   requestAnimationFrame(()=>{ if(tr._cv&&tr._cv.isConnected){ drawGrid(tr); if(sx){ tr._autoScroll=true; tr._cv.parentElement.parentElement.scrollLeft=sx; } } }); }
   $('s2EdT').textContent=s2Name(s2Lane(s2LaneId(tr))); $('s2EdS').textContent=partWhere(tr)+' · '+(tr.inst==='fx'?(tr.fxs||[]).length+' FX':tr.notes?tr.notes.length+' notes':tr.hits?tr.hits.length+' hits':'audio');
   const pit=kind==='pitched'&&tr.inst!=='arp'; $('s2EdVer').hidden=!pit; $('s2EdVerI').hidden=!pit; $('s2EdFill').hidden=!pit; if(pit){ if(tr._vi && verSig(tr)!==tr._verSig) tr._vi=0; verUI(tr); } else $('s2EdMine').hidden=true;
-  $('s2EdHint').textContent=tr.inst==='fx'?'Tap empty space to add. Tap an effect to select it. Drag to move it or change its kind; drag its right end for length.':kind==='pitched'?'Tap a note to select it, drag to move. Double-tap a note, or tap a faint seam, to split it.':tr.hits?'Tap a square to add or remove a hit.':'';
+  $('s2EdHint').textContent=tr.inst==='fx'?'Tap empty space to add. Tap an effect to select it. Drag to move it or change its kind; drag its right end for length.':kind==='pitched'?'Tap a note to select it, drag to move. Double-tap a note, or tap a faint seam, to split it.':tr.hits?'Tap empty space to add a hit. Tap a hit to select it; drag it to move it in time or to another drum.':'';
   $('s2EdUndo').disabled=!hist.undo.length; $('s2EdRedo').disabled=!hist.redo.length; }
 function s2EdClose(){ const tr=S.tracks.find(t=>t.id===s2.edId); if(tr){ tr._cv=null; tr._sel=null; } s2.edId=null; GRID_H=176; GRID_RH=15; GRID_DRUM=1; $('s2Ed').hidden=true; $('s2EdBody').innerHTML=''; s2Render(); }
 /* Share, inside the Studio. A linear song is exported once through (Loop is only for listening). */
@@ -2914,19 +2916,14 @@ function buildCard(tr){
     const el=document.createElement('article'); el.className='track'; el.style.setProperty('--c',d.color); tr._el=el;
     const pitched=d.kind==='pitched';
     el.innerHTML=`<div class="gridbox"><div class="gridwrap"><div class="gridin"><canvas></canvas><div class="ph"></div><div class="nsel" hidden></div></div></div><div class="glabels"></div></div><div class="selbar" hidden><span class="sb-n"></span><button class="btn sb-split" title="Split in two (or double-tap the note)">Split</button><button class="btn sb-del">Delete</button></div><div class="ovrow"><div class="ovw" hidden aria-hidden="true"><canvas></canvas><div class="ovw-win"></div></div></div>`;
-    if(tr._sel && !tr.notes.includes(tr._sel)) tr._sel=null;
+    if(tr._sel && !evs(tr).includes(tr._sel)) tr._sel=null;
     const cv=el.querySelector('canvas');
     const hs=el.querySelector('.nsel'); tr._nsel=hs; 
     tr._selbar=el.querySelector('.selbar'); tr._ndel=null; tr._nsplit=null;
     if(tr._selbar){ tr._selbar.querySelector('.sb-del').onclick=()=>deleteSelNote(tr); tr._selbar.querySelector('.sb-split').onclick=()=>splitSelNote(tr); }
     if(tr._ndel){ tr._ndel.addEventListener('pointerdown',e=>e.stopPropagation()); tr._ndel.onclick=e=>{ e.stopPropagation(); deleteSelNote(tr); }; }
     if(hs){ hs.addEventListener('pointerdown',e=>{ e.stopPropagation(); noteDown(tr,e,true); }); hs.addEventListener('pointermove',e=>noteMove(tr,e)); hs.addEventListener('pointerup',e=>noteUp(tr,e)); hs.addEventListener('pointercancel',e=>noteUp(tr,e,true)); }
-    if(pitched){ cv.style.touchAction='pan-x pan-y'; cv.addEventListener('pointerdown',e=>noteDown(tr,e)); cv.addEventListener('pointermove',e=>noteMove(tr,e)); cv.addEventListener('pointerup',e=>noteUp(tr,e)); cv.addEventListener('pointercancel',e=>noteUp(tr,e,true)); }
-    else if(d.kind!=='audio'){ cv.style.touchAction='pan-x pan-y'; let down=null;
-      cv.addEventListener('pointerdown',e=>{ down={x:e.clientX,y:e.clientY,id:e.pointerId}; });
-      cv.addEventListener('pointermove',e=>{ if(down&&e.pointerId===down.id&&Math.hypot(e.clientX-down.x,e.clientY-down.y)>8) down=null; });
-      cv.addEventListener('pointerup',e=>{ if(down&&e.pointerId===down.id){ down=null; gridTap(tr,e); } });
-      cv.addEventListener('pointercancel',()=>{ down=null; }); }
+    if(d.kind!=='audio'){ cv.style.touchAction='pan-x pan-y'; cv.addEventListener('pointerdown',e=>noteDown(tr,e)); cv.addEventListener('pointermove',e=>noteMove(tr,e)); cv.addEventListener('pointerup',e=>noteUp(tr,e)); cv.addEventListener('pointercancel',e=>noteUp(tr,e,true)); }   /* notes and drum hits alike */
     tr._cv=cv; tr._ph=el.querySelector('.ph');
     wireGrid(tr,el);
     drawGrid(tr);
@@ -2996,9 +2993,12 @@ function drawGrid(tr){
   // bar numbers, top-left of each bar
   g.fillStyle=cssVar('--muted'); g.globalAlpha=0.75; g.font='700 9px '+cssVar('--f-mono'); for(let s=0;s<n;s+=16) g.fillText(String(s/16+1),X(s)+3,Y(s)+10); g.globalAlpha=1;
   if(!pitched){
-    g.globalAlpha=0.35; g.fillStyle=cBar; rows.forEach((r,i)=>{ for(let s=0;s<n;s++){ g.beginPath(); g.arc(X(s)+cw/2,Y(s)+1+i*rh+rh/2,1.4,0,7); g.fill(); } }); g.globalAlpha=1;
+    g.fillStyle=cBar; g.globalAlpha=0.18; for(let L=0;L<lines;L++) rows.forEach((r,i)=>{ g.fillRect(0,L*(lineH+gapH)+1+(i+1)*rh-0.5,W,1); }); g.globalAlpha=1;   /* a line between drums, like between keys */
     rawTicks(tr,g,X,Y,cw,lineH,n,sPL,gut,lines,gapH);
-    VH.forEach(h=>{ const i=rows.indexOf(h.d); if(i<0) return; g.globalAlpha=0.35+0.65*h.v; g.fillStyle=col; rr(g,X(h.s)+1.5,Y(h.s)+1+i*rh+1.5,cw-3,rh-3,1.5); g.fill(); }); g.globalAlpha=1;
+    const selH=tr._sel, hw=Math.max(cw-2,6);
+    VH.forEach(h=>{ const i=rows.indexOf(h.d); if(i<0) return; g.globalAlpha=h===selH?1:0.45+0.55*h.v; g.fillStyle=col; rr(g,X(h.s)+1,Y(h.s)+1+i*rh+0.5,hw,rh-1,1.5); g.fill(); }); g.globalAlpha=1;
+    if(selH && VH.includes(selH)){ const i=rows.indexOf(selH.d); if(i>=0){ g.strokeStyle=cssVar('--ink'); g.lineWidth=2; rr(g,X(selH.s)+1,Y(selH.s)+1+i*rh+0.5,hw,rh-1,1.5); g.stroke(); } }
+    placeHandle(tr);
   } else {
     rawTicks(tr,g,X,Y,cw,lineH,n,sPL,gut,lines,gapH);
     const selN=tr._sel;
@@ -3039,6 +3039,14 @@ function cellAt(tr,e,clampIt){
    - tap a note to select it; drag a selected note anywhere (sideways and to another pitch, snapped to the key),
      or drag its last cell to trim or extend it; the edit bar under the grid does the same with buttons
    - press and drag on an empty spot to draw a new note (it stays selected); tapping empty space deselects */
+const isPitchedTr=tr=>INST[tr.inst].kind==='pitched';
+const evs=tr=>(isPitchedTr(tr)?tr.notes:tr.hits)||[];          /* what the editor edits: notes, or drum hits */
+const evRow=(tr,e)=>isPitchedTr(tr)?pitchOf(e):e.d;               /* its row: a pitch, or a drum */
+const evLen=e=>e.l??1;                                            /* a hit is one step long on the grid */
+function previewHit(tr,d){ if(playing) return; ensureCtx(); const out=ctx.createGain(); out.gain.value=trackGain(tr)||0.6; out.connect(chain.input); drumHit(ctx,out,d,ctx.currentTime+0.01,0.85,tr.sound,(tr.tone??50)/100); }
+const previewEv=(tr,e)=>isPitchedTr(tr)?previewNote(tr,pitchOf(e)):previewHit(tr,e.d);
+function hitsChanged(tr){ tr.hits.sort((a,b)=>a.s-b.s); tr._dirty=true; save(); redrawTrack(tr); renderNoteBar(tr); scheduleRender(); }
+const evChanged=tr=>isPitchedTr(tr)?noteChanged(tr):hitsChanged(tr);
 function selectNote(tr,n){ tr._sel=n||null; drawGrid(tr); renderNoteBar(tr); }
 /* What was changed by hand on a recorded part, in order: kind, where, old and new pitch, what was actually sung there (raw), and how many seconds after the take.
    Kept with the part and sent with shared takes. Telling a fix from a creative change is done later, from these facts (how soon, how far from what was sung, before or after export). */
@@ -3074,24 +3082,26 @@ function splitSelNote(tr,at){ const n=tr._sel, q=S.quant==8?2:1; if(!n||!tr.note
   const b={...n, s:cut, l:n.s+n.l-cut}; n.l=cut-n.s; delete b.g;
   if(n.hs){ const o=cut-n.s, L=n.hs.filter(h=>h<o), R=n.hs.filter(h=>h>o).map(h=>h-o); if(L.length) n.hs=L; else delete n.hs; if(R.length) b.hs=R; else delete b.hs; }
   tr.notes.push(b); tr._sel=b; keyCache=null; noteChanged(tr); }
-function deleteSelNote(tr){ const n=tr._sel; if(!n||!tr.notes.includes(n)) return; logEdit(tr,{k:'del',s:n.s,l:n.l,from:pitchOf(n),raw:n.x?(n.r0??null):+(+n.p).toFixed(2),drawn:!!n.x&&n.r0==null}); if(!n.x) recordedDeleted(tr,n); tr.notes.splice(tr.notes.indexOf(n),1); tr._sel=null; keyCache=null; noteChanged(tr); }
+function deleteSelNote(tr){ const n=tr._sel; if(!n||!evs(tr).includes(n)) return;
+  if(!isPitchedTr(tr)){ logEdit(tr,{k:'hitdel',s:n.s,d:n.d}); tr.hits.splice(tr.hits.indexOf(n),1); tr._sel=null; hitsChanged(tr); return; } logEdit(tr,{k:'del',s:n.s,l:n.l,from:pitchOf(n),raw:n.x?(n.r0??null):+(+n.p).toFixed(2),drawn:!!n.x&&n.r0==null}); if(!n.x) recordedDeleted(tr,n); tr.notes.splice(tr.notes.indexOf(n),1); tr._sel=null; keyCache=null; noteChanged(tr); }
 function placeHandle(tr){ const h=tr._nsel, G=tr._grid, n=tr._sel, x=tr._ndel; if(!h) return;
-  const i=(n&&G)?G.rows.indexOf(pitchOf(n)):-1; if(i<0||!tr.notes.includes(n)){ h.hidden=true; if(x) x.hidden=true; if(tr._nsplit) tr._nsplit.hidden=true; return; }
-  if(x){ const top=1+i*G.rh, above=top>=26; x.hidden=false; x.style.left=Math.max(0,G.gut+(n.s+n.l)*G.cw-12)+'px'; x.style.top=(above?top-26:top+G.rh+2)+'px'; }
-  const sp=tr._nsplit; if(sp){ const q=S.quant==8?2:1, top=1+i*G.rh, above=top>=26; sp.hidden=n.l<2*q; sp.style.left=Math.max(0,G.gut+(n.s+n.l)*G.cw-40)+'px'; sp.style.top=(above?top-26:top+G.rh+2)+'px'; }
-  const pad=8; h.hidden=false; h.style.left=(G.gut+n.s*G.cw-pad)+'px'; h.style.top=Math.max(0,1+i*G.rh-pad)+'px'; h.style.width=(n.l*G.cw+pad*2)+'px'; h.style.height=(G.rh+pad*2)+'px'; }
+  const i=(n&&G)?G.rows.indexOf(evRow(tr,n)):-1; if(i<0||!evs(tr).includes(n)){ h.hidden=true; if(x) x.hidden=true; if(tr._nsplit) tr._nsplit.hidden=true; return; }
+  if(x){ const top=1+i*G.rh, above=top>=26; x.hidden=false; x.style.left=Math.max(0,G.gut+(n.s+evLen(n))*G.cw-12)+'px'; x.style.top=(above?top-26:top+G.rh+2)+'px'; }
+  const sp=tr._nsplit; if(sp){ const q=S.quant==8?2:1, top=1+i*G.rh, above=top>=26; sp.hidden=!isPitchedTr(tr)||evLen(n)<2*q; sp.style.left=Math.max(0,G.gut+(n.s+evLen(n))*G.cw-40)+'px'; sp.style.top=(above?top-26:top+G.rh+2)+'px'; }
+  const pad=8; h.hidden=false; h.style.left=(G.gut+n.s*G.cw-pad)+'px'; h.style.top=Math.max(0,1+i*G.rh-pad)+'px'; h.style.width=(evLen(n)*G.cw+pad*2)+'px'; h.style.height=(G.rh+pad*2)+'px'; }
 function noteDown(tr,e,onSel){
   const q=S.quant==8?2:1; tr._touchT=Date.now();
   if(onSel && tr._sel){ const n=tr._sel, c=cellAt(tr,e,true); if(!c) return;
     try{ tr._nsel.setPointerCapture(e.pointerId); }catch(_){}
-    tr._drag={note:n, mode:(c.s>=n.s+n.l-q)?'resize':'move', s0:c.s, row0:c.row, ns:n.s, np:pitchOf(n), moved:false, created:false, rec:!n.x};
-    previewNote(tr,pitchOf(n)); return; }
+    tr._drag={note:n, mode:(isPitchedTr(tr)&&c.s>=n.s+n.l-q)?'resize':'move', s0:c.s, row0:c.row, ns:n.s, np:evRow(tr,n), moved:false, created:false, rec:isPitchedTr(tr)&&!n.x};
+    previewEv(tr,n); return; }
   const c=cellAt(tr,e); if(!c||!c.inRow) return;
   // the grid only reacts to a tap (so a swipe always scrolls): tap a note to select it, tap empty space to deselect or add a note
-  const n=tr.notes.find(nt=>pitchOf(nt)===c.row && nt.s>=0 && nt.s<pSteps(tr) && c.s>=nt.s && c.s<nt.s+nt.l);
+  const n=evs(tr).find(nt=>evRow(tr,nt)===c.row && nt.s>=0 && nt.s<pSteps(tr) && c.s>=nt.s && c.s<nt.s+evLen(nt));
   tr._drag={pending:true, c, hit:n||null, x0:e.clientX, y0:e.clientY, id:e.pointerId};
 }
-function startNewNote(tr,c){ const q=S.quant==8?2:1, kp=snap(c.row); const nt={s:Math.floor(c.s/q)*q,l:q,p:kp,v:0.85,x:true}; tr.notes.push(nt); keyCache=null;
+function startNewNote(tr,c){ if(!isPitchedTr(tr)){ const q=S.quant==8?2:1, h={s:Math.floor(c.s/q)*q, d:c.row, v:0.85}; tr.hits.push(h); tr._drag={note:h,mode:'move',s0:c.s,row0:c.row,ns:h.s,np:c.row,moved:false,created:true}; tr._sel=h; drawGrid(tr); previewHit(tr,c.row); return; }
+  const q=S.quant==8?2:1, kp=snap(c.row); const nt={s:Math.floor(c.s/q)*q,l:q,p:kp,v:0.85,x:true}; tr.notes.push(nt); keyCache=null;
   tr._drag={note:nt,mode:'resize',s0:c.s,row0:c.row,ns:nt.s,np:kp,moved:false,created:true}; tr._sel=nt; drawGrid(tr); previewNote(tr,kp); }
 function noteMove(tr,e){
   let d=tr._drag; if(!d) return;
@@ -3099,21 +3109,24 @@ function noteMove(tr,e){
   tr._touchT=Date.now(); const c=cellAt(tr,e,true); if(!c) return; const n=pSteps(tr), q=S.quant==8?2:1;
   if(c.s!==d.s0 || c.row!==d.row0) d.moved=true; if(!d.moved) return;
   if(d.mode==='resize') d.note.l=clamp(Math.floor((c.s-d.note.s)/q)*q+q, q, n-d.note.s);
-  else { d.note.s=clamp(d.ns+Math.round((c.s-d.s0)/q)*q, 0, n-d.note.l);
+  else { d.note.s=clamp(d.ns+Math.round((c.s-d.s0)/q)*q, 0, n-evLen(d.note));
+    if(!isPitchedTr(tr)){ if(c.row!==d.note.d){ d.note.d=c.row; previewHit(tr,c.row); } drawGrid(tr); return; }   /* a hit moves in time and to another drum */
     const np=snap(c.row); if(np!==pitchOf(d.note)){ if(!d.note.x && d.note.r0==null) d.note.r0=+(+d.note.p).toFixed(2);   /* keep what was sung */ d.note.p=np; d.note.x=true; previewNote(tr,np); } }
   drawGrid(tr);
 }
 function noteUp(tr,e,cancel){
   const d=tr._drag; if(!d) return; tr._drag=null;
   if(d.pending){ if(cancel) return;
-    if(d.hit && d.c && d.hit.hs && tr._sel!==d.hit){ const o=d.hit.hs.find(h=>d.c.s===d.hit.s+h||d.c.s===d.hit.s+h-1);
+    if(isPitchedTr(tr) && d.hit && d.c && d.hit.hs && tr._sel!==d.hit){ const o=d.hit.hs.find(h=>d.c.s===d.hit.s+h||d.c.s===d.hit.s+h-1);
       if(o!=null){ tr._sel=d.hit; tr._lastTap=null; splitSelNote(tr, d.hit.s+o); return; } }   /* tap a split hint: split there */
     if(d.hit){ const lt=tr._lastTap, now=Date.now(); tr._lastTap={n:d.hit,t:now};
-      if(lt && lt.n===d.hit && now-lt.t<400){ tr._sel=d.hit; tr._lastTap=null; splitSelNote(tr, d.c?d.c.s:null); return; }   /* double-tap: split where tapped */
-      selectNote(tr,d.hit); previewNote(tr,pitchOf(d.hit)); }
+      if(isPitchedTr(tr) && lt && lt.n===d.hit && now-lt.t<400){ tr._sel=d.hit; tr._lastTap=null; splitSelNote(tr, d.c?d.c.s:null); return; }   /* double-tap: split where tapped */
+      selectNote(tr,d.hit); previewEv(tr,d.hit); }
     else if(tr._sel) selectNote(tr,null);
-    else { startNewNote(tr,d.c); tr._drag=null; noteChanged(tr); }
+    else { startNewNote(tr,d.c); tr._drag=null; if(!isPitchedTr(tr)) logEdit(tr,{k:'hitadd',s:tr._sel.s,d:tr._sel.d}); evChanged(tr); }
     return; }
+  if(!isPitchedTr(tr)){ if(d.created) logEdit(tr,{k:'hitadd',s:d.note.s,d:d.note.d}); else if(d.moved) logEdit(tr,{k:'hitmove',s:d.note.s,from:d.ns,d:d.note.d,fromD:d.np});
+    if(d.moved||d.created) hitsChanged(tr); else { drawGrid(tr); renderNoteBar(tr); } return; }
   if(d.moved && d.rec && d.mode==='move') learnFromPitchFix(d.np, pitchOf(d.note));
   if(d.moved && !d.created){ const to=pitchOf(d.note); if(d.mode==='move' && to!==d.np) logEdit(tr,{k:'pitch',s:d.note.s,from:d.np,to,raw:d.note.r0??null}); if(d.mode==='move' && d.note.s!==d.ns) logEdit(tr,{k:'move',s:d.note.s,from:d.ns}); if(d.mode==='resize') logEdit(tr,{k:'len',s:d.note.s,to:d.note.l}); }
   if(d.created) logEdit(tr,{k:'add',s:d.note.s,to:pitchOf(d.note),l:d.note.l});
@@ -3124,33 +3137,15 @@ function noteUp(tr,e,cancel){
     tr._lastTap={n:d.note,t:now}; drawGrid(tr); renderNoteBar(tr); }
 }
 function renderNoteBar(tr){
-  const sb=tr._selbar; if(sb){ const n=tr._sel, on=!!(n&&tr.notes&&tr.notes.includes(n)); sb.hidden=!on;
-    if(on){ const nm=m=>NOTE_NAMES[((m%12)+12)%12]+(Math.floor(m/12)-1); sb.querySelector('.sb-n').textContent=nm(pitchOf(n)+12*(tr.oct||0)); sb.querySelector('.sb-split').hidden=n.l<2*(S.quant==8?2:1); } }
-  const bar=tr._el&&tr._el.querySelector('.notebar'); if(!bar) return; const n=tr._sel;
+  const sb=tr._selbar; if(sb){ const n=tr._sel, on=!!(n&&evs(tr).includes(n)); sb.hidden=!on;
+    if(on){ if(!isPitchedTr(tr)){ sb.querySelector('.sb-n').textContent=slotLabel(n.d)+' · step '+(n.s+1); sb.querySelector('.sb-split').hidden=true; }
+      else { const nm=m=>NOTE_NAMES[((m%12)+12)%12]+(Math.floor(m/12)-1); sb.querySelector('.sb-n').textContent=nm(pitchOf(n)+12*(tr.oct||0)); sb.querySelector('.sb-split').hidden=n.l<2*(S.quant==8?2:1); } } }
+  const bar=tr._el&&tr._el.querySelector('.notebar'); if(!bar||!isPitchedTr(tr)) return; const n=tr._sel;
   if(!n || !tr.notes.includes(n)){ bar.hidden=true; tr._sel=null; return; }
   bar.hidden=false; const nm=m=>NOTE_NAMES[((m%12)+12)%12]+(Math.floor(m/12)-1);
   bar.querySelector('.nb-info').textContent=`${nm(pitchOf(n)+12*tr.oct)} · step ${n.s+1} · ${n.l} step${n.l>1?'s':''} long`;
 }
 function previewNote(tr,row){ if(playing) return; ensureCtx(); const out=ctx.createGain(); out.gain.value=trackGain(tr)||0.6; out.connect(chain.input); ENV_OVR=tr.adsr||null; try{ voice(ctx,out,tr.sound,ctx.currentTime+0.01,0.25,row+12*tr.oct,0.8,tr.tone/100); } finally{ ENV_OVR=null; } }
-function gridTap(tr,e){
-  const G=tr._grid; if(!G) return; const r=tr._cv.getBoundingClientRect(); const x=e.clientX-r.left, y=e.clientY-r.top;
-  const line=Math.floor(y/(G.lineH+G.gapH)), yy=y-line*(G.lineH+G.gapH), col=Math.floor((x-G.gut)/G.cw);
-  if(line<0||line>=G.lines||col<0||col>=G.sPL) return;
-  const s=line*G.sPL+col, i=Math.floor((yy-1)/G.rh); if(s<0||s>=pSteps(tr)||i<0||i>=G.rows.length) return;
-  const row=G.rows[i];
-  if(INST[tr.inst].kind==='pitched'){
-    const hit=tr.notes.findIndex(n=>pitchOf(n)===row && s>=n.s && s<n.s+n.l);
-    if(hit>=0) tr.notes.splice(hit,1); else { const gone=tr.notes.filter(n=>s>=n.s&&s<n.s+n.l&&!n.x); tr.notes=tr.notes.filter(n=>!(s>=n.s&&s<n.s+n.l)); tr.notes.push({s,l:S.quant==8?2:1,p:row,v:0.85,x:true}); tr.notes.sort((a,b)=>a.s-b.s); if(gone.length===1) learnReplace(pitchOf(gone[0]),row); }
-    keyCache=null;
-  } else {
-    const k=tr.hits.findIndex(h=>h.s===s&&h.d===row);
-    if(k>=0) tr.hits.splice(k,1); else tr.hits.push({s,d:row,v:0.85});
-  }
-  tr._dirty=true; save(); drawGrid(tr); scheduleRender();
-  if(!playing){ ensureCtx(); const out=ctx.createGain(); out.gain.value=trackGain(tr)||0.6; out.connect(chain.input);
-    if(INST[tr.inst].kind==='pitched'){ if(tr.notes.some(n=>n.s===s&&pitchOf(n)===row)) voice(ctx,out,tr.sound,ctx.currentTime+0.01,0.2,row+12*tr.oct,0.8,tr.tone/100); }
-    else if(tr.hits.some(h=>h.s===s&&h.d===row)) drumHit(ctx,out,row,ctx.currentTime+0.01,0.85,tr.sound,tr.tone/100); }
-}
 /* tempo, length and metronome live in S; the Studio draws them */
 const SCALE_OPTS='<option value="auto">Auto (major or minor)</option><option value="major">Major</option><option value="minor">Minor</option><option value="pent-minor">Minor pentatonic</option><option value="pent-major">Major pentatonic</option><option value="blues">Blues</option><option value="dorian">Dorian</option><option value="mixolydian">Mixolydian</option><option value="lydian">Lydian</option><option value="phrygian">Phrygian</option><option value="phryg-dom">Phrygian dominant</option><option value="harm-minor">Harmonic minor</option><option value="mel-minor">Melodic minor</option><option value="locrian">Locrian</option><option value="chromatic">Any note (no snapping)</option>';
 const keyOpts=()=>'<option value="auto">Auto-detect</option>'+NOTE_NAMES.map((n,i)=>`<option value="${i}">${n}</option>`).join('');
