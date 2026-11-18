@@ -2130,10 +2130,12 @@ let ENV_OVR=null, ENV_LAST=null;   // a part's own ADSR (replaces the sound's), 
 /* ---- Sampled instruments: real recordings, played back at the right pitch and loudness ----
    Built by samples/build_samples.py from open libraries (see samples/CREDITS.md). Each instrument loads the first time a song uses it;
    until then (or if it can't load) the synthesized sound of the same name plays, so nothing ever goes silent. */
-const SAMPLED={'Piano':'piano','E-piano':'epiano','Strings':'strings'};
+const SAMPLED={'Piano':'piano','E-piano':'epiano','Strings':'strings','Rock bass':'bass','Guitar':'guitar'};
 const SOUND_CREDITS=[   /* shown in More > Sound credits (required by CC BY; CC0 libraries are listed too, as thanks) */
   {sound:'Piano', lib:'Salamander Grand Piano', by:'Alexander Holm', lic:'CC BY 3.0', url:'https://creativecommons.org/licenses/by/3.0/'},
   {sound:'Strings', lib:'VS Chamber Orchestra: Community Edition', by:'Versilian Studios', lic:'CC0 (public domain)', url:'https://creativecommons.org/publicdomain/zero/1.0/'},
+  {sound:'Rock bass', lib:'Growlybass', by:'Karoryfer Samples', lic:'CC0 (public domain)', url:'https://creativecommons.org/publicdomain/zero/1.0/'},
+  {sound:'Guitar', lib:'Emilyguitar', by:'Karoryfer Samples', lic:'CC0 (public domain)', url:'https://creativecommons.org/publicdomain/zero/1.0/'},
   {sound:'E-piano', lib:'Wurlitzer EP200 from Greg Sullivan’s E-Pianos', by:'Greg Sullivan', lic:'CC BY 3.0', url:'https://creativecommons.org/licenses/by/3.0/'},
 ];   /* sound name -> folder in samples/ */
 const SMP={};
@@ -2155,7 +2157,8 @@ function sampleVoice(c,out,sound,t,dur,m,v,T,fromM){ const e=SMP[SAMPLED[sound]]
   if(fromM!==null && fromM!==m){ const gt=Math.min(0.09,Math.max(0.03,dur*0.35)); src.playbackRate.setValueAtTime(rate*Math.pow(2,(fromM-m)/12),t); src.playbackRate.exponentialRampToValueAtTime(rate,t+gt); } else src.playbackRate.value=rate;
   const lp=c.createBiquadFilter(); lp.type='lowpass'; lp.Q.value=0.5; lp.frequency.value=Math.min(20000,1500*Math.pow(13,T));   /* Brightness: 1.5 kHz to the full sound; 50 = about 5.4 kHz */
   const g=c.createGain(), gv=(e.meta.gain||1)*Math.pow(10,rdb/20)*(0.3+0.7*v); g.gain.setValueAtTime(gv,t); g.gain.setTargetAtTime(0,t+dur,rel/4);
-  src.connect(lp); lp.connect(g); g.connect(out);
+  src.connect(lp); const A=e.meta.amp; if(A){ const pre=c.createGain(), sh=c.createWaveShaper(), hp=c.createBiquadFilter(), cab=c.createBiquadFilter(); pre.gain.value=A.pre||1; sh.curve=driveCurve(A.drive||0.3); hp.type='highpass'; hp.frequency.value=A.hp||80; cab.type='lowpass'; cab.frequency.value=A.lp||5000; cab.Q.value=0.9;   /* a light amp: drive, then a speaker-like band */
+    lp.connect(pre); pre.connect(sh); sh.connect(hp); hp.connect(cab); cab.connect(g); } else lp.connect(g); g.connect(out);
   if(loop){ const lead=(buf.off+0.001)-(loop[2]||0); src.loop=true; src.loopStart=Math.max(0,lead+loop[0]); src.loopEnd=Math.min(buf.duration,lead+loop[1]); src.start(t,buf.off); src.stop(t+dur+rel*2+0.01); return; }   /* a sustained sound: holds as long as the note (the loop's joins were blended when it was built) */
   const avail=(buf.duration-buf.off)/rate; src.start(t,buf.off); src.stop(t+Math.min(avail,dur+rel*2)+0.01); }
 function voice(c,out,sound,t,dur,m,v,T,fromM=null){
