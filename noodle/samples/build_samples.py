@@ -153,6 +153,39 @@ def build_kit(root, key, cfg):
     size = sum(os.path.getsize(os.path.join(out, x)) for x in os.listdir(out))
     print(f'{key}: {sum(len(v) for v in slots.values())} files in {len(slots)} drums, {size/1e6:.1f} MB')
 
+def build_named(root, key, cfg):
+    """A library mapped by file name (no SFZ): one note per file, named like C4 or A#3 (an optional layer number after it), each note covering the keys
+    halfway to its neighbours. `shift` corrects the library's octave naming (measured); `retune` measures each recording; `loop` holds sustained ones."""
+    out = os.path.join(HERE, key); clean(out); os.makedirs(out, exist_ok=True); folder = os.path.join(root, cfg['src']); sh = cfg.get('shift', 0)
+    found = {}; loops = {}
+    for f in sorted(os.listdir(folder)):
+        m = re.search(cfg['pattern'], f)
+        if m: found.setdefault(int(m.group(2)) if m.lastindex and m.lastindex >= 2 else 1, {})[midi(m.group(1)) + sh] = f
+    layers = []
+    for lay, top in cfg['layers']:
+        notes = dict(found[lay])
+        for other in sorted(found, key=lambda o: abs(o - lay)):   # a note this layer lacks comes from the nearest layer that has it
+            for mm, f in found[other].items(): notes.setdefault(mm, f)
+        roots = sorted(notes); rs = []
+        for i, mm in enumerate(roots):
+            f = notes[mm]; name = re.sub(r'[^A-Za-z0-9_.-]+', '_', os.path.splitext(f)[0]) + '.mp3'; src = os.path.join(folder, f); secs = secs_for(mm, cfg['trim'])   # name: web-safe ('#' would end the address)
+            done_lp = loops.get(name)
+            lp = done_lp if name in loops else encode_loop(src, os.path.join(out, name), secs, cfg['loop']) if cfg.get('loop') else (encode(src, os.path.join(out, name), secs), None)[1]
+            lo = 0 if i == 0 else (roots[i - 1] + mm) // 2 + 1; hi = 127 if i == len(roots) - 1 else (mm + roots[i + 1]) // 2
+            r = {'lo': lo, 'hi': hi, 'root': float(mm), 'file': name, 'db': 0.0}
+            loops[name] = lp
+            if lp: r['loop'] = lp
+            if cfg.get('retune'):
+                c = cents_off(os.path.join(out, name), mm)
+                if 8 <= abs(c) <= 60: r['root'] = round(mm + c / 100, 3)
+            rs.append(r)
+        layers.append({'maxV': top, 'regions': rs})
+    meta = {'name': cfg['name'], 'credit': cfg['credit'], 'release': cfg['release'], 'gain': cfg.get('gain', 1.0), 'layers': layers}
+    if cfg.get('fold'): meta['fold'] = True   # notes below its range play an octave (or two) up, as on the real instrument
+    with open(os.path.join(out, 'map.json'), 'w') as fh: json.dump(meta, fh, separators=(',', ':'))
+    size = sum(os.path.getsize(os.path.join(out, x)) for x in os.listdir(out))
+    print(f'{key}: {sum(len(l["regions"]) for l in layers)} notes in {len(layers)} layers, {size/1e6:.1f} MB')
+
 # ---------------------------------------------------------------------------------------------------------------
 # Instruments
 # Each: source folder, how to find (note, layer) files, which layers to keep and the highest velocity (0-1) each covers.
@@ -189,6 +222,15 @@ SOURCES = {
         # each drum at the level the synth Rock kit had it (loudness over its first 0.25 s, peak at most 3 dB over the synth's), so songs keep their balance: mm/kit_test.js
         slot_gain={'kick': 2.43, 'snare': 1.02, 'rim': 1.78, 'hat': 1.3, 'openhat': 1.68, 'tomhi': 3.24, 'tommid': 3.13, 'tomlo': 2.54, 'crash': 2.75, 'ride': 1.32},
         layers_of={'kick': 14, 'snare': 10, 'rim': 4, 'hat': 6, 'openhat': 6, 'tomhi': 6, 'tommid': 7, 'tomlo': 8, 'crash': 5, 'ride': 10}),   # recorded layers per drum: a layer covers velocities up to its number / this
+    # VS Chamber Orchestra CE names notes an octave low (its C4 file sounds at C5: measured on every file), hence shift=12
+    'marimba': dict(src='VSCO-2-CE/Percussion/Marimba', named=True, pattern=r'_([A-G]#?\d)_loud_01\.wav$', layers=[(1, 1.0)], shift=12, retune=True,
+        trim=[(127, 3.0)], release=0.3, gain=6.3, name='Marimba', credit='VS Chamber Orchestra: Community Edition by Versilian Studios (CC0)'),   # gain +16 dB: between the Piano (Keys, +20) and the Saw (Arp, +12)
+    'glock': dict(src='VSCO-2-CE/Percussion/Glock', named=True, pattern=r'glock_medium_([A-G]#?\d)\.wav$', layers=[(1, 1.0)], shift=12, fold=True,   # no retune: its partials aren't harmonic, so a pitch reading would mislead
+        trim=[(127, 4.0)], release=0.8, gain=16.0, name='Glockenspiel', credit='VS Chamber Orchestra: Community Edition by Versilian Studios (CC0)'),   # gain +24 dB, with the Bell (+28 by level; a little under it, as it is far brighter)
+    'flute': dict(src='VSCO-2-CE/Woodwinds/Flute/susvib', named=True, pattern=r'_susvib_([A-G]#?\d)_v(1)_1\.wav$', layers=[(1, 1.0)], shift=12, retune=True, fold=True,
+        trim=[(127, 5.0)], loop=(2.0, 0.3), release=0.3, gain=5.5, name='Flute', credit='VS Chamber Orchestra: Community Edition by Versilian Studios (CC0)'),   # gain +15 dB, with the Saw
+    'horn': dict(src='VSCO-2-CE/Brass/F Horn/sus', named=True, pattern=r'_sus_([A-G]#?\d)_v([1-3])_1\.wav$', layers=[(1, 0.45), (2, 0.8), (3, 1.0)], shift=12, retune=True,
+        trim=[(127, 6.0)], loop=(2.5, 0.35), release=0.4, gain=2.5, name='French horn', credit='VS Chamber Orchestra: Community Edition by Versilian Studios (CC0)'),   # gain +8 dB, with the Warm pad
 }
 
 def build(root, key):
@@ -211,4 +253,4 @@ def build(root, key):
 
 if __name__ == '__main__':
     root = sys.argv[1]; keys = sys.argv[2:] or list(SOURCES)
-    for k in keys: (build_kit(root, k, SOURCES[k]) if SOURCES[k].get('kit') else build_sfz(root, k, SOURCES[k]) if 'sfz' in SOURCES[k] else build(root, k))
+    for k in keys: (build_named(root, k, SOURCES[k]) if SOURCES[k].get('named') else build_kit(root, k, SOURCES[k]) if SOURCES[k].get('kit') else build_sfz(root, k, SOURCES[k]) if 'sfz' in SOURCES[k] else build(root, k))

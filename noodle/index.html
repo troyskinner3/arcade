@@ -550,10 +550,10 @@ const INST = {
   hat:  {label:'Hi-hat', kind:'drum', drum:'hat', color:'#22b0a0', say:'“ts” · “tk”', sounds:DRUM_SOUNDS, hint:'Just the hi-hats. Say “ts”, “tk” or “tss”.'},
   clap: {label:'Clap', kind:'drum', drum:'clap', color:'#e2689f', say:'“k” · clap', sounds:DRUM_SOUNDS, hint:'Claps. Say “k”, clap your hands, or snap your fingers. Any short, sharp sound works.'},
   bass: {label:'Bass', kind:'pitched', oct:-1, color:'#7b6cf6', say:'sing low', sounds:['Sub','808 glide','Synth bass','Reese','Pluck','Rock bass','Growl','Acid','Wobble'], hint:'Sing or hum the bass line. It plays an octave lower than you sing.'},
-  lead: {label:'Lead', kind:'pitched', oct:0, color:'#3a8dde', say:'sing · whistle', sounds:['Saw','Supersaw','Square','Bell','Guitar','Glass','Chip','Theremin','Your voice'], hint:'Sing (“ahh”, “ooo”, “doo”), hum, or whistle a melody. Slides between notes are fine.'},
-  keys: {label:'Keys', kind:'pitched', oct:0, color:'#8fbf3a', say:'sing roots', sounds:['Piano','E-piano','Organ','Stab','String pluck'], hint:'Sing or hum a riff. Each note becomes a chord on electric piano or organ.'},
-  pad:  {label:'Pad', kind:'pitched', oct:0, color:'#b77ce8', say:'sing long', sounds:['Warm pad','Strings','Choir','Sweep','Vowel pad','Digital pad','Chorus pad','Pump pad','Your voice'], hint:'Sing or hum long, slow notes. Each becomes a chord on a soft pad.'},
-  arp:  {label:'Arp', kind:'pitched', oct:0, color:'#2fb3c9', say:'sing roots', sounds:['Pluck','Bell','Supersaw','Square','Saw','Chip','Glass','String pluck'], hint:'Sing, hum or draw root notes. Each one plays its chord from the key as an arpeggio. Set the pattern, speed and chord size under Controls.'},
+  lead: {label:'Lead', kind:'pitched', oct:0, color:'#3a8dde', say:'sing · whistle', sounds:['Saw','Supersaw','Square','Bell','Guitar','Glass','Chip','Theremin','Flute','Glockenspiel','Your voice'], hint:'Sing (“ahh”, “ooo”, “doo”), hum, or whistle a melody. Slides between notes are fine.'},
+  keys: {label:'Keys', kind:'pitched', oct:0, color:'#8fbf3a', say:'sing roots', sounds:['Piano','E-piano','Organ','Stab','String pluck','Marimba','Horns'], hint:'Sing or hum a riff. Each note becomes a chord on electric piano or organ.'},
+  pad:  {label:'Pad', kind:'pitched', oct:0, color:'#b77ce8', say:'sing long', sounds:['Warm pad','Strings','Choir','Sweep','Vowel pad','Digital pad','Chorus pad','Pump pad','Horns','Your voice'], hint:'Sing or hum long, slow notes. Each becomes a chord on a soft pad.'},
+  arp:  {label:'Arp', kind:'pitched', oct:0, color:'#2fb3c9', say:'sing roots', sounds:['Pluck','Bell','Supersaw','Square','Saw','Chip','Glass','String pluck','Marimba','Glockenspiel'], hint:'Sing, hum or draw root notes. Each one plays its chord from the key as an arpeggio. Set the pattern, speed and chord size under Controls.'},
   vox:  {label:'Vocals', kind:'audio', color:'#f7768e', say:'sing words', sounds:['Pop','Hip hop','Hard tune','EDM','Rock','Natural'], hint:'Sing the real thing: lyrics, ad-libs, harmonies. Your voice is kept as audio and polished with tuning, EQ, compression, doubling and echo. Wear headphones: the other parts play while you sing.'},
   fx:   {label:'FX (beta)', kind:'audio', color:'#9b8cff', say:'“woooop” · “shhh” · “pshh”', sounds:['Synth'], hint:'Ear candy from your mouth: a rising “woooop” is a riser, a falling one a downlifter, “shhh” a noise sweep, a short “pshh” an impact.'},
 };
@@ -2152,10 +2152,10 @@ let ENV_OVR=null, ENV_LAST=null;   // a part's own ADSR (replaces the sound's), 
 /* ---- Sampled instruments: real recordings, played back at the right pitch and loudness ----
    Built by samples/build_samples.py from open libraries (see samples/CREDITS.md). Each instrument loads the first time a song uses it;
    until then (or if it can't load) the synthesized sound of the same name plays, so nothing ever goes silent. */
-const SAMPLED={'Piano':'piano','E-piano':'epiano','Strings':'strings','Rock bass':'bass','Guitar':'guitar'};
+const SAMPLED={'Piano':'piano','E-piano':'epiano','Strings':'strings','Rock bass':'bass','Guitar':'guitar','Marimba':'marimba','Glockenspiel':'glock','Flute':'flute','Horns':'horn'};
 const SOUND_CREDITS=[   /* shown in More > Sound credits (required by CC BY; CC0 libraries are listed too, as thanks) */
   {sound:'Piano', lib:'Salamander Grand Piano', by:'Alexander Holm', lic:'CC BY 3.0', url:'https://creativecommons.org/licenses/by/3.0/'},
-  {sound:'Strings', lib:'VS Chamber Orchestra: Community Edition', by:'Versilian Studios', lic:'CC0 (public domain)', url:'https://creativecommons.org/publicdomain/zero/1.0/'},
+  {sound:'Strings, Marimba, Glockenspiel, Flute, Horns', lib:'VS Chamber Orchestra: Community Edition', by:'Versilian Studios', lic:'CC0 (public domain)', url:'https://creativecommons.org/publicdomain/zero/1.0/'},
   {sound:'Rock bass', lib:'Growlybass', by:'Karoryfer Samples', lic:'CC0 (public domain)', url:'https://creativecommons.org/publicdomain/zero/1.0/'},
   {sound:'Glass, Chip, Theremin, Vowel pad, Digital pad, Growl', lib:'Adventure Kid Waveforms (AKWF)', by:'Kristoffer Ekstrand', lic:'CC0 (public domain)', url:'https://creativecommons.org/publicdomain/zero/1.0/'},
   {sound:'Rock drums', lib:'Big Rusty Drums', by:'Karoryfer Samples', lic:'CC0 (public domain)', url:'https://creativecommons.org/publicdomain/zero/1.0/'},
@@ -2179,6 +2179,7 @@ function loadSmp(k){ if(!k) return Promise.resolve(false); if(SMP[k]) return SMP
         const map=new Map(); await Promise.all(Object.entries(L.notes).map(async([mm,f])=>{ map.set(+mm, await file(f)); })); e.layers.push({maxV:L.maxV, map, roots:[...map.keys()].sort((a,b)=>a-b)}); }
       e.meta=meta; e.ok=true; return true; }catch(err){ console.error('samples',k,err); return false; } })(); return e.p; }
 function sampleVoice(c,out,sound,t,dur,m,v,T,fromM){ const e=SMP[SAMPLED[sound]], L=e.layers.find(x=>v<=x.maxV+1e-9)||e.layers[e.layers.length-1];
+  if(e.meta.fold&&L.regs){ const low=Math.min(...L.regs.map(r=>r.root)); while(m<low-1){ m+=12; if(fromM!==null) fromM+=12; } }   /* below the instrument's range: an octave (or two) up, as a player would */
   let root, buf, rdb=0, loop=null; if(L.regs){ let R=L.regs.find(r=>m>=r.lo&&m<=r.hi); if(!R){ R=L.regs[0]; for(const r of L.regs) if(Math.abs(r.root-m)<Math.abs(R.root-m)) R=r; } root=R.root; buf=R.buf; rdb=R.db||0; loop=R.loop||null; }
   else { root=L.roots[0]; for(const r of L.roots) if(Math.abs(r-m)<Math.abs(root-m)) root=r; buf=L.map.get(root); } const rel=e.meta.release||0.25;
   const src=c.createBufferSource(); src.buffer=buf; const rate=Math.pow(2,(m-root)/12);
