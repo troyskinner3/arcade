@@ -846,13 +846,13 @@ function s2DrawLane(lane,cv){ const W=cv.clientWidth, H=cv.clientHeight; if(!W||
     g.globalAlpha=k?0.14:0.26; g.fillStyle=col; g.beginPath(); if(g.roundRect) g.roundRect(x0,top,w,h,5); else g.rect(x0,top,w,h); g.fill();
     g.globalAlpha=k?0.45:0.95; g.strokeStyle=col; g.lineWidth=1.25; g.stroke();
     g.globalAlpha=k?0.55:1; g.fillStyle=col; const yIn=top+pad, hIn=h-2*pad-3.5;
-    if(tr.notes && INST[tr.inst].kind==='pitched'){ const ps2=tr.notes.map(pitchOf); if(ps2.length){ const lo=Math.min(...ps2), hi=Math.max(...ps2), span=Math.max(5,hi-lo);
-        tr.notes.forEach((nt,i)=>{ if(nt.s>=ps) return; const y=yIn+hIn*(1-(ps2[i]-lo)/span), xa=ix+nt.s*u, xb=Math.min(ix+iw, ix+Math.min(nt.s+nt.l,ps)*u-1); g.fillRect(xa, y, Math.max(1.5,xb-xa), 3.5); }); } }
-    else if(tr.inst==='fx'){ (tr.fxs||[]).forEach(e=>{ if(e.s>=ps) return; const xa=ix+e.s*u, xb=Math.min(ix+iw, ix+Math.min(e.s+e.l,ps)*u-1), w2=Math.max(3,xb-xa), y0=yIn+hIn+3.5, hh=hIn+3.5; g.beginPath();
+    if(tr.notes && INST[tr.inst].kind==='pitched'){ const vis=tr.notes.filter(nt=>nt.s>=0&&nt.s<ps), ps2=vis.map(pitchOf); if(ps2.length){ const lo=Math.min(...ps2), hi=Math.max(...ps2), span=Math.max(5,hi-lo);
+        vis.forEach((nt,i)=>{ const y=yIn+hIn*(1-(ps2[i]-lo)/span), xa=ix+nt.s*u, xb=Math.min(ix+iw, ix+Math.min(nt.s+nt.l,ps)*u-1); g.fillRect(xa, y, Math.max(1.5,xb-xa), 3.5); }); } }
+    else if(tr.inst==='fx'){ (tr.fxs||[]).forEach(e=>{ if(e.s<0||e.s>=ps) return; const xa=ix+e.s*u, xb=Math.min(ix+iw, ix+Math.min(e.s+e.l,ps)*u-1), w2=Math.max(3,xb-xa), y0=yIn+hIn+3.5, hh=hIn+3.5; g.beginPath();
         if(e.k==='impact'){ g.moveTo(xa,y0); g.lineTo(xa,y0-hh); g.lineTo(xa+w2,y0); }
         else { const C=e.c||[0,1], up=e.k==='riser'||e.k==='sweepUp'; g.moveTo(xa,y0); for(let i=0;i<C.length;i++){ const lin=i/(C.length-1), yv=0.6*C[i]+0.4*(up?lin:1-lin); g.lineTo(xa+w2*lin, y0-hh*(0.12+0.88*yv)); } g.lineTo(xa+w2,y0); }
         g.closePath(); if(e.k==='sweepUp'||e.k==='sweepDown'){ const ga=g.globalAlpha; g.globalAlpha=ga*0.5; g.fill(); g.globalAlpha=ga; g.stroke(); } else g.fill(); }); }
-    else if(tr.hits){ const rows=[...new Set(tr.hits.map(x=>x.d))]; tr.hits.forEach(x=>{ if(x.s>=ps) return; const i=rows.indexOf(x.d), y=yIn+hIn*(rows.length>1?i/(rows.length-1):0.5), xa=ix+x.s*u; g.fillRect(xa, y, Math.max(1.5,Math.min(u-1,ix+iw-xa)), 3.5); }); }
+    else if(tr.hits){ const rows=[...new Set(tr.hits.map(x=>x.d))]; tr.hits.forEach(x=>{ if(x.s<0||x.s>=ps) return; const i=rows.indexOf(x.d), y=yIn+hIn*(rows.length>1?i/(rows.length-1):0.5), xa=ix+x.s*u; g.fillRect(xa, y, Math.max(1.5,Math.min(u-1,ix+iw-xa)), 3.5); }); }
     else { const raw=tr._raw; const N=Math.max(8,Math.floor(iw/3)); for(let i=0;i<N;i++){ let a=0.25; if(raw&&raw.x){ const a0=(tr.va||0)*raw.sr, span=ps*stepDur()*raw.sr, i0=Math.floor(a0+i/N*span), i1=Math.min(raw.x.length,Math.floor(a0+(i+1)/N*span)); let m=0; for(let j=i0;j<i1;j+=16) m=Math.max(m,Math.abs(raw.x[j])); a=Math.min(1,m*2.2); } const bh=Math.max(2,a*(h-2*pad)); g.fillRect(ix+i*(iw/N), top+h/2-bh/2, 1.6, bh); } } } }
   g.globalAlpha=1; }
 /* A new take replaces whatever it overlaps in its lane: covered parts go, partly covered parts are cut back, and a part it lands inside is split in two. */
@@ -1022,9 +1022,8 @@ function s2ResizeClip(tr, ds, de){ if(pLoops(tr)>1 || (!ds&&!de)) return false; 
   if(b-a<Math.round(16*Math.min(1,snapBars())) || a<0 || b>64*16) return false; if(S.tracks.some(t=>t!==tr&&s2LaneId(t)===s2LaneId(tr)&&hasContent(t)&&(t.off||0)<b&&(t.off||0)+pSteps(t)*pLoops(t)>a)) return false;
   if(tr.inst!=='vox'){ const lo=Math.max(0,16*ds), hi=n+Math.min(0,16*de); if(![...(tr.notes||[]),...(tr.hits||[]),...(tr.fxs||[])].some(x=>x.s<hi&&x.s+(x.l||1)>lo)) return false; }   /* a trim never leaves a part with nothing in it */
   tr.len=pBars(tr); tr.lenSet=true; tr.rep=false; if(S.bars<b/16) S.bars=Math.ceil(b/16-1e-9);
-  if(ds>0) s2Cut(tr,16*ds,n);
-  else if(ds<0){ const k=-ds*16; if(tr.notes) tr.notes.forEach(x=>{ x.s+=k; }); if(tr.hits) tr.hits.forEach(x=>{ x.s+=k; }); if(tr.fxs) tr.fxs.forEach(x=>{ x.s+=k; }); if(tr.inst==='vox'){ tr.va=+((tr.va||0)-k*stepDur()).toFixed(4); if(tr.vn) tr.vn.forEach(v=>{ v.t+=k*stepDur(); }); tr._tuned=null; tr._pitch=null; } tr.off=off-k; tr.len+=-ds; }
-  n=tr.len*16; if(de<0) s2Cut(tr,0,n+16*de); else if(de>0) tr.len+=de;
+  if(ds){ const k=-ds*16;   /* the window's start moves by -k steps: the content shifts by +k so it stays where it was in the song (nothing is removed) */ if(tr.notes) tr.notes.forEach(x=>{ x.s+=k; }); if(tr.hits) tr.hits.forEach(x=>{ x.s+=k; }); if(tr.fxs) tr.fxs.forEach(x=>{ x.s+=k; }); if(tr.inst==='vox'){ tr.va=+((tr.va||0)-k*stepDur()).toFixed(4); if(tr.vn) tr.vn.forEach(v=>{ v.t+=k*stepDur(); }); tr._tuned=null; tr._pitch=null; } tr.off=off-k; tr.len+=-ds; }
+  tr.len+=de;   /* the window's end: whatever is past it stays, unheard, until you extend again */
   tr._an=null; tr._takes=null; tr._dirty=true;
   if(S.tracks.filter(hasContent).every(t=>t.off!=null&&t.len)) S.bars=Math.ceil(Math.max(1,...S.tracks.filter(hasContent).map(t=>t.off/16+t.len))-1e-9);
   keyCache=null; save(); scheduleRender(); return true; }
@@ -1245,7 +1244,9 @@ function applyDuck(b,tr){ const hits=scHits(tr.sc.src); if(!hits.length) return;
     env[k]=g; }
   for(let ch=0;ch<b.numberOfChannels;ch++){ const d=b.getChannelData(ch); for(let i=0;i<n;i++){ const k=i/B, k0=k|0, f=k-k0; d[i]*=env[k0]+(env[k0+1]-env[k0])*f; } } }
 /* a part's events laid out across the whole song: its own loop, repeated (r>0 marks a repeat) */
-function songEvents(tr, list){ const n=pSteps(tr), off=tr.off||0, end=steps(), out=[]; for(let r=0;r<pLoops(tr);r++) for(const e of list){ const s0=e.s!==undefined?e.s:e.x; if(s0>=n || s0+r*n+off>=end) continue; out.push(Object.assign({},e, e.s!==undefined?{s:e.s+r*n+off}:{x:e.x+r*n+off}, {r})); } return out; }
+/* the part's events inside its window (a trimmed part keeps what's outside it): starts at 0 or later, before the end, and cut at the end */
+function inWin(list, n){ const out=[]; for(const e of list){ const s0=e.s!==undefined?e.s:e.x; if(s0<0 || s0>=n) continue; out.push(e.l!=null && s0+e.l>n ? Object.assign({},e,{l:n-s0}) : e); } return out; }
+function songEvents(tr, list){ const n=pSteps(tr), off=tr.off||0, end=steps(), out=[], w=inWin(list,n); for(let r=0;r<pLoops(tr);r++) for(const e of w){ const s0=e.s!==undefined?e.s:e.x; if(s0+r*n+off>=end) continue; out.push(Object.assign({},e, e.s!==undefined?{s:e.s+r*n+off}:{x:e.x+r*n+off}, {r})); } return out; }
 const mtof = m=>440*Math.pow(2,(m-69)/12);
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const $ = id=>document.getElementById(id);
@@ -1752,7 +1753,7 @@ function currentKey(){
   S.tracks.forEach(t=>{ if(t.inst==='vox') (t.vn||[]).forEach(n=>{ const pc=((Math.round(n.p)%12)+12)%12; w[pc]+=n.l*4; tot+=n.l*4; }); });
   // the key comes from what you recorded; notes you place by hand don't move it (else fixing one note re-snaps the others)
   const recd=S.tracks.some(t=>INST[t.inst].kind==='pitched' && t.notes.some(n=>!n.x));
-  S.tracks.forEach(t=>{ if(INST[t.inst].kind==='pitched') t.notes.forEach(n=>{ if(recd && n.x) return; const pc=((Math.round(n.p)%12)+12)%12; w[pc]+=n.l*n.v; tot+=n.l*n.v; }); });
+  S.tracks.forEach(t=>{ if(INST[t.inst].kind==='pitched'){ const n1=pSteps(t); t.notes.forEach(n=>{ if(recd && n.x) return; if(n.s<0||n.s>=n1) return; const pc=((Math.round(n.p)%12)+12)%12; w[pc]+=n.l*n.v; tot+=n.l*n.v; }); } });
   const modes = S.scale==='auto' ? ['major','minor'] : [MAJOR_FAMILY.has(S.scale)?'major':'minor'];
   let best={tonic:9,mode:'minor',c:-2};
   if(tot>0){ for(const mode of modes){ const prof=mode==='major'?KK_MAJ:KK_MIN;
@@ -2136,15 +2137,15 @@ async function renderStem(tr){
   enforceMono(tr);
   ENV_OVR=INST[tr.inst].kind==='pitched'?(tr.adsr||null):null;
   const SC=scOn(tr), FULL=fullSong(tr), SP=spotRanges(), keep=x=>!SP.length||!inSpot(x,SP);
-  const NL=(!tr.notes?[]:FULL?songEvents(tr,tr.notes):tr.notes.filter(x=>x.s<PN)).filter(x=>keep(x.s)).map(x=>SP.length?spotClip(x,SP):x);
-  if(d.kind==='pitched' && tr.inst==='arp'){ for(const e of (FULL?songEvents(tr,arpEvents(tr)):arpEvents(tr).filter(e=>e.x<PN)).filter(e=>keep(e.x)).map(e=>SP.length?spotClip(e,SP,'x'):e)) voice(oc,out,tr.sound,tAt(e.x)+0.002,Math.max(0.03,e.l*stepDur()),e.p+12*tr.oct,e.v,T); }
+  const NL=(!tr.notes?[]:FULL?songEvents(tr,tr.notes):inWin(tr.notes,PN)).filter(x=>keep(x.s)).map(x=>SP.length?spotClip(x,SP):x);
+  if(d.kind==='pitched' && tr.inst==='arp'){ for(const e of (FULL?songEvents(tr,arpEvents(tr)):inWin(arpEvents(tr),PN)).filter(e=>keep(e.x)).map(e=>SP.length?spotClip(e,SP,'x'):e)) voice(oc,out,tr.sound,tAt(e.x)+0.002,Math.max(0.03,e.l*stepDur()),e.p+12*tr.oct,e.v,T); }
   else if(d.kind==='pitched'){ for(const nt of NL){ const ts=stepTime(nt.s), dur=Math.max(0.05,nt.l*stepDur()-0.012); const ps=notePitches(tr,nt); const pv=slidesOn(tr)&&nt.g ? NL.find(o=>o!==nt && o.s+o.l===nt.s) : null; const pps=pv?notePitches(tr,pv):null;
     const X=tr.expr>0 && !nt.x ? exprCurves(tr,nt,dur,pitchOf(nt)) : null; let nout=out;
     if(X){ const g=oc.createGain(), lpf=oc.createBiquadFilter(); lpf.type='lowpass'; lpf.Q.value=0.8; g.connect(lpf); lpf.connect(out);
       g.gain.setValueCurveAtTime(X.gain,ts+0.002,dur); lpf.frequency.setValueCurveAtTime(X.cut,ts+0.002,dur);
       const cs=oc.createConstantSource(); cs.offset.value=0; cs.offset.setValueCurveAtTime(X.bend,ts+0.002,dur); cs.start(ts); cs.stop(ts+dur+1); EXPR_DET=cs; nout=g; }
     ps.forEach((pp,j)=>voice(oc,nout,tr.sound,ts+0.002,dur,pp+12*tr.oct,nt.v*(ps.length>1?1.1/Math.sqrt(ps.length+0.2):1),T, pps?pps[Math.min(j,pps.length-1)]+12*tr.oct:null)); EXPR_DET=null; } }
-  else { for(const h of (FULL?songEvents(tr,tr.hits):tr.hits.filter(h=>h.s<PN)).filter(h=>keep(h.s))) drumHit(oc,out,h.d,stepTime(h.s)+0.002,h.v,tr.sound,T); }
+  else { for(const h of (FULL?songEvents(tr,tr.hits):inWin(tr.hits,PN)).filter(h=>keep(h.s))) drumHit(oc,out,h.d,stepTime(h.s)+0.002,h.v,tr.sound,T); }
   ENV_OVR=null;
   const r=await oc.startRendering();
   const b=ctx.createBuffer(2,n,sr);
@@ -2556,7 +2557,7 @@ function fxPlay(oc, out, tr, e, t){ const D=Math.max(0.12,e.l*stepDur()), v=(e.v
 async function renderFx(tr){ await fxLoadPack(tr.sound);
   const sr=ctx.sampleRate, L=bufLen(tr), n=Math.round(L*sr), tail=3, oc=new OfflineAudioContext(2,n+tail*sr,sr), out=oc.createGain(); out.gain.value=0.8; out.connect(oc.destination);
   const off=tr.off||0, ps=pSteps(tr), end=Math.round(L/stepDur());
-  for(const e of (tr.fxs||[])){ if(e.s>=ps || e.s+off>=end) continue; try{ fxPlay(oc,out,tr,e,stepTime(e.s+off)+0.002); }catch(err){} }
+  for(const e of inWin(tr.fxs||[],ps)){ if(e.s+off>=end) continue; try{ fxPlay(oc,out,tr,e,stepTime(e.s+off)+0.002); }catch(err){} }
   const r=await oc.startRendering(), b=ctx.createBuffer(2,n,sr);
   for(let ch=0;ch<2;ch++){ const src=r.getChannelData(ch), dst=b.getChannelData(ch); for(let i=0;i<src.length;i++) dst[i%n]+=src[i]; }
   return b; }
@@ -2845,7 +2846,7 @@ const ENV_MAX={a:2,d:3,r:3};
 /* ---- part tools: length, repeat, duplicate, change instrument ---- */
 function deletePart(tr){ const nm=partName(tr); disposeTrack(tr); S.tracks=S.tracks.filter(t=>t!==tr); takeBar=null; keyChanged(); save(); applyAllMix(); renderTracks(); scheduleRender(); toast('Deleted '+nm+'. Tap Undo to bring it back.'); }
 /* legato: every note lasts until the next note starts; the last one runs to the end of the part's loop */
-function fillGaps(tr){ const n=pSteps(tr), ns=tr.notes.filter(x=>x.s<n); if(!ns.length) return;
+function fillGaps(tr){ const n=pSteps(tr), ns=tr.notes.filter(x=>x.s>=0&&x.s<n); if(!ns.length) return;
   const starts=[...new Set(ns.map(x=>x.s))].sort((a,b)=>a-b); let changed=0;
   ns.forEach(x=>{ const nx=starts.find(v=>v>x.s), l=(nx==null?n:nx)-x.s; if(l!==x.l){ x.l=l; changed++; } });
   if(!changed){ toast('No gaps to fill'); return; }
@@ -2929,7 +2930,7 @@ function gridRows(tr){
   const d=INST[tr.inst];
   if(d.kind==='drums'){ const rows=S.kit.slots.map(x=>x.id).reverse(); (tr.hits||[]).forEach(h=>{ if(!rows.includes(h.d)) rows.unshift(h.d); }); return {rows, rh:rows.length>6?17:20}; }
   if(d.kind==='drum') return {rows:[d.drum], rh:30};
-  const ps=tr.notes.map(pitchOf); let lo=ps.length?Math.min(...ps):60, hi=ps.length?Math.max(...ps):67;
+  const ps=tr.notes.filter(nt=>nt.s>=0&&nt.s<pSteps(tr)).map(pitchOf); let lo=ps.length?Math.min(...ps):60, hi=ps.length?Math.max(...ps):67;
   lo-=2; hi+=2;
   // keep the visible pitch range steady while editing: it only grows when a note goes past the edge
   if(tr._range && ps.length){ lo=Math.min(lo,tr._range.lo); hi=Math.max(hi,tr._range.hi); }
@@ -2962,7 +2963,7 @@ function drawVox(tr){
 function drawGrid(tr){
   if(tr.inst==='vox'){ if(tr._cv) drawVox(tr); return; }
   if(!tr._ovRaf) tr._ovRaf=requestAnimationFrame(()=>{ tr._ovRaf=0; drawOverview(tr); });
-  const cv=tr._cv; if(!cv) return; const wrap=cv.parentElement.parentElement; const n=pSteps(tr);
+  const cv=tr._cv; if(!cv) return; const wrap=cv.parentElement.parentElement; const n=pSteps(tr); const VN=(tr.notes||[]).filter(nt=>nt.s>=0&&nt.s<n), VH=(tr.hits||[]).filter(h=>h.s>=0&&h.s<n);   /* only what is inside the part's window (a trim keeps the rest) */
   const pitched=INST[tr.inst].kind==='pitched';
   const gr=gridRows(tr), rows=gr.rows, rh=pitched?clamp(Math.floor(GRID_H/Math.max(1,rows.length)),8,GRID_RH):Math.round(gr.rh*GRID_DRUM); const gut=pitched?40:(rows.length>1?52:0);
   const VW=Math.max(200,wrap.clientWidth||320), fit=(VW-gut)/n, cw=Math.max(fit, Math.min(zoomCW(),40)), W=Math.ceil(gut+n*cw);
@@ -2988,22 +2989,22 @@ function drawGrid(tr){
   if(!pitched){
     g.globalAlpha=0.35; g.fillStyle=cBar; rows.forEach((r,i)=>{ for(let s=0;s<n;s++){ g.beginPath(); g.arc(X(s)+cw/2,Y(s)+1+i*rh+rh/2,1.4,0,7); g.fill(); } }); g.globalAlpha=1;
     rawTicks(tr,g,X,Y,cw,lineH,n,sPL,gut,lines,gapH);
-    tr.hits.forEach(h=>{ const i=rows.indexOf(h.d); if(i<0) return; g.globalAlpha=0.35+0.65*h.v; g.fillStyle=col; rr(g,X(h.s)+1.5,Y(h.s)+1+i*rh+1.5,cw-3,rh-3,1.5); g.fill(); }); g.globalAlpha=1;
+    VH.forEach(h=>{ const i=rows.indexOf(h.d); if(i<0) return; g.globalAlpha=0.35+0.65*h.v; g.fillStyle=col; rr(g,X(h.s)+1.5,Y(h.s)+1+i*rh+1.5,cw-3,rh-3,1.5); g.fill(); }); g.globalAlpha=1;
   } else {
     rawTicks(tr,g,X,Y,cw,lineH,n,sPL,gut,lines,gapH);
     const selN=tr._sel;
-    tr.notes.forEach(nt=>{ const i=rows.indexOf(pitchOf(nt)); if(i<0) return; g.globalAlpha=nt===selN?1:0.45+0.55*nt.v; g.fillStyle=col;
-      let s=nt.s, left=nt.l; while(left>0){ const room=sPL-(s%sPL), seg=Math.min(left,room); rr(g,X(s)+1,Y(s)+1+i*rh+0.5,Math.max(cw*seg-2,3),rh-1,1.5); g.fill(); s=(s+seg)%n; left-=seg; } });
+    VN.forEach(nt=>{ const i=rows.indexOf(pitchOf(nt)); if(i<0) return; g.globalAlpha=nt===selN?1:0.45+0.55*nt.v; g.fillStyle=col;
+      let s=nt.s, left=Math.min(nt.l,n-nt.s); while(left>0){ const room=sPL-(s%sPL), seg=Math.min(left,room); rr(g,X(s)+1,Y(s)+1+i*rh+0.5,Math.max(cw*seg-2,3),rh-1,1.5); g.fill(); s=(s+seg)%n; left-=seg; } });
     /* split hints: a faint seam where a held note may be two notes (tap it to split) */
-    g.globalAlpha=0.55; g.fillStyle=cCell; tr.notes.forEach(nt=>{ if(!nt.hs) return; const i=rows.indexOf(pitchOf(nt)); if(i<0) return;
+    g.globalAlpha=0.55; g.fillStyle=cCell; VN.forEach(nt=>{ if(!nt.hs) return; const i=rows.indexOf(pitchOf(nt)); if(i<0) return;
       nt.hs.forEach(o=>{ if(o<=0||o>=nt.l) return; const s=(nt.s+o)%n; g.fillRect(X(s)-1,Y(s)+1+i*rh+2,2,Math.max(2,rh-5)); }); });
     g.globalAlpha=1;
     // chord name on each note (when chords are on): e.g. Am, C7, Fmaj7
     if(chordsOn(tr)){ g.font='700 '+Math.max(8,Math.min(10,rh-1))+'px '+mono; g.textBaseline='middle';
-      tr.notes.forEach(nt=>{ const i=rows.indexOf(pitchOf(nt)); if(i<0) return; const w=Math.min(nt.l,sPL-(nt.s%sPL))*cw-2, name=chordName(notePitches(tr,nt));
+      VN.forEach(nt=>{ const i=rows.indexOf(pitchOf(nt)); if(i<0) return; const w=Math.min(nt.l,sPL-(nt.s%sPL))*cw-2, name=chordName(notePitches(tr,nt));
         if(!name) return; const tw=g.measureText(name).width; const x=X(nt.s)+1, y=Y(nt.s)+1+i*rh+rh/2+0.5;
         if(tw+6<=w){ g.fillStyle=cssVar('--bg'); g.globalAlpha=0.9; g.fillText(name,x+3,y); }
-        else if(cw>=12 && !tr.notes.some(o=>o!==nt && o.s>nt.s && o.s<=nt.s+nt.l+Math.ceil((tw+4)/cw) && Math.abs(pitchOf(o)-pitchOf(nt))<=1)){ g.fillStyle=col; g.globalAlpha=0.9; g.fillText(name,x+Math.max(w,3)+2,y); } });
+        else if(cw>=12 && !VN.some(o=>o!==nt && o.s>nt.s && o.s<=nt.s+nt.l+Math.ceil((tw+4)/cw) && Math.abs(pitchOf(o)-pitchOf(nt))<=1)){ g.fillStyle=col; g.globalAlpha=0.9; g.fillText(name,x+Math.max(w,3)+2,y); } });
       g.globalAlpha=1; g.textBaseline='alphabetic'; }
     if(selN && tr.notes.includes(selN)){ const i=rows.indexOf(pitchOf(selN)); if(i>=0){ g.strokeStyle=cssVar('--ink'); g.lineWidth=2;
       let s2=selN.s, left=selN.l; while(left>0){ const room=sPL-(s2%sPL), seg=Math.min(left,room); rr(g,X(s2)+1,Y(s2)+1+i*rh+0.5,Math.max(cw*seg-2,3),rh-1,1.5); g.stroke(); s2=(s2+seg)%n; left-=seg; }
@@ -3078,7 +3079,7 @@ function noteDown(tr,e,onSel){
     previewNote(tr,pitchOf(n)); return; }
   const c=cellAt(tr,e); if(!c||!c.inRow) return;
   // the grid only reacts to a tap (so a swipe always scrolls): tap a note to select it, tap empty space to deselect or add a note
-  const n=tr.notes.find(nt=>pitchOf(nt)===c.row && c.s>=nt.s && c.s<nt.s+nt.l);
+  const n=tr.notes.find(nt=>pitchOf(nt)===c.row && nt.s>=0 && nt.s<pSteps(tr) && c.s>=nt.s && c.s<nt.s+nt.l);
   tr._drag={pending:true, c, hit:n||null, x0:e.clientX, y0:e.clientY, id:e.pointerId};
 }
 function startNewNote(tr,c){ const q=S.quant==8?2:1, kp=snap(c.row); const nt={s:Math.floor(c.s/q)*q,l:q,p:kp,v:0.85,x:true}; tr.notes.push(nt); keyCache=null;

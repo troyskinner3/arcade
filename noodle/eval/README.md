@@ -332,7 +332,7 @@ Real noise (DEMAND, CC BY 4.0: street traffic, cafeteria, bus, town square, park
   from those elements (`$('key')`, `$('bars')`, `$('recLabel')`, the hidden sliders the Studio's sheets write to), so each needs moving to plain state first.
 
 ### Stage 3 cleanup log (removing the first prototype's page)
-How to work on it: one small step at a time; after each, `tools/suite.sh` from the scratchpad (also in `eval/tools/`) must print ALL PASS (26 scripts, replay 3.88); only then commit and push. `eval/tools/prune.js <file> s2TrimClip` deletes functions nothing names any more.
+How to work on it: one small step at a time; after each, `tools/suite.sh` from the scratchpad (also in `eval/tools/`) must print ALL PASS (27 scripts, replay 3.88); only then commit and push. `eval/tools/prune.js <file> s2TrimClip` deletes functions nothing names any more.
 - **Batch 1 (done):** removed the old "How it works" card, New song button, the header's back button and brand, the +/− tempo buttons, with their wiring and styles; `newSong` went with them (tests use `projNew`).
 - **Batch 2 (done):** removed the owner's old test-link UI (`guided`, `dropLine`), the `genre`, `quant` and `loops` rows, `keyInfo`, `snapV`, the old calibrate button, with their wiring; `applyStyle` went with them.
 - **Batch 3 (done):** removed the old header (tempo, length, metronome fields), the bottom dock (seek bar, undo/redo, play, record), the song-name field and the old parts container. The Studio's metronome button now calls `toggleMetro`; `syncTransport`, `updatePlayBtn`, `updateDock` and `updateHistBtns` are empty hooks to delete once nothing calls them. `proj_test` and `shell_test` read the title from the Studio.
@@ -390,3 +390,8 @@ How to work on it: one small step at a time; after each, `tools/suite.sh` from t
   The old list sheet (`s2FxSheet`) is gone. Edits are logged for shared takes (`fxadd`, `fxdel`, `fxkind`). Two bars fit on an iPhone-width screen; longer parts scroll.
 - **FX quieter by default (shipped):** a new FX track starts at volume 45 instead of 80 (about 8 dB quieter with the app's volume curve). Existing FX tracks keep their volume.
 - `round2_test.js`, `snap_test.js`, `blank_test.js`, `fxgrid_test.js`. Suite: 26 scripts, replay 3.88.
+
+### Phone review, round 3 — Nov 18
+- **Trimming keeps the notes (shipped):** a part is now a window onto its content, as in a DAW. Trimming either end only moves the window; notes, hits and effects outside it stay in the part, unheard and not drawn, and come back when the part is extended again.
+  Before, a trim deleted what it cut (`s2Cut`). Now `s2ResizeClip` only shifts and resizes; `inWin` decides what plays, exports and shows (starts inside the window, cut at its end). The song's key and the editor's pitch range follow what is inside the window.
+  Recording over a part still replaces what's under the new take (that is a replace, not a trim). `trimkeep_test.js`.
