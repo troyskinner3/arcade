@@ -550,9 +550,9 @@ const INST = {
   hat:  {label:'Hi-hat', kind:'drum', drum:'hat', color:'#22b0a0', say:'“ts” · “tk”', sounds:DRUM_SOUNDS, hint:'Just the hi-hats. Say “ts”, “tk” or “tss”.'},
   clap: {label:'Clap', kind:'drum', drum:'clap', color:'#e2689f', say:'“k” · clap', sounds:DRUM_SOUNDS, hint:'Claps. Say “k”, clap your hands, or snap your fingers. Any short, sharp sound works.'},
   bass: {label:'Bass', kind:'pitched', oct:-1, color:'#7b6cf6', say:'sing low', sounds:['Sub','808 glide','Synth bass','Reese','Pluck','Rock bass'], hint:'Sing or hum the bass line. It plays an octave lower than you sing.'},
-  lead: {label:'Lead', kind:'pitched', oct:0, color:'#3a8dde', say:'sing · whistle', sounds:['Saw','Supersaw','Square','Bell','Guitar'], hint:'Sing (“ahh”, “ooo”, “doo”), hum, or whistle a melody. Slides between notes are fine.'},
+  lead: {label:'Lead', kind:'pitched', oct:0, color:'#3a8dde', say:'sing · whistle', sounds:['Saw','Supersaw','Square','Bell','Guitar','Your voice'], hint:'Sing (“ahh”, “ooo”, “doo”), hum, or whistle a melody. Slides between notes are fine.'},
   keys: {label:'Keys', kind:'pitched', oct:0, color:'#8fbf3a', say:'sing roots', sounds:['Piano','E-piano','Organ','Stab'], hint:'Sing or hum a riff. Each note becomes a chord on electric piano or organ.'},
-  pad:  {label:'Pad', kind:'pitched', oct:0, color:'#b77ce8', say:'sing long', sounds:['Warm pad','Strings','Choir','Sweep'], hint:'Sing or hum long, slow notes. Each becomes a chord on a soft pad.'},
+  pad:  {label:'Pad', kind:'pitched', oct:0, color:'#b77ce8', say:'sing long', sounds:['Warm pad','Strings','Choir','Sweep','Your voice'], hint:'Sing or hum long, slow notes. Each becomes a chord on a soft pad.'},
   arp:  {label:'Arp', kind:'pitched', oct:0, color:'#2fb3c9', say:'sing roots', sounds:['Pluck','Bell','Supersaw','Square','Saw'], hint:'Sing, hum or draw root notes. Each one plays its chord from the key as an arpeggio. Set the pattern, speed and chord size under Controls.'},
   vox:  {label:'Vocals', kind:'audio', color:'#f7768e', say:'sing words', sounds:['Pop','Hip hop','Hard tune','EDM','Rock','Natural'], hint:'Sing the real thing: lyrics, ad-libs, harmonies. Your voice is kept as audio and polished with tuning, EQ, compression, doubling and echo. Wear headphones: the other parts play while you sing.'},
   fx:   {label:'FX (beta)', kind:'audio', color:'#9b8cff', say:'“woooop” · “shhh” · “pshh”', sounds:['Synth'], hint:'Ear candy from your mouth: a rising “woooop” is a riser, a falling one a downlifter, “shhh” a noise sweep, a short “pshh” an impact.'},
@@ -1076,7 +1076,7 @@ function s2TrackSheet(L){ const tr=L.tracks[0], all=()=>S.tracks.filter(t=>s2Lan
   const dot=k=>`<i style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${INST[k].color};margin-right:6px"></i>`;
   nxSheet(`<h2>${nm}</h2><input class="nx-txt" id="s2Tn" maxlength="32" value="${nxEsc(tr.name||'')}" placeholder="${nxEsc(I.label)}" aria-label="Track name" style="margin-bottom:12px">
     ${fam.length>1?`<div class="nx-grp" style="padding-top:0">Instrument</div><div class="s2-opts" id="s2Ins">${fam.map(k=>`<button data-k="${k}" aria-pressed="${k===tr.inst}">${dot(k)}${INST[k].label}</button>`).join('')}</div>`:''}
-    ${I.sounds&&I.sounds.length?`<div class="nx-grp" style="padding-top:0">Sound</div><div class="s2-opts" id="s2Snd">${I.sounds.map(x=>`<button data-x="${nxEsc(x)}" aria-pressed="${x===tr.sound}">${nxEsc(x)}</button>`).join('')}</div>`:''}
+    ${I.sounds&&I.sounds.length?`<div class="nx-grp" style="padding-top:0">Sound</div><div class="s2-opts" id="s2Snd">${I.sounds.map(x=>`<button data-x="${nxEsc(x)}" aria-pressed="${x===tr.sound}">${nxEsc(x)}</button>`).join('')}</div>`:''}${tr.sound==='Your voice'&&S.yv&&S.yv.of>1?`<button class="nx-ghost" data-a="yvnext" style="width:100%;margin-top:10px">Try another moment · ${S.yv.rank+1} of ${S.yv.of}</button>`:''}
     ${CHORD_ZONE[tr.inst]?`<div class="nx-grp" style="padding-top:0">Chord</div><select class="nx-txt" id="s2Chd" aria-label="Chord type" style="margin-bottom:12px">${Object.entries(CHORD_TYPES).map(([k,v])=>`<option value="${k}" ${k===chordType(tr)?'selected':''}>${v}</option>`).join('')}</select>`:''}
     ${tr.inst==='vox'?(()=>{ const fx=fxOf(tr), L={tune:'Pitch correction',form:'Voice character',low:'Low cut',pres:'Presence',air:'Air',comp:'Compression',dbl:'Double',echo:'Echo'}; return `<div class="nx-grp" style="padding-top:6px">Voice</div>${s2Fld('s2Fx_tune',L.tune,0,100,fx.tune)}<p style="color:var(--muted);font-size:13px;margin:-2px 0 6px">0 leaves your singing as it is. 100 is the hard-tuned sound. It follows the song’s key.</p>${VOX_KNOBS.filter(([k])=>k!=='tune').map(([k])=>s2Fld('s2Fx_'+k,L[k]||k,0,100,fx[k])).join('')}`; })():''}
     ${pit?`<div class="nx-grp" style="padding-top:6px">Notes</div><div class="s2-fld"><label>Octave</label><div class="s2-opts" style="padding:0"><button data-o="-1" aria-label="Octave down">−</button><output id="s2Oct" style="width:36px;text-align:center;align-self:center;font:700 15px var(--f-mono)">${tr.oct>0?'+':''}${tr.oct||0}</output><button data-o="1" aria-label="Octave up">+</button></div></div>
@@ -1088,8 +1088,10 @@ function s2TrackSheet(L){ const tr=L.tracks[0], all=()=>S.tracks.filter(t=>s2Lan
   $('s2Tn').onchange=e=>{ const v=e.target.value.trim().slice(0,32)||undefined; each(t=>{ t.name=v; }); save(); renderTracks(); };
   $('nxSheet').onclick=e=>{ let b;
     if(b=e.target.closest('#s2Ins button')){ const k=b.dataset.k; each(t=>changeInst(t,k)); keyCache=null; save(); renderTracks(); scheduleRender(); s2TrackSheet(s2Lane(L.id)); }
-    else if(b=e.target.closest('#s2Snd button')){ each(t=>{ t.sound=b.dataset.x; if(t.inst==='vox') t.fx=Object.assign({},VOX_PRESETS[t.sound]); t._dirty=true; }); warmSounds(); rerender(); s2TrackSheet(s2Lane(L.id)); }
+    else if(b=e.target.closest('#s2Snd button')){ each(t=>{ t.sound=b.dataset.x; if(t.inst==='vox') t.fx=Object.assign({},VOX_PRESETS[t.sound]); t._dirty=true; }); warmSounds();
+      if(b.dataset.x==='Your voice' && !S.yv && !yvCapture()) toast('Sing a take first: Your voice is made from it. Until then it plays Choir.'); rerender(); s2TrackSheet(s2Lane(L.id)); }
     else if(b=e.target.closest('[data-o]')){ each(t=>{ t.oct=clamp((t.oct||0)+(+b.dataset.o),-3,3); t.octSet=true; t._dirty=true; }); $('s2Oct').textContent=(tr.oct>0?'+':'')+tr.oct; rerender(); renderTracks(); }
+    else if((b=e.target.closest('[data-a]')) && b.dataset.a==='yvnext'){ const r=(S.yv.rank||0)+1; if(yvCapture(r)){ S.tracks.forEach(t=>{ if(t.sound==='Your voice') t._dirty=true; }); rerender(); s2TrackSheet(s2Lane(L.id)); } }   /* the next steadiest moment of your singing */
     else if((b=e.target.closest('[data-a]')) && b.dataset.a==='dup'){ nxClose(); const nl=s2DupTrack(L); if(nl){ s2.selId=null; renderTracks(); setTimeout(()=>s2TrackSheet(s2Lane(nl)),80); toast('Track duplicated. Pick its instrument, e.g. Keys or Pad for chords.'); } }
     else if(b=e.target.closest('[data-a]')){ nxClose(); const ms=all(); ms.slice(1).forEach(t=>{ disposeTrack(t); }); S.tracks=S.tracks.filter(t=>!ms.slice(1).includes(t)); deletePart(ms[0]); } };
   $('nxSheet').oninput=e=>{ const id=e.target.id, v=+e.target.value;
@@ -2186,7 +2188,50 @@ function sampleVoice(c,out,sound,t,dur,m,v,T,fromM){ const e=SMP[SAMPLED[sound]]
     lp.connect(pre); pre.connect(sh); sh.connect(hp); hp.connect(cab); cab.connect(g); } else lp.connect(g); g.connect(out);
   if(loop){ const lead=(buf.off+0.001)-(loop[2]||0); src.loop=true; src.loopStart=Math.max(0,lead+loop[0]); src.loopEnd=Math.min(buf.duration,lead+loop[1]); src.start(t,buf.off); src.stop(t+dur+rel*2+0.01); return; }   /* a sustained sound: holds as long as the note (the loop's joins were blended when it was built) */
   const avail=(buf.duration-buf.off)/rate; src.start(t,buf.off); src.stop(t+Math.min(avail,dur+rel*2)+0.01); }
+/* ---- Your voice ---- */
+const YV_SR=24000; let VOICE_INST=null, YV_BUF=null, YV_KEY=null;
+function yvTakes(){ const out=[]; for(const t of S.tracks){ if(!(t.inst==='vox'||INST[t.inst].kind==='pitched')) continue;
+    const ks=t._takes&&t._takes.length?t._takes.map(k=>({raw:k.raw,an:k.an})):t._raw?[{raw:t._raw,an:t._an}]:[];
+    for(const k of ks){ if(!k.raw||!k.raw.x) continue; let fr=k.an&&k.an.notes&&k.an.notes.frames;
+      if(!fr){ try{ fr=analyzeTake(k.raw.x,k.raw.sr,t.inst==='vox'?'lead':t.inst,t.sens??S.sens,true).notes.frames; }catch(e){ fr=null; } }
+      if(fr&&fr.length>40) out.push({x:k.raw.x,sr:k.raw.sr,fr}); } } return out; }
+/* the steadiest stretches of singing: voiced all through, loud, little pitch wobble; best first, one per take moment */
+function yvMoments(){ const W=60, res=[];
+  for(const k of yvTakes()){ const fr=k.fr, top=Math.max(...fr.map(f=>f.db));
+    for(let i=0;i+W<=fr.length;i+=5){ const w=fr.slice(i,i+W); if(w.some(f=>!(f.conf<0.25)||f.db<top-14||f.db<-50)) continue;
+      const ms=w.map(f=>f.m), mean=ms.reduce((a,b)=>a+b,0)/W, sd=Math.sqrt(ms.reduce((a,b)=>a+(b-mean)**2,0)/W);
+      if(sd>0.35 || mean>78) continue;   /* above G5 is whistling: the pitch tracker can't follow it there, and it would only give a plain tone */ const sc=-8*sd-3*w.reduce((a,f)=>a+f.conf,0)/W+(w.reduce((a,f)=>a+f.db,0)/W-top)/10; res.push({k, t0:w[0].t-0.02, t1:w[W-1].t+0.02, m:median(ms), sc}); } }
+  res.sort((a,b)=>b.sc-a.sc); const pick=[]; for(const r of res) if(!pick.some(p=>p.k===r.k && Math.abs(p.t0-r.t0)<0.8)) pick.push(r); return pick; }
+/* cut it out, loop it on whole pitch cycles (the join blended), store it in the song */
+function yvCapture(rank=0){ const ms=yvMoments(); if(!ms.length) return false; const M=ms[rank%ms.length], {x,sr}=M.k;
+  const a=Math.max(0,Math.round(M.t0*sr)), z=Math.min(x.length,Math.round(M.t1*sr)); let y=biquad(biquad(x.subarray(a,z),'lp',10000,0.707,sr),'hp',70,0.707,sr);
+  const n=Math.floor(y.length*YV_SR/sr), w=new Float32Array(n); for(let i=0;i<n;i++){ const q=i*sr/YV_SR, i0=Math.floor(q), f=q-i0; w[i]=(y[i0]||0)*(1-f)+(y[i0+1]||0)*f; }
+  { const hop=Math.round(0.01*YV_SR), half=Math.round(0.02*YV_SR), env=[]; for(let c=0;c<n;c+=hop){ let q=0,k=0; for(let i=Math.max(0,c-half);i<Math.min(n,c+half);i++){ q+=w[i]*w[i]; k++; } env.push(Math.sqrt(q/k)+1e-6); }
+    const sm=env.map((_,i)=>{ let a=0,k=0; for(let j=Math.max(0,i-3);j<=Math.min(env.length-1,i+3);j++){ a+=env[j]; k++; } return a/k; }), ref=median(sm);
+    for(let i=0;i<n;i++){ const f=i/hop, i0=Math.min(sm.length-1,Math.floor(f)), i1=Math.min(sm.length-1,i0+1), e=sm[i0]+(sm[i1]-sm[i0])*(f-i0); w[i]*=ref/e; } }   /* an even level: a swell or a fade doesn't jump at each repeat */
+  const ls=Math.round(0.12*YV_SR), xf=Math.round(0.07*YV_SR);
+  let f0=mtof(M.m); { const a0=ls, L=Math.min(n-a0-1,Math.round(0.3*YV_SR)), nc=k=>{ let c=0,e1=0,e2=0; for(let i=a0;i<a0+L-k;i++){ c+=w[i]*w[i+k]; e1+=w[i]*w[i]; e2+=w[i+k]*w[i+k]; } return c/Math.sqrt(e1*e2+1e-12); };
+    const k0=YV_SR/f0, lo=Math.max(2,Math.floor(k0/1.09)), hi=Math.ceil(k0*1.09); let bk=lo, bv=-2; for(let k=lo;k<=hi;k++){ const v=nc(k); if(v>bv){ bv=v; bk=k; } }
+    const y0=nc(bk-1), y1=nc(bk), y2=nc(bk+1), den=y0-2*y1+y2, kk=bk+(Math.abs(den)>1e-9?0.5*(y0-y2)/den:0); f0=YV_SR/kk; }   /* the pitch of the part that loops (within 1.5 semitones of the moment's) */
+  const root=69+12*Math.log2(f0/440), P=YV_SR/f0; let le=n-Math.round(0.01*YV_SR); le=ls+Math.max(1,Math.round((le-ls)/P))*P;
+  { let best=-2, bl=Math.round(le); for(let e=Math.round(le-P);e<=Math.min(n-1,Math.round(le+P));e++){ let c=0,e1=0,e2=0; for(let j=1;j<=Math.round(P*2);j++){ const u=w[e-j]||0, v=w[ls-j]||0; c+=u*v; e1+=u*u; e2+=v*v; } const nc=c/Math.sqrt(e1*e2+1e-12); if(nc>best){ best=nc; bl=e; } } le=Math.min(n-1,bl); }   /* the end that best matches the start */
+  for(let i=0;i<xf;i++){ const g=i/xf; w[le-xf+i]=w[le-xf+i]*(1-g)+w[ls-xf+i]*g; }   /* the loop's end turns into what comes just before its start */
+  let q=0; for(let i=ls;i<le;i++) q+=w[i]*w[i]; const k=0.125/Math.sqrt(q/(le-ls)+1e-12); const pcm=new Int16Array(le); for(let i=0;i<le;i++) pcm[i]=clamp(Math.round(w[i]*k*32767),-32767,32767);
+  let bin=''; const u8=new Uint8Array(pcm.buffer); for(let i=0;i<u8.length;i+=8192) bin+=String.fromCharCode.apply(null,u8.subarray(i,i+8192));
+  S.yv={sr:YV_SR, root:+root.toFixed(3), ls, le, pcm:btoa(bin), rank:rank%ms.length, of:ms.length}; YV_BUF=null; return true; }
+function yvBuf(){ const Y=S.yv; if(!Y||!Y.pcm) return null; if(YV_BUF&&YV_KEY===Y.pcm) return YV_BUF;
+  const bin=atob(Y.pcm), u8=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) u8[i]=bin.charCodeAt(i); const pcm=new Int16Array(u8.buffer);
+  const b=new AudioBuffer({length:pcm.length, sampleRate:Y.sr, numberOfChannels:1}), d=b.getChannelData(0); for(let i=0;i<pcm.length;i++) d[i]=pcm[i]/32767; YV_BUF=b; YV_KEY=Y.pcm; return b; }
+function yvVoice(c,out,t,dur,m,v,T,fromM){ const b=yvBuf(), Y=S.yv, pad=VOICE_INST==='pad', E=ENV_OVR, atk=E?E.a:pad?0.22:0.025, rel=E?E.r:pad?0.6:0.18;
+  const lp=c.createBiquadFilter(); lp.type='lowpass'; lp.Q.value=0.5; lp.frequency.value=Math.min(11000,1200*Math.pow(9,T)); const g=c.createGain(); g.gain.value=0;
+  const pk=(pad?1.41:1.15)*(0.35+0.65*v);   /* level with Choir (Pad) and Saw (Lead) on 12 real takes, within 0.5 dB */ g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(pk,t+atk); if(E) g.gain.setTargetAtTime(pk*E.s,t+atk,E.d/3); g.gain.setTargetAtTime(0,t+Math.max(dur,atk),rel/4);
+  lp.connect(g); g.connect(out); const end=t+Math.max(dur,atk)+rel*1.5+0.02;
+  (pad?[[-9,-0.6,0],[0,0,0.011],[9,0.6,0.019]]:[[0,0,0],[6,0.25,0.013]]).forEach(([det,pan,dl],i)=>{ const src=c.createBufferSource(), pn=c.createStereoPanner(), sg=c.createGain(); src.buffer=b; src.loop=true; src.loopStart=Y.ls/Y.sr; src.loopEnd=Y.le/Y.sr;
+    const rate=Math.pow(2,(m-Y.root)/12); src.detune.value=det; if(fromM!==null&&fromM!==m){ const gt=Math.min(0.09,Math.max(0.03,dur*0.35)); src.playbackRate.setValueAtTime(rate*Math.pow(2,(fromM-m)/12),t); src.playbackRate.exponentialRampToValueAtTime(rate,t+gt); } else src.playbackRate.value=rate;
+    if(EXPR_DET) EXPR_DET.connect(src.detune); sg.gain.value=i&&!pad?0.45:pad?0.62:1; pn.pan.value=pan; src.connect(sg); sg.connect(pn); pn.connect(lp);
+    const off=pad?(i*0.137)%((Y.le-Y.ls)/Y.sr):0; src.start(t+dl, Math.min(b.duration-0.01, off?Y.ls/Y.sr+off:0)); src.stop(end); }); }   /* pad copies start at different points of the loop, so they don't move together */
 function voice(c,out,sound,t,dur,m,v,T,fromM=null){
+  if(sound==='Your voice'){ if(S.yv&&yvBuf()){ yvVoice(c,out,t,dur,m,v,T,fromM); return; } sound='Choir'; }   /* until there's a take to make it from */
   if(SAMPLED[sound]){ if(smpReady(sound)){ sampleVoice(c,out,sound,t,dur,m,v,T,fromM); return; } loadSampled(sound); }
   const f=mtof(m), g=c.createGain(); g.gain.value=0; g.connect(out); const oscs=[], vb=0.7+0.3*v;   /* vb: harder notes a little brighter */
   const osc=(type,freq,det=0,dest=g,gain=1)=>{ const o=c.createOscillator(); o.type=type; o.frequency.value=freq; o.detune.value=det; if(gain!==1){ const gg=c.createGain(); gg.gain.value=gain; o.connect(gg); gg.connect(dest);} else o.connect(dest); oscs.push(o); return o; };
@@ -2266,6 +2311,7 @@ async function renderStem(tr){
   ENV_OVR=INST[tr.inst].kind==='pitched'?(tr.adsr||null):null;
   const SC=scOn(tr), FULL=fullSong(tr), SP=spotRanges(), keep=x=>!SP.length||!inSpot(x,SP);
   const NL=(!tr.notes?[]:FULL?songEvents(tr,tr.notes):inWin(tr.notes,PN)).filter(x=>keep(x.s)).map(x=>SP.length?spotClip(x,SP):x);
+  VOICE_INST=tr.inst; if(tr.sound==='Your voice' && !S.yv) yvCapture();   /* Your voice: made from a take the first time it's needed */
   if(d.kind==='pitched' && tr.inst==='arp'){ for(const e of (FULL?songEvents(tr,arpEvents(tr)):inWin(arpEvents(tr),PN)).filter(e=>keep(e.x)).map(e=>SP.length?spotClip(e,SP,'x'):e)) voice(oc,out,tr.sound,tAt(e.x)+0.002,Math.max(0.03,e.l*stepDur()),e.p+12*tr.oct,e.v,T); }
   else if(d.kind==='pitched'){ for(const nt of NL){ const ts=stepTime(nt.s), dur=Math.max(0.05,nt.l*stepDur()-0.012); const ps=notePitches(tr,nt); const pv=slidesOn(tr)&&nt.g ? NL.find(o=>o!==nt && o.s+o.l===nt.s) : null; const pps=pv?notePitches(tr,pv):null;
     const X=tr.expr>0 && !nt.x ? exprCurves(tr,nt,dur,pitchOf(nt)) : null; let nout=out;
@@ -3274,7 +3320,7 @@ function renderNoteBar(tr){
   bar.hidden=false; const nm=m=>NOTE_NAMES[((m%12)+12)%12]+(Math.floor(m/12)-1);
   bar.querySelector('.nb-info').textContent=`${nm(pitchOf(n)+12*tr.oct)} · step ${n.s+1} · ${n.l} step${n.l>1?'s':''} long`;
 }
-function previewNote(tr,row,v=0.8){ if(playing) return; ensureCtx(); const out=ctx.createGain(); out.gain.value=trackGain(tr)||0.6; out.connect(chain.input); ENV_OVR=tr.adsr||null; try{ voice(ctx,out,tr.sound,ctx.currentTime+0.01,0.25,row+12*tr.oct,v,tr.tone/100); } finally{ ENV_OVR=null; } }
+function previewNote(tr,row,v=0.8){ if(playing) return; ensureCtx(); const out=ctx.createGain(); out.gain.value=trackGain(tr)||0.6; out.connect(chain.input); ENV_OVR=tr.adsr||null; VOICE_INST=tr.inst; try{ voice(ctx,out,tr.sound,ctx.currentTime+0.01,0.25,row+12*tr.oct,v,tr.tone/100); } finally{ ENV_OVR=null; } }
 /* tempo, length and metronome live in S; the Studio draws them */
 const SCALE_OPTS='<option value="auto">Auto (major or minor)</option><option value="major">Major</option><option value="minor">Minor</option><option value="pent-minor">Minor pentatonic</option><option value="pent-major">Major pentatonic</option><option value="blues">Blues</option><option value="dorian">Dorian</option><option value="mixolydian">Mixolydian</option><option value="lydian">Lydian</option><option value="phrygian">Phrygian</option><option value="phryg-dom">Phrygian dominant</option><option value="harm-minor">Harmonic minor</option><option value="mel-minor">Melodic minor</option><option value="locrian">Locrian</option><option value="chromatic">Any note (no snapping)</option>';
 const keyOpts=()=>'<option value="auto">Auto-detect</option>'+NOTE_NAMES.map((n,i)=>`<option value="${i}">${n}</option>`).join('');
