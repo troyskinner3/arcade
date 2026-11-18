@@ -332,7 +332,7 @@ Real noise (DEMAND, CC BY 4.0: street traffic, cafeteria, bus, town square, park
   from those elements (`$('key')`, `$('bars')`, `$('recLabel')`, the hidden sliders the Studio's sheets write to), so each needs moving to plain state first.
 
 ### Stage 3 cleanup log (removing the first prototype's page)
-How to work on it: one small step at a time; after each, `tools/suite.sh` from the scratchpad (also in `eval/tools/`) must print ALL PASS (32 scripts, replay 3.88); only then commit and push. `eval/tools/prune.js <file> s2TrimClip` deletes functions nothing names any more.
+How to work on it: one small step at a time; after each, `tools/suite.sh` from the scratchpad (also in `eval/tools/`) must print ALL PASS (33 scripts, replay 3.88); only then commit and push. `eval/tools/prune.js <file> s2TrimClip` deletes functions nothing names any more.
 - **Batch 1 (done):** removed the old "How it works" card, New song button, the header's back button and brand, the +/− tempo buttons, with their wiring and styles; `newSong` went with them (tests use `projNew`).
 - **Batch 2 (done):** removed the owner's old test-link UI (`guided`, `dropLine`), the `genre`, `quant` and `loops` rows, `keyInfo`, `snapV`, the old calibrate button, with their wiring; `applyStyle` went with them.
 - **Batch 3 (done):** removed the old header (tempo, length, metronome fields), the bottom dock (seek bar, undo/redo, play, record), the song-name field and the old parts container. The Studio's metronome button now calls `toggleMetro`; `syncTransport`, `updatePlayBtn`, `updateDock` and `updateHistBtns` are empty hooks to delete once nothing calls them. `proj_test` and `shell_test` read the title from the Studio.
@@ -409,7 +409,7 @@ How to work on it: one small step at a time; after each, `tools/suite.sh` from t
 - **Playhead at bar 1:** the yellow line now starts right after the track headers instead of half under their edge.
 - **Example song:** adds Keys (Am, G, Am, Dm, C on E-piano) and FX (an impact on the downbeat, a riser back into the loop).
 - **Teaching a drum sound from Your drum sounds** comes back to that list, to teach the next one (`teachBack`).
-- **FX much quieter by default:** a new FX track starts at volume 25 (about 16 dB under an 80 track; was 45, before that 80).
+- **FX levels:** the owner then found 25 a little too quiet and named the noise sweeps as what had been too loud. Final: new FX tracks start at 45 (about 8 dB under an 80 track), and the sweeps play 6 dB lower than before. K-weighted loudness (`fxlevels.js`, BS.1770 filters) had the sweeps level with the risers (−15.5 vs −16 LUFS-ish); their hiss still sounds louder, so the owner's ears decided. Now: risers −16, sweeps −21.6, impact −18.7.
 - **Track sheets end with Mix:** Name, Instrument, Sound, Chord, Notes (Octave, Expression) or Voice, then Mix, then Duplicate track and Delete track.
 - **"Follow my voice" is now "Expression"**, with a line under it: "0 plays clean, steady notes. Turn it up to keep the slides, wobbles and swells of your take." (It never changed which notes were heard; it adds your take's pitch bends, loudness and tone on top of them.)
 - **Playhead in the editors:** a strip above the editor's buttons spans the part, with the song's bar numbers; tap or drag to move the playhead (during playback it carries on from there). The grid's bar numbers are now the song's bars, not the part's.
@@ -419,4 +419,5 @@ How to work on it: one small step at a time; after each, `tools/suite.sh` from t
 - **Guided count-in:** with the count-in chord on, a guided tune's arpeggio starts on the tune's first note and comes back to it (e.g. Ode: A–C–E–A), so the starting note is the last thing heard before singing. Other takes keep the song's home chord.
 - **No text selection on long press:** the page can't be selected like text any more (text fields still can).
 - **Duplicate track:** in a track's sheet; copies every part and its notes as a new track right under it, then opens its sheet to pick an instrument (e.g. a lead's notes as Keys chords). `duptrack_test.js`.
-- Suite: 32 scripts, replay 3.88.
+- **One track failing no longer stops playback:** the owner's example song wouldn't play on the iPhone; it plays in Chromium (`explay.js`) and WebKit isn't available here to reproduce it. Playback used to wait for every track and gave up silently if any one failed to render. Now a failing track stays silent, the rest play, and a message names the track and the error (`renderErrShown`); a failure while starting playback is reported too. `renderfail_test.js` simulates a failing FX render. Waiting on the owner's next run for the message.
+- Suite: 33 scripts, replay 3.88.

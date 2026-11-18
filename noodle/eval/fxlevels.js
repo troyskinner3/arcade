@@ -1,0 +1,7 @@
+// loudness of each FX kind at its default settings (one bar, 94 BPM): K-weighted (ITU BS.1770 filters) loudness over the effect, and plain RMS
+const {chromium}=require('playwright');
+(async()=>{ const b=await chromium.launch(); const p=await b.newPage(); p.on('pageerror',e=>console.log('ERR',e.message)); await p.goto('http://localhost:8800/noodle-s2.html'); await p.waitForTimeout(900);
+  const r=await p.evaluate(async()=>{ ensureCtx(); S.bpm=94; S.bars=2; const out={};
+    const kw=async(buf,n)=>{ const oc=new OfflineAudioContext(1,buf.length,buf.sampleRate), s=oc.createBufferSource(); s.buffer=buf; const hs=oc.createBiquadFilter(); hs.type='highshelf'; hs.frequency.value=1681; hs.gain.value=4; const hp=oc.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=38; hp.Q.value=0.5; s.connect(hs); hs.connect(hp); hp.connect(oc.destination); s.start(); const y=(await oc.startRendering()).getChannelData(0); let q=0; for(let i=0;i<n;i++) q+=y[i]*y[i]; return +(10*Math.log10(q/n)-0.691).toFixed(1); };
+    for(const k of FX_ROWS){ const t=mkTrack('fx',{id:900+FX_ROWS.indexOf(k),off:0,len:2,rep:false,lenSet:true}); t.fxs=[fxNew(k,0,32)]; const bb=await renderFx(t), d=bb.getChannelData(0), n=Math.round(fxNew(k,0,32).l*stepDur()*ctx.sampleRate); let q=0; for(let i=0;i<n;i++) q+=d[i]*d[i]; out[k]={loudness:await kw(bb,n), rmsDb:+(10*Math.log10(q/n)).toFixed(1)}; } return out; });
+  console.log(JSON.stringify(r)); await b.close(); })();

@@ -611,7 +611,7 @@ function exampleTracks(){
 function mkTrack(inst, o={}){
   const d = INST[inst];
   return Object.assign({id:0, inst, sound:d.sounds[0], vol:80, pan:0, send:15, tone:50, mute:false, solo:false,
-    oct:d.oct||0, sens:S0sens(), ex:false, ...(styleSound(inst)&&d.sounds.includes(styleSound(inst))?{sound:styleSound(inst)}:{}), hits:d.kind==='pitched'||d.kind==='audio'?undefined:[], notes:d.kind==='pitched'?[]:undefined, ...(inst==='fx'?{hits:[],fxs:[],send:30,vol:25}:d.kind==='audio'?(()=>{ const pr=(styleSound('vox')&&VOX_PRESETS[styleSound('vox')])?styleSound('vox'):'Pop'; return {fx:Object.assign({},VOX_PRESETS[pr]), sound:pr}; })():{})}, o);
+    oct:d.oct||0, sens:S0sens(), ex:false, ...(styleSound(inst)&&d.sounds.includes(styleSound(inst))?{sound:styleSound(inst)}:{}), hits:d.kind==='pitched'||d.kind==='audio'?undefined:[], notes:d.kind==='pitched'?[]:undefined, ...(inst==='fx'?{hits:[],fxs:[],send:30,vol:45}:d.kind==='audio'?(()=>{ const pr=(styleSound('vox')&&VOX_PRESETS[styleSound('vox')])?styleSound('vox'):'Pop'; return {fx:Object.assign({},VOX_PRESETS[pr]), sound:pr}; })():{})}, o);
 }
 function S0sens(){ return (typeof S!=='undefined' && S) ? S.sens : 55; }
 function defaultState(){
@@ -2219,6 +2219,7 @@ async function renderMetro(){
 let spotSigLast='[]|0';
 let rendering=false, renderAgain=false, renderTimer=0, renderDone=Promise.resolve();
 function scheduleRender(){ clearTimeout(renderTimer); renderTimer=setTimeout(renderDirty,90); }
+let renderErrShown='';
 async function renderDirty(){
   if(!ctx) return;
   if(rendering){ renderAgain=true; return renderDone; }   // callers (exports) wait for the render already in progress
@@ -2230,12 +2231,15 @@ async function renderDirty(){
       S.tracks.forEach(t=>{ const sg=scSig(t); if(sg!==(t._scSig||'')){ t._scSig=sg; t._dirty=true; } });
       { const sp=JSON.stringify(spotRanges())+'|'+S.bars; if(sp!==spotSigLast){ spotSigLast=sp; S.tracks.forEach(t=>{ if(t.inst!=='vox') t._dirty=true; }); } }
       const todo=S.tracks.filter(t=>t._dirty||!t._buf);
-      for(const tr of todo){ tr._dirty=false; ensureNodes(tr); const b=await renderStem(tr); if(!tr._dirty){ tr._buf=b; if(playing && !lenChanged) swapSource(tr); } }
-      if(metroDirty) await renderMetro();
+      for(const tr of todo){ tr._dirty=false; ensureNodes(tr); let b;
+        try{ b=await renderStem(tr); }catch(err){   /* one track that can't be made here must not stop the others from playing: it stays silent and says why */
+          b=ctx.createBuffer(2,Math.max(1,Math.round(bufLen(tr)*ctx.sampleRate)),ctx.sampleRate); const msg=`${partName(tr)} couldn't play here (${(err&&(err.name||'')+(err.message?': '+err.message:''))||err}).`; console.error(msg,err); if(renderErrShown!==msg){ renderErrShown=msg; toast(msg,8000); } }
+        if(!tr._dirty){ tr._buf=b; if(playing && !lenChanged) swapSource(tr); } }
+      if(metroDirty){ try{ await renderMetro(); }catch(err){ console.error('metronome',err); metroDirty=false; } }
       if(lenChanged){ const old=renderedLen, sameTempo=renderedBpm===S.bpm; renderedLen=loopLen(); renderedBpm=S.bpm; if(playing){ const now=ctx.currentTime+0.04; const ph=old>0?(((now-t0)/old)%1+1)%1:0;   /* a new tempo keeps your place in the bar; a longer or shorter song keeps the same moment */
         startAll(now, sameTempo ? (ph*old<renderedLen-0.01?ph*old:0) : ph*renderedLen); } }
     } while(renderAgain);
-    measureMix();
+    try{ measureMix(); }catch(err){ console.error('measureMix',err); }
   } finally { rendering=false; finish(); }
 }
 let metroSrc=null, metroGain=null;
@@ -2260,8 +2264,8 @@ async function togglePlay(){
   playing=true; 
   const ready = renderedLen>0 && Math.abs(renderedLen-loopLen())<1e-6 && S.tracks.every(t=>t._buf || !hasContent(t));
   if(ready){ startAll(ctx.currentTime+0.02, playFrom%loopLen()); renderDirty(); return; }
-  await renderDirty();
-  if(playing){ startAll(ctx.currentTime+0.03, playFrom%loopLen()); }
+  try{ await renderDirty(); }catch(err){ console.error('render',err); toast(`Playback hit a problem here (${(err&&(err.name||'')+(err.message?': '+err.message:''))||err}).`,8000); }
+  if(playing){ try{ startAll(ctx.currentTime+0.03, playFrom%loopLen()); }catch(err){ console.error('start',err); playing=false; toast(`Couldn't start playback here (${(err&&err.message)||err}).`,8000); } }
 }
 /* the Studio reads `playing` each frame (s2Tick) */
 
@@ -2613,7 +2617,7 @@ function fxPlay(oc, out, tr, e, t){ if(e.pan){ const pn=oc.createStereoPanner();
     const lp=oc.createBiquadFilter(); lp.type='lowpass'; lp.frequency.setValueCurveAtTime(Float32Array.from(mono,y=>600+9000*y),t,D); g.disconnect(); g.connect(lp); lp.connect(out);
     g.gain.setValueCurveAtTime(amp,t,D); return; }
   { const up=e.k==='sweepUp', mono=Float32Array.from(cv,(y,i)=>{ const lin=i/(N-1), tgt=up?lin:1-lin; return 0.55*y+0.45*tgt; });   /* noise sweep */
-    const n=fxNoise(oc,D+0.05), f=oc.createBiquadFilter(); f.type='bandpass'; f.Q.value=1.4; f.frequency.setValueCurveAtTime(Float32Array.from(mono,y=>250*Math.pow(40,y)),t,D); n.connect(f); f.connect(g); n.start(t); g.gain.setValueCurveAtTime(Float32Array.from(amp,y=>y*1.4),t,D); } }
+    const n=fxNoise(oc,D+0.05), f=oc.createBiquadFilter(); f.type='bandpass'; f.Q.value=1.4; f.frequency.setValueCurveAtTime(Float32Array.from(mono,y=>250*Math.pow(40,y)),t,D); n.connect(f); f.connect(g); n.start(t); g.gain.setValueCurveAtTime(Float32Array.from(amp,y=>y*0.7),t,D); } }   /* noise sweeps 6 dB under before: they measure level with the risers, but their hiss sounds louder (owner, Nov 18) */
 async function renderFx(tr){ await fxLoadPack(tr.sound);
   const sr=ctx.sampleRate, L=bufLen(tr), n=Math.round(L*sr), tail=3, oc=new OfflineAudioContext(2,n+tail*sr,sr), out=oc.createGain(); out.gain.value=0.8; out.connect(oc.destination);
   const off=tr.off||0, ps=pSteps(tr), end=Math.round(L/stepDur());
