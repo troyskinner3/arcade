@@ -2076,6 +2076,7 @@ function metal(c,out,t,dec,pk,bpf,hpf){ const g=c.createGain(), bp=c.createBiqua
   bp.connect(hp); hp.connect(g); g.connect(out); g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(pk,t+0.002); g.gain.exponentialRampToValueAtTime(0.0005,t+dec); }
 function drumHit(c,out,drumId,t,v,style,T){
   let drum=soundOf(drumId);
+  if(KIT_SAMPLED[style]){ const e=SMP[KIT_SAMPLED[style]]; if(e&&e.ok&&e.slots[drum]){ kitHit(c,out,e,drum,t,v,T); return; } if(!e) loadSmp(KIT_SAMPLED[style]); }
   switch(drum){
     case 'openhat': noiseHit(c,out,t,'highpass',7000+T*1500,0.7,0.002,0.3+T*0.4,0.3*v); metal(c,out,t,0.3+T*0.3,0.06*v,10000,7000); return;
     case 'rim': tone(c,out,t,1750,1650,0.02,0.045,0.45*v,'triangle'); noiseHit(c,out,t,'bandpass',3200,1,0.001,0.02,0.45*v); return;
@@ -2111,12 +2112,14 @@ function drumHit(c,out,drumId,t,v,style,T){
     o.frequency.setValueAtTime(bf,t); o.frequency.exponentialRampToValueAtTime(bf*0.78,t+0.06);
     g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(0.5*v,t+0.002); g.gain.exponentialRampToValueAtTime(0.0008,t+(style==='808'?0.16:0.1));
     o.connect(g); g.connect(out); o.start(t); o.stop(t+0.2);
+    if(style!=='Rock') tone(c,out,t,bf*1.65,bf*1.65*0.85,0.05,style==='808'?0.12:0.08,0.22*v,'sine');   /* the second body tone */
   } else if(drum==='hat'){
     const n=noise(c), f=c.createBiquadFilter(), f2=c.createBiquadFilter(), g=c.createGain(); const dec=0.035+T*0.09;
     f.type='highpass'; f.frequency.value=6500+T*1500; f2.type='peaking'; f2.frequency.value=10000; f2.gain.value=style==='Punchy'?6:2;
     g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(0.32*v,t+0.001); g.gain.exponentialRampToValueAtTime(0.0008,t+dec);
     n.connect(f); f.connect(f2); f2.connect(g); g.connect(out); n.start(t); n.stop(t+dec+0.02);
     if(style==='Rock') metal(c,out,t,dec+0.05,0.07*v,9000,6500);
+    else if(style==='808'||style==='Punchy') metal(c,out,t,dec+0.02,0.05*v,10000,7000);   /* the metallic ring of a drum machine's hats */
   } else { // clap (also the fallback for anything unknown)
     const n=noise(c), f=c.createBiquadFilter(), g=c.createGain(); f.type='bandpass'; f.frequency.value=1100+T*900; f.Q.value=1.1;
     g.gain.setValueAtTime(0,t);
@@ -2125,6 +2128,12 @@ function drumHit(c,out,drumId,t,v,style,T){
     n.connect(f); f.connect(g); g.connect(out); n.start(t); n.stop(t+0.4);
   }
 }
+/* One recorded drum hit: the layer for its velocity, a little quieter within the layer, Tone tunes it (±3 semitones). A closed hat or pedal cuts a ringing open hat, as on a real kit. */
+function kitHit(c,out,e,drum,t,v,T){ const ls=e.slots[drum], L=ls.find(x=>v<=x.maxV+1e-9)||ls[ls.length-1], lo=ls.indexOf(L)?ls[ls.indexOf(L)-1].maxV:0;
+  const src=c.createBufferSource(), g=c.createGain(); src.buffer=L.buf; src.playbackRate.value=Math.pow(2,(T-0.5)*0.5);
+  g.gain.value=(e.meta.gain||1)*((e.meta.slotGain||{})[drum]||1)*(0.7+0.3*clamp((v-lo)/Math.max(1e-3,L.maxV-lo),0,1)); src.connect(g); g.connect(out); src.start(t,L.buf.off);
+  if(drum==='openhat'){ if(!c._oh||t>=c._oh.t) c._oh={g,t}; }
+  else if(drum==='hat' && c._oh && t>c._oh.t){ c._oh.g.gain.setTargetAtTime(0,t,0.025); c._oh=null; } }
 let EXPR_DET=null;   // Follow my voice: a pitch-bend curve (cents) every oscillator of the next voice follows
 let ENV_OVR=null, ENV_LAST=null;   // a part's own ADSR (replaces the sound's), and the last envelope a sound asked for
 /* ---- Sampled instruments: real recordings, played back at the right pitch and loudness ----
@@ -2135,18 +2144,23 @@ const SOUND_CREDITS=[   /* shown in More > Sound credits (required by CC BY; CC0
   {sound:'Piano', lib:'Salamander Grand Piano', by:'Alexander Holm', lic:'CC BY 3.0', url:'https://creativecommons.org/licenses/by/3.0/'},
   {sound:'Strings', lib:'VS Chamber Orchestra: Community Edition', by:'Versilian Studios', lic:'CC0 (public domain)', url:'https://creativecommons.org/publicdomain/zero/1.0/'},
   {sound:'Rock bass', lib:'Growlybass', by:'Karoryfer Samples', lic:'CC0 (public domain)', url:'https://creativecommons.org/publicdomain/zero/1.0/'},
+  {sound:'Rock drums', lib:'Big Rusty Drums', by:'Karoryfer Samples', lic:'CC0 (public domain)', url:'https://creativecommons.org/publicdomain/zero/1.0/'},
   {sound:'Guitar', lib:'Emilyguitar', by:'Karoryfer Samples', lic:'CC0 (public domain)', url:'https://creativecommons.org/publicdomain/zero/1.0/'},
   {sound:'E-piano', lib:'Wurlitzer EP200 from Greg Sullivan’s E-Pianos', by:'Greg Sullivan', lic:'CC BY 3.0', url:'https://creativecommons.org/licenses/by/3.0/'},
 ];   /* sound name -> folder in samples/ */
 const SMP={};
+const KIT_SAMPLED={'Rock':'rockkit'};   /* drum kits played from recordings (by kit name; separate from instrument sounds, which reuse some names) */
 function smpReady(sound){ const k=SAMPLED[sound]; return !!(k && SMP[k] && SMP[k].ok); }
-function loadSampled(sound){ const k=SAMPLED[sound]; if(!k) return Promise.resolve(false); if(SMP[k]) return SMP[k].p;
+const kitReady=style=>{ const e=SMP[KIT_SAMPLED[style]]; return !!(e&&e.ok); };
+function loadSampled(sound){ return loadSmp(SAMPLED[sound]); }
+function loadSmp(k){ if(!k) return Promise.resolve(false); if(SMP[k]) return SMP[k].p;
   const e=SMP[k]={ok:false}; e.p=(async()=>{ try{
       const meta=await (await fetch(`samples/${k}/map.json`)).json(), dc=new OfflineAudioContext(2,1,32000);   /* decoded at 32 kHz: everything up to 16 kHz, a third less memory than 48 kHz */
       const one=async f=>{ const ab=await (await fetch(`samples/${k}/${f}`)).arrayBuffer(); const b=await new Promise((res,rej)=>{ const q=dc.decodeAudioData(ab,res,rej); if(q&&q.then) q.then(res,rej); });
         const d=b.getChannelData(0); let pk=0; for(let i=0;i<Math.min(d.length,b.sampleRate*0.3);i++) pk=Math.max(pk,Math.abs(d[i]));   /* where the note starts: MP3 adds a little silence first */
         let i0=0; const th=pk*0.01; while(i0<d.length && Math.abs(d[i0])<th) i0++; b.off=Math.max(0,i0/b.sampleRate-0.001); return b; };
       e.layers=[]; const files=new Map(), file=f=>{ if(!files.has(f)) files.set(f,one(f)); return files.get(f); };
+      if(meta.slots){ e.slots={}; await Promise.all(Object.entries(meta.slots).map(async([sl,ls])=>{ e.slots[sl]=await Promise.all(ls.map(async L=>({maxV:L.maxV, buf:await file(L.file)}))); })); e.meta=meta; e.ok=true; return true; }   /* a drum kit: a few velocity layers per drum */
       for(const L of meta.layers){ if(L.regions){ const regs=await Promise.all(L.regions.map(async r=>({...r, buf:await file(r.file)}))); e.layers.push({maxV:L.maxV, regs}); continue; }   /* mapped by key range (from an SFZ), with each recording's tuning and level */
         const map=new Map(); await Promise.all(Object.entries(L.notes).map(async([mm,f])=>{ map.set(+mm, await file(f)); })); e.layers.push({maxV:L.maxV, map, roots:[...map.keys()].sort((a,b)=>a-b)}); }
       e.meta=meta; e.ok=true; return true; }catch(err){ console.error('samples',k,err); return false; } })(); return e.p; }
@@ -2229,7 +2243,8 @@ function exprCurves(tr, nt, dur, target){ const E=exprFrames(tr); if(!E) return 
   return {bend:sm(bend,2),gain:sm(gain,2),cut:sm(cut,3)}; }
 function stepTime(s){ const sd=stepDur(); return (s + (s%2===1 ? (S.swing/100)*0.5 : 0))*sd; }
 async function renderStem(tr){
-  if(SAMPLED[tr.sound] && !smpReady(tr.sound)) await loadSampled(tr.sound);
+  if(SAMPLED[tr.sound] && !smpReady(tr.sound) && INST[tr.inst].kind==='pitched') await loadSampled(tr.sound);
+  if(tr.hits && INST[tr.inst].kind!=='pitched' && KIT_SAMPLED[tr.sound] && !kitReady(tr.sound)) await loadSmp(KIT_SAMPLED[tr.sound]);
   if(tr.inst==='vox') return renderVox(tr);
   if(tr.inst==='fx') return renderFx(tr);
   const sr=ctx.sampleRate, L=bufLen(tr), PN=pSteps(tr), n=Math.round(L*sr), tail=3, oc=new OfflineAudioContext(2,n+tail*sr,sr), T=tr.tone/100;

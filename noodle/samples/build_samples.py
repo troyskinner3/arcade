@@ -129,6 +129,30 @@ def build_sfz(root, key, cfg):
     size = sum(os.path.getsize(os.path.join(out, x)) for x in os.listdir(out))
     print(f'{key}: {len(done)} files, {sum(len(l["regions"]) for l in layers)} regions in {len(layers)} layers, {size/1e6:.1f} MB')
 
+def build_kit(root, key, cfg):
+    """A drum kit: for each Noodle drum slot, a few velocity layers of one hit (first round robin), its microphones mixed at the levels
+    the kit's own SFZ uses by default (close mics are mono, in the middle; overheads stereo), trimmed with a fade, stereo MP3."""
+    import numpy as np
+    out = os.path.join(HERE, key); clean(out); sr = 48000; base = os.path.join(root, cfg['src']); os.makedirs(out, exist_ok=True)
+    rd = lambda f: np.frombuffer(subprocess.run(['ffmpeg', '-v', 'error', '-i', f, '-ac', '2', '-ar', str(sr), '-f', 'f32le', '-'], check=True, capture_output=True).stdout, dtype=np.float32).reshape(-1, 2)
+    slots = {}
+    for slot, (d, pre, mics, secs) in cfg['slots'].items():
+        names = os.listdir(os.path.join(base, d, list(mics)[0])); vls = sorted({int(re.search(r'_vl(\d+)_rr1', n).group(1)) for n in names if '_rr1' in n})
+        top = cfg['layers_of'][slot]; lay = []
+        for v in vls:
+            xs = [g * rd(os.path.join(base, d, m, f'{pre}_vl{v}_rr1.flac')) for m, g in mics.items()]
+            n = min(len(x) for x in xs); x = sum(x[:n] for x in xs)[:int(secs * sr)]
+            fd = min(int(0.3 * sr), len(x) // 3); x[-fd:] *= np.linspace(1, 0, fd)[:, None]
+            name = f'{slot}_{v}.mp3'
+            subprocess.run(['ffmpeg', '-v', 'error', '-y', '-f', 'f32le', '-ar', str(sr), '-ac', '2', '-i', '-', '-c:a', 'libmp3lame', '-b:a', '192k', os.path.join(out, name)], input=(x * 10 ** (cfg.get('gain_db', 0) / 20)).astype(np.float32).tobytes(), check=True)
+            lay.append({'maxV': round(v / top, 3), 'file': name})
+        lay[-1]['maxV'] = 1.0; slots[slot] = lay
+    meta = {'name': cfg['name'], 'credit': cfg['credit'], 'kit': True, 'gain': cfg.get('gain', 1.0), 'slots': slots}
+    if cfg.get('slot_gain'): meta['slotGain'] = cfg['slot_gain']
+    with open(os.path.join(out, 'map.json'), 'w') as fh: json.dump(meta, fh, separators=(',', ':'))
+    size = sum(os.path.getsize(os.path.join(out, x)) for x in os.listdir(out))
+    print(f'{key}: {sum(len(v) for v in slots.values())} files in {len(slots)} drums, {size/1e6:.1f} MB')
+
 # ---------------------------------------------------------------------------------------------------------------
 # Instruments
 # Each: source folder, how to find (note, layer) files, which layers to keep and the highest velocity (0-1) each covers.
@@ -153,6 +177,18 @@ SOURCES = {
     'guitar': dict(   # Epiphone electric guitar, recorded direct (the app adds a light amp): 4 velocity layers, first round robin
         sfz='karoryfer.emilyguitar/emily_clean.sfz', exclude=r'noises|release', mono=True,
         trim=[(127, 4.0)], retune=True, release=0.15, gain=0.24, amp={'drive': 0.45, 'pre': 2.0, 'hp': 90, 'lp': 4800}, name='Electric guitar', credit='Emilyguitar by Karoryfer Samples (CC0)'),
+    'rockkit': dict(   # Big Rusty Drums: a 24" rock kit. 4 velocity layers per drum (of the 4-14 recorded); mic levels from its SFZ defaults (amplitude x default CC / 127)
+        src='karoryfer.big-rusty-drums/Samples', kit=True, gain=1.0, name='Rock kit', credit='Big Rusty Drums by Karoryfer Samples (CC0)',
+        slots={'kick': ('kick_24/kick', 'k', {'kick': .787}, 1.2),
+               'snare': ('snare_14/center', 'sn_center', {'btm': .787, 'top': .315, 'oh': .472}, 1.5),
+               'rim': ('snare_14/sidestick', 'sn_ss', {'btm': .787, 'top': .315, 'oh': .472}, 0.8),
+               'hat': ('hihat_14/cl', 'ht_cl', {'cl': .55, 'oh': .55}, 0.6),
+               'openhat': ('hihat_14/open', 'ht_open', {'cl': .55, 'oh': .55}, 2.0),
+               'tomhi': ('tom_14/center', 't14', {'cl': .787, 'oh': .55}, 2.5), 'tommid': ('tom_15/center', 't15', {'cl': .787, 'oh': .55}, 2.5), 'tomlo': ('tom_18/center', 't18', {'cl': .787, 'oh': .55}, 2.5),
+               'crash': ('crash_17/cr', 'cr', {'cl': .22, 'oh': .55}, 4.5), 'ride': ('ride_22/rd', 'rd', {'cl': .19, 'oh': .47}, 3.5)},
+        # each drum at the level the synth Rock kit had it (loudness over its first 0.25 s, peak at most 3 dB over the synth's), so songs keep their balance: mm/kit_test.js
+        slot_gain={'kick': 2.43, 'snare': 1.02, 'rim': 1.78, 'hat': 1.3, 'openhat': 1.68, 'tomhi': 3.24, 'tommid': 3.13, 'tomlo': 2.54, 'crash': 2.75, 'ride': 1.32},
+        layers_of={'kick': 14, 'snare': 10, 'rim': 4, 'hat': 6, 'openhat': 6, 'tomhi': 6, 'tommid': 7, 'tomlo': 8, 'crash': 5, 'ride': 10}),   # recorded layers per drum: a layer covers velocities up to its number / this
 }
 
 def build(root, key):
@@ -175,4 +211,4 @@ def build(root, key):
 
 if __name__ == '__main__':
     root = sys.argv[1]; keys = sys.argv[2:] or list(SOURCES)
-    for k in keys: (build_sfz(root, k, SOURCES[k]) if 'sfz' in SOURCES[k] else build(root, k))
+    for k in keys: (build_kit(root, k, SOURCES[k]) if SOURCES[k].get('kit') else build_sfz(root, k, SOURCES[k]) if 'sfz' in SOURCES[k] else build(root, k))
