@@ -6,5 +6,5 @@ const {chromium,devices}=require('playwright');
   await p.evaluate(()=>{ const r=recState, cx=window.__ctx, beat=60/S.bpm; for(let i=0;i<S.bars*4;i++){ const t=r.start+i*beat+0.13+(Math.random()-0.5)*0.03, n=cx.createBufferSource(), buf=cx.createBuffer(1,2400,cx.sampleRate), d=buf.getChannelData(0); for(let k=0;k<2400;k++) d[k]=(Math.random()*2-1)*Math.exp(-k/900); n.buffer=buf; n.connect(window.__dst); n.start(t); } });
   await p.waitForTimeout(1500); await p.screenshot({path:'results/rs1.png'}); await p.waitForFunction(()=>!recState,null,{timeout:40000}); await p.waitForTimeout(800); await p.screenshot({path:'results/rs2.png'});
   const cal=await p.evaluate(()=>({msg:$('rsMsg').textContent.slice(0,90), calibrated:S.calibrated, lat:S.latMs, importGone:!$('importBtn')})); await p.evaluate(()=>closeRec()); await p.waitForTimeout(200);
-  await p.tap('#nxDrums'); await p.tap('#nxSheet [data-teach]'); await p.waitForTimeout(900); await p.screenshot({path:'results/rs3.png'}); await p.evaluate(()=>closeRec());
-  console.log(JSON.stringify({more,cal}),errs); await b.close(); })();
+  await p.tap('#nxDrums'); await p.tap('#nxSheet [data-teach]'); await p.waitForTimeout(900); await p.screenshot({path:'results/rs3.png'}); await p.evaluate(()=>closeRec()); await p.waitForTimeout(300); const back=await p.evaluate(()=>!$('nxScrim').hidden && ($('nxSheet').querySelector('h2')||{}).textContent);
+  console.log(JSON.stringify({more,cal,backToDrumSounds:back}),errs); await b.close(); })();

@@ -332,7 +332,7 @@ Real noise (DEMAND, CC BY 4.0: street traffic, cafeteria, bus, town square, park
   from those elements (`$('key')`, `$('bars')`, `$('recLabel')`, the hidden sliders the Studio's sheets write to), so each needs moving to plain state first.
 
 ### Stage 3 cleanup log (removing the first prototype's page)
-How to work on it: one small step at a time; after each, `tools/suite.sh` from the scratchpad (also in `eval/tools/`) must print ALL PASS (29 scripts, replay 3.88); only then commit and push. `eval/tools/prune.js <file> s2TrimClip` deletes functions nothing names any more.
+How to work on it: one small step at a time; after each, `tools/suite.sh` from the scratchpad (also in `eval/tools/`) must print ALL PASS (30 scripts, replay 3.88); only then commit and push. `eval/tools/prune.js <file> s2TrimClip` deletes functions nothing names any more.
 - **Batch 1 (done):** removed the old "How it works" card, New song button, the header's back button and brand, the +/− tempo buttons, with their wiring and styles; `newSong` went with them (tests use `projNew`).
 - **Batch 2 (done):** removed the owner's old test-link UI (`guided`, `dropLine`), the `genre`, `quant` and `loops` rows, `keyInfo`, `snapV`, the old calibrate button, with their wiring; `applyStyle` went with them.
 - **Batch 3 (done):** removed the old header (tempo, length, metronome fields), the bottom dock (seek bar, undo/redo, play, record), the song-name field and the old parts container. The Studio's metronome button now calls `toggleMetro`; `syncTransport`, `updatePlayBtn`, `updateDock` and `updateHistBtns` are empty hooks to delete once nothing calls them. `proj_test` and `shell_test` read the title from the Studio.
@@ -401,3 +401,12 @@ How to work on it: one small step at a time; after each, `tools/suite.sh` from t
 - **Undo / Redo buttons stay current (fixed):** in the editor they were only refreshed when the screen was rebuilt, so after drawing or deleting a note Undo looked unavailable until something else redrew. `histUI` now updates both screens' buttons on every change (a change waiting to be saved counts).
 - **Velocity (shipped):** every note and hit already had a velocity (used by playback and MIDI export) but nothing showed it. The bar under the editor's grid now has a **Velocity** slider (5–100) for the selected note or hit, in the note and drum editors; you hear the note at its new velocity when you let go. Logged for shared takes (`vel`); undoable. Unselected notes and hits are drawn fainter the softer they are. `velocity_test.js`.
 - Suite: 29 scripts, replay 3.88.
+- **FX editor touch (fixed):** a finger that starts on an effect (or its right end) drags it; the grid no longer scrolls under it. On empty grid a finger still scrolls. (Touch events on an effect are claimed with `preventDefault`; checked with real touch input through the browser's protocol, `round3b_test.js`.)
+- **Rewind in the editor:** ⏮ next to Play goes back to the start of the part being edited. The editor bar stays on one line (it scrolls sideways on an iPhone SE).
+- **Chords in a good register (shipped):** a hummed chord part (Keys, Pad, Arp) gets its octave chosen so its roots sit around C4 (Keys), A3 (Pad) or D4 (Arp), never under C3 (`autoOct`, `CHORD_ZONE`), unless you've set the octave yourself (`octSet`). Applied after each take and when the instrument or chord type changes. A test take hummed at A2–D3 now sounds at A3–D4.
+- **Chord type** is the first thing in a chord track's sheet (above Mix); **Lead** and **Bass** have no chord option (`chordType` is off for them).
+- **Buttons look like buttons:** the editor's Delete and Split, the red actions in sheets ("Delete track", "Delete project"…) and "+ Add track" now have a border and fill. Standing rule from the owner: anything tappable must look like a button.
+- **Playhead at bar 1:** the yellow line now starts right after the track headers instead of half under their edge.
+- **Example song:** adds Keys (Am, G, Am, Dm, C on E-piano) and FX (an impact on the downbeat, a riser back into the loop).
+- **Teaching a drum sound from Your drum sounds** comes back to that list, to teach the next one (`teachBack`).
+- Suite: 30 scripts, replay 3.88.

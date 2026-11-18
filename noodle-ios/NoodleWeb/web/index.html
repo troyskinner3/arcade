@@ -275,7 +275,7 @@ input[type=range]::-moz-range-thumb{width:10px;height:18px;border-radius:1px;bac
 .nx-x{position:absolute;top:10px;right:max(10px,env(safe-area-inset-right,0px));width:36px;height:36px;border-radius:50%;border:0;background:var(--cell);color:var(--ink);display:grid;place-items:center;z-index:1}
 .nx-x svg{width:14px;height:14px;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;fill:none}
 .nx-act{display:flex;align-items:center;width:100%;padding:14px 0;border:0;border-bottom:1px solid var(--line);background:none;color:inherit;font:600 16px var(--f-body);text-align:left}
-.nx-act.danger{color:var(--rec)}
+.nx-act.danger{color:var(--rec);border:1px solid var(--rec);border-radius:10px;justify-content:center;padding:12px;margin-top:14px}
 .nx-act small{display:block;font:400 13px var(--f-body);color:var(--muted);margin-top:2px}
 .nx-act:disabled{opacity:.45}
 .s2-shst{padding:12px 0 4px;color:var(--muted);font-size:14px}
@@ -296,6 +296,9 @@ input[type=range]::-moz-range-thumb{width:10px;height:18px;border-radius:1px;bac
 @media (orientation: landscape) and (min-width: 560px){ .s2{--s2-hdr:176px;--s2-rowh:54px} }
 .s2 button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
 .s2 button:focus-visible{outline:2px solid var(--s2-amber);outline-offset:2px}
+/* Anything you can tap looks like a button: a border and a raised fill (the reset above strips them from plain buttons) */
+.s2 .selbar .btn{height:38px;padding:0 14px!important;border:1px solid var(--s2-line)!important;border-radius:8px!important;background:var(--s2-raise)!important;font:600 14px var(--f-body)!important;display:inline-flex;align-items:center}
+.s2 .selbar .sb-del{color:var(--rec)!important}
 .s2-g{padding-left:var(--s2-gl);padding-right:var(--s2-gr)}
 .s2-top{display:flex;align-items:center;gap:4px;padding-top:6px;padding-bottom:6px;flex:none}
 .s2-name{flex:1;min-width:0;font-weight:700;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:left;padding:8px 4px!important}
@@ -318,7 +321,7 @@ input[type=range]::-moz-range-thumb{width:10px;height:18px;border-radius:1px;bac
 .s2-mk{position:absolute;top:0;bottom:0;border-left:1px solid var(--s2-line);padding-left:4px;font:500 11px/26px var(--f-mono);color:var(--s2-muted)}
 .s2-phh{position:absolute;top:0;width:18px;height:26px;margin-left:-9px;z-index:1;pointer-events:none}
 .s2-phh::after{content:"";position:absolute;left:3px;top:8px;border:6px solid transparent;border-top:10px solid var(--s2-amber)}
-.s2-ph{position:absolute;top:26px;bottom:0;width:2px;margin-left:-1px;background:var(--s2-amber);z-index:1;pointer-events:none}
+.s2-ph{position:absolute;top:26px;bottom:0;width:2px;margin-left:0;background:var(--s2-amber);z-index:1;pointer-events:none}
 .s2-side{position:sticky;left:0;top:26px;z-index:2;width:var(--s2-hdr);height:0}
 .s2-side::after{content:"";position:absolute;left:0;top:0;width:100%;height:var(--s2-sideh,0px);background:var(--s2-panel);border-right:1px solid var(--s2-line)}
 .s2-trk{display:flex;height:var(--s2-rowh);border-bottom:1px solid var(--s2-line)}
@@ -355,7 +358,8 @@ input[type=range]::-moz-range-thumb{width:10px;height:18px;border-radius:1px;bac
 .s2-clip .del{color:var(--rec)!important;width:40px;padding:0!important;justify-content:center}
 .s2-clip .nx-ico{width:18px;height:18px}
 .s2-add{display:flex;height:48px}
-.s2-add button{position:sticky;left:0;z-index:3;width:var(--s2-hdr);color:var(--s2-muted)!important;font-weight:700!important;font-size:13px!important;text-align:left;padding-left:10px!important;background:none!important}
+.s2-add{align-items:center}
+.s2-add button{position:sticky;left:8px;z-index:3;width:calc(var(--s2-hdr) - 16px);height:36px;color:var(--s2-ink)!important;font-weight:700!important;font-size:13px!important;text-align:center;border:1px dashed var(--s2-line)!important;border-radius:8px!important;background:var(--s2-raise)!important}   /* a button, not a label */
 .s2-hint{position:sticky;left:var(--s2-hdr);width:min(300px,calc(100vw - var(--s2-hdr)));padding:28px 16px;color:var(--s2-muted);text-align:center}
 .s2-hint b{display:block;color:var(--s2-ink);font-size:16px;margin-bottom:4px}
 .s2-bot{flex:none;background:var(--s2-panel)}
@@ -383,6 +387,7 @@ input[type=range]::-moz-range-thumb{width:10px;height:18px;border-radius:1px;bac
 .s2-edh{color:var(--s2-muted);font-size:12.5px;padding-top:8px;padding-bottom:2px}
 .s2-edbar{display:flex;align-items:center;gap:8px;padding-top:8px;padding-bottom:10px;flex:none;background:var(--s2-panel)}
 .s2-edbar button{height:44px;padding:0 14px!important;border:1px solid var(--s2-line)!important;border-radius:10px;font-weight:600!important;font-size:14px!important}
+.s2-edbar{gap:6px!important;overflow-x:auto} .s2-edbar button{white-space:nowrap;flex:none;padding:0 10px!important;font-size:13px!important} .s2-edbar .s2-play{width:50px!important} .s2-edbar .s2-rw{width:44px!important}   /* one line, even with rewind; scrolls sideways on the smallest phones */
 .s2-edbar .s2-play{width:64px;padding:0!important;display:grid!important;place-items:center}
 .s2-edbar button[hidden]{display:none!important}
 .s2-edbar .s2-info{width:28px;height:28px;padding:0!important;border-radius:50%;margin-left:-4px;font:italic 700 14px Georgia,serif!important;color:var(--s2-muted)!important;display:grid!important;place-items:center;flex:none}
@@ -450,6 +455,7 @@ input[type=range]::-moz-range-thumb{width:10px;height:18px;border-radius:1px;bac
     <div class="s2-edb s2-g" id="s2EdBody"></div>
     <div class="s2-edh s2-g" id="s2EdHint"></div>
     <div class="s2-edbar s2-g">
+      <button class="s2-play s2-rw" id="s2EdRew" aria-label="Back to the start of this part"><svg class="nx-ico" viewBox="0 0 24 24"><path d="M6 5v14M19 5l-10 7 10 7V5z"/></svg></button>
       <button class="s2-play" id="s2EdPlay" aria-label="Play"><svg class="nx-ico" viewBox="0 0 24 24" id="s2EdPlayI"><path d="M7 4l13 8-13 8V4z" fill="currentColor"/></svg></button>
       <button id="s2EdVer">Another version</button><button class="s2-info" id="s2EdVerI" aria-label="What is Another version?">i</button>
       <button id="s2EdMine" hidden>Mine</button>
@@ -586,11 +592,14 @@ function exampleTracks(){
   [4,12,20,28].forEach(s=>add(s,'snare',0.95)); add(31,'snare',0.45);
   for(let s=0;s<32;s+=2) add(s,'hat', s%4===0?0.75:0.5); add(15,'hat',0.4); add(29,'hat',0.4);
   const bass=[[0,3,57],[3,1,57],[6,2,60],[8,4,55],[14,2,57],[16,3,57],[19,1,57],[22,2,64],[24,3,62],[28,4,60]].map(([s,l,p])=>({s,l,p,v:0.85}));
+  const keys=[[0,8,57],[8,8,55],[16,8,57],[24,4,62],[28,4,60]].map(([s,l,p])=>({s,l,p,v:0.7}));
   const lead=[[2,2,69],[4,2,72],[6,4,76],[12,2,74],[14,2,72],[18,2,69],[20,2,72],[22,2,74],[24,6,71]].map(([s,l,p])=>({s,l,p:p+0.1,v:0.75}));
   return [
     mkTrack('kit',{id:1,hits,ex:true,sound:'Punchy'}),
     mkTrack('bass',{id:2,notes:bass,ex:true,sound:'Reese',vol:72}),
     mkTrack('lead',{id:3,notes:lead,ex:true,sound:'Saw',vol:52,send:35}),
+    mkTrack('keys',{id:4,notes:keys,ex:true,sound:'E-piano',vol:44,send:30}),   /* chords: Am, G, Am, Dm, C */
+    Object.assign(mkTrack('fx',{id:5,ex:true}),{fxs:[{...fxNew('impact',0,32),v:0.7},{...fxNew('riser',16,32),v:0.6}]}),   /* an impact on the downbeat and a riser back into the loop */
   ];
 }
 function mkTrack(inst, o={}){
@@ -966,6 +975,8 @@ function fxGridMount(tr, host){ const ps=pSteps(tr), wrap=document.createElement
   const changed=()=>{ tr.blank=tr.blank||!(tr.fxs||[]).length; tr._dirty=true; save(); scheduleRender(); draw(); const L=s2Lane(s2LaneId(tr)), lc=L&&$('s2In').querySelector(`canvas[data-cv="${L.id}"]`); if(lc) s2DrawLane(L,lc); $('s2EdS').textContent=partWhere(tr)+' · '+(tr.fxs||[]).length+' FX'; };
   let d=null;
   cv.style.touchAction='pan-x';
+  cv.addEventListener('touchstart',ev=>{ if(ev.touches.length!==1) return; const q=at(ev.touches[0]); if(q.x>=gut && hitAt(q)) ev.preventDefault(); },{passive:false});   /* on an effect: drag it, don't scroll */
+  cv.addEventListener('touchmove',ev=>{ if(d&&d.e) ev.preventDefault(); },{passive:false});
   cv.addEventListener('pointerdown',ev=>{ const q=at(ev); if(q.x<gut||q.st<0||q.st>=ps) return; flushSave(); const e=hitAt(q); d={q, e, s0:e&&e.s, l0:e&&e.l, k0:e&&e.k, moved:false, mode:e&&q.x>gut+(e.s+e.l)*cw-16?'len':'move', id:ev.pointerId}; if(e){ tr._fxSel=e; draw(); try{ cv.setPointerCapture(ev.pointerId); }catch(_){} } });
   cv.addEventListener('pointermove',ev=>{ if(!d||!d.e||ev.pointerId!==d.id) return; const q=at(ev), ds=Math.round((q.x-d.q.x)/cw);
     if(!d.moved && Math.abs(q.x-d.q.x)<6 && Math.abs(q.y-d.q.y)<8) return; d.moved=true; ev.preventDefault();
@@ -1052,10 +1063,10 @@ function s2TrackSheet(L){ const tr=L.tracks[0], all=()=>S.tracks.filter(t=>s2Lan
   nxSheet(`<h2>${nm}</h2><input class="nx-txt" id="s2Tn" maxlength="32" value="${nxEsc(tr.name||'')}" placeholder="${nxEsc(I.label)}" aria-label="Track name" style="margin-bottom:12px">
     ${fam.length>1?`<div class="nx-grp" style="padding-top:0">Instrument</div><div class="s2-opts" id="s2Ins">${fam.map(k=>`<button data-k="${k}" aria-pressed="${k===tr.inst}">${dot(k)}${INST[k].label}</button>`).join('')}</div>`:''}
     ${I.sounds&&I.sounds.length?`<div class="nx-grp" style="padding-top:0">Sound</div><div class="s2-opts" id="s2Snd">${I.sounds.map(x=>`<button data-x="${nxEsc(x)}" aria-pressed="${x===tr.sound}">${nxEsc(x)}</button>`).join('')}</div>`:''}
+    ${CHORD_ZONE[tr.inst]?`<div class="nx-grp" style="padding-top:0">Chord</div><select class="nx-txt" id="s2Chd" aria-label="Chord type" style="margin-bottom:12px">${Object.entries(CHORD_TYPES).map(([k,v])=>`<option value="${k}" ${k===chordType(tr)?'selected':''}>${v}</option>`).join('')}</select>`:''}
     <div class="nx-grp" style="padding-top:0">Mix</div>${s2Fld('s2Vol','Volume',0,100,tr.vol??80)}${s2Fld('s2Rev','Reverb',0,100,tr.send??0)}${s2Fld('s2Pan','Left / right',-100,100,tr.pan??0)}${tr.inst==='vox'||tr.inst==='fx'?'':s2Fld('s2Tone',pit?'Brightness':'Tone',0,100,tr.tone??50)}
     ${tr.inst==='vox'?(()=>{ const fx=fxOf(tr), L={tune:'Pitch correction',form:'Voice character',low:'Low cut',pres:'Presence',air:'Air',comp:'Compression',dbl:'Double',echo:'Echo'}; return `<div class="nx-grp" style="padding-top:6px">Voice</div>${s2Fld('s2Fx_tune',L.tune,0,100,fx.tune)}<p style="color:var(--muted);font-size:13px;margin:-2px 0 6px">0 leaves your singing as it is. 100 is the hard-tuned sound. It follows the song’s key.</p>${VOX_KNOBS.filter(([k])=>k!=='tune').map(([k])=>s2Fld('s2Fx_'+k,L[k]||k,0,100,fx[k])).join('')}`; })():''}
     ${pit?`<div class="nx-grp" style="padding-top:6px">Notes</div><div class="s2-fld"><label>Octave</label><div class="s2-opts" style="padding:0"><button data-o="-1" aria-label="Octave down">−</button><output id="s2Oct" style="width:36px;text-align:center;align-self:center;font:700 15px var(--f-mono)">${tr.oct>0?'+':''}${tr.oct||0}</output><button data-o="1" aria-label="Octave up">+</button></div></div>
-      ${tr.inst==='bass'?'':`<div class="s2-fld"><label for="s2Chd">Chord</label><select class="nx-txt" id="s2Chd">${Object.entries(CHORD_TYPES).map(([k,v])=>`<option value="${k}" ${k===chordType(tr)?'selected':''}>${v}</option>`).join('')}</select></div>`}
       ${hasVoice?s2Fld('s2Expr','Follow my voice',0,100,tr.expr||0,10):''}`:''}
     <button class="nx-act danger" data-a="del">Delete track</button>`);
   const each=f=>all().forEach(f), rerender=()=>{ save(); scheduleRender(); };
@@ -1063,14 +1074,14 @@ function s2TrackSheet(L){ const tr=L.tracks[0], all=()=>S.tracks.filter(t=>s2Lan
   $('nxSheet').onclick=e=>{ let b;
     if(b=e.target.closest('#s2Ins button')){ const k=b.dataset.k; each(t=>changeInst(t,k)); keyCache=null; save(); renderTracks(); scheduleRender(); s2TrackSheet(s2Lane(L.id)); }
     else if(b=e.target.closest('#s2Snd button')){ each(t=>{ t.sound=b.dataset.x; if(t.inst==='vox') t.fx=Object.assign({},VOX_PRESETS[t.sound]); t._dirty=true; }); rerender(); s2TrackSheet(s2Lane(L.id)); }
-    else if(b=e.target.closest('[data-o]')){ each(t=>{ t.oct=clamp((t.oct||0)+(+b.dataset.o),-3,3); t._dirty=true; }); $('s2Oct').textContent=(tr.oct>0?'+':'')+tr.oct; rerender(); renderTracks(); }
+    else if(b=e.target.closest('[data-o]')){ each(t=>{ t.oct=clamp((t.oct||0)+(+b.dataset.o),-3,3); t.octSet=true; t._dirty=true; }); $('s2Oct').textContent=(tr.oct>0?'+':'')+tr.oct; rerender(); renderTracks(); }
     else if(b=e.target.closest('[data-a]')){ nxClose(); const ms=all(); ms.slice(1).forEach(t=>{ disposeTrack(t); }); S.tracks=S.tracks.filter(t=>!ms.slice(1).includes(t)); deletePart(ms[0]); } };
   $('nxSheet').oninput=e=>{ const id=e.target.id, v=+e.target.value;
     if(id==='s2Vol'){ each(t=>{ t.vol=v; }); applyAllMix(); save(); } if(id==='s2Rev'){ each(t=>{ t.send=v; }); applyAllMix(); save(); } if(id==='s2Pan'){ each(t=>{ t.pan=v; }); applyAllMix(); save(); } };
   $('nxSheet').onchange=e=>{ const id=e.target.id, v=e.target.value;
     if(id==='s2Tone'){ each(t=>{ t.tone=+v; t._dirty=true; }); rerender(); }
     if(id.startsWith('s2Fx_')){ const k=id.slice(5); each(t=>{ t.fx=Object.assign(fxOf(t),{[k]:+v}); t._tuned=null; t._dirty=true; }); rerender(); }
-    if(id==='s2Chd'){ each(t=>{ t.chordType=v; delete t.chords; t._dirty=true; }); rerender(); renderTracks(); }
+    if(id==='s2Chd'){ each(t=>{ t.chordType=v; delete t.chords; t._dirty=true; }); if(autoOct(tr)) $('s2Oct').textContent=(tr.oct>0?'+':'')+tr.oct; rerender(); renderTracks(); }
     if(id==='s2Expr'){ each(t=>{ t.expr=+v; if(t.expr>0&&t._raw){ if(t._an) t.exprAlign=t._an.align; storeVox(t); } t._dirty=true; }); rerender(); } }; }
 function s2Sheets(kind){ $('nxSheet').oninput=null;
   if(kind==='tempo'){ nxSheet(`<h2>Tempo</h2>${s2Fld('s2T','Tempo',60,180,S.bpm)}<label class="nx-chk" style="font-weight:400;font-size:15px"><input type="checkbox" id="s2Arp" ${S.keyRef?'checked':''}> <span>Play the home chord during the count-in</span></label>`);
@@ -1084,7 +1095,7 @@ function s2Sheets(kind){ $('nxSheet').oninput=null;
 function s2Init(){ const _rt=renderTracks; renderTracks=function(){ if(s2.post && !recState && rs.mode==null){ s2.post=false; try{ s2Tidy(); }catch(e){} }
     /* the old part rows are no longer built (they were never shown) */ if(s2On()){ if(s2.edId!=null) s2EdMount(); else s2Render(); } };
   const _rd=redrawTrack; redrawTrack=function(tr){ _rd.apply(this,arguments); if(s2On()){ const L=s2Lane(s2LaneId(tr)), cv=L&&$('s2In').querySelector(`canvas[data-cv="${L.id}"]`); if(cv) s2DrawLane(L,cv); } };
-  $('s2EdBack').onclick=s2EdClose; $('s2EdUndo').onclick=()=>undo(); $('s2EdRedo').onclick=()=>redo(); $('s2EdPlay').onclick=()=>togglePlay();
+  $('s2EdBack').onclick=s2EdClose; $('s2EdUndo').onclick=()=>undo(); $('s2EdRedo').onclick=()=>redo(); $('s2EdPlay').onclick=()=>togglePlay(); $('s2EdRew').onclick=()=>{ if(recState) return; const t=S.tracks.find(x=>x.id===s2.edId), L=loopLen(), at=t?Math.min((t.off||0)*stepDur(),L-0.001):0; playFrom=at; s2.cur=at/L*S.bars; if(playing&&ctx) startAll(ctx.currentTime+0.02,at); };
   $('s2EdFill').onclick=()=>{ const tr=S.tracks.find(t=>t.id===s2.edId); if(tr) fillGaps(tr); };
   $('s2EdVer').onclick=()=>{ const tr=S.tracks.find(t=>t.id===s2.edId); if(!tr) return; verNext(tr); };
   $('s2EdMine').onclick=()=>{ const tr=S.tracks.find(t=>t.id===s2.edId); if(tr) verMine(tr); };
@@ -1143,7 +1154,7 @@ function s2Init(){ const _rt=renderTracks; renderTracks=function(){ if(s2.post &
     $('nxSens').onchange=e=>{ S.sens=+e.target.value; save(); }; };
   $('nxDrums').onclick=()=>{ const rows=S.kit.slots.map(sl=>`<div class="nx-item" style="padding:10px 0"><span>${nxEsc(slotLabel(sl.id))}<small>${sl.ex&&sl.ex.length>=3?'Taught':'Say “'+nxEsc(sl.say||slotLabel(sl.id))+'”'}</small></span><button class="nx-ghost" data-teach="${sl.id}" style="width:auto;height:40px;padding:0 14px">${sl.ex&&sl.ex.length>=3?'Teach again':'Teach'}</button></div>`).join('');
     nxSheet(`<h2>Your drum sounds</h2><p style="color:var(--muted);font-size:14px;margin:0 0 6px">Make your noise for a drum on every click, and Noodle learns to tell your sounds apart.</p>${rows}<button class="nx-primary" id="nxTeachAll">Teach them all</button>`);
-    $('nxSheet').onclick=e=>{ const b=e.target.closest('[data-teach]'); const all=e.target.closest('#nxTeachAll'); if(!b&&!all) return; nxClose(); ensureCtx(); startTeach(all?S.kit.slots.map(x=>x.id):[b.dataset.teach]); }; };
+    $('nxSheet').onclick=e=>{ const b=e.target.closest('[data-teach]'); const all=e.target.closest('#nxTeachAll'); if(!b&&!all) return; nxClose(); ensureCtx(); teachBack=true; startTeach(all?S.kit.slots.map(x=>x.id):[b.dataset.teach]); }; };
   let seen=true; try{ seen=!!localStorage.getItem('noodle.onboard'); }catch(e){}
   if(nxResume || new URLSearchParams(location.search).has('studio')){ if(s2Use()) s2Show(true); } else { nxGo('projects'); if(!seen) nxOnboard(async()=>{ if(!((await projList())||[]).length) await nxExample(true); else await nxGo('projects'); }); } }
 function reloadRaw(){ S.tracks.filter(t=>((t.inst==='vox' && t.va!=null) || (t.expr>0 && t.exprAlign!=null)) && !t._raw).forEach(tr=>loadVox(tr).then(ok=>{ if(!ok) return; redrawTrack(tr); if(ctx) scheduleRender(); })); }
@@ -1892,8 +1903,15 @@ function chordName(ps){ if(!ps||ps.length<2) return ''; const r=ps[0], iv=new Se
   let q=dim?'dim':m?'m':''; if(iv.has(11)) q+= (q?'':'')+'maj7'; else if(iv.has(10)) q+= dim?'7':'7'; if(iv.has(2)) q= q.includes('7')?q.replace('7','9'):q+'add9'; if(iv.has(5)&&q.includes('9')&&!q.includes('add')) q=q.replace('9','11');
   return nm+q; }
 const CHORD_TYPES={off:'Single notes',triad:'Triad',seventh:'7th',ninth:'9th',eleventh:'11th',sixth:'6th',add9:'Add 9',sus2:'Sus 2',sus4:'Sus 4',power:'Power (root + 5th)'};
-const chordType=tr=> tr.inst==='bass' ? 'off' : tr.chordType ?? (tr.chords===true?'triad': tr.chords===false?'off' : (['keys','pad','arp'].includes(tr.inst)?'triad':'off'));
+const chordType=tr=> tr.inst==='bass'||tr.inst==='lead' ? 'off' : tr.chordType ?? (tr.chords===true?'triad': tr.chords===false?'off' : (['keys','pad','arp'].includes(tr.inst)?'triad':'off'));
 const chordsOn=tr=>chordType(tr)!=='off';
+/* Where chords sound best: a hummed root (often around A2-D3) stacked into a chord down there is muddy. Unless you've set the octave yourself,
+   a chord track's octave is chosen so its roots sit around this note (MIDI), with no root under C3 (48). The notes you sang keep their shape; only the octave moves. */
+const CHORD_ZONE={keys:60,pad:57,arp:62};
+function autoOct(tr){ if(!CHORD_ZONE[tr.inst]||!chordsOn(tr)) return false; const lane=S.tracks.filter(t=>s2LaneId(t)===s2LaneId(tr)&&t.inst===tr.inst); if(lane.some(t=>t.octSet)) return false;
+  const roots=lane.flatMap(t=>inWin(t.notes||[],pSteps(t)).map(pitchOf)); if(!roots.length) return false; const med=median(roots), lo=Math.min(...roots); let best=0, bs=1e9;
+  for(let o=-2;o<=2;o++){ const sc=Math.abs(med+12*o-CHORD_ZONE[tr.inst])+(lo+12*o<48?12:0); if(sc<bs){ bs=sc; best=o; } }
+  if(lane.every(t=>(t.oct||0)===best)) return false; lane.forEach(t=>{ t.oct=best; t._dirty=true; }); return true; }
 /* bass is strictly one note at a time: a note ends where the next begins; of two starting together, the selected (or stronger) one stays */
 function enforceMono(tr){ if(tr.inst!=='bass'||!tr.notes||!tr.notes.length) return false; const n0=tr.notes.length, ln=tr.notes.map(x=>x.l).join();
   const by=new Map(); tr.notes.forEach(x=>{ const o=by.get(x.s); if(!o || x===tr._sel || (o!==tr._sel && x.v>o.v)) by.set(x.s,x); });
@@ -2300,7 +2318,8 @@ function openRec(mode='take', partId=null){
   $('rsHint').textContent = mode==='calib'?'After the four count-in clicks, clap sharply on every click.' : mode==='teach'?'Make each noise on every click after the count-in. It does one sound at a time.' : INST[S.inst].hint.split(/(?<=\.) /)[0];
   $('rsReview').hidden=true; $('rsReady').hidden=false;
 }
-function closeRec(){ if(s2.afterTeach){ s2.afterTeach=false; setTimeout(()=>{ if(s2On()) toast(taughtSlots().length>=2?'Learned. Now tap record for your beat.':'Tap record when you’re ready.'); },60); } if(recState) cancelRecord(); S.target=null; $('recSheet').hidden=true; document.body.style.overflow=''; rs.mode=null; renderTracks(); }
+let teachBack=false;   /* teaching from Your drum sounds: come back to that list, to teach the next one */
+function closeRec(){ if(teachBack){ teachBack=false; setTimeout(()=>{ const d=$('nxDrums'); if(d && !$('nxMore').hidden) d.click(); },60); } if(s2.afterTeach){ s2.afterTeach=false; setTimeout(()=>{ if(s2On()) toast(taughtSlots().length>=2?'Learned. Now tap record for your beat.':'Tap record when you’re ready.'); },60); } if(recState) cancelRecord(); S.target=null; $('recSheet').hidden=true; document.body.style.overflow=''; rs.mode=null; renderTracks(); }
 function showReview(){   /* after calibrating or teaching drum sounds */
   $('rsReady').hidden=true; $('rsReview').hidden=false; $('rsMsg').textContent=lastMsg||'';
   $('rsKeep').textContent='Done'; $('rsRetry').hidden=rs.mode!=='calib';
@@ -2742,7 +2761,7 @@ async function guidedSetup(id){ const g=GUIDED.find(x=>x[0]===id); if(!g) return
   guide.guide=true; o.tracks=[guide,take]; o.nextId=nid; o.activeId=take.id;
   takeBar=null; await restoreSnap({json:JSON.stringify(o), rt:new Map()}); S.activeId=take.id; S.inst=take.inst; save(); flushSave();
   toast(`${id}: ${how}`); }
-async function addTake(x, sr, inst, opt){ const r=await addTake0(x, sr, inst, opt); S.tracks.forEach(t=>{ if(t._raw&&t._raw.x===x){ t._versions=null; t._vi=0; t.reading=null; } }); try{ dropTake(x, sr, inst); }catch(e){} try{ repeatTip(x); }catch(e){} return r; }
+async function addTake(x, sr, inst, opt){ const r=await addTake0(x, sr, inst, opt); S.tracks.forEach(t=>{ if(t._raw&&t._raw.x===x){ t._versions=null; t._vi=0; t.reading=null; if(autoOct(t)){ save(); scheduleRender(); } } }); try{ dropTake(x, sr, inst); }catch(e){} try{ repeatTip(x); }catch(e){} return r; }
 /* once: after the first melody take with a long held note, a tip for repeated notes */
 function repeatTip(x){ if(localStorage.getItem('noodle.tipRepeat')) return;
   const tr=S.tracks.find(t=>(t._raw&&t._raw.x===x)); if(!tr||INST[tr.inst].kind!=='pitched'||!tr.notes) return;
@@ -2865,7 +2884,7 @@ function fillGaps(tr){ const n=pSteps(tr), ns=tr.notes.filter(x=>x.s>=0&&x.s<n);
 function changeInst(tr,k){ if(tr.inst===k) return; const from=INST[tr.inst], to=INST[k];
   if(to.kind==='drum'){ const m=new Map(); tr.hits.forEach(h=>{ if(!m.has(h.s)||m.get(h.s).v<h.v) m.set(h.s,{...h,d:to.drum}); }); tr.hits=[...m.values()].sort((a,b)=>a.s-b.s); tr._an=null; tr._takes=null; }
   if(k==='kit'){ tr.hits.forEach(h=>{ if(!slotOf(h.d) && S.kit.slots.length<MAX_SLOTS && !S.kit.slots.some(x=>x.sound===h.d)) S.kit.slots.push({id:h.d,sound:h.d,say:''}); }); tr._an=null; tr._takes=null; }
-  const was=partName(tr); tr.inst=k; if(!to.sounds.includes(tr.sound)) tr.sound=mkTrack(k).sound; if(from.kind==='pitched') tr.oct=to.oct||0;
+  const was=partName(tr); tr.inst=k; if(!to.sounds.includes(tr.sound)) tr.sound=mkTrack(k).sound; if(from.kind==='pitched') tr.oct=to.oct||0; autoOct(tr);
   tr._dirty=true; keyCache=null; keyChanged(); save(); renderTracks(); scheduleRender(); toast(`${was} now plays ${to.label}`); }
 const pct=v=>v+'%';
 function partName(tr){ if(tr.name) return tr.name; const same=S.tracks.filter(t=>t.inst===tr.inst); return INST[tr.inst].label+(same.length>1?' '+(same.indexOf(tr)+1):''); }
