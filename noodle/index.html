@@ -605,7 +605,7 @@ function exampleTracks(){
     mkTrack('bass',{id:2,notes:bass,ex:true,sound:'Reese',vol:72}),
     mkTrack('lead',{id:3,notes:lead,ex:true,sound:'Saw',vol:52,send:35}),
     mkTrack('keys',{id:4,notes:keys,ex:true,sound:'E-piano',vol:44,send:30}),   /* chords: Am, G, Am, Dm, C */
-    Object.assign(mkTrack('fx',{id:5,ex:true}),{fxs:[{...fxNew('impact',0,32),v:0.7},{...fxNew('riser',16,32),v:0.6}]}),   /* an impact on the downbeat and a riser back into the loop */
+    Object.assign(mkTrack('fx',{id:5,ex:true}),{fxs:[{...fxNew('sweepDown',0,32),v:0.7},{...fxNew('riser',16,32),v:0.6}]}),   /* a noise sweep down out of the downbeat, and a riser back into the loop */
   ];
 }
 function mkTrack(inst, o={}){

@@ -407,7 +407,7 @@ How to work on it: one small step at a time; after each, `tools/suite.sh` from t
 - **Chord type** is the first thing in a chord track's sheet (above Mix); **Lead** and **Bass** have no chord option (`chordType` is off for them).
 - **Buttons look like buttons:** the editor's Delete and Split, the red actions in sheets ("Delete track", "Delete project"…) and "+ Add track" now have a border and fill. Standing rule from the owner: anything tappable must look like a button.
 - **Playhead at bar 1:** the yellow line now starts right after the track headers instead of half under their edge.
-- **Example song:** adds Keys (Am, G, Am, Dm, C on E-piano) and FX (an impact on the downbeat, a riser back into the loop).
+- **Example song:** adds Keys (Am, G, Am, Dm, C on E-piano) and FX (a noise sweep down out of the downbeat, a riser back into the loop; the owner preferred the sweep to an impact).
 - **Teaching a drum sound from Your drum sounds** comes back to that list, to teach the next one (`teachBack`).
 - **FX levels:** the owner then found 25 a little too quiet and named the noise sweeps as what had been too loud. Final: new FX tracks start at 45 (about 8 dB under an 80 track), and the sweeps play 6 dB lower than before. K-weighted loudness (`fxlevels.js`, BS.1770 filters) had the sweeps level with the risers (−15.5 vs −16 LUFS-ish); their hiss still sounds louder, so the owner's ears decided. Now: risers −16, sweeps −21.6, impact −18.7.
 - **Track sheets end with Mix:** Name, Instrument, Sound, Chord, Notes (Octave, Expression) or Voice, then Mix, then Duplicate track and Delete track.
