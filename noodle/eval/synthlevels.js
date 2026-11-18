@@ -4,7 +4,7 @@ const {chromium,devices}=require('playwright');
 (async()=>{ const b=await chromium.launch(); const p=await (await b.newContext({...devices['iPhone 13']})).newPage(); const errs=[]; p.on('pageerror',e=>errs.push(e.message));
   await p.goto('http://localhost:8800/'+(process.argv[2]||'noodle-s2.html')+'?studio'); await p.waitForTimeout(900);
   const r=await p.evaluate(async()=>{ ensureCtx(); S.bpm=110; S.bars=2; const out={};
-    const C=[['Sub','bass'],['808 glide','bass'],['Synth bass','bass'],['Reese','bass'],['Pluck','bass'],['Saw','lead'],['Supersaw','lead'],['Square','lead'],['Bell','lead'],['Organ','keys'],['Stab','keys'],['Warm pad','pad'],['Choir','pad'],['Sweep','pad'],['Pluck','arp'],['Supersaw','arp']];
+    const C=[['Sub','bass'],['808 glide','bass'],['Synth bass','bass'],['Reese','bass'],['Pluck','bass'],['Saw','lead'],['Supersaw','lead'],['Square','lead'],['Bell','lead'],['Organ','keys'],['Stab','keys'],['Warm pad','pad'],['Choir','pad'],['Sweep','pad'],['Pluck','arp'],['Supersaw','arp'],['Glass','lead'],['Chip','lead'],['Theremin','lead'],['Vowel pad','pad'],['Digital pad','pad'],['Growl','bass'],['Chip','arp'],['Glass','arp'],['Saw','arp']];
     const line=[60,62,64,67,69,67,64,62], chords=[[57,60,64],[55,59,62],[53,57,60],[55,59,62]];
     for(const [snd,inst] of C){ const pad=inst==='pad'||inst==='keys';
       const notes=pad?chords.flatMap((ch,i)=>ch.map(m=>({s:i*8,l:8,p:m,v:.8,x:true}))):line.map((m,i)=>({s:i*4,l:3,p:m-(inst==='bass'?12:0),v:.8,x:true}));
