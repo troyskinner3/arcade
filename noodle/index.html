@@ -376,6 +376,8 @@ input[type=range]::-moz-range-thumb{width:10px;height:18px;border-radius:1px;bac
 .s2-edt{flex:1;min-width:0;padding:6px 4px;text-align:left} .s2-edt b{display:block;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis} .s2-edt small{color:var(--s2-muted);font:500 12px var(--f-mono)}
 .s2-edb{flex:1;min-height:0;overflow-y:auto;padding-top:4px}
 .fxg{overflow-x:auto;overscroll-behavior-x:contain} .fxg-in{position:relative;width:max-content} .fxg canvas{display:block;border-radius:8px}
+.fxsel{margin-top:10px;padding:10px 12px;border:1px solid var(--s2-line);border-radius:10px;background:var(--s2-panel)} .fxsel-h{display:flex;align-items:center;gap:8px} .fxsel-h b{font-size:15px} .fxsel-h small{flex:1;color:var(--s2-muted);font:500 12px var(--f-mono)}
+.fxsel .s2-fld{padding:4px 0} .fxsel .del{height:36px;padding:0 12px;border:1px solid var(--s2-line);border-radius:8px;background:none;color:var(--rec);font-weight:600} .fxsel .s2-fld label{color:var(--s2-muted)}
 .fxg-ph{position:absolute;left:0;top:0;width:2px;margin-left:-1px;background:var(--s2-amber);display:none;pointer-events:none}
 .s2-edb .track{border:0;background:none;padding:0;margin:0;box-shadow:none}
 .s2-edh{color:var(--s2-muted);font-size:12.5px;padding-top:8px;padding-bottom:2px}
@@ -944,7 +946,7 @@ const FX_ROWS=['riser','down','sweepUp','sweepDown','impact'];
 function fxNew(k, s, ps){ const N=16, up=k==='riser'||k==='sweepUp', l=k==='impact'?Math.min(4,ps-s):Math.min(16,ps-s);
   return {s, l:Math.max(1,l), k, v:0.8, c:Array.from({length:N},(_,i)=>+(up?i/(N-1):1-i/(N-1)).toFixed(3)), a:Array.from({length:N},(_,i)=>k==='impact'?+(1-i/N).toFixed(3):0.8)}; }
 function fxGridMount(tr, host){ const ps=pSteps(tr), wrap=document.createElement('div'); wrap.className='fxg'; wrap.innerHTML='<div class="fxg-in"><canvas></canvas><div class="fxg-ph"></div></div>'; host.appendChild(wrap);
-  const cv=wrap.querySelector('canvas'), ph=wrap.querySelector('.fxg-ph'), H=Math.max(220,Math.min(420,(host.clientHeight||400)-24)), gut=86, rh=H/FX_ROWS.length, W0=Math.max((host.clientWidth||340)-2, gut+ps*9), cw=(W0-gut)/ps, W=gut+cw*ps;
+  const cv=wrap.querySelector('canvas'), ph=wrap.querySelector('.fxg-ph'), H=Math.max(190,Math.min(400,(host.clientHeight||400)-200))   /* room below for the selected effect's controls */, gut=86, rh=H/FX_ROWS.length, W0=Math.max((host.clientWidth||340)-2, gut+ps*9), cw=(W0-gut)/ps, W=gut+cw*ps;
   const G={gut,cw,rh,W,H,ps}; tr._fxg=G; tr._fxph=ph;
   const draw=()=>{ const dpr=Math.min(2,window.devicePixelRatio||1); cv.width=Math.round(W*dpr); cv.height=Math.round(H*dpr); cv.style.width=W+'px'; cv.style.height=H+'px'; ph.style.height=H+'px';
     const g=cv.getContext('2d'), cs=getComputedStyle($('s2')), v=n=>cs.getPropertyValue(n).trim(), col=INST.fx.color; g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,W,H);
@@ -969,12 +971,18 @@ function fxGridMount(tr, host){ const ps=pSteps(tr), wrap=document.createElement
     else { d.e.s=clamp(d.s0+ds,0,ps-1); d.e.l=Math.min(d.l0,ps-d.e.s); d.e.k=FX_ROWS[q.row]; }
     draw(); });
   const up=ev=>{ if(!d) return; const q=d; d=null;
-    if(q.e && q.moved){ if(q.e.k!==q.k0) logEdit(tr,{k:'fxkind',s:q.e.s,from:q.k0,to:q.e.k}); changed(); return; }
-    if(q.e){ tr.fxs=tr.fxs.filter(x=>x!==q.e); tr._fxSel=null; logEdit(tr,{k:'fxdel',s:q.e.s,kind:q.e.k}); changed(); return; }
+    if(q.e && q.moved){ if(q.e.k!==q.k0) logEdit(tr,{k:'fxkind',s:q.e.s,from:q.k0,to:q.e.k}); changed(); panel(); return; }
+    if(q.e){ tr._fxSel=q.e; draw(); panel(); return; }   /* a tap selects it; Delete is in the bar below */
     if(ev.type==='pointercancel') return;
-    const k=FX_ROWS[q.q.row], e=fxNew(k,q.q.st,ps); tr.fxs=(tr.fxs||[]).concat([e]); tr._fxSel=e; logEdit(tr,{k:'fxadd',s:e.s,kind:k}); changed(); };
+    if(tr._fxSel){ tr._fxSel=null; draw(); panel(); return; }   /* a tap on empty space first just deselects (as in the note editor) */
+    const k=FX_ROWS[q.q.row], e=fxNew(k,q.q.st,ps); tr.fxs=(tr.fxs||[]).concat([e]); tr._fxSel=e; logEdit(tr,{k:'fxadd',s:e.s,kind:k}); changed(); panel(); };
   cv.addEventListener('pointerup',up); cv.addEventListener('pointercancel',up);
-  draw(); }
+  const bar=document.createElement('div'); bar.className='fxsel'; host.appendChild(bar);
+  const panel=()=>{ const e=tr._fxSel; if(!e||!(tr.fxs||[]).includes(e)){ tr._fxSel=null; bar.hidden=true; bar.innerHTML=''; return; } bar.hidden=false; const st=(tr.off||0)+e.s;
+    bar.innerHTML=`<div class="fxsel-h"><b>${FX_KINDS[e.k]}</b><small>${partWhere({off:st,len:e.l/16,rep:false}).replace('Bars','bars').replace('Bar','bar')}</small><button class="del" id="fxDel">Delete</button></div>${s2Fld('fxVol','Volume',0,100,Math.round((e.v??0.8)*100))}${s2Fld('fxPan','Left / right',-100,100,Math.round((e.pan||0)*100))}`;
+    $('fxDel').onclick=()=>{ tr.fxs=tr.fxs.filter(x=>x!==e); tr._fxSel=null; logEdit(tr,{k:'fxdel',s:e.s,kind:e.k}); changed(); panel(); };
+    $('fxVol').onchange=ev2=>{ e.v=+ev2.target.value/100; changed(); }; $('fxPan').onchange=ev2=>{ e.pan=+ev2.target.value/100; changed(); }; };
+  draw(); panel(); }
 function s2Edit(tr){ s2.edId=tr.id; S.activeId=tr.id; $('s2Ed').hidden=false; s2EdMount(); }
 function s2EdMount(){ if(s2.edId==null) return; const tr=S.tracks.find(t=>t.id===s2.edId); if(!tr||!hasContent(tr)){ s2EdClose(); return; }
   const host=$('s2EdBody'), kind=INST[tr.inst].kind, avail=Math.max(200,(host.clientHeight||window.innerHeight*0.6)-90);
@@ -984,7 +992,7 @@ function s2EdMount(){ if(s2.edId==null) return; const tr=S.tracks.find(t=>t.id==
   requestAnimationFrame(()=>{ if(tr._cv&&tr._cv.isConnected){ drawGrid(tr); if(sx){ tr._autoScroll=true; tr._cv.parentElement.parentElement.scrollLeft=sx; } } }); }
   $('s2EdT').textContent=s2Name(s2Lane(s2LaneId(tr))); $('s2EdS').textContent=partWhere(tr)+' · '+(tr.inst==='fx'?(tr.fxs||[]).length+' FX':tr.notes?tr.notes.length+' notes':tr.hits?tr.hits.length+' hits':'audio');
   const pit=kind==='pitched'&&tr.inst!=='arp'; $('s2EdVer').hidden=!pit; $('s2EdVerI').hidden=!pit; $('s2EdFill').hidden=!pit; if(pit){ if(tr._vi && verSig(tr)!==tr._verSig) tr._vi=0; verUI(tr); } else $('s2EdMine').hidden=true;
-  $('s2EdHint').textContent=tr.inst==='fx'?'Tap to add an effect, tap one to remove it. Drag it to move it or change its kind; drag its right end to change its length.':kind==='pitched'?'Tap a note to select it, drag to move. Double-tap a note, or tap a faint seam, to split it.':tr.hits?'Tap a square to add or remove a hit.':'';
+  $('s2EdHint').textContent=tr.inst==='fx'?'Tap empty space to add. Tap an effect to select it. Drag to move it or change its kind; drag its right end for length.':kind==='pitched'?'Tap a note to select it, drag to move. Double-tap a note, or tap a faint seam, to split it.':tr.hits?'Tap a square to add or remove a hit.':'';
   $('s2EdUndo').disabled=!hist.undo.length; $('s2EdRedo').disabled=!hist.redo.length; }
 function s2EdClose(){ const tr=S.tracks.find(t=>t.id===s2.edId); if(tr){ tr._cv=null; tr._sel=null; } s2.edId=null; GRID_H=176; GRID_RH=15; GRID_DRUM=1; $('s2Ed').hidden=true; $('s2EdBody').innerHTML=''; s2Render(); }
 /* Share, inside the Studio. A linear song is exported once through (Loop is only for listening). */
@@ -2537,7 +2545,8 @@ async function addFxTake(x, sr, opt){
     await renderDirty(); if(!playing){ playing=true; playFrom=takeStart(); startAll(ctx.currentTime+0.08, playFrom); }
   } finally{ busy(); } }
 function fxNoise(oc,dur){ const n=Math.ceil(dur*oc.sampleRate), b=oc.createBuffer(1,n,oc.sampleRate), d=b.getChannelData(0); for(let i=0;i<n;i++) d[i]=Math.random()*2-1; const s=oc.createBufferSource(); s.buffer=b; return s; }
-function fxPlay(oc, out, tr, e, t){ const D=Math.max(0.12,e.l*stepDur()), v=(e.v??0.8), N=64, cv=fxResample(Float32Array.from(e.c||[0,1]),N), av=fxResample(Float32Array.from(e.a||[1,1]),N);
+function fxPlay(oc, out, tr, e, t){ if(e.pan){ const pn=oc.createStereoPanner(); pn.pan.value=clamp(e.pan,-1,1); pn.connect(out); out=pn; }   /* each effect can sit left or right */
+  const D=Math.max(0.12,e.l*stepDur()), v=(e.v??0.8), N=64, cv=fxResample(Float32Array.from(e.c||[0,1]),N), av=fxResample(Float32Array.from(e.a||[1,1]),N);
   const smp=fxSample(tr,e.k);
   if(smp){ const src=oc.createBufferSource(), g=oc.createGain(); src.buffer=smp; g.gain.value=v; src.connect(g); g.connect(out); const build=e.k==='riser'||e.k==='sweepUp';
     if(build){ const lead=smp.duration-D; if(lead>0) src.start(t,lead); else src.start(t-lead); } else src.start(t); return; }
