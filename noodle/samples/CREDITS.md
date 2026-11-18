@@ -6,9 +6,10 @@ public domain (CC0) and attribution (CC BY) material is used. CC BY libraries ar
 | Noodle sound | Library | Author | License | Source |
 |---|---|---|---|---|
 | Piano | Salamander Grand Piano v3 (Yamaha C5) | Alexander Holm | [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/) | https://github.com/sfzinstruments/SalamanderGrandPiano (originally https://archive.org/details/SalamanderGrandPianoV3) |
+| E-piano | Wurlitzer EP200, from Greg Sullivan's E-Pianos | Greg Sullivan (SFZ mapping by kinwie) | [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/) | https://github.com/sfzinstruments/GregSullivan.E-Pianos (originally http://www.sullivang.net/) |
 
-What was changed: notes were trimmed (with a fade-out) to 3.5–8 seconds depending on register, three of the sixteen velocity
-layers were kept, and the files were converted to MP3 (`build_samples.py`).
+What was changed (Piano): notes were trimmed (with a fade-out) to 3.5–8 seconds depending on register, three of the sixteen velocity
+layers were kept, and the files were converted to MP3 (`build_samples.py`). E-piano: all four velocity layers kept, mapped and tuned from its SFZ file, mono, converted to MP3.
 
 Considered and not used: jRhodes3d (its samples are CC BY-NC, non-commercial only); Splendid Grand Piano (labelled public domain,
 but listed as made by AKAI, so its origin is unclear).

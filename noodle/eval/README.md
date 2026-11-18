@@ -433,3 +433,5 @@ How to work on it: one small step at a time; after each, `tools/suite.sh` from t
   iPhone app: `sync-web.sh` now copies `samples/`; the app serves `.mp3` as audio (Swift change: needs a rebuild in Xcode).
 - **Piano (shipped):** Salamander, 30 notes (every minor third) × 3 of 16 velocity layers (v4 soft ≤0.45, v8 ≤0.9 including drawn notes, v15 hard), 3.5–8 s per note; 12.7 MB, about 0.8 s to load, about 140 MB in memory while used.
   A4 plays at 439.5 Hz; soft to hard spans about 17 dB; +6 dB in `map.json` to sit level with the synth piano it replaces. `piano_test.js`. Suite: 34 scripts, replay 3.88.
+- **E-piano (shipped):** Greg Sullivan's Wurlitzer EP200 (CC BY 3.0): all 4 velocity layers, 48 key ranges, each recording's tuning and level from its SFZ file; 2.5 MB. Level within about 1 dB of the synth e-piano on single notes; A4 at 439 Hz.
+  `build_samples.py` now reads SFZ files (`parse_sfz`: global/group/region inheritance, #define, note names; regions with key range, root+tune, volume, velocity range), and the app's sampler plays key-ranged regions with their own level.

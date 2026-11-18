@@ -28,6 +28,58 @@ def encode(src, dst, seconds, gain_db=0.0, fade=0.6, mono=False, kbps=192):
     cmd = ['ffmpeg', '-v', 'error', '-y', '-i', src, '-af', af, '-ar', '48000'] + (['-ac', '1'] if mono else ['-ac', '2']) + ['-c:a', 'libmp3lame', '-b:a', f'{kbps}k', dst]
     subprocess.run(cmd, check=True)
 
+def parse_sfz(path, defines=None):
+    """The regions of an SFZ file: sample, key range, root (with tune), volume (dB), velocity range. Handles <global>/<group>/<region>
+    inheritance, #define, note names; ignores what Noodle doesn't use (ARIA controls, release triggers, keyswitches)."""
+    txt = open(path, encoding='utf-8', errors='ignore').read(); txt = re.sub(r'//[^\n]*', '', txt)
+    defs = dict(defines or {})
+    for k, v in re.findall(r'#define\s+(\$\w+)\s+(\S+)', txt): defs.setdefault(k, v)
+    for k, v in sorted(defs.items(), key=lambda kv: -len(kv[0])): txt = txt.replace(k, v)
+    def num(v):
+        try: return int(v)
+        except ValueError: return midi(v[0].upper() + v[1:]) if re.match(r'^[a-gA-G][#b]?-?\d$', v) else float(v)
+    regions = []; glob = {}; group = {}; cur = None; base = ''
+    for tok in re.split(r'(<\w+>)', txt):
+        t = tok.strip()
+        if not t: continue
+        if t in ('<global>', '<master>'): glob = {}; cur = glob; continue
+        if t == '<group>': group = {}; cur = group; continue
+        if t == '<control>': cur = {'_control': 1}; continue
+        if t == '<region>': cur = {}; regions.append((glob, group, cur)); continue
+        if t.startswith('<'): cur = {}; continue
+        for k, v in re.findall(r'(\w+)=(.+?)(?=\s+\w+=|$)', t.replace('\n', ' ')):
+            v = v.strip()
+            if cur is not None and cur.get('_control') and k == 'default_path': base = v
+            elif cur is not None: cur[k] = v
+    out = []
+    for g0, g1, r in regions:
+        o = {**g0, **g1, **r}
+        if 'sample' not in o or o.get('trigger', 'attack') != 'attack': continue
+        if 'sw_last' in o and 'sw_default' not in o and o.get('sw_last') != g0.get('sw_default'): pass
+        key = num(o['key']) if 'key' in o else None
+        lo = num(o.get('lokey', key if key is not None else 0)); hi = num(o.get('hikey', key if key is not None else 127))
+        root = num(o.get('pitch_keycenter', key if key is not None else lo)) - float(o.get('tune', 0)) / 100 - num(o.get('transpose', 0))
+        out.append(dict(sample=os.path.join(base, o['sample']).replace('\\', '/'), lo=lo, hi=hi, root=round(root, 3), vol=float(o.get('volume', 0)),
+                        lovel=num(o.get('lovel', 1)), hivel=num(o.get('hivel', 127)), seq=num(o.get('seq_position', 1))))
+    return out
+
+def build_sfz(root, key, cfg):
+    sfz = os.path.join(root, cfg['sfz']); folder = os.path.dirname(sfz); out = os.path.join(HERE, key)
+    regs = [r for r in parse_sfz(sfz, cfg.get('defines')) if r['seq'] == 1]
+    vels = sorted({r['hivel'] for r in regs}); keep = cfg.get('velocities') or vels
+    layers = []; done = {}
+    for hv in keep:
+        rs = []
+        for r in sorted([r for r in regs if r['hivel'] == hv], key=lambda r: r['lo']):
+            src = os.path.join(folder, r['sample']); name = re.sub(r'[^A-Za-z0-9_.-]+', '_', os.path.splitext(r['sample'])[0]) + '.mp3'
+            if name not in done: encode(src, os.path.join(out, name), secs_for(int(r['root']), cfg['trim']), cfg.get('gain_db', 0), mono=cfg.get('mono', False)); done[name] = 1
+            rs.append({'lo': r['lo'], 'hi': r['hi'], 'root': r['root'], 'file': name, 'db': r['vol']})
+        layers.append({'maxV': round(hv / 127, 3), 'regions': rs})
+    meta = {'name': cfg['name'], 'credit': cfg['credit'], 'release': cfg['release'], 'gain': cfg.get('gain', 1.0), 'layers': layers}
+    with open(os.path.join(out, 'map.json'), 'w') as fh: json.dump(meta, fh, separators=(',', ':'))
+    size = sum(os.path.getsize(os.path.join(out, x)) for x in os.listdir(out))
+    print(f'{key}: {len(done)} files, {sum(len(l["regions"]) for l in layers)} regions in {len(layers)} layers, {size/1e6:.1f} MB')
+
 # ---------------------------------------------------------------------------------------------------------------
 # Instruments
 # Each: source folder, how to find (note, layer) files, which layers to keep and the highest velocity (0-1) each covers.
@@ -38,6 +90,10 @@ SOURCES = {
         trim=[(47, 8.0), (83, 6.0), (127, 3.5)],     # bass up to B2 8 s, to B5 6 s, above 3.5 s
         release=0.25, gain=2.0, name='Grand piano',   # gain: +6 dB, level with the synth piano it replaces (mid notes and chords)
         credit='Salamander Grand Piano by Alexander Holm (CC BY 3.0)'),
+    'epiano': dict(   # Wurlitzer EP200: four velocity layers, mapped and tuned by its SFZ
+        sfz='GregSullivan.E-Pianos/Wurlitzer EP200/Wurlitzer EP200.sfz', defines={'$EXT': 'flac'}, mono=True,
+        trim=[(127, 6.0)], release=0.2, gain=1.0, name='Wurlitzer electric piano',
+        credit="Wurlitzer EP200 from Greg Sullivan's E-Pianos (CC BY 3.0)"),
 }
 
 def build(root, key):
@@ -59,4 +115,4 @@ def build(root, key):
 
 if __name__ == '__main__':
     root = sys.argv[1]; keys = sys.argv[2:] or list(SOURCES)
-    for k in keys: build(root, k)
+    for k in keys: (build_sfz(root, k, SOURCES[k]) if 'sfz' in SOURCES[k] else build(root, k))

@@ -1,4 +1,4 @@
-// The sampled piano: loads, plays each note at the right pitch, time and loudness, keeps the synth's level in the mix, and works for chords and slides
+// The sampled instruments (Piano, E-piano): load, plays each note at the right pitch, time and loudness, keeps the synth's level in the mix, and works for chords and slides
 const {chromium,devices}=require('playwright');
 (async()=>{ const b=await chromium.launch({args:['--autoplay-policy=no-user-gesture-required']}); const p=await (await b.newContext({...devices['iPhone 13']})).newPage(); const errs=[]; p.on('pageerror',e=>errs.push(e.message));
   await p.goto('http://localhost:8800/noodle-s2.html?studio'); await p.waitForTimeout(900);
@@ -11,5 +11,7 @@ const {chromium,devices}=require('playwright');
     const t=mk('Piano',[{s:0,l:8,p:69,v:0.85,x:true}]), b2=await renderStem(t), d=b2.getChannelData(0), sr=b2.sampleRate, N=8192, s0=Math.round(0.2*sr); let best=0,bf=0; for(let f=400;f<480;f+=0.25){ let re=0,im=0; for(let i=0;i<N;i++){ const a=2*Math.PI*f*i/sr; re+=d[s0+i]*Math.cos(a); im+=d[s0+i]*Math.sin(a); } const m=re*re+im*im; if(m>best){best=m;bf=f;} } out.a4Hz=bf;
     for(const v of [0.3,0.6,0.95]) out['v'+v]=(await level(mk('Piano',[{s:0,l:8,p:60,v,x:true}]))).rmsDb;
     const ch=mk('Piano',[{s:0,l:8,p:57,v:.8,x:true},{s:8,l:8,p:55,v:.8,x:true}]); ch.chordType='triad'; out.chord=await level(ch);
+    out.epiano={loaded:await loadSampled('E-piano'), layers:SMP.epiano.layers.map(L=>L.regs.length), level:(await level(mk('E-piano',[{s:0,l:8,p:60,v:0.85,x:true}]))).rmsDb};
+    const ep=mk('E-piano',[{s:0,l:8,p:69,v:0.85,x:true}]), b3=await renderStem(ep), d3=b3.getChannelData(0); let best3=0,bf3=0; for(let f=420;f<460;f+=0.25){ let re=0,im=0; for(let i=0;i<N;i++){ const a=2*Math.PI*f*i/sr; re+=d3[s0+i]*Math.cos(a); im+=d3[s0+i]*Math.sin(a); } const m=re*re+im*im; if(m>best3){best3=m;bf3=f;} } out.epiano.a4Hz=bf3;
     return out; });
   console.log(JSON.stringify(r,null,1),errs); await b.close(); })();
