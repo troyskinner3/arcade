@@ -498,6 +498,11 @@ input[type=range]::-moz-range-thumb{width:10px;height:18px;border-radius:1px;bac
     <div class="nx-grp">Help Noodle get better</div>
     <div class="nx-item"><span>Share my takes<small id="nxShS"></small></span><button class="nx-sw" id="nxShSw" role="switch" aria-checked="false" aria-label="Share my takes"></button></div>
     <button class="nx-item" id="nxEmail" style="width:100%;background:none;border:0;border-bottom:1px solid var(--line);text-align:left"><span>Email news<small id="nxEmS">Hear about Noodle and what we build next</small></span><svg class="nx-ico" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
+    <div class="nx-item"><span>Send crash reports<small>What went wrong and the app version. No recordings or songs.</small></span><button class="nx-sw" id="nxCrSw" role="switch" aria-checked="true" aria-label="Send crash reports"></button></div>
+    <div class="nx-grp">Your songs</div>
+    <button class="nx-item" id="nxBackup" style="width:100%;background:none;border:0;border-bottom:1px solid var(--line);text-align:left"><span>Back up all songs<small>One file with every song and its recordings</small></span><svg class="nx-ico" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
+    <button class="nx-item" id="nxOpenFile" style="width:100%;background:none;border:0;border-bottom:1px solid var(--line);text-align:left"><span>Open a song file<small>Add songs from a Noodle file</small></span><svg class="nx-ico" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
+    <input type="file" id="songIn" hidden>
     <div class="nx-grp">Your setup</div>
     <button class="nx-item" id="nxTiming" style="width:100%;background:none;border:0;border-bottom:1px solid var(--line);text-align:left"><span>Mic and timing<small>Fix notes that land late, and other mic settings</small></span><svg class="nx-ico" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
     <button class="nx-item" id="nxDrums" style="width:100%;background:none;border:0;border-bottom:1px solid var(--line);text-align:left"><span>Your drum sounds<small>Teach Noodle your own noises for each drum</small></span><svg class="nx-ico" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
@@ -707,6 +712,25 @@ async function projDelete(id){ const p=await projDb.get(id); if(!p) return false
   await projDb.del(id); if(id===S.pid){ const o=defaultState(); o.tracks=[]; o.pid=projId(); projSaved=''; await projLoadState(o); } return true; }
 function projKeyLabel(){ try{ const has=S.tracks.some(t=>(INST[t.inst].kind==='pitched'&&t.notes&&t.notes.length)||(t.inst==='vox'&&(t.vn||[]).length)); if(!has) return ''; const K=currentKey(); if(K.none) return 'No key';
   return NOTE_NAMES[K.tonic]+' '+(SCALE_LABEL[K.scale]||''); }catch(e){ return ''; } }
+/* ---- Song files: a song (or all of them) with its kept recordings, to keep safe or open on another device ---- */
+const b64of=u8=>{ let s=''; for(let i=0;i<u8.length;i+=8192) s+=String.fromCharCode.apply(null,u8.subarray(i,i+8192)); return btoa(s); };
+const u8of=b=>{ const s=atob(b), u=new Uint8Array(s.length); for(let i=0;i<s.length;i++) u[i]=s.charCodeAt(i); return u; };
+const packV=v=>v instanceof Int16Array?{__i16:b64of(new Uint8Array(v.buffer,v.byteOffset,v.byteLength))}:v instanceof Float32Array?{__f32:b64of(new Uint8Array(v.buffer,v.byteOffset,v.byteLength))}:Array.isArray(v)?v.map(packV):v&&typeof v==='object'?Object.fromEntries(Object.entries(v).map(([k,x])=>[k,packV(x)])):v;
+const unpackV=v=>v&&typeof v==='object'?(v.__i16!=null?new Int16Array(u8of(v.__i16).buffer):v.__f32!=null?new Float32Array(u8of(v.__f32).buffer):Array.isArray(v)?v.map(unpackV):Object.fromEntries(Object.entries(v).map(([k,x])=>[k,unpackV(x)]))):v;
+async function songFileSave(ids, name){ if(ids.includes(S.pid)) await projSaveCurrent(); const songs=[];
+  for(const id of ids){ const p=await projDb.get(id); if(!p) continue; const o=JSON.parse(p.json), takes={}; for(const t of o.tracks||[]){ const r=await takeStore.get('vox'+t.id); if(r) takes[t.id]=packV(r); }
+    songs.push({title:p.title||'', createdAt:p.createdAt, updatedAt:p.updatedAt, song:o, takes}); }
+  if(!songs.length){ toast('Nothing to save yet: make a song first.'); return false; }
+  const day=new Date().toISOString().slice(0,10), fn=(ids.length>1?'Noodle songs '+day:(name||songs[0].title||'Untitled').replace(/[\\/:*?"<>|]+/g,' ').trim().slice(0,60)||'Untitled')+'.noodle';
+  await offerFile(fn, new Blob([JSON.stringify({noodle:'songs', v:1, build:NOODLE_BUILD, savedAt:new Date().toISOString(), songs})],{type:'application/json'})); return true; }
+async function songFileOpen(text){ let f; try{ f=JSON.parse(text); }catch(e){ f=null; } if(!f||f.noodle!=='songs'||!Array.isArray(f.songs)){ toast('That isn’t a Noodle song file.'); return -1; }
+  const have=(await projDb.all())||[]; let added=0, nid=Math.max(S.nextId||10,10);
+  for(const g of f.songs){ if(!g||!g.song||!Array.isArray(g.song.tracks)) continue;
+    if(have.some(p=>p.createdAt===g.createdAt && (p.title||'')===(g.title||'') && p.updatedAt>=g.updatedAt)) continue;   /* already here (and not older) */
+    const o=g.song; for(const t of o.tracks){ const old=t.id; t.id=nid++; if(o.activeId===old) o.activeId=t.id; if(g.takes&&g.takes[old]) await takeStore.put('vox'+t.id, unpackV(g.takes[old])); }   /* each part gets a new id, so nothing here is overwritten */
+    o.nextId=nid; o.pid=projId(); const now=Date.now();
+    await projDb.put({id:o.pid, title:g.title||'', createdAt:g.createdAt||now, updatedAt:g.updatedAt||now, bpm:o.bpm, bars:o.bars, key:'', parts:o.tracks.filter(t=>!t.guide).map(t=>t.inst), json:JSON.stringify(o)}); added++; }
+  S.nextId=Math.max(S.nextId||10,nid); persist(); return added; }
 /* ---- App shell ---- */
 const nxEsc=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 let nxSortBy='updatedAt', nxAt='studio', nxResume=false;
@@ -740,10 +764,11 @@ function sheetAboveTransport(){ const sc=$('nxScrim'), tr=document.querySelector
   sc.style.bottom=b?b+'px':''; document.body.classList.toggle('s2-sheet',!!b); }
 function nxClose(){ $('nxScrim').hidden=true; $('nxScrim').style.bottom=''; document.body.classList.remove('s2-sheet'); $('nxSheet').onclick=null; $('nxSheet').oninput=null; $('nxSheet').onchange=null; }
 async function nxMenu(id){ const p=(await projList()).find(x=>x.id===id); if(!p) return; const name=p.title||'Untitled';
-  nxSheet(`<h2>${nxEsc(name)}</h2><button class="nx-act" data-a="rename">Rename</button><button class="nx-act" data-a="dup">Duplicate</button><button class="nx-act danger" data-a="del">Delete</button>`);
+  nxSheet(`<h2>${nxEsc(name)}</h2><button class="nx-act" data-a="rename">Rename</button><button class="nx-act" data-a="dup">Duplicate</button><button class="nx-act" data-a="file">Save song file<small>To keep, or open on another device</small></button><button class="nx-act danger" data-a="del">Delete</button>`);
   $('nxSheet').onclick=async e=>{ const a=e.target.closest('[data-a]'); if(!a) return; const k=a.dataset.a;
     if(k==='rename'){ nxSheet(`<h2>Rename</h2><input class="nx-txt" id="nxRn" maxlength="60" value="${nxEsc(p.title||'')}" placeholder="Untitled" aria-label="Project name"><button class="nx-primary" id="nxRnOk">Save</button>`); $('nxSheet').onclick=null; const ok=async()=>{ await projRename(id,$('nxRn').value.trim()); nxClose(); nxRenderProjects(); }; $('nxRnOk').onclick=ok; $('nxRn').onkeydown=ev=>{ if(ev.key==='Enter') ok(); }; $('nxRn').focus(); }
     else if(k==='dup'){ await projDuplicate(id); nxClose(); await nxRenderProjects(); toast('Duplicated'); }
+    else if(k==='file'){ nxClose(); await songFileSave([id], name); }
     else if(k==='del'){ nxSheet(`<h2>Delete “${nxEsc(name)}”?</h2><p style="color:var(--muted);margin:0 0 6px">This removes the project from this device.</p><button class="nx-act danger" id="nxDelOk">Delete project</button><button class="nx-act" id="nxDelNo">Keep it</button>`); $('nxSheet').onclick=null; $('nxDelNo').onclick=nxClose; $('nxDelOk').onclick=async()=>{ await projDelete(id); nxClose(); await nxRenderProjects(); toast('Deleted'); }; } }; }
 /* ---- Sharing takes and email news (both optional), in More and in the first-launch screens ---- */
 const NX_PRIV='https://troyskinner3.github.io/arcade/noodle/privacy/';
@@ -839,7 +864,8 @@ function nxOnboard(done){ const O=$('nxOb'), I=$('nxObIn'), A=$('nxObActs'); O.h
     else { I.innerHTML=`<h1>Want news?</h1><p class="sub">${NX_EMAIL_TEXT}</p><input class="nx-txt" id="obEm" type="email" inputmode="email" autocomplete="email" placeholder="you@example.com" aria-label="Email address">`; A.innerHTML=`<button class="nx-primary" id="obE">Sign me up</button><button class="nx-ghost" id="obK">Skip</button>`;
       $('obK').onclick=finish; $('obE').onclick=async()=>{ const v=$('obEm').value.trim(); if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v)){ toast('That doesn’t look like an email address.'); return; } $('obE').disabled=true; const ok=await emailSignup(v,NX_EMAIL_TEXT); if(ok){ try{ localStorage.setItem('noodle.email',v); }catch(e){} finish(); } else { $('obE').disabled=false; toast('That didn’t go through. You can sign up later in More.'); } }; } };
   show(); }
-function nxInit(){ $('nxTrainCard').onclick=()=>nxTrain(); $('nxShSw').onclick=nxShareSheet; $('nxEmail').onclick=nxEmailSheet; nxMoreSync(); $('nxTabP').onclick=()=>nxGo('projects'); $('nxTabM').onclick=()=>nxGo('more'); $('nxPlus').onclick=nxNew;
+function nxInit(){ { const sw=$('nxCrSw'); sw.setAttribute('aria-checked',String(crashOn())); sw.onclick=()=>{ const on=!crashOn(); try{ localStorage.setItem(CRASH_KEY,on?'1':'0'); }catch(e){} sw.setAttribute('aria-checked',String(on)); }; }
+  $('nxTrainCard').onclick=()=>nxTrain(); $('nxShSw').onclick=nxShareSheet; $('nxEmail').onclick=nxEmailSheet; nxMoreSync(); $('nxTabP').onclick=()=>nxGo('projects'); $('nxTabM').onclick=()=>nxGo('more'); $('nxPlus').onclick=nxNew;
   $('nxQ').oninput=nxRenderProjects; $('nxScrim').onclick=e=>{ if(e.target===$('nxScrim')) nxClose(); }; nxSheetSwipe();
   $('nxSort').onclick=e=>{ const b=e.target.closest('button'); if(!b) return; nxSortBy=b.dataset.s; [...$('nxSort').children].forEach(x=>x.setAttribute('aria-pressed',x===b)); nxRenderProjects(); };
   $('nxList').onclick=async e=>{ const m=e.target.closest('[data-menu]'), o=e.target.closest('[data-id]'); if(m) return nxMenu(m.dataset.menu); if(!o) return; if(o.dataset.id!==S.pid) await projOpen(o.dataset.id); nxGo('studio'); };
@@ -1175,6 +1201,9 @@ function s2Init(){ const _rt=renderTracks; renderTracks=function(){ warmSounds()
     $('nxSheet').onclick=null; $('nxCal').onclick=()=>{ nxClose(); ensureCtx(); openRec('calib'); startRecord(true); };
     [['nxLa','latAuto'],['nxPa','playAlong'],['nxEc','ec']].forEach(([a,b])=>{ $(a).onchange=e=>{ S[b]=e.target.checked; save(); if(b==='ec') dropMic(); }; });
     $('nxSens').onchange=e=>{ S.sens=+e.target.value; save(); }; };
+  $('nxBackup').onclick=async()=>{ const all=(await projDb.all())||[]; if(projWorthKeeping()&&!all.some(p=>p.id===S.pid)){ projSaved=''; await projSaveCurrent(); }   /* the open song, even if it was never stored */ const ids=((await projDb.all())||[]).map(p=>p.id); await songFileSave(ids); };
+  $('nxOpenFile').onclick=()=>{ $('songIn').value=''; $('songIn').click(); };
+  $('songIn').onchange=async()=>{ const fl=$('songIn').files&&$('songIn').files[0]; if(!fl) return; const n=await songFileOpen(await fl.text()); if(n>0) toast(n===1?'Added 1 song to your songs.':`Added ${n} songs to your songs.`); else if(n===0 && fl) toast('Those songs are already here.'); try{ await nxRenderProjects(); }catch(e){} };
   $('nxCredits').onclick=()=>nxSheet(`<h2>Sound credits</h2><p style="color:var(--muted);font-size:14px;margin:0 0 10px">Noodle's recorded instruments come from open sample libraries. Thank you to their makers.</p>${SOUND_CREDITS.map(c=>`<div class="nx-item" style="padding:10px 0;display:block"><b>${nxEsc(c.sound)}</b><small>${nxEsc(c.lib)} by ${nxEsc(c.by)} · <a href="${c.url}" target="_blank" rel="noopener" style="color:inherit">${nxEsc(c.lic)}</a></small></div>`).join('')}`);
   $('nxDrums').onclick=()=>{ const rows=S.kit.slots.map(sl=>`<div class="nx-item" style="padding:10px 0"><span>${nxEsc(slotLabel(sl.id))}<small>${sl.ex&&sl.ex.length>=3?'Taught':'Say “'+nxEsc(sl.say||slotLabel(sl.id))+'”'}</small></span><button class="nx-ghost" data-teach="${sl.id}" style="width:auto;height:40px;padding:0 14px">${sl.ex&&sl.ex.length>=3?'Teach again':'Teach'}</button></div>`).join('');
     nxSheet(`<h2>Your drum sounds</h2><p style="color:var(--muted);font-size:14px;margin:0 0 6px">Make your noise for a drum on every click, and Noodle learns to tell your sounds apart.</p>${rows}<button class="nx-primary" id="nxTeachAll">Teach them all</button>`);
@@ -2196,12 +2225,12 @@ function wtWave(c,k){ let m=WTC.get(c); if(!m){ m={}; WTC.set(c,m); } if(!m[k]){
 /* String pluck: a plucked string modelled by Karplus-Strong (a burst of noise circulating in a delay one period long, softened on each pass),
    made once per note, brightness step and sample rate. Low notes ring longer. */
 const KS_C=new Map();
-function ksBuf(sr,m,bright){ const k=sr+'/'+m+'/'+bright; if(KS_C.has(k)) return KS_C.get(k); const f=mtof(m), t60=clamp(4.2-(m-40)*0.06,1.2,4.5), len=Math.round(sr*(t60+0.2)), y=new Float32Array(len);
+function ksBuf(sr,m,bright){ const k=sr+'/'+m+'/'+bright; if(KS_C.has(k)){ const b=KS_C.get(k); KS_C.delete(k); KS_C.set(k,b); return b; }   /* used again: now the newest */ const f=mtof(m), t60=clamp(4.2-(m-40)*0.06,1.2,4.5), len=Math.round(sr*(t60+0.2)), y=new Float32Array(len);
   const D=sr/f-0.5, N0=Math.floor(D), fr=D-N0, rho=Math.pow(10,-3/(t60*f)), a=0.06+0.3*bright/4; let st=(m*2654435761)>>>0, lp=0;
   for(let i=0;i<=N0+1&&i<len;i++){ st^=st<<13; st^=st>>>17; st^=st<<5; const n=(st>>>0)/4294967296*2-1; lp=lp+a*(n-lp); y[i]=lp; }   /* the pluck: brighter when played harder or with more Tone */
   let prev=0; for(let i=N0+2;i<len;i++){ const sNow=y[i-N0]*(1-fr)+y[i-N0-1]*fr; y[i]=rho*0.5*(sNow+prev); prev=sNow; }
   let pk=0; for(let i=0;i<len;i++) pk=Math.max(pk,Math.abs(y[i])); for(let i=0;i<len;i++) y[i]/=pk||1;
-  const b=new AudioBuffer({length:len,sampleRate:sr,numberOfChannels:1}); b.getChannelData(0).set(y); KS_C.set(k,b); if(KS_C.size>400) KS_C.delete(KS_C.keys().next().value); return b; }
+  const b=new AudioBuffer({length:len,sampleRate:sr,numberOfChannels:1}); b.getChannelData(0).set(y); KS_C.set(k,b); if(KS_C.size>48) KS_C.delete(KS_C.keys().next().value); return b; }   /* at most ~45 MB of strings; the oldest made goes first */
 function ksVoice(c,out,t,dur,m,v,T,fromM){ const b=ksBuf(c.sampleRate,Math.round(m),clamp(Math.round(T*2+v*2),0,4)), src=c.createBufferSource(), g=c.createGain(), pn=c.createStereoPanner(); src.buffer=b;
   const rate=Math.pow(2,(m-Math.round(m))/12); if(fromM!==null&&fromM!==m){ const gt=Math.min(0.09,Math.max(0.03,dur*0.35)); src.playbackRate.setValueAtTime(rate*Math.pow(2,(fromM-m)/12),t); src.playbackRate.exponentialRampToValueAtTime(rate,t+gt); } else src.playbackRate.value=rate;
   if(EXPR_DET) EXPR_DET.connect(src.detune); const pk=0.84*(0.3+0.7*v), rel=ENV_OVR?ENV_OVR.r:0.12;   /* between the Piano's level (Keys) and the Saw's (Arp) */ g.gain.setValueAtTime(pk,t); g.gain.setTargetAtTime(0,t+dur,rel/3);
@@ -2391,7 +2420,7 @@ async function renderDirty(){
       const todo=S.tracks.filter(t=>t._dirty||!t._buf);
       for(const tr of todo){ tr._dirty=false; ensureNodes(tr); let b;
         try{ b=await renderStem(tr); }catch(err){   /* one track that can't be made here must not stop the others from playing: it stays silent and says why */
-          b=ctx.createBuffer(2,Math.max(1,Math.round(bufLen(tr)*ctx.sampleRate)),ctx.sampleRate); const msg=`${partName(tr)} couldn't play here (${(err&&(err.name||'')+(err.message?': '+err.message:''))||err}).`; console.error(msg,err); if(renderErrShown!==msg){ renderErrShown=msg; toast(msg,8000); } }
+          b=ctx.createBuffer(2,Math.max(1,Math.round(bufLen(tr)*ctx.sampleRate)),ctx.sampleRate); const msg=`${partName(tr)} couldn't play here (${(err&&(err.name||'')+(err.message?': '+err.message:''))||err}).`; console.error(msg,err); crashReport('render: '+((err&&(err.name||'')+(err.message?': '+err.message:''))||err)+' ('+tr.inst+'/'+tr.sound+')', err&&err.stack); if(renderErrShown!==msg){ renderErrShown=msg; toast(msg,8000); } }
         if(!tr._dirty){ tr._buf=b; if(playing && !lenChanged) swapSource(tr); } }
       if(metroDirty){ try{ await renderMetro(); }catch(err){ console.error('metronome',err); metroDirty=false; } }
       if(lenChanged){ const old=renderedLen, sameTempo=renderedBpm===S.bpm; renderedLen=loopLen(); renderedBpm=S.bpm; if(playing){ const now=ctx.currentTime+0.04; const ph=old>0?(((now-t0)/old)%1+1)%1:0;   /* a new tempo keeps your place in the bar; a longer or shorter song keeps the same moment */
@@ -2815,6 +2844,12 @@ let drop=null; try{ drop=JSON.parse(localStorage.getItem(DROP_KEY)||'null'); }ca
 /* Sharing through the Noodle takes service (opt-in, 13+). No account: this install gets a random id that only this phone knows,
    which lets it add, update and delete its own takes. */
 const NOODLE_BUILD='2026-11-15';   /* which version of Noodle heard a shared take */
+const CRASH_KEY='noodle.crash', crashOn=()=>{ try{ return localStorage.getItem(CRASH_KEY)!=='0'; }catch(e){ return false; } }, crashSeen=new Set();
+function crashReport(msg, stack){ try{ if(!crashOn() || crashSeen.size>=10 || (/^(localhost|127\.0\.0\.1)$/.test(location.hostname) && !window.CRASH_TEST)) return;   /* CRASH_TEST: eval scripts only */
+  const m=String(msg||'').slice(0,400), st=String(stack||'').split('\n').slice(0,8).map(l=>l.replace(/(https?|noodle|file):\/\/[^\s)]*\//g,'')).join('\n'), k=m+'|'+st.split('\n')[0]; if(!m||crashSeen.has(k)) return; crashSeen.add(k);
+  fetch(NOODLE_API+'/v1/errors',{method:'PUT',headers:{'Content-Type':'application/json'},keepalive:true,body:JSON.stringify({msg:m, stack:st, build:NOODLE_BUILD, app:/NoodleApp/.test(navigator.userAgent)?'ios':'web', where:typeof nxAt==='string'?nxAt:''})}).catch(()=>{}); }catch(e){} }
+window.addEventListener('error',e=>crashReport(e.message, e.error&&e.error.stack));
+window.addEventListener('unhandledrejection',e=>{ const r=e.reason; crashReport(r&&r.message||String(r), r&&r.stack); });
 const NOODLE_API=(()=>{ try{ return localStorage.getItem('noodle.api')||'https://noodle-takes.cracked.workers.dev'; }catch(e){ return 'https://noodle-takes.cracked.workers.dev'; } })();   /* 'noodle.api' is for tests */
 /* Optional email list (news about Noodle and what comes next): separate from sharing takes, with its own consent. `text` is the wording the person agreed to. */
 async function emailSignup(email, text){ try{ const r=await fetch(NOODLE_API+'/v1/signups',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({email, consent:{v:1, text}})}); return r.ok; }catch(e){ return false; } }
@@ -3123,7 +3158,10 @@ function wireGrid(tr,el){ const wrap=el.querySelector('.gridwrap'); if(!wrap) re
 function renderTracks(){ warmSounds(); }   /* the Studio (s2Render) draws the tracks; this name is the redraw hook */
 /* The song's recorded instruments and kits, read into memory as soon as it opens (or a part changes sound), so even the first note you tap plays the recording.
    Each loads once (cached); only what the song uses, to keep memory low. */
-function warmSounds(){ for(const t of S.tracks){ if(INST[t.inst].kind==='pitched'){ if(SAMPLED[t.sound]) loadSampled(t.sound); } else if(t.hits && KIT_SAMPLED[t.sound]) loadSmp(KIT_SAMPLED[t.sound]); } }
+function warmSounds(){ const used=new Set();
+  for(const t of S.tracks){ if(INST[t.inst].kind==='pitched'){ if(SAMPLED[t.sound]){ used.add(SAMPLED[t.sound]); loadSampled(t.sound); } } else if(t.hits && KIT_SAMPLED[t.sound]){ used.add(KIT_SAMPLED[t.sound]); loadSmp(KIT_SAMPLED[t.sound]); } }
+  for(const k of Object.keys(SMP)) if(!used.has(k) && SMP[k].ok) delete SMP[k];   /* let go of instruments this song no longer uses (they load again if picked); the piano alone is ~130 MB */
+  if(!S.tracks.some(t=>t.sound==='String pluck')) KS_C.clear(); }
 /* small one-line picture of a part's pattern, for the parts list and the review step */
 function buildCard(tr){
     const d=INST[tr.inst];

@@ -100,3 +100,15 @@ test('more than 40 writes a minute from one address are refused; other addresses
   assert.equal(last, 429);
   assert.equal((await call(env, 'PUT', `/v1/takes/${I2}/take001/meta`, meta(), { 'CF-Connecting-IP': '203.0.113.10' })).status, 200);
 });
+
+test('error reports: stored once per distinct error a day, capped, admin can read them', async () => {
+  const env = { TAKES: bucket(), ADMIN_KEY: 'k' }; const E = (o) => call(env, 'PUT', '/v1/errors', JSON.stringify(o));
+  assert.equal((await E({})).status, 400);
+  assert.equal((await E({ msg: 'boom', stack: 'at a\nat b', build: 'x', app: 'ios' })).status, 200);
+  assert.equal((await E({ msg: 'boom', stack: 'at a\nat b', build: 'x', app: 'ios' })).status, 200);
+  const list = await (await call(env, 'GET', '/v1/admin/list?prefix=errors/', null, { Authorization: 'Bearer k' })).json();
+  assert.equal(list.keys.length, 1);
+  const one = await call(env, 'GET', '/v1/admin/get?key=' + encodeURIComponent(list.keys[0].key), null, { Authorization: 'Bearer k' });
+  assert.equal((await one.json()).msg, 'boom');
+  assert.equal((await call(env, 'PUT', '/v1/errors', 'x'.repeat(9000))).status, 413);
+});

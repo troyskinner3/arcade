@@ -10,10 +10,12 @@
 //   PUT    /v1/signups                      body = {email, consent: {v, text}}  optional email list (news), separate from sharing takes
 //   DELETE /v1/signups                      body = {email}                      take that email off the list
 // Shared takes are kept for 3 years at most (KEEP_DAYS), counted from when the take first arrived; storage removes them on its own.
+//   PUT    /v1/errors                       body = {msg, stack, build, app, where}  an anonymous error report (no recordings, no song content)
+//                                           stored once per distinct error per day, kept 90 days, at most MAX_ERRORS_PER_DAY a day
 //   GET    /v1/admin/list?prefix=&cursor=   owner only (Authorization: Bearer ADMIN_KEY)
 //   GET    /v1/admin/get?key=               owner only
 const ORIGINS = ['noodle://app', 'https://troyskinner3.github.io'];
-const KEEP_DAYS = 3 * 365, MAX_SIGNUPS_PER_DAY = 400;
+const KEEP_DAYS = 3 * 365, MAX_SIGNUPS_PER_DAY = 400, ERROR_DAYS = 90, MAX_ERRORS_PER_DAY = 150;
 const MAX_AUDIO = 3 * 1024 * 1024, MAX_META = 256 * 1024, MAX_TAKES_PER_DAY = 300;
 const ID = /^[A-Za-z0-9_-]{22,64}$/, TAKE = /^[A-Za-z0-9_-]{6,96}$/;
 
@@ -26,6 +28,9 @@ function tooFast(req) {
   if (hits.size > 5000) for (const key of hits.keys()) { if (!key.endsWith('|' + win)) hits.delete(key); }
   return n > RATE;
 }
+// error reports a day, counted in memory (best-effort, per worker instance), so a crash loop can't use up the free plan's daily writes
+const errDays = new Map();
+function errorsToday(day) { const n = (errDays.get(day) || 0) + 1; errDays.clear(); errDays.set(day, n); return n; }
 function cors(req) {
   const o = req.headers.get('Origin') || '';
   const ok = ORIGINS.includes(o) || /^http:\/\/localhost(:\d+)?$/.test(o);
@@ -98,7 +103,7 @@ async function handle(req, env) {
         return json(req, 200, { keys: page.objects.map((o) => ({ key: o.key, size: o.size, uploaded: o.uploaded })), cursor: page.truncated ? page.cursor : null });
       }
       if (p[2] === 'get') {
-        const key = url.searchParams.get('key') || ''; if (!key.startsWith('takes/') && !key.startsWith('signups/')) return json(req, 400, { error: 'key' });
+        const key = url.searchParams.get('key') || ''; if (!key.startsWith('takes/') && !key.startsWith('signups/') && !key.startsWith('errors/')) return json(req, 400, { error: 'key' });
         const o = await B.get(key); if (!o) return json(req, 404, { error: 'not found' });
         return new Response(o.body, { headers: { 'Content-Type': key.endsWith('.json') ? 'application/json' : 'audio/wav' } });
       }
@@ -119,6 +124,20 @@ async function handle(req, env) {
       if (n >= MAX_SIGNUPS_PER_DAY) return json(req, 429, { error: 'daily limit' });
       await B.put(ck, JSON.stringify({ n: n + 1 }), { expiresAt: Date.now() + 3 * 864e5 });
       await B.put('signups/' + h + '.json', JSON.stringify({ email, at: new Date().toISOString(), source: 'noodle', consent: { v: m.consent.v, text: m.consent.text.slice(0, 300) } }), { httpMetadata: { contentType: 'application/json' } });
+      return json(req, 200, { ok: true });
+    }
+    if (p[1] === 'errors' && p.length === 2 && req.method === 'PUT') {
+      const buf = await readLimited(req, 8192); if (!buf) return json(req, 413, { error: 'too large' });
+      let m; try { m = JSON.parse(new TextDecoder().decode(buf)); } catch { return json(req, 400, { error: 'json' }); }
+      const str = (v, n) => String(v == null ? '' : v).slice(0, n);
+      const rec = { msg: str(m && m.msg, 400), stack: str(m && m.stack, 2000), build: str(m && m.build, 40), app: str(m && m.app, 10), where: str(m && m.where, 40) };
+      if (!rec.msg) return json(req, 400, { error: 'msg' });
+      // one record per distinct error (message and first stack lines) per day: repeats cost no storage writes
+      const day = new Date().toISOString().slice(0, 10), sig = rec.msg + '|' + rec.stack.split('\n').slice(0, 3).join('|') + '|' + rec.build;
+      const h = [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(sig)))].slice(0, 12).map((x) => x.toString(16).padStart(2, '0')).join('');
+      const key = `errors/${day}/${h}.json`; if (await B.head(key)) return json(req, 200, { ok: true });
+      if (errorsToday(day) > MAX_ERRORS_PER_DAY) return json(req, 429, { error: 'daily limit' });
+      await B.put(key, JSON.stringify({ ...rec, at: new Date().toISOString() }), { httpMetadata: { contentType: 'application/json' }, expiresAt: Date.now() + ERROR_DAYS * 864e5 });
       return json(req, 200, { ok: true });
     }
     if (p[1] === 'installs' && p.length === 3 && req.method === 'DELETE') {

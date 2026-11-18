@@ -9,6 +9,7 @@ Stores takes people chose to share (opt-in, 13+) so Noodle can learn from them. 
 - Takes are kept 3 years at most, counted from when they first arrived (storage expires them on its own).
 - Optional email list (`/v1/signups`): address + date + the consent wording agreed to, deduplicated, removable; 400 new addresses a day at most.
   Not linked to takes. To be copied into Tuttii's marketing sheet (by hand or a script using the admin endpoints).
+- Crash reports (`/v1/errors`): error message, a few stack lines, app build, app or web, screen. No recordings, song content or ID. One record per distinct error per day (`errors/<day>/<hash>.json`), kept 90 days, at most 150 new ones a day. Read them with `/v1/admin/list?prefix=errors/`.
 - Owner access (`/v1/admin/*`) needs the `ADMIN_KEY` secret.
 
 ## Cost: none, by design
