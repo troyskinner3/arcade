@@ -1088,7 +1088,7 @@ function s2TrackSheet(L){ const tr=L.tracks[0], all=()=>S.tracks.filter(t=>s2Lan
   $('s2Tn').onchange=e=>{ const v=e.target.value.trim().slice(0,32)||undefined; each(t=>{ t.name=v; }); save(); renderTracks(); };
   $('nxSheet').onclick=e=>{ let b;
     if(b=e.target.closest('#s2Ins button')){ const k=b.dataset.k; each(t=>changeInst(t,k)); keyCache=null; save(); renderTracks(); scheduleRender(); s2TrackSheet(s2Lane(L.id)); }
-    else if(b=e.target.closest('#s2Snd button')){ each(t=>{ t.sound=b.dataset.x; if(t.inst==='vox') t.fx=Object.assign({},VOX_PRESETS[t.sound]); t._dirty=true; }); rerender(); s2TrackSheet(s2Lane(L.id)); }
+    else if(b=e.target.closest('#s2Snd button')){ each(t=>{ t.sound=b.dataset.x; if(t.inst==='vox') t.fx=Object.assign({},VOX_PRESETS[t.sound]); t._dirty=true; }); warmSounds(); rerender(); s2TrackSheet(s2Lane(L.id)); }
     else if(b=e.target.closest('[data-o]')){ each(t=>{ t.oct=clamp((t.oct||0)+(+b.dataset.o),-3,3); t.octSet=true; t._dirty=true; }); $('s2Oct').textContent=(tr.oct>0?'+':'')+tr.oct; rerender(); renderTracks(); }
     else if((b=e.target.closest('[data-a]')) && b.dataset.a==='dup'){ nxClose(); const nl=s2DupTrack(L); if(nl){ s2.selId=null; renderTracks(); setTimeout(()=>s2TrackSheet(s2Lane(nl)),80); toast('Track duplicated. Pick its instrument, e.g. Keys or Pad for chords.'); } }
     else if(b=e.target.closest('[data-a]')){ nxClose(); const ms=all(); ms.slice(1).forEach(t=>{ disposeTrack(t); }); S.tracks=S.tracks.filter(t=>!ms.slice(1).includes(t)); deletePart(ms[0]); } };
@@ -1108,7 +1108,7 @@ function s2Sheets(kind){ $('nxSheet').oninput=null;
     [['s2Mv','vol'],['s2Mr','rev'],['s2Md','drive'],['s2Mp','punch']].forEach(([id,k])=>{ $(id).oninput=e=>setMaster(k,e.target.value); }); $('nxSheet').onclick=null; }
   if(kind==='name'){ nxSheet(`<h2>Rename</h2><input class="nx-txt" id="s2Rn" maxlength="60" value="${nxEsc(S.title||'')}" placeholder="Untitled" aria-label="Project name"><button class="nx-primary" id="s2RnOk">Save</button>`); $('nxSheet').onclick=null;
     const ok=()=>{ S.title=$('s2Rn').value.trim(); save(); nxClose(); s2Render(); }; $('s2RnOk').onclick=ok; $('s2Rn').onkeydown=e=>{ if(e.key==='Enter') ok(); }; $('s2Rn').focus(); } }
-function s2Init(){ const _rt=renderTracks; renderTracks=function(){ if(s2.post && !recState && rs.mode==null){ s2.post=false; try{ s2Tidy(); }catch(e){} }
+function s2Init(){ const _rt=renderTracks; renderTracks=function(){ warmSounds(); if(s2.post && !recState && rs.mode==null){ s2.post=false; try{ s2Tidy(); }catch(e){} }
     /* the old part rows are no longer built (they were never shown) */ if(s2On()){ if(s2.edId!=null) s2EdMount(); else s2Render(); } };
   const _rd=redrawTrack; redrawTrack=function(tr){ _rd.apply(this,arguments); if(s2On()){ const L=s2Lane(s2LaneId(tr)), cv=L&&$('s2In').querySelector(`canvas[data-cv="${L.id}"]`); if(cv) s2DrawLane(L,cv); } };
   $('s2EdBack').onclick=s2EdClose; $('s2EdUndo').onclick=()=>undo(); $('s2EdRedo').onclick=()=>redo(); $('s2EdPlay').onclick=()=>togglePlay();
@@ -3033,7 +3033,10 @@ function wireGrid(tr,el){ const wrap=el.querySelector('.gridwrap'); if(!wrap) re
   const zi=el.querySelector('.zi'), zo=el.querySelector('.zo');
   if(zi) zi.onclick=()=>{ touched(); setZoom(tr,(tr._grid?tr._grid.cw:gridCW)*1.5); }; if(zo) zo.onclick=()=>{ touched(); setZoom(tr,(tr._grid?tr._grid.cw:gridCW)/1.5); };
 }
-function renderTracks(){}   /* the Studio (s2Render) draws the tracks; this name is the redraw hook */
+function renderTracks(){ warmSounds(); }   /* the Studio (s2Render) draws the tracks; this name is the redraw hook */
+/* The song's recorded instruments and kits, read into memory as soon as it opens (or a part changes sound), so even the first note you tap plays the recording.
+   Each loads once (cached); only what the song uses, to keep memory low. */
+function warmSounds(){ for(const t of S.tracks){ if(INST[t.inst].kind==='pitched'){ if(SAMPLED[t.sound]) loadSampled(t.sound); } else if(t.hits && KIT_SAMPLED[t.sound]) loadSmp(KIT_SAMPLED[t.sound]); } }
 /* small one-line picture of a part's pattern, for the parts list and the review step */
 function buildCard(tr){
     const d=INST[tr.inst];
