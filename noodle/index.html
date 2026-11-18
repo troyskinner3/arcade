@@ -2163,31 +2163,38 @@ function sampleVoice(c,out,sound,t,dur,m,v,T,fromM){ const e=SMP[SAMPLED[sound]]
   const avail=(buf.duration-buf.off)/rate; src.start(t,buf.off); src.stop(t+Math.min(avail,dur+rel*2)+0.01); }
 function voice(c,out,sound,t,dur,m,v,T,fromM=null){
   if(SAMPLED[sound]){ if(smpReady(sound)){ sampleVoice(c,out,sound,t,dur,m,v,T,fromM); return; } loadSampled(sound); }
-  const f=mtof(m), g=c.createGain(); g.connect(out); const oscs=[];
+  const f=mtof(m), g=c.createGain(); g.gain.value=0; g.connect(out); const oscs=[], vb=0.7+0.3*v;   /* vb: harder notes a little brighter */
   const osc=(type,freq,det=0,dest=g,gain=1)=>{ const o=c.createOscillator(); o.type=type; o.frequency.value=freq; o.detune.value=det; if(gain!==1){ const gg=c.createGain(); gg.gain.value=gain; o.connect(gg); gg.connect(dest);} else o.connect(dest); oscs.push(o); return o; };
+  const pn=(p,dest)=>{ const s=c.createStereoPanner(); s.pan.value=p; s.connect(dest); return s; };
+  const ph=i=>{ const x=Math.sin(m*12.9898+i*78.233)*43758.5453; return x-Math.floor(x); };   /* each stacked voice starts at its own point in the wave (the same every render) */
+  const uni=(type,freq,dets,pans,dest,gain=1,cg=gain)=>dets.map((d,i)=>{ const o=osc(type,freq,d,pans?pn(pans[i],dest):dest,d===0?cg:gain); o._ph=ph(i)/freq; return o; });
+  const fenv=(b,hi,lo,tau)=>{ b.frequency.setValueAtTime(hi,t); b.frequency.setTargetAtTime(lo,t,tau); };   /* the filter opens at the start of the note and settles */
   const lp=(fr,q=0.7)=>{ const b=c.createBiquadFilter(); b.type='lowpass'; b.frequency.value=fr; b.Q.value=q; b.connect(g); return b; };
   const env=(a,d,s,r,pk)=>{ ENV_LAST={a,d,s,r}; if(ENV_OVR){ a=ENV_OVR.a; d=ENV_OVR.d; s=ENV_OVR.s; r=ENV_OVR.r; } g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(pk,t+a); g.gain.setTargetAtTime(pk*s,t+a,d/3); const te=t+Math.max(dur,a+0.01); g.gain.setTargetAtTime(0,te,r/4); return te+r+0.05; };
   let end;
   switch(sound){
     case 'Sub': osc('sine',f); osc('triangle',f,0,g,0.22); end=env(0.006,0.25,0.85,0.08,0.62*v); break;
     case 'Reese': { const b=lp(220+T*1900,2.2); osc('sawtooth',f,-9,b); osc('sawtooth',f,9,b); osc('sine',f,0,g,0.5); end=env(0.01,0.3,0.85,0.1,0.32*v); break; }
-    case 'Pluck': { const b=lp(200,5); b.frequency.setValueAtTime(700+T*5200,t); b.frequency.setTargetAtTime(160,t,0.07); osc('sawtooth',f,0,b); osc('sine',f,0,g,0.4); end=env(0.003,0.3,0.3,0.1,0.5*v); break; }
-    case 'Saw': { const b=lp(1100+T*6000,1); osc('sawtooth',f,-7,b); osc('sawtooth',f,7,b); const l=c.createOscillator(), lg=c.createGain(); l.frequency.value=5.4; lg.gain.setValueAtTime(0,t); lg.gain.linearRampToValueAtTime(9,t+0.35); l.connect(lg); oscs.forEach(o=>lg.connect(o.detune)); l._lfo=1; oscs.push(l); end=env(0.012,0.25,0.75,0.12,0.22*v); break; }
-    case 'Square': { const b=lp(800+T*5000,1); osc('square',f,0,b); osc('square',f*2,4,b,0.18); end=env(0.005,0.18,0.6,0.1,0.2*v); break; }
-    case 'Bell': { const car=osc('sine',f); const mod=c.createOscillator(), mg=c.createGain(); mod.frequency.value=f*3.5; mg.gain.setValueAtTime(f*(1.5+T*4),t); mg.gain.setTargetAtTime(0,t,0.35); mod.connect(mg); mg.connect(car.frequency); oscs.push(mod); osc('sine',f*2,0,g,0.15); end=env(0.002,1.5,0,0.6,0.32*v); break; }
+    case 'Pluck': { const b=lp(200,5); fenv(b,(700+T*5200)*vb,160,0.07); uni('sawtooth',f,[-6,6],[-0.4,0.4],b,0.6); osc('sine',f,0,g,0.4); end=env(0.003,0.3,0.3,0.1,0.792*v); break; }
+    case 'Saw': { const cut=(1100+T*6000)*vb, b=lp(cut,1); fenv(b,cut*1.8,cut,0.18); uni('sawtooth',f,[-8,0,8],[-0.6,0,0.6],b,0.8,0.6); const l=c.createOscillator(), lg=c.createGain(); l.frequency.value=5.4; lg.gain.setValueAtTime(0,t); lg.gain.linearRampToValueAtTime(9,t+0.35); l.connect(lg); oscs.forEach(o=>lg.connect(o.detune)); l._lfo=1; oscs.push(l); end=env(0.012,0.25,0.75,0.12,0.353*v); break; }
+    case 'Square': { const cut=(800+T*5000)*vb, b=lp(cut,1); fenv(b,cut*1.5,cut,0.12); uni('square',f,[-5,0,5],[-0.5,0,0.5],b,0.3,1); osc('square',f*2,4,b,0.18); end=env(0.005,0.18,0.6,0.1,0.264*v); break; }
+    case 'Bell': { const car=osc('sine',f,-3,pn(-0.3,g)), car2=osc('sine',f,3,pn(0.3,g)); const mod=c.createOscillator(), mg=c.createGain(); mod.frequency.value=f*3.5; mg.gain.setValueAtTime(f*(1.5+T*4)*vb,t); mg.gain.setTargetAtTime(0,t,0.35); mod.connect(mg); mg.connect(car.frequency); mg.connect(car2.frequency); oscs.push(mod); osc('sine',f*2,0,g,0.15);
+      { const pg=c.createGain(); pg.gain.setValueAtTime(0.12*v,t); pg.gain.setTargetAtTime(0,t,0.12); pg.connect(g); osc('sine',f*2.756,0,pg); }   /* the bright strike that fades fast, as on a real bell */ end=env(0.002,1.5,0,0.6,0.289*v); break; }
     case 'E-piano': { const car=osc('sine',f); const mod=c.createOscillator(), mg=c.createGain(); mod.frequency.value=f; mg.gain.setValueAtTime(f*(0.6+T*2.2),t); mg.gain.setTargetAtTime(f*0.15,t,0.15); mod.connect(mg); mg.connect(car.frequency); oscs.push(mod); osc('sine',f*4.01,0,g,0.05); end=env(0.003,1.2,0.35,0.25,0.34*v); break; }
-    case 'Organ': { const b=lp(1500+T*6000,0.7); [1,2,3,4,6].forEach((h,i)=>osc('sine',f*h,0,b,[1,0.7,0.4,0.25,0.12][i])); end=env(0.008,0.1,1,0.06,0.13*v); break; }
-    case 'Warm pad': { const b=lp(450+T*2600,0.8); [-11,0,11].forEach(d=>osc('sawtooth',f,d,b)); osc('sine',f/2,0,g,0.3); end=env(0.32,0.6,0.85,0.7,0.13*v); break; }
-    case 'Supersaw': { const b=lp(2200+T*6500,0.8); [-21,-11,0,11,21].forEach((d,i)=>osc('sawtooth',f,d,b,i===2?1:0.8)); osc('sawtooth',f/2,0,b,0.35); end=env(0.008,0.25,0.8,0.18,0.1*v); break; }
+    case 'Organ': { const b=lp(1500+T*6000,0.7); [1,2,3,4,6].forEach((h,i)=>osc('sine',f*h,0,b,[1,0.7,0.4,0.25,0.12][i]));
+      { const n=noise(c), hp=c.createBiquadFilter(), kg=c.createGain(); hp.type='bandpass'; hp.frequency.value=2500; hp.Q.value=0.8; kg.gain.setValueAtTime(0.05*v,t); kg.gain.setTargetAtTime(0,t,0.006); n.connect(hp); hp.connect(kg); kg.connect(out); n.start(t); n.stop(t+0.05); }   /* the key click of a tonewheel organ */ end=env(0.008,0.1,1,0.06,0.13*v); break; }
+    case 'Warm pad': { const cut=(450+T*2600)*vb, b=lp(cut,0.8); uni('sawtooth',f,[-14,-5,5,14],[-0.8,-0.3,0.3,0.8],b,0.8); osc('sine',f/2,0,g,0.3);
+      { const l=c.createOscillator(), lg=c.createGain(); l.frequency.value=0.13+0.03*ph(7); lg.gain.value=cut*0.3; l.connect(lg); lg.connect(b.frequency); l._lfo=1; oscs.push(l); }   /* slowly breathing */ end=env(0.32,0.6,0.85,0.7,0.188*v); break; }
+    case 'Supersaw': { const cut=(2200+T*6500)*vb, b=lp(cut,0.8); fenv(b,cut*1.4,cut,0.2); uni('sawtooth',f,[-28,-17,-8,0,8,17,28],[-0.85,-0.57,-0.28,0,0.28,0.57,0.85],b,0.7,1); osc('sawtooth',f/2,0,b,0.35); end=env(0.008,0.25,0.8,0.18,0.136*v); break; }
     case 'Guitar': { const sh=c.createWaveShaper(); sh.curve=driveCurve(0.85); const pre=c.createGain(); pre.gain.value=2.2; const b=lp(2600+T*2600,0.9); pre.connect(sh); sh.connect(b);
       osc('sawtooth',f,-5,pre,0.7); osc('square',f,6,pre,0.5); osc('square',f/2,0,pre,0.3); end=env(0.004,0.5,0.7,0.12,0.18*v); break; }
     case 'Piano': { [1,2,3,4].forEach((h,i)=>osc(i?'sine':'triangle',f*h*(1+0.0008*h*h),0,g,[1,0.45,0.18,0.08][i])); const dk=Math.max(0.5,2.2-(m-48)*0.03); end=env(0.002,dk,0.06,0.3,0.3*v); break; }
-    case 'Stab': { const b=lp(300,2); b.frequency.setValueAtTime(1800+T*5000,t); b.frequency.setTargetAtTime(400,t,0.06); [-12,0,12].forEach(d=>osc('sawtooth',f,d,b)); end=env(0.003,0.16,0.15,0.08,0.2*v); break; }
+    case 'Stab': { const b=lp(300,2); fenv(b,(1800+T*5000)*vb,400,0.06); uni('sawtooth',f,[-12,0,12],[-0.6,0,0.6],b); end=env(0.003,0.16,0.15,0.08,0.348*v); break; }
     case 'Choir': { const b1=c.createBiquadFilter(), b2=c.createBiquadFilter(); b1.type=b2.type='bandpass'; b1.frequency.value=720; b2.frequency.value=1150; b1.Q.value=b2.Q.value=4; b1.connect(g); b2.connect(g);
-      const mix=c.createGain(); mix.gain.value=2.2; mix.connect(b1); mix.connect(b2); [-9,0,9].forEach(d=>osc('sawtooth',f,d,mix)); const l=c.createOscillator(), lg=c.createGain(); l.frequency.value=5.2; lg.gain.value=9; l.connect(lg); oscs.forEach(o=>lg.connect(o.detune)); l._lfo=1; oscs.push(l); end=env(0.28,0.4,0.9,0.5,0.22*v); break; }
-    case 'Sweep': { const b=lp(600,3); const l=c.createOscillator(), lg=c.createGain(); l.frequency.value=0.22; lg.gain.value=1500+T*1500; l.connect(lg); lg.connect(b.frequency); b.frequency.value=1600+T*1200; l._lfo=1; [-14,0,14].forEach(d=>osc('sawtooth',f,d,b)); oscs.push(l); end=env(0.45,0.5,0.85,0.7,0.12*v); break; }
+      const mix=c.createGain(); mix.gain.value=2.2; mix.connect(b1); mix.connect(b2); uni('sawtooth',f,[-9,0,9],[-0.6,0,0.6],mix); const l=c.createOscillator(), lg=c.createGain(); l.frequency.value=5.2; lg.gain.value=9; l.connect(lg); oscs.forEach(o=>lg.connect(o.detune)); l._lfo=1; oscs.push(l); end=env(0.28,0.4,0.9,0.5,0.318*v); break; }
+    case 'Sweep': { const b=lp(600,3); const l=c.createOscillator(), lg=c.createGain(); l.frequency.value=0.22; lg.gain.value=1500+T*1500; l.connect(lg); lg.connect(b.frequency); b.frequency.value=1600+T*1200; l._lfo=1; uni('sawtooth',f,[-14,0,14],[-0.7,0,0.7],b); oscs.push(l); end=env(0.45,0.5,0.85,0.7,0.171*v); break; }
     case '808 glide': { const sh=c.createWaveShaper(); sh.curve=driveCurve(0.35); sh.connect(g); osc('sine',f,0,sh); osc('triangle',f,0,sh,0.15); end=env(0.004,1.4,0.55,0.18,0.75*v); break; }
-    case 'Synth bass': { const b=lp(250,4); b.frequency.setValueAtTime(900+T*3500,t); b.frequency.setTargetAtTime(220,t,0.09); osc('sawtooth',f,0,b); osc('square',f,-6,b,0.5); osc('sine',f/2,0,g,0.45); end=env(0.004,0.22,0.6,0.08,0.3*v); break; }
+    case 'Synth bass': { const b=lp(250,4); fenv(b,(900+T*3500)*vb,220,0.09); osc('sawtooth',f,0,b); osc('square',f,-6,b,0.5); osc('sine',f/2,0,g,0.45); end=env(0.004,0.22,0.6,0.08,0.3*v); break; }
     case 'Rock bass': { const b=lp(700+T*1600,1); osc('triangle',f,0,b); osc('sawtooth',f,0,b,0.35); const n=noise(c), nf=c.createBiquadFilter(), ng=c.createGain(); nf.type='bandpass'; nf.frequency.value=1800; ng.gain.setValueAtTime(0.08*v,t); ng.gain.exponentialRampToValueAtTime(0.001,t+0.02); n.connect(nf); nf.connect(ng); ng.connect(out); n.start(t); n.stop(t+0.03); end=env(0.004,0.35,0.55,0.1,0.5*v); break; }
     case 'Strings': { const b=lp(1300+T*3500,0.7); [-7,7].forEach(d=>osc('sawtooth',f,d,b)); const l=c.createOscillator(), lg=c.createGain(); l.frequency.value=5; lg.gain.value=7; l.connect(lg); oscs.forEach(o=>lg.connect(o.detune)); l._lfo=1; oscs.push(l); end=env(0.16,0.3,0.9,0.45,0.15*v); break; }
     default: osc('triangle',f); end=env(0.005,0.2,0.7,0.1,0.3*v);
@@ -2196,7 +2203,7 @@ function voice(c,out,sound,t,dur,m,v,T,fromM=null){
     const ratio=Math.pow(2,(fromM-m)/12), gt=Math.min(0.09,Math.max(0.03,dur*0.35));
     oscs.forEach(o=>{ if(o._lfo) return; const f0=o.frequency.value; o.frequency.setValueAtTime(f0*ratio,t); o.frequency.exponentialRampToValueAtTime(f0,t+gt); }); }
   if(EXPR_DET) oscs.forEach(o=>{ if(!o._lfo) EXPR_DET.connect(o.detune); });
-  oscs.forEach(o=>{ o.start(t); o.stop(end); });
+  oscs.forEach(o=>{ o.start(Math.max(0,t-(o._ph||0))); o.stop(end); });
 }
 /* Follow my voice: for each note, curves from the moment of the take where it was sung - pitch bend (scoops, vibrato, bends,
    in cents around the note), loudness, and brightness (mouth shape: "ooo" darker, "aaa" brighter) as a filter. Amount 0-100. */
