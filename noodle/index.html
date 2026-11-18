@@ -219,7 +219,7 @@ input[type=range]::-moz-range-thumb{width:10px;height:18px;border-radius:1px;bac
 
 /* inspector (More): labeled sections, one row per setting, labels in one column */
 
-.selbar{display:flex;align-items:center;gap:8px;margin-top:6px}.selbar[hidden]{display:none}.selbar .sb-n{font:600 13px var(--f-mono);color:var(--muted);margin-right:auto}.selbar .btn{padding:6px 14px;min-height:34px}
+.selbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:6px}.sb-vel{flex-basis:100%;display:flex;align-items:center;gap:12px;font:500 14px var(--f-body);color:var(--muted)}.sb-vel input{flex:1;min-width:0}.sb-vel output{width:32px;text-align:right;font:500 13px var(--f-mono);color:var(--ink)}.selbar[hidden]{display:none}.selbar .sb-n{font:600 13px var(--f-mono);color:var(--muted);margin-right:auto}.selbar .btn{padding:6px 14px;min-height:34px}
 .notebar{background:var(--panel);border-color:var(--c);padding:6px}
 .notebar .ibtn{min-width:34px}
 .slot{background:var(--panel2)}
@@ -2915,12 +2915,14 @@ function buildCard(tr){
     const d=INST[tr.inst];
     const el=document.createElement('article'); el.className='track'; el.style.setProperty('--c',d.color); tr._el=el;
     const pitched=d.kind==='pitched';
-    el.innerHTML=`<div class="gridbox"><div class="gridwrap"><div class="gridin"><canvas></canvas><div class="ph"></div><div class="nsel" hidden></div></div></div><div class="glabels"></div></div><div class="selbar" hidden><span class="sb-n"></span><button class="btn sb-split" title="Split in two (or double-tap the note)">Split</button><button class="btn sb-del">Delete</button></div><div class="ovrow"><div class="ovw" hidden aria-hidden="true"><canvas></canvas><div class="ovw-win"></div></div></div>`;
+    el.innerHTML=`<div class="gridbox"><div class="gridwrap"><div class="gridin"><canvas></canvas><div class="ph"></div><div class="nsel" hidden></div></div></div><div class="glabels"></div></div><div class="selbar" hidden><span class="sb-n"></span><button class="btn sb-split" title="Split in two (or double-tap the note)">Split</button><button class="btn sb-del">Delete</button><label class="sb-vel"><span>Velocity</span><input type="range" min="5" max="100" step="1" aria-label="Velocity: how hard this note or hit is played"><output></output></label></div><div class="ovrow"><div class="ovw" hidden aria-hidden="true"><canvas></canvas><div class="ovw-win"></div></div></div>`;
     if(tr._sel && !evs(tr).includes(tr._sel)) tr._sel=null;
     const cv=el.querySelector('canvas');
     const hs=el.querySelector('.nsel'); tr._nsel=hs; 
     tr._selbar=el.querySelector('.selbar'); tr._ndel=null; tr._nsplit=null;
-    if(tr._selbar){ tr._selbar.querySelector('.sb-del').onclick=()=>deleteSelNote(tr); tr._selbar.querySelector('.sb-split').onclick=()=>splitSelNote(tr); }
+    if(tr._selbar){ tr._selbar.querySelector('.sb-del').onclick=()=>deleteSelNote(tr); tr._selbar.querySelector('.sb-split').onclick=()=>splitSelNote(tr);
+      const vs=tr._selbar.querySelector('.sb-vel input'), vo=tr._selbar.querySelector('.sb-vel output');   /* velocity of the selected note or hit: how hard it is played (louder; brighter for some sounds) */
+      vs.oninput=()=>{ vo.textContent=vs.value; }; vs.onchange=()=>{ const n=tr._sel; if(!n||!evs(tr).includes(n)) return; const to=+vs.value/100; logEdit(tr,{k:'vel',s:n.s,from:+(n.v??0.85).toFixed(2),to}); n.v=to; evChanged(tr); if(!playing) previewEv(tr,n); }; }
     if(tr._ndel){ tr._ndel.addEventListener('pointerdown',e=>e.stopPropagation()); tr._ndel.onclick=e=>{ e.stopPropagation(); deleteSelNote(tr); }; }
     if(hs){ hs.addEventListener('pointerdown',e=>{ e.stopPropagation(); noteDown(tr,e,true); }); hs.addEventListener('pointermove',e=>noteMove(tr,e)); hs.addEventListener('pointerup',e=>noteUp(tr,e)); hs.addEventListener('pointercancel',e=>noteUp(tr,e,true)); }
     if(d.kind!=='audio'){ cv.style.touchAction='pan-x pan-y'; cv.addEventListener('pointerdown',e=>noteDown(tr,e)); cv.addEventListener('pointermove',e=>noteMove(tr,e)); cv.addEventListener('pointerup',e=>noteUp(tr,e)); cv.addEventListener('pointercancel',e=>noteUp(tr,e,true)); }   /* notes and drum hits alike */
@@ -3043,8 +3045,8 @@ const isPitchedTr=tr=>INST[tr.inst].kind==='pitched';
 const evs=tr=>(isPitchedTr(tr)?tr.notes:tr.hits)||[];          /* what the editor edits: notes, or drum hits */
 const evRow=(tr,e)=>isPitchedTr(tr)?pitchOf(e):e.d;               /* its row: a pitch, or a drum */
 const evLen=e=>e.l??1;                                            /* a hit is one step long on the grid */
-function previewHit(tr,d){ if(playing) return; ensureCtx(); const out=ctx.createGain(); out.gain.value=trackGain(tr)||0.6; out.connect(chain.input); drumHit(ctx,out,d,ctx.currentTime+0.01,0.85,tr.sound,(tr.tone??50)/100); }
-const previewEv=(tr,e)=>isPitchedTr(tr)?previewNote(tr,pitchOf(e)):previewHit(tr,e.d);
+function previewHit(tr,d,v=0.85){ if(playing) return; ensureCtx(); const out=ctx.createGain(); out.gain.value=trackGain(tr)||0.6; out.connect(chain.input); drumHit(ctx,out,d,ctx.currentTime+0.01,v,tr.sound,(tr.tone??50)/100); }
+const previewEv=(tr,e)=>isPitchedTr(tr)?previewNote(tr,pitchOf(e),e.v??0.8):previewHit(tr,e.d,e.v??0.85);
 function hitsChanged(tr){ tr.hits.sort((a,b)=>a.s-b.s); tr._dirty=true; save(); redrawTrack(tr); renderNoteBar(tr); scheduleRender(); }
 const evChanged=tr=>isPitchedTr(tr)?noteChanged(tr):hitsChanged(tr);
 function selectNote(tr,n){ tr._sel=n||null; drawGrid(tr); renderNoteBar(tr); }
@@ -3138,14 +3140,14 @@ function noteUp(tr,e,cancel){
 }
 function renderNoteBar(tr){
   const sb=tr._selbar; if(sb){ const n=tr._sel, on=!!(n&&evs(tr).includes(n)); sb.hidden=!on;
-    if(on){ if(!isPitchedTr(tr)){ sb.querySelector('.sb-n').textContent=slotLabel(n.d)+' · step '+(n.s+1); sb.querySelector('.sb-split').hidden=true; }
+    if(on){ const vs=sb.querySelector('.sb-vel input'); if(vs && document.activeElement!==vs){ vs.value=Math.round((n.v??0.85)*100); sb.querySelector('.sb-vel output').textContent=vs.value; } if(!isPitchedTr(tr)){ sb.querySelector('.sb-n').textContent=slotLabel(n.d)+' · step '+(n.s+1); sb.querySelector('.sb-split').hidden=true; }
       else { const nm=m=>NOTE_NAMES[((m%12)+12)%12]+(Math.floor(m/12)-1); sb.querySelector('.sb-n').textContent=nm(pitchOf(n)+12*(tr.oct||0)); sb.querySelector('.sb-split').hidden=n.l<2*(S.quant==8?2:1); } } }
   const bar=tr._el&&tr._el.querySelector('.notebar'); if(!bar||!isPitchedTr(tr)) return; const n=tr._sel;
   if(!n || !tr.notes.includes(n)){ bar.hidden=true; tr._sel=null; return; }
   bar.hidden=false; const nm=m=>NOTE_NAMES[((m%12)+12)%12]+(Math.floor(m/12)-1);
   bar.querySelector('.nb-info').textContent=`${nm(pitchOf(n)+12*tr.oct)} · step ${n.s+1} · ${n.l} step${n.l>1?'s':''} long`;
 }
-function previewNote(tr,row){ if(playing) return; ensureCtx(); const out=ctx.createGain(); out.gain.value=trackGain(tr)||0.6; out.connect(chain.input); ENV_OVR=tr.adsr||null; try{ voice(ctx,out,tr.sound,ctx.currentTime+0.01,0.25,row+12*tr.oct,0.8,tr.tone/100); } finally{ ENV_OVR=null; } }
+function previewNote(tr,row,v=0.8){ if(playing) return; ensureCtx(); const out=ctx.createGain(); out.gain.value=trackGain(tr)||0.6; out.connect(chain.input); ENV_OVR=tr.adsr||null; try{ voice(ctx,out,tr.sound,ctx.currentTime+0.01,0.25,row+12*tr.oct,v,tr.tone/100); } finally{ ENV_OVR=null; } }
 /* tempo, length and metronome live in S; the Studio draws them */
 const SCALE_OPTS='<option value="auto">Auto (major or minor)</option><option value="major">Major</option><option value="minor">Minor</option><option value="pent-minor">Minor pentatonic</option><option value="pent-major">Major pentatonic</option><option value="blues">Blues</option><option value="dorian">Dorian</option><option value="mixolydian">Mixolydian</option><option value="lydian">Lydian</option><option value="phrygian">Phrygian</option><option value="phryg-dom">Phrygian dominant</option><option value="harm-minor">Harmonic minor</option><option value="mel-minor">Melodic minor</option><option value="locrian">Locrian</option><option value="chromatic">Any note (no snapping)</option>';
 const keyOpts=()=>'<option value="auto">Auto-detect</option>'+NOTE_NAMES.map((n,i)=>`<option value="${i}">${n}</option>`).join('');
