@@ -32,7 +32,8 @@
 
 *{box-sizing:border-box}
 [hidden]{display:none!important}
-body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.45;-webkit-text-size-adjust:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.45;-webkit-text-size-adjust:100%;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}   /* a long press never selects text or pops the copy menu, like a native app */
+input,textarea,[contenteditable]{-webkit-user-select:text;user-select:text}
 button,select,input{font:inherit;color:inherit}
 button{cursor:pointer}
 :focus-visible{outline:2px solid var(--focus);outline-offset:2px}
@@ -387,6 +388,10 @@ input[type=range]::-moz-range-thumb{width:10px;height:18px;border-radius:1px;bac
 .s2-edh{color:var(--s2-muted);font-size:12.5px;padding-top:8px;padding-bottom:2px}
 .s2-edbar{display:flex;align-items:center;gap:8px;padding-top:8px;padding-bottom:10px;flex:none;background:var(--s2-panel)}
 .s2-edbar button{height:44px;padding:0 14px!important;border:1px solid var(--s2-line)!important;border-radius:10px;font-weight:600!important;font-size:14px!important}
+.s2-edseek{flex:none;padding-top:6px;padding-bottom:2px;background:var(--s2-panel);touch-action:none;cursor:pointer}
+.s2-edseek .trk{position:relative;height:30px;border-radius:6px;background:var(--s2-lane);border:1px solid var(--s2-line);background-image:linear-gradient(90deg,var(--s2-line) 1px,transparent 1px);background-size:var(--es-bar,100%) 100%}
+.s2-edseek span{position:absolute;top:7px;margin-left:5px;font:600 11px var(--f-mono);color:var(--s2-muted);pointer-events:none}
+.s2-edseek i{position:absolute;top:-3px;bottom:-3px;width:3px;margin-left:-1.5px;border-radius:2px;background:var(--s2-amber);left:0}
 .s2-edbar{gap:6px!important;overflow-x:auto} .s2-edbar button{white-space:nowrap;flex:none;padding:0 10px!important;font-size:13px!important} .s2-edbar .s2-play{width:50px!important} .s2-edbar .s2-rw{width:44px!important}   /* one line, even with rewind; scrolls sideways on the smallest phones */
 .s2-edbar .s2-play{width:64px;padding:0!important;display:grid!important;place-items:center}
 .s2-edbar button[hidden]{display:none!important}
@@ -454,6 +459,7 @@ input[type=range]::-moz-range-thumb{width:10px;height:18px;border-radius:1px;bac
     </div>
     <div class="s2-edb s2-g" id="s2EdBody"></div>
     <div class="s2-edh s2-g" id="s2EdHint"></div>
+    <div class="s2-edseek s2-g" id="s2EdSeek" aria-label="Playhead: tap or drag to move it"><div class="trk" id="s2EdSeekT"><i id="s2EdSeekD"></i></div></div>
     <div class="s2-edbar s2-g">
       <button class="s2-play s2-rw" id="s2EdRew" aria-label="Back to the start of this part"><svg class="nx-ico" viewBox="0 0 24 24"><path d="M6 5v14M19 5l-10 7 10 7V5z"/></svg></button>
       <button class="s2-play" id="s2EdPlay" aria-label="Play"><svg class="nx-ico" viewBox="0 0 24 24" id="s2EdPlayI"><path d="M7 4l13 8-13 8V4z" fill="currentColor"/></svg></button>
@@ -605,7 +611,7 @@ function exampleTracks(){
 function mkTrack(inst, o={}){
   const d = INST[inst];
   return Object.assign({id:0, inst, sound:d.sounds[0], vol:80, pan:0, send:15, tone:50, mute:false, solo:false,
-    oct:d.oct||0, sens:S0sens(), ex:false, ...(styleSound(inst)&&d.sounds.includes(styleSound(inst))?{sound:styleSound(inst)}:{}), hits:d.kind==='pitched'||d.kind==='audio'?undefined:[], notes:d.kind==='pitched'?[]:undefined, ...(inst==='fx'?{hits:[],fxs:[],send:30,vol:45}:d.kind==='audio'?(()=>{ const pr=(styleSound('vox')&&VOX_PRESETS[styleSound('vox')])?styleSound('vox'):'Pop'; return {fx:Object.assign({},VOX_PRESETS[pr]), sound:pr}; })():{})}, o);
+    oct:d.oct||0, sens:S0sens(), ex:false, ...(styleSound(inst)&&d.sounds.includes(styleSound(inst))?{sound:styleSound(inst)}:{}), hits:d.kind==='pitched'||d.kind==='audio'?undefined:[], notes:d.kind==='pitched'?[]:undefined, ...(inst==='fx'?{hits:[],fxs:[],send:30,vol:25}:d.kind==='audio'?(()=>{ const pr=(styleSound('vox')&&VOX_PRESETS[styleSound('vox')])?styleSound('vox'):'Pop'; return {fx:Object.assign({},VOX_PRESETS[pr]), sound:pr}; })():{})}, o);
 }
 function S0sens(){ return (typeof S!=='undefined' && S) ? S.sens : 55; }
 function defaultState(){
@@ -913,7 +919,9 @@ const barsTxt=b=>{ const w=Math.floor(b+1e-9), f=+(b-w).toFixed(3), F={0.5:'½',
 function s2Chips(){ { const sp=$('s2Snap').lastElementChild, v=fracTxt(snapBars()); if(sp.textContent!==v) sp.textContent=v; } const b=$('s2Bpm').lastElementChild, k=$('s2Key').lastElementChild, kl=projKeyLabel()||(S.key!=='auto'?(NOTE_NAMES[+S.key]+' '+(SCALE_LABEL[S.scale]||'')).trim():'Auto');   /* a key picked before anything is recorded still shows */ if(b.textContent!==String(S.bpm)) b.textContent=S.bpm; if(k.textContent!==kl) k.textContent=kl;
   const m=$('s2Metro'), on=String(!!S.metro); if(m.getAttribute('aria-pressed')!==on) m.setAttribute('aria-pressed',on); }
 /* called every frame: playhead, position readout, recording banner, stop at the end when Loop is off */
-function s2Tick(frac){ if(!s2On()) return;
+/* the editor's playhead strip: where the playhead is within the part being edited */
+function edSeekDraw(){ const t=S.tracks.find(x=>x.id===s2.edId), d=$('s2EdSeekD'); if(!t||!d) return; const ps=pSteps(t), f=clamp(((s2.cur*16)-(t.off||0))/ps,0,1), v=(f*100).toFixed(2)+'%'; if(d.style.left!==v) d.style.left=v; const bw=(16/ps*100).toFixed(3)+'%'; const T=$('s2EdSeekT'); if(T.style.getPropertyValue('--es-bar')!==bw){ T.style.setProperty('--es-bar',bw); const b0=Math.floor((t.off||0)/16); T.querySelectorAll('span').forEach(x=>x.remove()); for(let k=0;k*16<ps;k++) T.insertAdjacentHTML('beforeend',`<span style="left:${(k*16/ps*100).toFixed(3)}%">${b0+k+1}</span>`); } }
+function s2Tick(frac){ if(!s2On()) return; if(s2.edId!=null) edSeekDraw();
   if(s2.edId!=null){ const t=S.tracks.find(x=>x.id===s2.edId); if(t&&t._fxg&&t._fxph&&t._fxph.isConnected){ const st=clamp(frac,0,1)*S.bars*16-(t.off||0), G=t._fxg, on=(playing||!!recState)&&st>=0&&st<G.ps; t._fxph.style.display=on?'block':'none'; if(on) t._fxph.style.transform=`translateX(${G.gut+st*G.cw}px)`; } } const bars=S.bars, live=playing||!!recState; if(live) s2.cur=clamp(frac,0,1)*bars; const pos=live?s2.cur:s2.cur;
   if(playing && !recState && !s2.loop && ctx && ctx.currentTime-t0>=loopLen()-0.03){ togglePlay().then(()=>{ playFrom=0; s2.cur=0; }); }
   if(Math.abs(pos-s2.pos)>0.002){ s2.pos=pos; const a=$('s2Ph'), b=$('s2PhH'); if(a){ a.style.left=`calc(var(--s2-hdr) + ${pos} * var(--s2-barw))`; b.style.left=`calc(${pos} * var(--s2-barw))`; }
@@ -996,7 +1004,7 @@ function fxGridMount(tr, host){ const ps=pSteps(tr), wrap=document.createElement
     $('fxDel').onclick=()=>{ tr.fxs=tr.fxs.filter(x=>x!==e); tr._fxSel=null; logEdit(tr,{k:'fxdel',s:e.s,kind:e.k}); changed(); panel(); };
     $('fxVol').onchange=ev2=>{ e.v=+ev2.target.value/100; changed(); }; $('fxPan').onchange=ev2=>{ e.pan=+ev2.target.value/100; changed(); }; };
   draw(); panel(); }
-function s2Edit(tr){ s2.edId=tr.id; S.activeId=tr.id; $('s2Ed').hidden=false; s2EdMount(); }
+function s2Edit(tr){ { const T=$('s2EdSeekT'); if(T) T.style.removeProperty('--es-bar'); } s2.edId=tr.id; S.activeId=tr.id; $('s2Ed').hidden=false; s2EdMount(); }
 function s2EdMount(){ if(s2.edId==null) return; const tr=S.tracks.find(t=>t.id===s2.edId); if(!tr||!hasContent(tr)){ s2EdClose(); return; }
   const host=$('s2EdBody'), kind=INST[tr.inst].kind, avail=Math.max(200,(host.clientHeight||window.innerHeight*0.6)-90);
   GRID_H=Math.min(520,avail); GRID_RH=30; GRID_DRUM=kind==='pitched'||tr.inst==='fx'?1:Math.min(36,Math.max(30,avail/gridRows(tr).rows.length))/gridRows(tr).rh;   /* drum rows as tall as the note editor's rows (a little taller when there's room), so hits read as notes */
@@ -1034,6 +1042,11 @@ function s2NewPart(){ const e=s2.empty; if(!e) return; const L=s2Lane(e.lane); s
   tr.off=e.at; tr.len=len/16; tr.lenSet=true; tr.rep=false; tr.blank=true; if(tr.notes) tr.notes=[]; if(tr.hits) tr.hits=[]; if(tr.fxs) tr.fxs=[]; tr._dirty=true;
   const end=Math.ceil((e.at+len)/16-1e-9); if(S.bars<end) S.bars=Math.min(64,end); S.activeId=tr.id; s2.selId=tr.id; save(); renderTracks(); scheduleRender();
   s2Edit(tr); }
+/* Duplicate a whole track: every part, its notes and settings, as a new track right under it. Handy to reuse a melody's notes for chords or another sound. */
+function s2DupTrack(L){ const src=S.tracks.filter(t=>s2LaneId(t)===L.id); if(!src.length||src[0].guide) return null; let laneId=null;
+  const copies=src.map((t,i)=>{ const c=JSON.parse(JSON.stringify(t,(k,v)=>k[0]==='_'?undefined:v)); c.id=S.nextId++; if(i===0){ laneId=c.id; delete c.lane; } else c.lane=laneId; if(c.name) c.name=c.name+' copy';   /* an unnamed copy takes its instrument's name, so switching it to Keys reads "Keys" */
+    delete c.sid; delete c.sidAt; delete c.sidHeard; delete c.ed; c.copyOf=t.id; c.solo=false; c._dirty=true; if(t._raw){ c._raw=t._raw; storeVox(c); } return c; });
+  const at=Math.max(...src.map(t=>S.tracks.indexOf(t)))+1; S.tracks.splice(at,0,...copies); keyCache=null; save(); scheduleRender(); return laneId; }
 function s2MoveClip(tr, bars){ const off=Math.round((tr.off||0)+bars*16), len=pSteps(tr)*pLoops(tr); if(pLoops(tr)>1) return false; if(off<0 || off+len>64*16) return false;
   const hit=S.tracks.some(t=>t!==tr&&s2LaneId(t)===s2LaneId(tr)&&hasContent(t)&&off<(t.off||0)+pSteps(t)*pLoops(t)&&(t.off||0)<off+len); if(hit) return false;
   const L=pBars(tr); tr.len=L; tr.lenSet=true; tr.rep=false; const need=Math.ceil(Math.max(1,...S.tracks.filter(hasContent).map(t=>t===tr?off/16+L:(t.off||0)/16+(t.off!=null&&t.len?t.len:S.bars)))-1e-9);
@@ -1064,17 +1077,19 @@ function s2TrackSheet(L){ const tr=L.tracks[0], all=()=>S.tracks.filter(t=>s2Lan
     ${fam.length>1?`<div class="nx-grp" style="padding-top:0">Instrument</div><div class="s2-opts" id="s2Ins">${fam.map(k=>`<button data-k="${k}" aria-pressed="${k===tr.inst}">${dot(k)}${INST[k].label}</button>`).join('')}</div>`:''}
     ${I.sounds&&I.sounds.length?`<div class="nx-grp" style="padding-top:0">Sound</div><div class="s2-opts" id="s2Snd">${I.sounds.map(x=>`<button data-x="${nxEsc(x)}" aria-pressed="${x===tr.sound}">${nxEsc(x)}</button>`).join('')}</div>`:''}
     ${CHORD_ZONE[tr.inst]?`<div class="nx-grp" style="padding-top:0">Chord</div><select class="nx-txt" id="s2Chd" aria-label="Chord type" style="margin-bottom:12px">${Object.entries(CHORD_TYPES).map(([k,v])=>`<option value="${k}" ${k===chordType(tr)?'selected':''}>${v}</option>`).join('')}</select>`:''}
-    <div class="nx-grp" style="padding-top:0">Mix</div>${s2Fld('s2Vol','Volume',0,100,tr.vol??80)}${s2Fld('s2Rev','Reverb',0,100,tr.send??0)}${s2Fld('s2Pan','Left / right',-100,100,tr.pan??0)}${tr.inst==='vox'||tr.inst==='fx'?'':s2Fld('s2Tone',pit?'Brightness':'Tone',0,100,tr.tone??50)}
     ${tr.inst==='vox'?(()=>{ const fx=fxOf(tr), L={tune:'Pitch correction',form:'Voice character',low:'Low cut',pres:'Presence',air:'Air',comp:'Compression',dbl:'Double',echo:'Echo'}; return `<div class="nx-grp" style="padding-top:6px">Voice</div>${s2Fld('s2Fx_tune',L.tune,0,100,fx.tune)}<p style="color:var(--muted);font-size:13px;margin:-2px 0 6px">0 leaves your singing as it is. 100 is the hard-tuned sound. It follows the song’s key.</p>${VOX_KNOBS.filter(([k])=>k!=='tune').map(([k])=>s2Fld('s2Fx_'+k,L[k]||k,0,100,fx[k])).join('')}`; })():''}
     ${pit?`<div class="nx-grp" style="padding-top:6px">Notes</div><div class="s2-fld"><label>Octave</label><div class="s2-opts" style="padding:0"><button data-o="-1" aria-label="Octave down">−</button><output id="s2Oct" style="width:36px;text-align:center;align-self:center;font:700 15px var(--f-mono)">${tr.oct>0?'+':''}${tr.oct||0}</output><button data-o="1" aria-label="Octave up">+</button></div></div>
-      ${hasVoice?s2Fld('s2Expr','Follow my voice',0,100,tr.expr||0,10):''}`:''}
-    <button class="nx-act danger" data-a="del">Delete track</button>`);
+      ${hasVoice?s2Fld('s2Expr','Expression',0,100,tr.expr||0,10)+'<p style="color:var(--muted);font-size:13px;margin:-2px 0 6px">0 plays clean, steady notes. Turn it up to keep the slides, wobbles and swells of your take.</p>':''}`:''}
+
+    <div class="nx-grp" style="padding-top:6px">Mix</div>${s2Fld('s2Vol','Volume',0,100,tr.vol??80)}${s2Fld('s2Rev','Reverb',0,100,tr.send??0)}${s2Fld('s2Pan','Left / right',-100,100,tr.pan??0)}${tr.inst==='vox'||tr.inst==='fx'?'':s2Fld('s2Tone',pit?'Brightness':'Tone',0,100,tr.tone??50)}
+    <button class="nx-ghost" data-a="dup" style="width:100%;margin-top:14px">Duplicate track</button><button class="nx-act danger" data-a="del">Delete track</button>`);
   const each=f=>all().forEach(f), rerender=()=>{ save(); scheduleRender(); };
   $('s2Tn').onchange=e=>{ const v=e.target.value.trim().slice(0,32)||undefined; each(t=>{ t.name=v; }); save(); renderTracks(); };
   $('nxSheet').onclick=e=>{ let b;
     if(b=e.target.closest('#s2Ins button')){ const k=b.dataset.k; each(t=>changeInst(t,k)); keyCache=null; save(); renderTracks(); scheduleRender(); s2TrackSheet(s2Lane(L.id)); }
     else if(b=e.target.closest('#s2Snd button')){ each(t=>{ t.sound=b.dataset.x; if(t.inst==='vox') t.fx=Object.assign({},VOX_PRESETS[t.sound]); t._dirty=true; }); rerender(); s2TrackSheet(s2Lane(L.id)); }
     else if(b=e.target.closest('[data-o]')){ each(t=>{ t.oct=clamp((t.oct||0)+(+b.dataset.o),-3,3); t.octSet=true; t._dirty=true; }); $('s2Oct').textContent=(tr.oct>0?'+':'')+tr.oct; rerender(); renderTracks(); }
+    else if((b=e.target.closest('[data-a]')) && b.dataset.a==='dup'){ nxClose(); const nl=s2DupTrack(L); if(nl){ s2.selId=null; renderTracks(); setTimeout(()=>s2TrackSheet(s2Lane(nl)),80); toast('Track duplicated. Pick its instrument, e.g. Keys or Pad for chords.'); } }
     else if(b=e.target.closest('[data-a]')){ nxClose(); const ms=all(); ms.slice(1).forEach(t=>{ disposeTrack(t); }); S.tracks=S.tracks.filter(t=>!ms.slice(1).includes(t)); deletePart(ms[0]); } };
   $('nxSheet').oninput=e=>{ const id=e.target.id, v=+e.target.value;
     if(id==='s2Vol'){ each(t=>{ t.vol=v; }); applyAllMix(); save(); } if(id==='s2Rev'){ each(t=>{ t.send=v; }); applyAllMix(); save(); } if(id==='s2Pan'){ each(t=>{ t.pan=v; }); applyAllMix(); save(); } };
@@ -1095,7 +1110,12 @@ function s2Sheets(kind){ $('nxSheet').oninput=null;
 function s2Init(){ const _rt=renderTracks; renderTracks=function(){ if(s2.post && !recState && rs.mode==null){ s2.post=false; try{ s2Tidy(); }catch(e){} }
     /* the old part rows are no longer built (they were never shown) */ if(s2On()){ if(s2.edId!=null) s2EdMount(); else s2Render(); } };
   const _rd=redrawTrack; redrawTrack=function(tr){ _rd.apply(this,arguments); if(s2On()){ const L=s2Lane(s2LaneId(tr)), cv=L&&$('s2In').querySelector(`canvas[data-cv="${L.id}"]`); if(cv) s2DrawLane(L,cv); } };
-  $('s2EdBack').onclick=s2EdClose; $('s2EdUndo').onclick=()=>undo(); $('s2EdRedo').onclick=()=>redo(); $('s2EdPlay').onclick=()=>togglePlay(); $('s2EdRew').onclick=()=>{ if(recState) return; const t=S.tracks.find(x=>x.id===s2.edId), L=loopLen(), at=t?Math.min((t.off||0)*stepDur(),L-0.001):0; playFrom=at; s2.cur=at/L*S.bars; if(playing&&ctx) startAll(ctx.currentTime+0.02,at); };
+  $('s2EdBack').onclick=s2EdClose; $('s2EdUndo').onclick=()=>undo(); $('s2EdRedo').onclick=()=>redo(); $('s2EdPlay').onclick=()=>togglePlay();
+  { const T=$('s2EdSeekT'); let drag=false; const at=e=>{ const t=S.tracks.find(x=>x.id===s2.edId); if(!t) return null; const r=T.getBoundingClientRect(), f=clamp((e.clientX-r.left)/r.width,0,0.999), L=loopLen(); return Math.min(((t.off||0)+f*pSteps(t))*stepDur(),L-0.001); };
+    const set=(e,go)=>{ if(recState) return; const a=at(e); if(a==null) return; playFrom=a; s2.cur=a/loopLen()*S.bars; s2.pos=-1; edSeekDraw(); if(go&&playing&&ctx) startAll(ctx.currentTime+0.02,a); };
+    T.parentElement.addEventListener('pointerdown',e=>{ drag=true; try{ T.parentElement.setPointerCapture(e.pointerId); }catch(_){} set(e,false); });
+    T.parentElement.addEventListener('pointermove',e=>{ if(drag) set(e,false); });
+    const up=e=>{ if(!drag) return; drag=false; set(e,true); }; T.parentElement.addEventListener('pointerup',up); T.parentElement.addEventListener('pointercancel',()=>{ drag=false; }); } $('s2EdRew').onclick=()=>{ if(recState) return; const t=S.tracks.find(x=>x.id===s2.edId), L=loopLen(), at=t?Math.min((t.off||0)*stepDur(),L-0.001):0; playFrom=at; s2.cur=at/L*S.bars; if(playing&&ctx) startAll(ctx.currentTime+0.02,at); };
   $('s2EdFill').onclick=()=>{ const tr=S.tracks.find(t=>t.id===s2.edId); if(tr) fillGaps(tr); };
   $('s2EdVer').onclick=()=>{ const tr=S.tracks.find(t=>t.id===s2.edId); if(!tr) return; verNext(tr); };
   $('s2EdMine').onclick=()=>{ const tr=S.tracks.find(t=>t.id===s2.edId); if(tr) verMine(tr); };
@@ -1548,7 +1568,14 @@ function trackNotes(x, sr, onsets, sens){
   // the quiet level comes from the take's gaps; a take that is one long sound has none, so assume a floor 35 dB below the peak
   const dbs=frames.map(f=>f.db), top=percentile(dbs,0.99), floor0=percentile(dbs,0.15), floor=top-floor0<12?top-35:floor0;
   const gate=floor+Math.max(8,(top-floor)*(NT.gateA-NT.gateB*sN)), cth=NT.confA+NT.confB*sN;
-  const voiced=frames.map(f=>f.db>gate && f.conf<cth && f.m>28 && f.m<(whistled?112:96));
+  let voiced=frames.map(f=>f.db>gate && f.conf<cth && f.m>28 && f.m<(whistled?112:96));
+  /* A breathy or airy hum: loud enough, but YIN finds little of it clearly pitched (the owner's soft hums of Nov 18: periodicity 0.4-0.5 where
+     a clear hum is 0.9), so nothing was heard. When fewer than 30% of loud frames pass the clarity test, relax it step by step until 40% pass, keeping only pitches within 9 semitones of the take's middle.
+     Clear takes never get here (the 31-take replay is unchanged). */
+  { const loudN=frames.filter(f=>f.db>gate).length, vN=voiced.filter(Boolean).length;
+    if(!whistled && loudN>=30 && vN<loudN*0.3){ for(const c2 of [0.35,0.45,0.55,0.65]){ let v2=frames.map(f=>f.db>gate && f.conf<c2 && f.m>28 && f.m<96); if(v2.filter(Boolean).length<loudN*0.4) continue;
+        const mid=median(frames.filter((f,i)=>v2[i]).map(f=>f.m)); v2=v2.map((v,i)=>v && Math.abs(frames[i].m-mid)<=9);   /* noisy frames can read an octave off: keep the take's main range */
+        voiced=v2; break; } } }
   const build=()=>{
   const sm=frames.map((f,i)=>{ if(!voiced[i]) return NaN; const w=[]; for(let j=i-NT.smoothW;j<=i+NT.smoothW;j++) if(j>=0&&j<frames.length&&voiced[j]) w.push(frames[j].m); return median(w); });
   const onF=onsets.filter(o=>o.rise>NT.onsetRise).map(o=>o.t);
@@ -1762,8 +1789,10 @@ let keyCache=null;
 function keyKnown(){ if(S.scale==='chromatic') return null;
   const has=S.key!=='auto' || S.tracks.some(t=>(INST[t.inst].kind==='pitched'&&t.notes&&t.notes.length)||(t.inst==='vox'&&(t.vn||[]).length));
   return has?currentKey():null; }
-function playKeyArp(K, when, bar){ const tonic=57+((K.tonic-57)%12+12)%12, third=K.set.includes(4)?4:3, beat=bar/4, out=ctx.createGain(); out.gain.value=0.16; out.connect(ctx.destination);
-  [0,third,7,12].forEach((iv,k)=>{ const t=when+k*beat, f=440*Math.pow(2,(tonic+iv-69)/12), o=ctx.createOscillator(), o2=ctx.createOscillator(), g=ctx.createGain();
+/* The count-in chord. For a guided tune it starts on the tune's first note and comes back to it, so the last thing you hear before you sing is your starting note. */
+function playKeyArp(K, when, bar, root=null){ const kn=K&&!K.none, rel=iv=>root==null?true:kn?K.set.includes(((root+iv-K.tonic)%12+12)%12):[0,4,7].includes(iv);
+  const tonic=root!=null?root:57+((K.tonic-57)%12+12)%12, third=root!=null?(rel(4)?4:3):(K.set.includes(4)?4:3), fifth=root!=null&&!rel(7)?6:7, beat=bar/4, out=ctx.createGain(); out.gain.value=0.16; out.connect(ctx.destination);
+  (root!=null?[0,third,fifth,0]:[0,third,7,12]).forEach((iv,k)=>{ const t=when+k*beat, f=440*Math.pow(2,(tonic+iv-69)/12), o=ctx.createOscillator(), o2=ctx.createOscillator(), g=ctx.createGain();
     o.type='triangle'; o2.type='sine'; o.frequency.value=f; o2.frequency.value=f*2; const g2=ctx.createGain(); g2.gain.value=0.25;
     g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(1,t+0.012); g.gain.exponentialRampToValueAtTime(0.001,t+beat*0.9);
     o.connect(g); o2.connect(g2); g2.connect(g); g.connect(out); o.start(t); o2.start(t); o.stop(t+beat); o2.stop(t+beat); }); }
@@ -2304,7 +2333,8 @@ async function startRecord(calib=false, teach=null){
   if(guideAlong && !calib && !teach) S.tracks.forEach(tr=>{ if(tr._buf && tr.guide){ ensureNodes(tr); tr._src=startSrc(tr._buf,tr._g,when+bar,P); } });   /* hum-along screens: the tune under your take */
   if(!metroGain){ metroGain=ctx.createGain(); metroGain.connect(ctx.destination); }
   metroGain.gain.value=0.75; metroSrc=startSrc(metroBuf,metroGain,when,0); gateOpen(when);
-  let arp=false; if(S.keyRef && !calib && !teach && INST[S.inst].kind==='pitched'){ const K=keyKnown(); if(K){ playKeyArp(K, when, bar); arp=true; } }
+  let arp=false; if(S.keyRef && !calib && !teach && INST[S.inst].kind==='pitched'){ const K=keyKnown(), g=S.prompt&&S.tracks.find(t=>t.guide&&t.notes&&t.notes.length), first=g?g.notes.slice().sort((a,b)=>a.s-b.s)[0]:null;
+    if(first){ playKeyArp(K, when, bar, pitchOf(first)); arp=true; } else if(K){ playKeyArp(K, when, bar); arp=true; } }   /* a guided tune: the arpeggio starts and ends on its first note */
   recState={arp, calib, teach, inst:S.inst, countStart:when, start:when+bar, end:when+bar+L, preroll, poff, along, lat:calib?0:(!teach&&S.inst==='vox'&&S.vocLat!=null?S.vocLat:latency()), chunks:[]};
   if(!teach) teachQueue=null;
   capturing=true; setRecUI(true);
@@ -3012,7 +3042,7 @@ function drawGrid(tr){
   if(pitched && !K.none){ g.fillStyle=cBar; g.globalAlpha=0.12; for(let L=0;L<lines;L++) rows.forEach((m,i)=>{ if(K.set.includes(((m-K.tonic)%12+12)%12)) g.fillRect(0,L*(lineH+gapH)+1+i*rh,W,rh-1); }); g.globalAlpha=1; }
   g.fillStyle=cBar; for(let s=0;s<n;s+=16) if(s%sPL!==0) g.fillRect(X(s),Y(s),1,lineH);
   // bar numbers, top-left of each bar
-  g.fillStyle=cssVar('--muted'); g.globalAlpha=0.75; g.font='700 9px '+cssVar('--f-mono'); for(let s=0;s<n;s+=16) g.fillText(String(s/16+1),X(s)+3,Y(s)+10); g.globalAlpha=1;
+  g.fillStyle=cssVar('--muted'); g.globalAlpha=0.75; g.font='700 9px '+cssVar('--f-mono'); for(let s=0;s<n;s+=16) g.fillText(String(Math.floor(((tr.off||0)+s)/16)+1),X(s)+3,Y(s)+10);   /* the song's bar numbers, not the part's */ g.globalAlpha=1;
   if(!pitched){
     g.fillStyle=cBar; g.globalAlpha=0.18; for(let L=0;L<lines;L++) rows.forEach((r,i)=>{ g.fillRect(0,L*(lineH+gapH)+1+(i+1)*rh-0.5,W,1); }); g.globalAlpha=1;   /* a line between drums, like between keys */
     rawTicks(tr,g,X,Y,cw,lineH,n,sPL,gut,lines,gapH);

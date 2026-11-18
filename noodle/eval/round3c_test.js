@@ -1,0 +1,16 @@
+// Review round 3c: the editor's playhead strip (tap/drag moves the playhead within the part, also while playing); track sheets end with Mix, with Octave and Expression above it; FX start much quieter
+const {chromium,devices}=require('playwright');
+(async()=>{ const b=await chromium.launch({args:['--autoplay-policy=no-user-gesture-required']}); const c=await b.newContext({...devices['iPhone 13'],colorScheme:'dark'}); const p=await c.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(e.message));
+  await p.goto('http://localhost:8800/noodle-s2.html?studio'); await p.waitForTimeout(1000); const out={};
+  await p.evaluate(()=>{ ensureCtx(); S.bars=4; const a=mkTrack('lead',{id:S.nextId++,off:16,len:2,rep:false,lenSet:true,notes:Array.from({length:8},(_,i)=>({s:i*4,l:4,p:60+i,v:.8,x:true}))}); S.tracks.push(a); save(); renderTracks(); s2Edit(a); return ctx.resume(); }); await p.waitForTimeout(400);
+  const strip=await p.$eval('#s2EdSeekT',e=>{ const r=e.getBoundingClientRect(); return {x:r.left,w:r.width,y:r.top+r.height/2}; });
+  out.visible=strip.w>200;
+  await p.mouse.click(strip.x+strip.w*0.5,strip.y); await p.waitForTimeout(150); out.tapMiddle=await p.evaluate(()=>({bar:+(s2.cur+1).toFixed(2), step:Math.round(playFrom/stepDur()), dot:$('s2EdSeekD').style.left}));
+  await p.tap('#s2EdPlay'); await p.waitForTimeout(400);
+  await p.mouse.move(strip.x+strip.w*0.1,strip.y); await p.mouse.down(); await p.mouse.move(strip.x+strip.w*0.3,strip.y); await p.mouse.move(strip.x+strip.w*0.75,strip.y); await p.mouse.up(); await p.waitForTimeout(120);
+  out.dragWhilePlaying=await p.evaluate(()=>({playing, bar:+(s2.cur+1).toFixed(2)})); await p.waitForTimeout(500); out.keepsPlayingFromThere=await p.evaluate(()=>+(s2.cur+1).toFixed(2));
+  await p.tap('#s2EdPlay'); await p.screenshot({path:'results/edseek.png'}); await p.tap('#s2EdBack'); await p.waitForTimeout(300);
+  out.sheetOrder=await p.evaluate(()=>{ const t=S.tracks[0]; t._raw={x:new Float32Array(10),sr:48000}; t._an={align:0}; s2TrackSheet(s2Lane(s2LaneId(t))); const gs=[...document.querySelectorAll('#nxSheet .nx-grp')].map(x=>x.textContent.trim()), labels=[...document.querySelectorAll('#nxSheet .s2-fld label')].map(x=>x.textContent); nxClose(); return {groups:gs.join(' > '), mixLast:gs[gs.length-1]==='Mix', expression:labels.includes('Expression'), oldName:labels.includes('Follow my voice')}; });
+  out.vox=await p.evaluate(()=>{ const v=mkTrack('vox',{id:S.nextId++}); v.va=0; S.tracks.push(v); renderTracks(); s2TrackSheet(s2Lane(s2LaneId(v))); const gs=[...document.querySelectorAll('#nxSheet .nx-grp')].map(x=>x.textContent.trim()); nxClose(); return gs.join(' > '); });
+  out.fxVol=await p.evaluate(()=>({fx:mkTrack('fx',{id:990}).vol, gainDb:+(20*Math.log10(Math.pow(25/100,1.6)/Math.pow(80/100,1.6))).toFixed(1)}));
+  console.log(JSON.stringify(out,null,1),errs); await b.close(); })();

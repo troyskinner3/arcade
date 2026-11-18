@@ -332,7 +332,7 @@ Real noise (DEMAND, CC BY 4.0: street traffic, cafeteria, bus, town square, park
   from those elements (`$('key')`, `$('bars')`, `$('recLabel')`, the hidden sliders the Studio's sheets write to), so each needs moving to plain state first.
 
 ### Stage 3 cleanup log (removing the first prototype's page)
-How to work on it: one small step at a time; after each, `tools/suite.sh` from the scratchpad (also in `eval/tools/`) must print ALL PASS (30 scripts, replay 3.88); only then commit and push. `eval/tools/prune.js <file> s2TrimClip` deletes functions nothing names any more.
+How to work on it: one small step at a time; after each, `tools/suite.sh` from the scratchpad (also in `eval/tools/`) must print ALL PASS (32 scripts, replay 3.88); only then commit and push. `eval/tools/prune.js <file> s2TrimClip` deletes functions nothing names any more.
 - **Batch 1 (done):** removed the old "How it works" card, New song button, the header's back button and brand, the +/− tempo buttons, with their wiring and styles; `newSong` went with them (tests use `projNew`).
 - **Batch 2 (done):** removed the owner's old test-link UI (`guided`, `dropLine`), the `genre`, `quant` and `loops` rows, `keyInfo`, `snapV`, the old calibrate button, with their wiring; `applyStyle` went with them.
 - **Batch 3 (done):** removed the old header (tempo, length, metronome fields), the bottom dock (seek bar, undo/redo, play, record), the song-name field and the old parts container. The Studio's metronome button now calls `toggleMetro`; `syncTransport`, `updatePlayBtn`, `updateDock` and `updateHistBtns` are empty hooks to delete once nothing calls them. `proj_test` and `shell_test` read the title from the Studio.
@@ -409,4 +409,14 @@ How to work on it: one small step at a time; after each, `tools/suite.sh` from t
 - **Playhead at bar 1:** the yellow line now starts right after the track headers instead of half under their edge.
 - **Example song:** adds Keys (Am, G, Am, Dm, C on E-piano) and FX (an impact on the downbeat, a riser back into the loop).
 - **Teaching a drum sound from Your drum sounds** comes back to that list, to teach the next one (`teachBack`).
-- Suite: 30 scripts, replay 3.88.
+- **FX much quieter by default:** a new FX track starts at volume 25 (about 16 dB under an 80 track; was 45, before that 80).
+- **Track sheets end with Mix:** Name, Instrument, Sound, Chord, Notes (Octave, Expression) or Voice, then Mix, then Duplicate track and Delete track.
+- **"Follow my voice" is now "Expression"**, with a line under it: "0 plays clean, steady notes. Turn it up to keep the slides, wobbles and swells of your take." (It never changed which notes were heard; it adds your take's pitch bends, loudness and tone on top of them.)
+- **Playhead in the editors:** a strip above the editor's buttons spans the part, with the song's bar numbers; tap or drag to move the playhead (during playback it carries on from there). The grid's bar numbers are now the song's bars, not the part's.
+- **"Couldn't hear you" on a normal hum (fixed):** two Bass takes of Nov 18 (quiet room, steady humming at about −37 dB, pitch ~125–155 Hz) gave no notes. Not a level problem: the hum was breathy/airy (periodicity 0.40–0.47 against 0.88–0.90 for the owner's clear hums; spectral flatness 0.21 against 0.06), so YIN's clarity test passed under 20% of the loud frames.
+  `trackNotes` now relaxes the clarity test step by step when under 30% of loud frames pass, until 40% do, keeping only pitches within 9 semitones of the take's middle (noisy frames can read an octave off). Both takes now give C♯3–D♯3 notes; the other shared phone takes are unchanged; the 31-take replay is unchanged (3.88). A third "nothing heard" Keys take is mostly 60 Hz mains hum with very little voice, and still gives nothing. (`nothing2.js`, `nothing4.js`.)
+  Ruled out first: the noise cleaner. Applied to a good take, even with a count-in full of humming, it keeps 10 of 11 notes.
+- **Guided count-in:** with the count-in chord on, a guided tune's arpeggio starts on the tune's first note and comes back to it (e.g. Ode: A–C–E–A), so the starting note is the last thing heard before singing. Other takes keep the song's home chord.
+- **No text selection on long press:** the page can't be selected like text any more (text fields still can).
+- **Duplicate track:** in a track's sheet; copies every part and its notes as a new track right under it, then opens its sheet to pick an instrument (e.g. a lead's notes as Keys chords). `duptrack_test.js`.
+- Suite: 32 scripts, replay 3.88.
