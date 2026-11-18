@@ -22,6 +22,21 @@ def secs_for(m, plan):   # trim length by register: plan = [(upToMidi, seconds),
         if m <= top: return s
     return plan[-1][1]
 
+def encode_loop(src, dst, seconds, loop, gain_db=0.0, mono=False, kbps=192):
+    """A sustained note made to hold: keep `seconds`, and blend the end of the loop into its start so it repeats without a click.
+    loop = (start_s, xfade_s): the loop runs from start_s to the end of the kept part. Returns [loop_start_s, loop_end_s, note_start_s]."""
+    import numpy as np
+    ch = 1 if mono else 2; sr = 48000
+    raw = subprocess.run(['ffmpeg', '-v', 'error', '-i', src, '-ac', str(ch), '-ar', str(sr), '-f', 'f32le', '-'], check=True, capture_output=True).stdout
+    x = np.frombuffer(raw, dtype=np.float32).reshape(-1, ch).copy(); n = min(len(x), int(seconds * sr))
+    a = int(loop[0] * sr); xf = int(loop[1] * sr); b = n
+    if b - a < 2 * xf: raise ValueError(f'{src}: loop too short')
+    w = np.linspace(0, 1, xf)[:, None]; x[b - xf:b] = x[b - xf:b] * (1 - w) + x[a - xf:a] * w   # the loop's end turns into what comes just before its start
+    y = x[:b] * (10 ** (gain_db / 20)); os.makedirs(os.path.dirname(dst), exist_ok=True)
+    subprocess.run(['ffmpeg', '-v', 'error', '-y', '-f', 'f32le', '-ar', str(sr), '-ac', str(ch), '-i', '-', '-c:a', 'libmp3lame', '-b:a', f'{kbps}k', dst], input=y.astype(np.float32).tobytes(), check=True)
+    pk = np.abs(x[:int(0.3 * sr), 0]).max(); on = int(np.argmax(np.abs(x[:, 0]) >= pk * 0.01))   # where the note starts (found the same way by the app), to place the loop exactly
+    return [round(a / sr, 4), round(b / sr, 4), round(on / sr, 4)]
+
 def encode(src, dst, seconds, gain_db=0.0, fade=0.6, mono=False, kbps=192):
     os.makedirs(os.path.dirname(dst), exist_ok=True)
     af = f"atrim=0:{seconds},afade=t=out:st={max(0, seconds - fade)}:d={fade},volume={gain_db}dB"
@@ -64,16 +79,26 @@ def parse_sfz(path, defines=None):
     return out
 
 def build_sfz(root, key, cfg):
-    sfz = os.path.join(root, cfg['sfz']); folder = os.path.dirname(sfz); out = os.path.join(HERE, key)
-    regs = [r for r in parse_sfz(sfz, cfg.get('defines')) if r['seq'] == 1]
+    out = os.path.join(HERE, key); parts = cfg['sfz'] if isinstance(cfg['sfz'], list) else [(cfg['sfz'], 0, 127)]
+    regs = []
+    for path, klo, khi in parts:   # several SFZ files can share the keyboard, each over its own range
+        sfz = os.path.join(root, path); folder = os.path.dirname(sfz)
+        for r in parse_sfz(sfz, cfg.get('defines')):
+            if r['seq'] != 1 or r['hi'] < klo or r['lo'] > khi: continue
+            r['lo'] = max(r['lo'], klo); r['hi'] = min(r['hi'], khi); r['sample'] = os.path.join(folder, r['sample']); regs.append(r)
+    folder = ''
     vels = sorted({r['hivel'] for r in regs}); keep = cfg.get('velocities') or vels
     layers = []; done = {}
     for hv in keep:
         rs = []
         for r in sorted([r for r in regs if r['hivel'] == hv], key=lambda r: r['lo']):
-            src = os.path.join(folder, r['sample']); name = re.sub(r'[^A-Za-z0-9_.-]+', '_', os.path.splitext(r['sample'])[0]) + '.mp3'
-            if name not in done: encode(src, os.path.join(out, name), secs_for(int(r['root']), cfg['trim']), cfg.get('gain_db', 0), mono=cfg.get('mono', False)); done[name] = 1
-            rs.append({'lo': r['lo'], 'hi': r['hi'], 'root': r['root'], 'file': name, 'db': r['vol']})
+            src = r['sample']; name = re.sub(r'[^A-Za-z0-9_.-]+', '_', os.path.splitext(os.path.basename(r['sample']))[0]) + '.mp3'
+            if name not in done:
+                secs = secs_for(int(r['root']), cfg['trim'])
+                done[name] = encode_loop(src, os.path.join(out, name), secs, cfg['loop'], cfg.get('gain_db', 0), mono=cfg.get('mono', False)) if cfg.get('loop') else encode(src, os.path.join(out, name), secs, cfg.get('gain_db', 0), mono=cfg.get('mono', False))
+            rr = {'lo': r['lo'], 'hi': r['hi'], 'root': r['root'], 'file': name, 'db': r['vol']}
+            if cfg.get('loop'): rr['loop'] = done[name]
+            rs.append(rr)
         layers.append({'maxV': round(hv / 127, 3), 'regions': rs})
     meta = {'name': cfg['name'], 'credit': cfg['credit'], 'release': cfg['release'], 'gain': cfg.get('gain', 1.0), 'layers': layers}
     with open(os.path.join(out, 'map.json'), 'w') as fh: json.dump(meta, fh, separators=(',', ':'))
@@ -94,6 +119,10 @@ SOURCES = {
         sfz='GregSullivan.E-Pianos/Wurlitzer EP200/Wurlitzer EP200.sfz', defines={'$EXT': 'flac'}, mono=True,
         trim=[(127, 6.0)], release=0.2, gain=1.0, name='Wurlitzer electric piano',
         credit="Wurlitzer EP200 from Greg Sullivan's E-Pianos (CC BY 3.0)"),
+    'strings': dict(   # string section: cellos below C3, violas C3 to A3, violins from A#3; the fuller (louder) layer only; looped to hold
+        sfz=[('VSCO-SFZ/CelloEnsSusVib.sfz', 0, 47), ('VSCO-SFZ/ViolaEnsSusVib.sfz', 48, 57), ('VSCO-SFZ/ViolinEnsSusVib.sfz', 58, 127)],
+        velocities=[127], trim=[(127, 6.0)], loop=(2.5, 0.35), release=0.6, gain=0.45, name='String section',   # gain: -7 dB, level with the synth strings
+        credit='VS Chamber Orchestra: Community Edition by Versilian Studios (CC0)'),
 }
 
 def build(root, key):
