@@ -26,22 +26,30 @@ await p.click('.mfx-k button[data-k="phaser"]'); await p.waitForTimeout(250); r.
     r.recordSheetHasMix=await p.evaluate(()=>{ s2.armId=null; s2AddSheet(true); return !!document.querySelector('#nxSheet [data-k="mix"]')||[...document.querySelectorAll('#nxSheet [data-lane]')].some(b=>s2Lane(b.dataset.lane).tracks[0].inst==='mix'); });
     out.free=r; }
   { const p=await page(true), r={};
-    await p.evaluate(()=>{ const t=mkTrack('mix',{id:S.nextId++,off:16,len:4,rep:false,lenSet:true}); t.mfx={k:'lp',curve:null,params:{}}; S.tracks.push(t); save(); renderTracks(); s2Edit(t); }); await p.waitForTimeout(400);
-    const R=await p.evaluate(()=>{ const c=document.querySelector('.mfxe canvas').getBoundingClientRect(); return {x:c.left,y:c.top,w:c.width,h:c.height}; }), X=t=>R.x+38+t*(R.w-38-12), Y=v=>R.y+24+(1-v)*(R.h-24-22);   /* the editor's margins: Mix % on the left, bar numbers below */
-    await p.mouse.click(X(0.3),Y(0.8)); await p.waitForTimeout(150); r.added=await p.evaluate(()=>S.tracks.find(t=>t.mfx).mfx.curve.nodes.length);
-    await p.mouse.move(X(0.3),Y(0.8)); await p.mouse.down(); await p.mouse.move(X(0.4),Y(0.5),{steps:5}); await p.mouse.up(); await p.waitForTimeout(150);
+    await p.evaluate(()=>{ const t=mkTrack('mix',{id:S.nextId++,off:16,len:4,rep:false,lenSet:true}); t.mfx={k:'echo',curve:null,params:{}}; S.tracks.push(t); save(); renderTracks(); s2Edit(t); }); await p.waitForTimeout(400);
+    const R=await p.evaluate(()=>{ const c=document.querySelector('.mfxe canvas').getBoundingClientRect(); return {x:c.left,y:c.top,w:c.width,h:c.height}; }), X=t=>R.x+58+t*(R.w-58-14), Y=v=>R.y+14+(1-v)*(R.h-14-40);   /* the editor's margins (Mix effects: height = mix) */
+    await p.click('.mfx-acts [data-a="add"]'); await p.waitForTimeout(150); r.added=await p.evaluate(()=>S.tracks.find(t=>t.mfx).mfx.curve.nodes.length);   /* + : a point in the widest gap */
+    const n1=await p.evaluate(()=>S.tracks.find(t=>t.mfx).mfx.curve.nodes[1]);
+    await p.mouse.move(X(n1.t),Y(n1.v)); await p.mouse.down(); await p.mouse.move(X(0.4),Y(0.5),{steps:5}); await p.mouse.up(); await p.waitForTimeout(150);
     r.dragged=await p.evaluate(()=>{ const n=S.tracks.find(t=>t.mfx).mfx.curve.nodes[1]; return [+n.t.toFixed(2),+n.v.toFixed(2)]; });
-    const ns=await p.evaluate(()=>S.tracks.find(t=>t.mfx).mfx.curve.nodes); const m=(ns[0].t+ns[1].t)/2, mv=(ns[0].v+ns[1].v)/2;
+    const ns=await p.evaluate(()=>S.tracks.find(t=>t.mfx).mfx.curve.nodes); const m=ns[0].t+(ns[1].t-ns[0].t)*0.3, mv=ns[0].v+(ns[1].v-ns[0].v)*0.3;   /* grab the line 30% along */
     await p.mouse.move(X(m),Y(mv)); await p.mouse.down(); await p.mouse.move(X(m),Y(Math.min(1,mv+0.3)),{steps:5}); await p.mouse.up(); await p.waitForTimeout(150);
     r.bent=await p.evaluate(()=>S.tracks.find(t=>t.mfx).mfx.curve.curves[0]);
-    await p.mouse.click(X(0.4),Y(0.5)); await p.waitForTimeout(100); await p.click('.mfx-tools [data-a="del"]'); await p.waitForTimeout(150); r.afterDelete=await p.evaluate(()=>S.tracks.find(t=>t.mfx).mfx.curve.nodes.length);
-    await p.click('.mfx-tools [data-a="reset"]'); await p.waitForTimeout(150); r.reset=await p.evaluate(()=>S.tracks.find(t=>t.mfx).mfx.curve===null);
-    await p.click('.mfx-k button[data-k="echo"]'); await p.waitForTimeout(150); await p.click('.mfx-par button[data-pv="1"]'); await p.waitForTimeout(150);
+    await p.mouse.click(X(0.4),Y(0.5)); await p.waitForTimeout(100); r.tapToggles=await p.evaluate(()=>document.querySelector('.mfx-acts [data-a="del"]').disabled);   /* it was highlighted by the drag; a tap lets go */
+    await p.mouse.click(X(0.4),Y(0.5)); await p.waitForTimeout(100); r.delEnabled=await p.evaluate(()=>!document.querySelector('.mfx-acts [data-a="del"]').disabled);
+    r.undoCurve=await p.evaluate(async()=>{ const t=S.tracks.find(t=>t.mfx), before=JSON.stringify(t.mfx.curve); flushSave(); undo(); await new Promise(r=>setTimeout(r,100)); const u=JSON.stringify(S.tracks.find(t=>t.mfx).mfx.curve); redo(); await new Promise(r=>setTimeout(r,100)); return u!==before && JSON.stringify(S.tracks.find(t=>t.mfx).mfx.curve)===before; });
+    if(r.undoCurve) await p.evaluate(async()=>{ s2EdMount(); await new Promise(r=>setTimeout(r,150)); }); await p.mouse.click(X(0.4),Y(0.5)); await p.waitForTimeout(100); r.delEnabled=r.delEnabled&&await p.evaluate(()=>!document.querySelector('.mfx-acts [data-a="del"]').disabled);
+    await p.click('.mfx-acts [data-a="del"]'); await p.waitForTimeout(150); r.afterDelete=await p.evaluate(()=>S.tracks.find(t=>t.mfx).mfx.curve.nodes.length);
+    await p.click('.mfx-acts [data-a="reset"]'); await p.waitForTimeout(150); r.reset=await p.evaluate(()=>S.tracks.find(t=>t.mfx).mfx.curve===null);
+    await p.click('.mfx-par button[data-pv="1"]'); await p.waitForTimeout(150);
     r.echo=await p.evaluate(()=>S.tracks.find(t=>t.mfx).mfx); r.undo=await p.evaluate(()=>hist.undo.length>0);
+    r.labels=await p.evaluate(()=>[...document.querySelectorAll('.mfx-par .mfx-st>span,.mfx-par .mfx-sl>span')].map(e=>e.textContent).join('|'));
+    // a filter: the curve is drawn as the cutoff on a log scale, Low pass from 20 kHz down
+    r.filter=await p.evaluate(async()=>{ document.querySelector('.mfx-k button[data-k="lp"]').click(); await new Promise(r=>setTimeout(r,150)); const t=S.tracks.find(t=>t.mfx); return t.mfx.k; });
     r.mix=await p.evaluate(async()=>{ const m=await renderMix(1,false); let q=0; const d=m.getChannelData(0); for(let i=0;i<d.length;i++) q+=d[i]*d[i]; return +(10*Math.log10(q/d.length)).toFixed(1); });
     out.pro=r; }
   const f=out.free, pr=out.pro, bad=[];
   if(!f.offered||!f.lanes.includes('mix')||f.armOnMix||!f.newShown||!f.part||f.part.k!=='lp'||f.part.len!==4||!f.part.editor||f.part.chips!==11||!f.proSheet||f.stillLp!=='lp'||f.hpFree!=='hp'||!f.noDraw||f.recordSheetHasMix||f.del.afterOnly!==0||!f.del.laneKept||f.del.afterTwo!=='lp'||f.del.mixAfter!==1||!f.fits) bad.push('free');
-  if(pr.added!==4||pr.dragged[0]!==0.4||Math.abs(pr.dragged[1]-0.5)>0.05||typeof pr.bent!=='number'||pr.afterDelete!==3||!pr.reset||pr.echo.k!=='echo'||pr.echo.params.div!==1||!pr.undo||!(pr.mix>-40)) bad.push('pro');
+  if(pr.added!==4||pr.dragged[0]!==0.4||Math.abs(pr.dragged[1]-0.5)>0.05||typeof pr.bent!=='number'||!pr.delEnabled||!pr.tapToggles||!pr.undoCurve||pr.afterDelete!==3||!pr.reset||pr.echo.k!=='echo'||pr.echo.params.div!==1||!pr.undo||pr.labels!=='Delay Time|Feedback'||pr.filter!=='lp'||!(pr.mix>-40)) bad.push('pro');
   if(bad.length) errs.push('mix fx ui: '+bad.join(', '));
   console.log(JSON.stringify(out),errs); await b.close(); })();

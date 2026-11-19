@@ -383,7 +383,7 @@ input[type=range]::-moz-range-thumb{width:10px;height:18px;border-radius:1px;bac
 .s2-edb{flex:1;min-height:0;overflow-y:auto;padding-top:4px}
 .mfxe{max-width:100%;overflow-x:hidden}.mfxe .mfx-cv{position:relative;width:max-content;max-width:100%;margin:6px 0 8px}.mfxe canvas{display:block;border-radius:8px}.mfx-ph{position:absolute;left:0;top:0;width:2px;margin-left:-1px;background:var(--s2-amber);display:none;pointer-events:none}
 .s2 .mfx-btn,.mfx-btn{border:1px solid var(--s2-line);border-radius:10px;padding:11px 12px;background:var(--s2-panel);color:var(--s2-ink);font:600 15px var(--f-body);cursor:pointer}.s2 .mfx-btn:disabled{opacity:.45}
-.mfx-tools{display:flex;gap:8px}.mfx-tools button{flex:1}.mfx-pro{width:100%}.mfx-pro{width:100%}.mfx-sl{display:flex;align-items:center;gap:10px;margin:8px 0;font-size:14px}.mfx-sl span{width:64px}.mfx-sl input{flex:1}.mfx-sl b{width:70px;text-align:right;font-weight:600}
+.mfx-row{display:flex;align-items:center;justify-content:space-between;margin:8px 0 2px}.mfx-row b{font-size:12px;letter-spacing:.12em;text-transform:uppercase;opacity:.7}.mfx-acts{display:flex;gap:6px}.s2 .mfx-btn.mfx-ic{width:40px;padding:6px 0;font-size:18px;line-height:1}.s2 .mfx-acts .mfx-btn{padding:6px 12px}.mfx-pro{width:100%}.mfx-pro{width:100%}.mfx-sl{display:flex;align-items:center;gap:10px;margin:8px 0;font-size:14px}.mfx-sl span{width:92px;flex:none}.mfx-st{margin:8px 0;font-size:14px}.mfx-st>span{display:block;margin-bottom:6px}.mfx-steps{flex-wrap:nowrap!important;gap:6px!important}.s2 .mfx-steps button{flex:1;padding:7px 0;min-width:0;text-align:center}.mfx-sl input{flex:1}.mfx-sl b{width:70px;text-align:right;font-weight:600}
 .fxg{overflow-x:auto;overscroll-behavior-x:contain} .fxg-in{position:relative;width:max-content} .fxg canvas{display:block;border-radius:8px}
 .fxsel{margin-top:10px;padding:10px 12px;border:1px solid var(--s2-line);border-radius:10px;background:var(--s2-panel)} .fxsel-h{display:flex;align-items:center;gap:8px} .fxsel-h b{font-size:15px} .fxsel-h small{flex:1;color:var(--s2-muted);font:500 12px var(--f-mono)}
 .fxsel .s2-fld{padding:4px 0} .fxsel .del{height:36px;padding:0 12px;border:1px solid var(--s2-line);border-radius:8px;background:none;color:var(--rec);font-weight:600} .fxsel .s2-fld label{color:var(--s2-muted)}
@@ -1080,7 +1080,7 @@ function s2EdMount(){ if(s2.edId==null) return; const tr=S.tracks.find(t=>t.id==
   requestAnimationFrame(()=>{ if(tr._cv&&tr._cv.isConnected){ drawGrid(tr); if(sx){ tr._autoScroll=true; tr._cv.parentElement.parentElement.scrollLeft=sx; } } }); }
   $('s2EdT').textContent=s2Name(s2Lane(s2LaneId(tr))); $('s2EdS').textContent=partWhere(tr)+' · '+(tr.mfx?MFX[tr.mfx.k].label:tr.inst==='fx'?(tr.fxs||[]).length+' FX':tr.notes?tr.notes.length+' notes':tr.hits?tr.hits.length+' hits':'audio');
   const pit=kind==='pitched'&&tr.inst!=='arp'; $('s2EdVer').hidden=!pit; $('s2EdVerI').hidden=!pit; $('s2EdFill').hidden=!pit; if(pit){ if(tr._vi && verSig(tr)!==tr._verSig) tr._vi=0; verUI(tr); } else $('s2EdMine').hidden=true;
-  $('s2EdHint').textContent=tr.mfx?(isPro()?'Tap to add a point, drag points to shape the effect, drag a line’s middle to bend it.':'Rises to full, then lets go at the end.'):tr.inst==='fx'?'Tap empty space to add. Tap an effect to select it. Drag to move it or change its kind; drag its right end for length.':kind==='pitched'?'Tap a note to select it, drag to move. Double-tap a note, or tap a faint seam, to split it.':tr.hits?'Tap empty space to add a hit. Tap a hit to select it; drag it to move it in time or to another drum.':'';
+  $('s2EdHint').textContent=tr.mfx?(isPro()?'Tap + to add a point, drag to reshape, tap a point then − to remove it. Drag a line’s middle up or down to bow it.':'Rises to full, then lets go at the end.'):tr.inst==='fx'?'Tap empty space to add. Tap an effect to select it. Drag to move it or change its kind; drag its right end for length.':kind==='pitched'?'Tap a note to select it, drag to move. Double-tap a note, or tap a faint seam, to split it.':tr.hits?'Tap empty space to add a hit. Tap a hit to select it; drag it to move it in time or to another drum.':'';
   $('s2EdUndo').disabled=!hist.undo.length; $('s2EdRedo').disabled=!hist.redo.length; }
 function s2EdClose(){ const tr=S.tracks.find(t=>t.id===s2.edId); if(tr){ tr._cv=null; tr._sel=null; } s2.edId=null; GRID_H=176; GRID_RH=15; GRID_DRUM=1; $('s2Ed').hidden=true; $('s2EdBody').innerHTML=''; s2Render(); }
 /* Share, inside the Studio. A linear song is exported once through (Loop is only for listening). */
@@ -2144,70 +2144,83 @@ function proBuy(){ if(!proBridge()){ toast('Noodle Pro is in the Noodle iPhone a
 function proRestore(){ if(!proBridge()){ toast('Noodle Pro is in the Noodle iPhone app.'); return; } try{ window.webkit.messageHandlers.noodlePro.postMessage('restore'); }catch(e){} toast('Checking with the App Store…'); }
 function nxProSync(){ const e=$('nxProS'); if(!e) return; e.textContent=(devAs()?'Testing: ':'')+(isPro()?'You have Pro':'More sounds, song effects, DAW pack'+(PRO.price?' · '+PRO.price:'')); }
 /* ---- Mix FX editor ---- */
+/* The Song FX editor, as in the Tuttii FX prototype: pick the effect; its curve over the region (x: bars of the region, so it scales with it;
+   y: the cutoff in Hz on a log scale for High pass / Low pass, how much of the effect is mixed in for the rest); + adds a point in the widest gap,
+   tap a point then − to remove it, drag points to reshape, drag a line's middle up or down to bow it, Reset; then the effect's own settings. */
 function mfxEdMount(tr, host){ const pro=isPro(), cfg=()=>MFX[tr.mfx.k], dur=()=>pSteps(tr)*stepDur(), w=document.createElement('div'); w.className='mfxe'; host.appendChild(w);
   const lock='<svg class="nx-ico" viewBox="0 0 24 24" style="width:13px;height:13px;margin-left:4px;vertical-align:-2px"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/></svg>';
-  const H=Math.max(140,Math.min(220,(host.clientHeight||420)-(pro&&(MFX[tr.mfx.k].params||[]).length?330:250))), W=Math.max(240,Math.floor(w.clientWidth||(host.clientWidth||340)-24)), P=24, PL=38, PR=12, PB=22;   /* room for Mix % on the left and bar numbers below */   /* the width actually available inside the editor's padding */
   w.innerHTML=`<div class="s2-opts mfx-k">${Object.entries(MFX).map(([k,c])=>`<button data-k="${k}" aria-pressed="${k===tr.mfx.k}">${c.label}${!pro&&!c.free?lock:''}</button>`).join('')}</div>
+    <div class="mfx-row"><b>Curve</b>${pro?`<span class="mfx-acts"><button class="mfx-btn mfx-ic" data-a="add" aria-label="Add a point">+</button><button class="mfx-btn mfx-ic" data-a="del" aria-label="Remove the selected point" disabled>−</button><button class="mfx-btn" data-a="reset">Reset</button></span>`:''}</div>
     <div class="mfx-cv"><canvas></canvas><div class="mfx-ph"></div></div>
-    ${pro?`<div class="mfx-tools"><button class="mfx-btn" data-a="del" disabled>Delete point</button><button class="mfx-btn" data-a="reset">Reset shape</button></div><div class="mfx-par"></div>`:`<button class="mfx-btn mfx-pro" data-a="pro">Draw your own shape, and 9 more effects ${lock}</button>`}`;
+    ${pro?`<div class="mfx-par"></div>`:`<button class="mfx-btn mfx-pro" data-a="pro">Draw your own shape, and 9 more effects ${lock}</button>`}`;
+  const W=Math.max(240,Math.floor(w.clientWidth||(host.clientWidth||340)-24)), H=Math.max(140,Math.min(200,(host.clientHeight||420)-(pro&&(MFX[tr.mfx.k].params||[]).length?360:280))), PT=14, PL=58, PR=14, PB=40;
   const cv=w.querySelector('canvas'), ph=w.querySelector('.mfx-ph'); tr._mfxph={el:ph,W,PL,PR};
   let sel=-1, drag=null;
+  const LOGR=Math.log(20000/20), isF=()=>cfg().kind==='filter';
+  const disp=v=>{ if(!isF()) return v; const c=cfg(), hz=c.fromHz*Math.pow(c.toHz/c.fromHz,v); return Math.log(hz/20)/LOGR; };   /* a curve value as a height: Hz (log) for filters, else the mix */
+  const undisp=d=>{ if(!isF()) return clamp(d,0,1); const c=cfg(), hz=20*Math.exp(clamp(d,0,1)*LOGR); return clamp(Math.log(hz/c.fromHz)/Math.log(c.toHz/c.fromHz),0,1); };
   const nodes=()=>mfxNodes(tr,dur()), own=()=>{ if(!tr.mfx.curve){ const n=mfxDefaultNodes(dur()).map(x=>({...x})); tr.mfx.curve={nodes:n, curves:Array(n.length-1).fill(null)}; } return tr.mfx.curve; };
-  const X=t=>PL+t*(W-PL-PR), Y=v=>P+(1-v)*(H-P-PB), T=x=>clamp((x-PL)/(W-PL-PR),0,1), V=y=>clamp(1-(y-P)/(H-P-PB),0,1);   /* x: share of the region (so it scales with it), y: how much of the effect is mixed in */
-  const draw=()=>{ const dpr=Math.min(2,window.devicePixelRatio||1); cv.width=Math.round(W*dpr); cv.height=Math.round(H*dpr); cv.style.width=W+'px'; cv.style.height=H+'px'; ph.style.height=H+'px';
-    const g=cv.getContext('2d'), cs=getComputedStyle($('s2')), c=n=>cs.getPropertyValue(n).trim(), col=INST.mix.color; g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,W,H);
-    g.fillStyle=c('--s2-lane'); g.fillRect(X(0),Y(1),X(1)-X(0),Y(0)-Y(1)); const bars=pBars(tr), b0=(tr.off||0)/16; g.strokeStyle=c('--s2-line'); g.lineWidth=1;
-    [0.5].forEach(v=>{ g.globalAlpha=0.6; g.setLineDash([3,4]); g.beginPath(); g.moveTo(X(0),Math.round(Y(v))+0.5); g.lineTo(X(1),Math.round(Y(v))+0.5); g.stroke(); g.setLineDash([]); g.globalAlpha=1; });
-    const lab=n=>{ g.fillStyle=c('--s2-ink'); g.globalAlpha=0.65; g.font='600 11px '+(c('--f-body')||'sans-serif'); return n; };
-    const every=Math.max(1,Math.ceil(bars/Math.max(1,Math.floor((X(1)-X(0))/34))));   /* as many bar numbers as fit */
-    for(let b=0;b<=Math.floor(bars+1e-9);b++){ const x=Math.round(X(b/bars))+0.5; g.beginPath(); g.moveTo(x,Y(1)); g.lineTo(x,Y(0)); g.stroke(); if(b<bars-1e-9 && b%every===0){ lab(); g.textAlign='left'; g.textBaseline='top'; g.fillText(String(Math.floor(b0+b)+1),x+3,Y(0)+5); g.globalAlpha=1; } }
-    lab(); g.textAlign='right'; g.textBaseline='middle'; g.fillText('100%',X(0)-5,Y(1)); g.fillText('50%',X(0)-5,Y(0.5)); g.fillText('0%',X(0)-5,Y(0)); g.textAlign='left'; g.textBaseline='top'; g.fillText('Mix',4,2); g.globalAlpha=1;   /* the scale's name, above it */
-    const ns=nodes(), cvv=tr.mfx.curve&&tr.mfx.curve.curves, N=240; g.beginPath(); g.moveTo(X(0),Y(0)); for(let i=0;i<=N;i++){ const t=i/N; g.lineTo(X(t),Y(clamp(mfxValAt(ns,t,cvv),0,1))); } g.lineTo(X(1),Y(0)); g.closePath(); g.fillStyle=col; g.globalAlpha=0.25; g.fill(); g.globalAlpha=1;
-    g.beginPath(); for(let i=0;i<=N;i++){ const t=i/N, y=Y(clamp(mfxValAt(ns,t,cvv),0,1)); i?g.lineTo(X(t),y):g.moveTo(X(t),y); } g.strokeStyle=col; g.lineWidth=2.5; g.stroke();
-    if(pro){ for(let i=0;i<ns.length-1;i++){ const m=(ns[i].t+ns[i+1].t)/2; g.fillStyle=c('--s2-ink'); g.globalAlpha=0.5; g.beginPath(); g.arc(X(m),Y(clamp(mfxValAt(ns,m,cvv),0,1)),3.5,0,7); g.fill(); g.globalAlpha=1; }   /* drag a line's middle to bend it */
-      ns.forEach((n,i)=>{ const end=i===0||i===ns.length-1; g.beginPath(); g.arc(X(n.t),Y(n.v),end?4:7,0,7); g.fillStyle=end?c('--s2-line'):col; g.fill(); if(i===sel){ g.lineWidth=2.5; g.strokeStyle=c('--s2-ink'); g.stroke(); } }); }
+  const X=t=>PL+t*(W-PL-PR), Y=d=>PT+(1-d)*(H-PT-PB), T=x=>clamp((x-PL)/(W-PL-PR),0,1), V=y=>clamp(1-(y-PT)/(H-PT-PB),0,1);
+  const draw=()=>{ const dpr=Math.min(2,window.devicePixelRatio||1); cv.width=Math.round(W*dpr); cv.height=Math.round(H*dpr); cv.style.width=W+'px'; cv.style.height=H+'px'; ph.style.top=PT+'px'; ph.style.height=(H-PT-PB)+'px';
+    const g=cv.getContext('2d'), cs=getComputedStyle($('s2')), c=n=>cs.getPropertyValue(n).trim(), col=INST.mix.color, ink=c('--s2-ink'), font=(c('--f-body')||'sans-serif'); g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,W,H);
+    g.fillStyle=c('--s2-lane'); g.fillRect(X(0),Y(1),X(1)-X(0),Y(0)-Y(1));
+    const lbl=(t,x,y,al,bl)=>{ g.fillStyle=ink; g.globalAlpha=0.65; g.font='600 11px '+font; g.textAlign=al; g.textBaseline=bl; g.fillText(t,x,y); g.globalAlpha=1; };
+    g.strokeStyle=c('--s2-line'); g.lineWidth=1;
+    const ticks=isF()?[[20,'20'],[100,'100'],[1000,'1k'],[10000,'10k'],[20000,'20k']].map(([hz,t])=>[Math.log(hz/20)/LOGR,t]):[[0.25,'25%'],[0.5,'50%'],[0.75,'75%']];
+    ticks.forEach(([d,t])=>{ const y=Math.round(Y(d))+0.5; g.beginPath(); g.moveTo(X(0),y); g.lineTo(X(1),y); g.stroke(); g.beginPath(); g.moveTo(X(0)-6,y); g.lineTo(X(0)-1,y); g.stroke(); lbl(t,X(0)-9,y,'right','middle'); });
+    const bars=pBars(tr), step=bars<=4?1:bars<=8?2:bars<=16?4:8;   /* bars of the region */
+    for(let b=step;b<bars-1e-9;b+=step){ const x=Math.round(X(b/bars))+0.5; g.beginPath(); g.moveTo(x,Y(1)); g.lineTo(x,Y(0)+5); g.stroke(); lbl(String(b),x,Y(0)+8,'center','top'); }
+    lbl('Bars',(X(0)+X(1))/2,H-2,'center','bottom'); g.save(); g.translate(12,(Y(0)+Y(1))/2); g.rotate(-Math.PI/2); lbl(isF()?'Frequency (Hz)':'Mix',0,0,'center','middle'); g.restore();
+    const ns=nodes(), cvv=tr.mfx.curve&&tr.mfx.curve.curves, N=240, at=t=>Y(disp(clamp(mfxValAt(ns,t,cvv),0,1)));
+    g.beginPath(); for(let i=0;i<=N;i++){ const t=i/N; i?g.lineTo(X(t),at(t)):g.moveTo(X(t),at(t)); } g.strokeStyle=col; g.lineWidth=2.5; g.stroke();
+    for(let i=0;i<ns.length-1;i++){ const m=(ns[i].t+ns[i+1].t)/2; g.fillStyle=ink; g.globalAlpha=0.45; g.beginPath(); g.arc(X(m),at(m),3,0,7); g.fill(); g.globalAlpha=1; }   /* drag a line's middle to bow it */
+    ns.forEach((n,i)=>{ const end=i===0||i===ns.length-1; g.beginPath(); g.arc(X(n.t),Y(disp(n.v)),end?4:6.5,0,7); g.fillStyle=end?c('--s2-line'):col; g.fill(); if(i===sel){ g.lineWidth=2.5; g.strokeStyle=ink; g.stroke(); } });
     const db=w.querySelector('[data-a="del"]'); if(db) db.disabled=!(sel>0&&sel<nodes().length-1); };
   const changed=()=>{ save(); draw(); const L=s2Lane(s2LaneId(tr)), lc=L&&$('s2In').querySelector(`canvas[data-cv="${L.id}"]`); if(lc) s2DrawLane(L,lc); $('s2EdS').textContent=partWhere(tr)+' · '+MFX[tr.mfx.k].label; };
-  const at=ev=>{ const R=cv.getBoundingClientRect(); return {x:ev.clientX-R.left, y:ev.clientY-R.top}; };
+  const pt=ev=>{ const R=cv.getBoundingClientRect(); return {x:ev.clientX-R.left, y:ev.clientY-R.top}; };
   cv.style.touchAction=pro?'none':'pan-y';
-  cv.addEventListener('pointerdown',ev=>{ if(!pro){ proSheet('Draw your own shape for each effect, and get 9 more effects.'); return; } const q=at(ev), ns=nodes(), cvv=tr.mfx.curve&&tr.mfx.curve.curves; flushSave();
-    let hit=-1, best=22; ns.forEach((n,i)=>{ const d=Math.hypot(X(n.t)-q.x,Y(n.v)-q.y); if(d<best){ best=d; hit=i; } });
-    if(hit>=0){ sel=hit; drag={kind:'node',i:hit,moved:false,x0:q.x,y0:q.y}; }
-    else { let seg=-1, bs=18; for(let i=0;i<ns.length-1;i++){ const m=(ns[i].t+ns[i+1].t)/2, d=Math.hypot(X(m)-q.x,Y(clamp(mfxValAt(ns,m,cvv),0,1))-q.y); if(d<bs){ bs=d; seg=i; } } drag=seg>=0?{kind:'seg',i:seg,moved:false,x0:q.x,y0:q.y}:{kind:'add',x0:q.x,y0:q.y,moved:false}; }
+  cv.addEventListener('pointerdown',ev=>{ if(!pro){ proSheet('Draw your own shape for each effect, and get 9 more effects.'); return; } const q=pt(ev), ns=nodes(), cvv=tr.mfx.curve&&tr.mfx.curve.curves; flushSave();
+    let hit=-1, best=22; ns.forEach((n,i)=>{ const d=Math.hypot(X(n.t)-q.x,Y(disp(n.v))-q.y); if(d<best){ best=d; hit=i; } });
+    if(hit>=0) drag={kind:'node',i:hit,moved:false,x0:q.x,y0:q.y};
+    else { const t=T(q.x), i=Math.max(0,ns.findIndex((n,j)=>j<ns.length-1&&t>=n.t&&t<=ns[j+1].t)), a=ns[i], b=ns[i+1], u=b&&b.t>a.t?(t-a.t)/(b.t-a.t):0.5, onCurve=b&&Math.abs(Y(disp(clamp(mfxValAt(ns,t,cvv),0,1)))-q.y)<20;
+      drag=onCurve&&u>0.04&&u<0.96?{kind:'seg',i,u,moved:false,x0:q.x,y0:q.y}:{kind:'none',moved:false,x0:q.x,y0:q.y}; }   /* grab the line anywhere to bend it */
     try{ cv.setPointerCapture(ev.pointerId); }catch(e){} draw(); });
-  cv.addEventListener('pointermove',ev=>{ if(!drag) return; const q=at(ev); if(!drag.moved && Math.hypot(q.x-drag.x0,q.y-drag.y0)<4) return; drag.moved=true; ev.preventDefault();
-    if(drag.kind==='node'){ const C=own(), i=drag.i, n=C.nodes; if(i===0||i===n.length-1) return; n[i].t=clamp(T(q.x), n[i-1].t+0.01, n[i+1].t-0.01); n[i].v=V(q.y); draw(); }   /* the ends stay at Off */
-    else if(drag.kind==='seg'){ const C=own(), i=drag.i, a=C.nodes[i], b=C.nodes[i+1]; C.curves[i]=clamp(2*V(q.y)-(a.v+b.v)/2,0,1); draw(); } });   /* the bend that puts the line's middle under your finger */
-  const up=()=>{ if(!drag) return; const d=drag; drag=null;
-    if(d.kind==='add' && !d.moved){ const C=own(), t=T(d.x0), v=V(d.y0); let i=C.nodes.findIndex(n=>n.t>t); if(i<=0) i=C.nodes.length-1; if(t-C.nodes[i-1].t<0.01||C.nodes[i].t-t<0.01){ draw(); return; }
-      C.nodes.splice(i,0,{t,v}); C.curves.splice(i-1,1,null,null); sel=i; haptic('light'); changed(); return; }
-    if(d.moved) changed(); else draw(); };
+  cv.addEventListener('pointermove',ev=>{ if(!drag) return; const q=pt(ev); if(!drag.moved && Math.hypot(q.x-drag.x0,q.y-drag.y0)<4) return; drag.moved=true; ev.preventDefault();
+    if(drag.kind==='none') return;
+    if(drag.kind==='node'){ const C=own(), i=drag.i, n=C.nodes; if(i===0||i===n.length-1) return; sel=i; n[i].t=clamp(T(q.x), n[i-1].t+0.01, n[i+1].t-0.01); n[i].v=undisp(V(q.y)); draw(); }   /* the ends stay where the effect is off */
+    else { const C=own(), i=drag.i, a=C.nodes[i], b=C.nodes[i+1], u=drag.u, w=1-u; C.curves[i]=clamp((undisp(V(q.y))-w*w*a.v-u*u*b.v)/(2*w*u),0,1); draw(); } });   /* the bow that puts the line under your finger where you grabbed it */
+  const up=()=>{ if(!drag) return; const d=drag; drag=null; if(d.moved && d.kind!=='none'){ changed(); return; }
+    if(!d.moved) sel = d.kind==='node' ? (sel===d.i?-1:d.i) : -1;   /* a tap selects a point (again, or elsewhere, to let go) */
+    draw(); };
   cv.addEventListener('pointerup',up); cv.addEventListener('pointercancel',up);
+  const fmt=(v,pm)=>(+v).toFixed(2)+(pm.unit?' '+pm.unit:'');
   const params=()=>{ const box=w.querySelector('.mfx-par'); if(!box) return; const c=cfg(); box.innerHTML=(c.params||[]).map(pm=>{ const v=mfxParam(tr,c,pm.key);
-      if(pm.type==='steps') return `<div class="nx-grp" style="padding-top:8px">${pm.label}</div><div class="s2-opts">${pm.options.map(([x,l])=>`<button data-pk="${pm.key}" data-pv="${x}" aria-pressed="${x===v}">${l}</button>`).join('')}</div>`;
-      return `<label class="mfx-sl"><span>${pm.label}</span><input type="range" data-pk="${pm.key}" min="${pm.min}" max="${pm.max}" step="${pm.step}" value="${v}"><b>${(+v).toFixed(pm.step<1?(pm.step<0.1?2:1):0)}${pm.unit?' '+pm.unit:''}</b></label>`; }).join(''); };
+      if(pm.type==='steps') return `<div class="mfx-st"><span>${pm.label}</span><div class="s2-opts mfx-steps">${pm.options.map(([x,l])=>`<button data-pk="${pm.key}" data-pv="${x}" aria-pressed="${x===v}">${l}</button>`).join('')}</div></div>`;
+      return `<label class="mfx-sl"><span>${pm.label}</span><input type="range" data-pk="${pm.key}" min="${pm.min}" max="${pm.max}" step="${pm.step}" value="${v}"><b>${fmt(v,pm)}</b></label>`; }).join(''); };
   w.addEventListener('click',ev=>{ const b=ev.target.closest('button'); if(!b) return;
     if(b.dataset.k){ const k=b.dataset.k; if(!pro&&!MFX[k].free){ proSheet(MFX[k].label+' and 8 more effects, with shapes you draw.'); return; } tr.mfx.k=k; tr.mfx.params={}; w.querySelectorAll('.mfx-k button').forEach(x=>x.setAttribute('aria-pressed',String(x.dataset.k===k))); params(); changed(); return; }
     if(b.dataset.pk){ tr.mfx.params[b.dataset.pk]=+b.dataset.pv; params(); changed(); return; }
     const a=b.dataset.a; if(a==='pro') proSheet('Draw your own shape for each effect, and get 9 more effects.');
-    else if(a==='reset'){ tr.mfx.curve=null; sel=-1; changed(); }
-    else if(a==='del' && tr.mfx.curve && sel>0 && sel<tr.mfx.curve.nodes.length-1){ const C=tr.mfx.curve; C.nodes.splice(sel,1); C.curves.splice(sel-1,2,null); sel=-1; changed(); } });
-  w.addEventListener('input',ev=>{ const r=ev.target; if(r.dataset.pk){ tr.mfx.params[r.dataset.pk]=+r.value; const pm=(cfg().params||[]).find(x=>x.key===r.dataset.pk); r.nextElementSibling.textContent=(+r.value).toFixed(pm.step<1?(pm.step<0.1?2:1):0)+(pm.unit?' '+pm.unit:''); } });
+    else if(a==='add'){ flushSave(); const C=own(); let i=0, gap=-1; for(let j=0;j<C.nodes.length-1;j++){ const gj=C.nodes[j+1].t-C.nodes[j].t; if(gj>gap){ gap=gj; i=j; } } if(gap<0.02) return;   /* in the widest gap, on the curve as it is */
+      const t=(C.nodes[i].t+C.nodes[i+1].t)/2, v=clamp(mfxValAt(C.nodes,t,C.curves),0,1); C.nodes.splice(i+1,0,{t,v}); C.curves.splice(i,1,null,null); sel=i+1; haptic('light'); changed(); }
+    else if(a==='reset'){ flushSave(); tr.mfx.curve=null; sel=-1; changed(); }
+    else if(a==='del' && tr.mfx.curve && sel>0 && sel<tr.mfx.curve.nodes.length-1){ flushSave(); const C=tr.mfx.curve; C.nodes.splice(sel,1); C.curves.splice(sel-1,2,null); sel=-1; changed(); } });
+  w.addEventListener('input',ev=>{ const r=ev.target; if(r.dataset.pk){ tr.mfx.params[r.dataset.pk]=+r.value; const pm=(cfg().params||[]).find(x=>x.key===r.dataset.pk); r.nextElementSibling.textContent=fmt(r.value,pm); } });
   w.addEventListener('change',ev=>{ if(ev.target.dataset.pk) changed(); });
   params(); draw(); }
 /* ---- Mix FX ---- */
 const MFX={
   hp:{label:'High pass', free:true, kind:'filter', type:'highpass', fromHz:20, toHz:15000},
   lp:{label:'Low pass', free:true, kind:'filter', type:'lowpass', fromHz:20000, toHz:20},
-  phaser:{label:'Phaser', kind:'phaser', stages:6, centerHz:800, lfoRateHz:0.3, lfoDepthHz:600, params:[{key:'lfoRateHz',label:'Speed',unit:'Hz',min:0.05,max:5,step:0.01},{key:'centerHz',label:'Center',unit:'Hz',min:200,max:2000,step:10}]},
+  phaser:{label:'Phaser', kind:'phaser', stages:6, centerHz:800, lfoRateHz:0.3, lfoDepthHz:600, params:[{key:'lfoRateHz',label:'LFO Rate',unit:'Hz',min:0.05,max:5,step:0.01},{key:'centerHz',label:'Center Freq',unit:'Hz',min:200,max:2000,step:10}]},
   washout:{label:'Washout', kind:'washout', fromHz:20, toHz:300},
-  echo:{label:'Echo throw', kind:'echo', div:0.5, feedback:0.45, params:[{key:'div',label:'Delay',type:'steps',options:[[0.25,'1/16'],[0.5,'1/8'],[0.75,'1/8.'],[1,'1/4'],[1.5,'1/4.'],[2,'1/2']]},{key:'feedback',label:'Repeats',min:0,max:0.85,step:0.01}]},
-  tremolo:{label:'Tremolo', kind:'tremolo', lfoRateHz:5, params:[{key:'lfoRateHz',label:'Speed',unit:'Hz',min:0.5,max:20,step:0.1}]},
-  autopan:{label:'Auto-pan', kind:'autopan', lfoRateHz:1, params:[{key:'lfoRateHz',label:'Speed',unit:'Hz',min:0.1,max:10,step:0.1}]},
-  crush:{label:'Bitcrusher', kind:'crush', bitDepth:4, params:[{key:'bitDepth',label:'Bits',unit:'',min:1,max:16,step:1}]},
+  echo:{label:'Echo throw', kind:'echo', div:0.5, feedback:0.45, params:[{key:'div',label:'Delay Time',type:'steps',options:[[0.25,'1/16'],[0.5,'1/8'],[0.75,'1/8.'],[1,'1/4'],[1.5,'1/4.'],[2,'1/2']]},{key:'feedback',label:'Feedback',min:0,max:0.85,step:0.01}]},
+  tremolo:{label:'Tremolo', kind:'tremolo', lfoRateHz:5, params:[{key:'lfoRateHz',label:'LFO Rate',unit:'Hz',min:0.5,max:20,step:0.1}]},
+  autopan:{label:'Auto-pan', kind:'autopan', lfoRateHz:1, params:[{key:'lfoRateHz',label:'LFO Rate',unit:'Hz',min:0.1,max:10,step:0.1}]},
+  crush:{label:'Bitcrusher', kind:'crush', bitDepth:4, params:[{key:'bitDepth',label:'Bit Depth',unit:'bit',min:1,max:16,step:1}]},
   brake:{label:'Vinyl brake', kind:'brake', maxDelaySec:0.35, minHz:700, minGain:0.2},
   swell:{label:'Reverse swell', kind:'swell', fromHz:150, toHz:9000},
-  ring:{label:'Ring mod', kind:'ring', carrierHz:250, params:[{key:'carrierHz',label:'Pitch',unit:'Hz',min:20,max:2000,step:5}]} };
+  ring:{label:'Ring mod', kind:'ring', carrierHz:250, params:[{key:'carrierHz',label:'Frequency',unit:'Hz',min:20,max:2000,step:5}]} };
 const MFX_GAP=0.002, MFX_DROP=0.02, MFX_BOW=12;
 const mfxParam=(p,cfg,k)=>p.mfx.params&&p.mfx.params[k]!==undefined?p.mfx.params[k]:cfg[k];
 /* the curve: points {t,v} in 0..1 joined by segments, each a quadratic bow (curves[i]: its middle value; none = straight). The ends stay at 0, so
@@ -2225,7 +2238,10 @@ function mfxSweep(par,from,to,p,at,off,dur){ const hz=f=>from*Math.pow(to/from,f
 function mfxWet(dry,wet,p,at,off,dur){ const w0=mfxFrac(p,dur,dur>0?off/dur:1); wet.gain.setValueAtTime(w0,at); dry.gain.setValueAtTime(1-w0,at); mfxPoints(p,dur,off).forEach(q=>{ wet.gain.linearRampToValueAtTime(q.f,at+q.s-off); dry.gain.linearRampToValueAtTime(1-q.f,at+q.s-off); }); }
 function mfxDepth(p,off,dur){ return [{s:off,f:mfxFrac(p,dur,dur>0?off/dur:1)}].concat(mfxPoints(p,dur,off)); }
 const MFX_CRUSH={}; function mfxCrushCurve(b){ return MFX_CRUSH[b]||(MFX_CRUSH[b]=(()=>{ const st=Math.pow(2,b), c=new Float32Array(1024); for(let i=0;i<1024;i++){ const x=i/1023*2-1; c[i]=Math.round(x*st)/st; } return c; })()); }
-const MFX_NOISE=new WeakMap(); function mfxNoise(c){ let b=MFX_NOISE.get(c); if(!b){ b=c.createBuffer(2,c.sampleRate*2,c.sampleRate); for(let ch=0;ch<2;ch++){ const d=b.getChannelData(ch); let st=ch?0x2545F491:0x9E3779B9; for(let i=0;i<d.length;i++){ st^=st<<13; st^=st>>>17; st^=st<<5; d[i]=((st>>>0)/4294967296)*2-1; } } MFX_NOISE.set(c,b); } return b; }
+const MFX_NOISE=new WeakMap(), MFX_WASH=new WeakMap();
+const mfxRand=seed=>{ let st=seed>>>0; return ()=>{ st^=st<<13; st^=st>>>17; st^=st<<5; return ((st>>>0)/4294967296)*2-1; }; };
+function mfxNoise(c){ let b=MFX_NOISE.get(c); if(!b){ b=c.createBuffer(1,Math.floor(c.sampleRate*3),c.sampleRate); const d=b.getChannelData(0), r=mfxRand(0x9E3779B9); for(let i=0;i<d.length;i++) d[i]=r(); MFX_NOISE.set(c,b); } return b; }   /* the prototype's: 3 s, mono */
+function mfxWash(c){ let b=MFX_WASH.get(c); if(!b){ const len=Math.floor(c.sampleRate*2.5); b=c.createBuffer(2,len,c.sampleRate); for(let ch=0;ch<2;ch++){ const d=b.getChannelData(ch), r=mfxRand(ch?0x2545F491:0x85EBCA6B); for(let i=0;i<len;i++) d[i]=r()*Math.pow(1-i/len,3); } MFX_WASH.set(c,b); } return b; }   /* the prototype's wash: 2.5 s, fading as (1-t)^3 */
 /* one effect as a unit: input, output, and automate(at, off, dur) to shape it over one pass of its part (neutral outside it) */
 function mfxUnit(c,p,keep){ const cfg=MFX[p.mfx.k], K=n=>keep(n), G=v=>{ const g=K(c.createGain()); g.gain.value=v; return g; };
   const dryWet=()=>{ const i=G(1), o=G(1), dry=G(1), wet=G(0); i.connect(dry); dry.connect(o); wet.connect(o); return {i,o,dry,wet}; };
@@ -2234,7 +2250,7 @@ function mfxUnit(c,p,keep){ const cfg=MFX[p.mfx.k], K=n=>keep(n), G=v=>{ const g
     case 'filter': { const f=K(c.createBiquadFilter()); f.type=cfg.type; f.frequency.value=cfg.fromHz; return {p,input:f,output:f,automate:(at,off,dur)=>mfxSweep(f.frequency,cfg.fromHz,Math.min(cfg.toHz,c.sampleRate/2-100),p,at,off,dur)}; }
     case 'phaser': { const u=dryWet(), ap=[]; let n=u.i; for(let i=0;i<cfg.stages;i++){ const a=K(c.createBiquadFilter()); a.type='allpass'; a.frequency.value=mfxParam(p,cfg,'centerHz'); n.connect(a); n=a; ap.push(a); } n.connect(u.wet);
       const l=lfo(mfxParam(p,cfg,'lfoRateHz')), d=G(cfg.lfoDepthHz); l.connect(d); ap.forEach(a=>d.connect(a.frequency)); return {p,input:u.i,output:u.o,automate:(at,off,dur)=>mfxWet(u.dry,u.wet,p,at,off,dur)}; }
-    case 'washout': { const u=dryWet(), cv=K(c.createConvolver()), f=K(c.createBiquadFilter()); cv.buffer=roomIR(c.sampleRate,0.6,c); f.type='highpass'; f.frequency.value=cfg.fromHz; u.i.connect(cv); cv.connect(u.wet); u.o.disconnect(); const o=G(1); u.o.connect(f); f.connect(o);
+    case 'washout': { const u=dryWet(), cv=K(c.createConvolver()), f=K(c.createBiquadFilter()); cv.buffer=mfxWash(c); f.type='highpass'; f.frequency.value=cfg.fromHz; u.i.connect(cv); cv.connect(u.wet); u.o.disconnect(); const o=G(1); u.o.connect(f); f.connect(o);
       return {p,input:u.i,output:o,automate:(at,off,dur)=>{ mfxWet(u.dry,u.wet,p,at,off,dur); mfxSweep(f.frequency,cfg.fromHz,cfg.toHz,p,at,off,dur); }}; }
     case 'echo': { const u=dryWet(), dl=K(c.createDelay(2)), fb=G(mfxParam(p,cfg,'feedback')); dl.delayTime.value=mfxParam(p,cfg,'div')*60/S.bpm; u.i.connect(dl); dl.connect(fb); fb.connect(dl); dl.connect(u.wet); return {p,input:u.i,output:u.o,automate:(at,off,dur)=>mfxWet(u.dry,u.wet,p,at,off,dur)}; }
     case 'tremolo': { const g=G(1), l=lfo(mfxParam(p,cfg,'lfoRateHz')), d=G(0); l.connect(d); d.connect(g.gain); return {p,input:g,output:g,automate:(at,off,dur)=>mfxDepth(p,off,dur).forEach((q,i)=>{ const m=i?'linearRampToValueAtTime':'setValueAtTime', t=at+q.s-off; g.gain[m](1-q.f/2,t); d.gain[m](q.f/2,t); })}; }
@@ -2242,13 +2258,13 @@ function mfxUnit(c,p,keep){ const cfg=MFX[p.mfx.k], K=n=>keep(n), G=v=>{ const g
     case 'crush': { const u=dryWet(), sh=K(c.createWaveShaper()); sh.curve=mfxCrushCurve(mfxParam(p,cfg,'bitDepth')); u.i.connect(sh); sh.connect(u.wet); return {p,input:u.i,output:u.o,automate:(at,off,dur)=>mfxWet(u.dry,u.wet,p,at,off,dur)}; }
     case 'brake': { const dl=K(c.createDelay(1)), f=K(c.createBiquadFilter()), g=G(1); dl.delayTime.value=0.002; f.type='lowpass'; f.frequency.value=Math.min(20000,c.sampleRate/2-100); dl.connect(f); f.connect(g);
       const top=Math.min(20000,c.sampleRate/2-100); return {p,input:dl,output:g,automate:(at,off,dur)=>mfxDepth(p,off,dur).forEach((q,i)=>{ const m=i?'linearRampToValueAtTime':'setValueAtTime', t=at+q.s-off; dl.delayTime[m](0.002+q.f*cfg.maxDelaySec,t); f.frequency[m](top-q.f*(top-cfg.minHz),t); g.gain[m](1-q.f*(1-cfg.minGain),t); })}; }
-    case 'swell': { const u=dryWet(), nz=K(c.createBufferSource()), f=K(c.createBiquadFilter()), ng=G(0.35); nz.buffer=mfxNoise(c); nz.loop=true; f.type='bandpass'; f.Q.value=1.2; f.frequency.value=cfg.fromHz; nz.connect(f); f.connect(ng); ng.connect(u.wet); u.i.connect(u.wet); nz.start();   /* a rising noise riser over the mix */
+    case 'swell': { const u=dryWet(), nz=K(c.createBufferSource()), f=K(c.createBiquadFilter()); nz.buffer=mfxNoise(c); nz.loop=true; f.type='bandpass'; f.Q.value=1.2; f.frequency.value=cfg.fromHz; nz.connect(f); f.connect(u.wet); nz.start();   /* as the prototype: rising filtered noise, crossfaded against the mix */
       return {p,input:u.i,output:u.o,automate:(at,off,dur)=>{ mfxWet(u.dry,u.wet,p,at,off,dur); mfxSweep(f.frequency,cfg.fromHz,cfg.toHz,p,at,off,dur); }}; }
     case 'ring': { const u=dryWet(), rg=G(0), car=lfo(mfxParam(p,cfg,'carrierHz')); car.connect(rg.gain); u.i.connect(rg); rg.connect(u.wet); return {p,input:u.i,output:u.o,automate:(at,off,dur)=>mfxWet(u.dry,u.wet,p,at,off,dur)}; } } }
 /* which effects play, in order: Mix FX tracks top to bottom (a muted one is bypassed), each track's parts in time */
 function mfxParts(){ const lanes=s2Lanes().filter(L=>L.tracks[0].inst==='mix'); const out=[]; lanes.forEach(L=>L.tracks.filter(t=>t.mfx&&MFX[t.mfx.k]&&!t.mute).sort((a,b)=>(a.off||0)-(b.off||0)).forEach(t=>out.push(t))); return out; }
 const mfxSig=()=>JSON.stringify([mfxParts().map(t=>[t.id,t.off,t.len,t.mfx]),S.bpm,S.bars]);
-function mfxWire(ch, units){ try{ ch.input.disconnect(); }catch(e){} let n=ch.input; for(const u of units){ n.connect(u.input); n=u.output; } n.connect(ch.shaper); }
+function mfxWire(ch, units){ try{ ch.out.disconnect(); }catch(e){} let n=ch.out; for(const u of units){ n.connect(u.input); n=u.output; } n.connect(ch.lim); }   /* the last thing before the limiter, as in the prototype */
 const mfxSpan=p=>{ const a=(p.off||0)*stepDur(); return {a, d:Math.max(0.05,Math.min(pSteps(p)*stepDur(), loopLen()-a))}; };
 /* playback: units in the live chain, each part's curve scheduled up to 2 s ahead every time round the loop; rebuilt when you stop, seek or edit */
 let mfxLive=null;
@@ -2263,11 +2279,11 @@ function mfxOffline(oc, ch, K){ const parts=mfxParts(); if(!parts.length) return
 function buildChain(c, live){
   const input=c.createGain(), shaper=c.createWaveShaper(), comp=c.createDynamicsCompressor(), out=c.createGain(), revIn=c.createGain(), conv=c.createConvolver(), revRet=c.createGain();
   // master: trim (auto gain staging) → drive → glue compressor → volume → limiter → safety clipper
-  const lim=c.createDynamicsCompressor(), safe=c.createWaveShaper(); lim.threshold.value=-2; lim.knee.value=0; lim.ratio.value=20; lim.attack.value=0.001; lim.release.value=0.12; safe.curve=SAFE_CURVE; safe.oversample='2x';
+  const lim=c.createDynamicsCompressor(), safe=c.createWaveShaper();   /* Song FX go between the volume and this limiter (mfxWire) */ lim.threshold.value=-2; lim.knee.value=0; lim.ratio.value=20; lim.attack.value=0.001; lim.release.value=0.12; safe.curve=SAFE_CURVE; safe.oversample='2x';
   input.connect(shaper); shaper.connect(comp); comp.connect(out); out.connect(lim); lim.connect(safe);
   let gate=null; if(live){ gate=c.createGain(); safe.connect(gate); gate.connect(c.destination); } else safe.connect(c.destination);
   revIn.connect(conv); conv.connect(revRet); revRet.connect(input);
-  const ch={input,shaper,comp,out,revIn,conv,revRet,c,gate};
+  const ch={input,shaper,comp,out,revIn,conv,revRet,c,gate,lim};
   setChain(ch); return ch;
 }
 function setChain(ch){
