@@ -65,9 +65,9 @@ const PRO={owned:false, price:''}; try{ PRO.owned=localStorage.getItem('noodle.p
 /* Builds run from Xcode (DEBUG) set NOODLE_DEV: More then has "Test as: Free / Pro / App Store" to try both versions; App Store and TestFlight builds don't */
 const devAs=()=>{ if(!window.NOODLE_DEV) return ''; try{ return localStorage.getItem('noodle.devAs')||''; }catch(e){ return ''; } };
 const isPro=()=>devAs()?devAs()==='pro':PRO.owned;
-const PRO_SOUNDS=new Set(['Vocoder','Talkbox','Trumpet','Clarinet','Xylophone','Marimba','Glockenspiel','Flute','Horns','Your voice','Glass','Chip','Theremin','Vowel pad','Digital pad','Growl','Acid','Wobble','String pluck','Chorus pad','Pump pad']);
+const PRO_SOUNDS=new Set(['Brushes','Vocoder','Talkbox','Trumpet','Clarinet','Xylophone','Marimba','Glockenspiel','Flute','Horns','Your voice','Glass','Chip','Theremin','Vowel pad','Digital pad','Growl','Acid','Wobble','String pluck','Chorus pad','Pump pad']);
 /* a long sound list in groups: synths, recorded instruments (and kits), your voice */
-const soundGroups=list=>{ if(list.length<7) return [['',list]]; const rec=x=>!!SAMPLED[x]||!!KIT_SAMPLED[x], g=[['Synths',list.filter(x=>!rec(x)&&x!=='Your voice')],['Recorded',list.filter(rec)],['',list.filter(x=>x==='Your voice')]]; return g.filter(([,xs])=>xs.length); };
+const soundGroups=list=>{ if(list.length<7||list===INST.vox.sounds) return [['',list]];   /* vocal styles are not instruments: no groups ("Rock" is a vocal style and a kit) */ const rec=x=>!!SAMPLED[x]||!!KIT_SAMPLED[x], g=[['Synths',list.filter(x=>!rec(x)&&x!=='Your voice')],['Recorded',list.filter(rec)],['',list.filter(x=>x==='Your voice')]]; return g.filter(([,xs])=>xs.length); };
 const proLocked=snd=>!isPro()&&PRO_SOUNDS.has(snd);
 /* The Pro badge: a small amber sparkle, shown to free users only (on option buttons it sits on the top-right corner) */
 const PRO_LOCK='<i class="pro-b" role="img" aria-label="Pro" title="Noodle Pro"><svg viewBox="0 0 24 24"><path d="M12 1.5c.9 6.6 3.9 9.6 10.5 10.5-6.6.9-9.6 3.9-10.5 10.5-.9-6.6-3.9-9.6-10.5-10.5C8.1 11.1 11.1 8.1 12 1.5z"/></svg></i>';

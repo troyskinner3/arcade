@@ -89,11 +89,12 @@ const SOUND_CREDITS=[   /* shown in More > Sound credits (required by CC BY; CC0
   {sound:'Rock bass', lib:'Growlybass', by:'Karoryfer Samples', lic:'CC0 (public domain)', url:'https://creativecommons.org/publicdomain/zero/1.0/'},
   {sound:'Glass, Chip, Theremin, Vowel pad, Digital pad, Growl', lib:'Adventure Kid Waveforms (AKWF)', by:'Kristoffer Ekstrand', lic:'CC0 (public domain)', url:'https://creativecommons.org/publicdomain/zero/1.0/'},
   {sound:'Rock drums', lib:'Big Rusty Drums', by:'Karoryfer Samples', lic:'CC0 (public domain)', url:'https://creativecommons.org/publicdomain/zero/1.0/'},
+  {sound:'Brushes drums', lib:'Swirly Drums', by:'Karoryfer Samples', lic:'CC0 (public domain)', url:'https://creativecommons.org/publicdomain/zero/1.0/'},
   {sound:'Guitar', lib:'Emilyguitar', by:'Karoryfer Samples', lic:'CC0 (public domain)', url:'https://creativecommons.org/publicdomain/zero/1.0/'},
   {sound:'E-piano', lib:'Wurlitzer EP200 from Greg Sullivan’s E-Pianos', by:'Greg Sullivan', lic:'CC BY 3.0', url:'https://creativecommons.org/licenses/by/3.0/'},
 ];   /* sound name -> folder in samples/ */
 const SMP={};
-const KIT_SAMPLED={'Rock':'rockkit'};   /* drum kits played from recordings (by kit name; separate from instrument sounds, which reuse some names) */
+const KIT_SAMPLED={'Rock':'rockkit','Brushes':'brushkit'};   /* drum kits played from recordings (by kit name; separate from instrument sounds, which reuse some names) */
 function smpReady(sound){ const k=SAMPLED[sound]; return !!(k && SMP[k] && SMP[k].ok); }
 const kitReady=style=>{ const e=SMP[KIT_SAMPLED[style]]; return !!(e&&e.ok); };
 function loadSampled(sound){ return loadSmp(SAMPLED[sound]); }

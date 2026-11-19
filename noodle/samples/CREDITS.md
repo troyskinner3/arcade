@@ -12,6 +12,7 @@ public domain (CC0) and attribution (CC BY) material is used. CC BY libraries ar
 | Rock bass | Growlybass (electric bass, clean) | Karoryfer Samples | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | https://github.com/sfzinstruments/karoryfer.growlybass |
 | Guitar | Emilyguitar (electric guitar, clean) | Karoryfer Samples | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | https://github.com/sfzinstruments/karoryfer.emilyguitar |
 | Rock drums | Big Rusty Drums (24" rock kit) | Karoryfer Samples | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | https://github.com/sfzinstruments/karoryfer.big-rusty-drums |
+| Brushes kit | Swirly Drums (a kit played with brushes) | Karoryfer Samples | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | https://github.com/sfzinstruments/karoryfer.swirly-drums |
 | Glass, Chip, Theremin, Vowel pad, Digital pad, Growl | Adventure Kid Waveforms (AKWF), single-cycle waves from its own `AKWF/` folders (not the folders named after other products) | Kristoffer Ekstrand | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | https://github.com/KristofferKarlAxelEkstrand/AKWF-FREE |
 
 What was changed (Piano): notes were trimmed (with a fade-out) to 3.5–8 seconds depending on register, three of the sixteen velocity

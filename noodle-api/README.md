@@ -19,7 +19,12 @@ Stores takes people chose to share (opt-in, 13+) so Noodle can learn from them. 
 - Invites (`/v1/invites/*`, page `/i/<code>`): a 6-letter code per phone; friends' phones count once (hashed ids). 3 friends earn a Noodle Pro
   offer code from a pool: App Store Connect → Noodle → Monetization → In-App Purchases → Noodle Pro → Offer Codes → create one-time-use
   codes, download them, then `curl -X PUT -H "Authorization: Bearer $ADMIN_KEY" --data '["CODE1","CODE2"]' https://noodle-takes.cracked.workers.dev/v1/admin/codes`.
-  At most 25 handed out a day. Abuse risk: a script could fake friends; the pool size and daily cap bound it (Apple's DeviceCheck would close it).
+  At most 25 handed out a day.
+- **DeviceCheck (stops fake friends):** developer.apple.com → Certificates, IDs & Profiles → **Keys** → **+** → name `Noodle DeviceCheck`, tick
+  **DeviceCheck** → Continue → Register → **Download** the `.p8` (only once) and note its **Key ID**. Cloudflare → noodle-takes → Settings →
+  Variables and Secrets: add **Secret** `DC_KEY` = the whole `.p8` file's text, **Secret** `DC_KEY_ID` = the Key ID. While testing with builds run
+  from Xcode, also add Text `DC_ENV` = `development`; delete it before the App Store release (TestFlight and App Store use production).
+  From then on a join needs a real iPhone running Noodle, and each iPhone can join only once, ever. Without `DC_KEY`, joins count once per install.
 - Owner access (`/v1/admin/*`) needs the `ADMIN_KEY` secret.
 
 ## Cost: none, by design

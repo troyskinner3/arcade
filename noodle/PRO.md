@@ -69,6 +69,7 @@ Status: **confirmed** (owner agreed) or **proposed** (waiting on the owner).
 | Backing vocals: two harmonies made from your own voice, a third above and below | proposed |
 | Vocal sounds Vocoder and Talkbox (your voice shapes a synth) | proposed |
 | Recorded Trumpet, Clarinet, Xylophone | proposed |
+| Recorded Brushes drum kit (Karoryfer Swirly Drums) | proposed |
 
 ### Planned for Pro (the owner's direction: make Pro really great)
 | Feature | Status |

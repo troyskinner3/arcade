@@ -25,6 +25,9 @@
 //   GET    /v1/invites/mine                 X-Owner: this phone's code (made on first ask), how many friends joined, and its reward code once earned
 //   PUT    /v1/invites/:code/join           X-Owner = the friend's install id: counts once per friend phone, never your own code
 //   GET    /i/:code                         the invite page (App Store link, and the code to type in if the link can't open the app)
+// With Apple DeviceCheck set up (secrets DC_KEY = the .p8 key's text, DC_KEY_ID; APPLE_APP_ID gives the Team ID; DC_ENV = development for Xcode
+// builds), a join must carry a DeviceCheck token (header X-Device) from a real iPhone running Noodle, and each iPhone can join only once ever,
+// even after reinstalling (Apple keeps one bit per device for us). Without those secrets, joins count once per install id.
 // A reward is one Noodle Pro offer code (App Store Connect → the app → Offer Codes, for the Pro in-app purchase) from a pool the owner
 // uploads (PUT /v1/admin/codes, a JSON list); INVITES_FOR_PRO friends earn one; at most REWARDS_PER_DAY are handed out a day.
 //   GET    /v1/admin/list?prefix=&cursor=   owner only (Authorization: Bearer ADMIN_KEY)
@@ -133,6 +136,7 @@ async function handle(req, env) {
         const c = await B.get(`invites/codes/${code}.json`); if (!c) return json(req, 404, { error: 'no such code' }); const inviter = (await c.json()).owner;
         if (inviter === oh) return json(req, 409, { error: 'own code' });
         if (await B.head(`invites/joined/${oh}.json`)) return json(req, 200, { ok: true, already: true });   // a phone joins once, with one code
+        if (env.DC_KEY) { const dc = await deviceOnce(env, req.headers.get('X-Device') || ''); if (dc !== 'ok') return json(req, dc === 'used' ? 409 : 403, { error: dc === 'used' ? 'this iPhone already joined' : 'device check' }); }
         const k = `invites/owners/${inviter}.json`, cur = await B.get(k), me = cur ? await cur.json() : { code, joined: [], reward: null };
         if (!me.joined.includes(oh)) me.joined.push(oh); await B.put(k, JSON.stringify(me)); await B.put(`invites/joined/${oh}.json`, JSON.stringify({ code, at: new Date().toISOString() }));
         return json(req, 200, { ok: true });
@@ -296,4 +300,21 @@ main{width:min(420px,100% - 32px);text-align:center}h1{font-size:28px;margin:6px
 a.btn{display:block;padding:14px;border-radius:12px;background:#f1c75b;color:#121418;font-weight:700;text-decoration:none;margin:10px 0}a.alt{background:#262a31;color:#eceef2}</style></head>
 <body><main><div class="wm">N<b>oo</b>dle</div>${body}</main></body></html>`, { status: INVITE.test(c) ? 200 : 404, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
 }
+// Apple DeviceCheck: is this a real device running Noodle, and has it joined an invite before? Bit 0 = "joined". Returns 'ok', 'used' or 'bad'.
+async function dcJwt(env) {
+  const b64u = (b) => btoa(String.fromCharCode(...new Uint8Array(b))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''), enc = (o) => b64u(new TextEncoder().encode(JSON.stringify(o)));
+  const pem = String(env.DC_KEY).replace(/-----[^-]+-----/g, '').replace(/\s+/g, ''), der = Uint8Array.from(atob(pem), (c) => c.charCodeAt(0));
+  const key = await crypto.subtle.importKey('pkcs8', der, { name: 'ECDSA', namedCurve: 'P-256' }, false, ['sign']);
+  const head = enc({ alg: 'ES256', kid: env.DC_KEY_ID }), body = enc({ iss: String(env.APPLE_APP_ID || '').split('.')[0], iat: Math.floor(Date.now() / 1000) });
+  const sig = await crypto.subtle.sign({ name: 'ECDSA', hash: 'SHA-256' }, key, new TextEncoder().encode(head + '.' + body));
+  return head + '.' + body + '.' + b64u(sig); }
+async function deviceOnce(env, token) {
+  if (!token || token.length > 8000) return 'bad';
+  const host = env.DC_ENV === 'development' ? 'https://api.development.devicecheck.apple.com' : 'https://api.devicecheck.apple.com';
+  const call = async (path, extra) => fetch(host + path, { method: 'POST', headers: { Authorization: 'Bearer ' + (await dcJwt(env)), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ device_token: token, transaction_id: crypto.randomUUID(), timestamp: Date.now(), ...extra }) });
+  const q = await call('/v1/query_two_bits'); if (!q.ok) return 'bad';   // a token that isn't from a real device running this app is refused
+  const t = await q.text(); let st = null; try { st = JSON.parse(t); } catch {}   // "Failed to find bit state" = never set
+  if (st && st.bit0) return 'used';
+  const u = await call('/v1/update_two_bits', { bit0: true, bit1: !!(st && st.bit1) }); return u.ok ? 'ok' : 'bad'; }
 

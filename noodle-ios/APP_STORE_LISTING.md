@@ -69,6 +69,8 @@ Your songs stay on your phone. Noodle has no ads and no account, and it never tr
 Welcome to Noodle! Hum, beatbox or sing your song idea and hear it come to life.
 
 ## Screenshots (6.9" iPhone; captions 3-6 words)
+Ready: `noodle-ios/app-store/screenshots/01.png`–`09.png` (1320 × 2868, upload to the 6.9" Display slot in this order). Remake them after UI changes:
+`node ../../noodle-ios/app-store/make_screenshots.js` from `noodle/eval` (with `bash run.sh` having started the local servers).
 1. Hum it. Get a song. (studio, all parts) 2. Beatbox your beat. (drum editor) 3. Hum a melody, get the chords. 4. Sing real vocals, tuned.
 5. Fix any note with a tap. 6. Draw your own filter sweeps. (Low pass curve) 7. Share a video in one tap. 8. Send a link. Friends remix it.
 9. Try Pro sounds before you buy. (sound menu with sparkles)

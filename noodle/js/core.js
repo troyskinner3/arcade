@@ -1,6 +1,6 @@
 "use strict";
 /* ============================== constants ============================== */
-const DRUM_SOUNDS = ['808','Punchy','EDM','Rock','Lo-fi'];
+const DRUM_SOUNDS = ['808','Punchy','EDM','Rock','Brushes','Lo-fi'];
 const INST = {
   kit:  {label:'Drum kit', kind:'drums', color:'#e4572e', say:'“B” · “ch” · “k” · “ts”', sounds:DRUM_SOUNDS, hint:'Beatbox the whole groove: “B” for kick, “ch” for snare, “k” for clap, “ts” for hi-hat. Add more sounds and teach it your own noises in Your kit below. Fix any hit by tapping the grid.'},
   kick: {label:'Kick', kind:'drum', drum:'kick', color:'#e4572e', say:'“B” · “bm”', sounds:DRUM_SOUNDS, hint:'Just the kick drum. Say “B” or “bm” wherever you want a kick.'},
@@ -223,12 +223,16 @@ const APP_STORE_ID='';   /* the number in Noodle's App Store URL, once it is liv
 async function inviteMine(){ try{ const r=await fetch(`${NOODLE_API}/v1/invites/mine`,{headers:{'X-Owner':ownerId()}}); return r.ok?await r.json():null; }catch(e){ return null; } }
 function inviteUse(code){ code=String(code||'').toUpperCase().trim(); if(!/^[A-Z2-9]{6}$/.test(code)){ toast('That invite code isn’t right: 6 letters and numbers.'); return false; }
   try{ localStorage.setItem('noodle.inviteBy',code); }catch(e){} inviteSend(true); return true; }
+/* Apple DeviceCheck token from the iPhone app (null on the web or where unsupported): lets the service count each real iPhone once */
+function deviceToken(){ if(!(window.webkit&&window.webkit.messageHandlers&&window.webkit.messageHandlers.noodleNative)) return Promise.resolve(null);
+  return new Promise(res=>{ const t=setTimeout(()=>res(null),5000); window.noodleDeviceToken=v=>{ clearTimeout(t); res(v||null); }; native({type:'dctoken'}); }); }
 async function inviteSend(say){ let code=null; try{ code=localStorage.getItem('noodle.inviteBy'); }catch(e){} if(!code) return;
   const made=(await projDb.all().catch(()=>[])||[]).some(p=>(p.parts||[]).length)||S.tracks.some(t=>!t.guide&&hasContent(t));
   if(!made){ if(say) toast('Invite saved. It counts for your friend once you’ve made your first song.',5000); return; }
-  let st=0; try{ st=(await fetch(`${NOODLE_API}/v1/invites/${code}/join`,{method:'PUT',headers:{'X-Owner':ownerId()}})).status; }catch(e){ return; }   /* offline: try again later */
-  if(st===200||st===404||st===409||st===400){ try{ localStorage.removeItem('noodle.inviteBy'); }catch(e){} }
-  if(say||st===200) toast(st===200?'Invite counted. Thanks for joining Noodle!':st===409?'That’s your own invite code.':st===404?'That invite code wasn’t found.':'The invite didn’t go through.',5000); }
+  const dev=await deviceToken(), H={'X-Owner':ownerId()}; if(dev) H['X-Device']=dev;
+  let st=0; try{ st=(await fetch(`${NOODLE_API}/v1/invites/${code}/join`,{method:'PUT',headers:H})).status; }catch(e){ return; }   /* offline: try again later */
+  if(st===200||st===404||st===409||st===400||st===403){ try{ localStorage.removeItem('noodle.inviteBy'); }catch(e){} }
+  if(say||st===200) toast(st===200?'Invite counted. Thanks for joining Noodle!':st===409?'That invite can’t be used from this phone (your own code, or this iPhone already joined one).':st===403?'Invites count from the Noodle iPhone app.':st===404?'That invite code wasn’t found.':'The invite didn’t go through.',5000); }
 async function inviteSheet(){ nxSheet(`<h2>Invite friends</h2><p style="color:var(--muted);font-size:14px;margin:-4px 0 12px">When 3 friends make their first song with your invite, you get Noodle Pro free.</p><div id="invBody" style="color:var(--muted)">Loading…</div>
     <div class="nx-grp">Have an invite code?</div><div style="display:flex;gap:8px"><input class="nx-txt" id="invCode" maxlength="6" autocapitalize="characters" autocomplete="off" placeholder="6 letters" style="flex:1;text-transform:uppercase"><button class="nx-ghost" id="invUse" style="width:auto;padding:0 18px">Use</button></div>`);
   $('invUse').onclick=()=>{ if(inviteUse($('invCode').value)) $('invCode').value=''; };

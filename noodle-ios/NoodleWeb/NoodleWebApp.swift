@@ -11,6 +11,7 @@ import WebKit
 import AVFoundation
 import StoreKit
 import MediaPlayer
+import DeviceCheck
 
 let liveURL = URL(string: "https://troyskinner3.github.io/arcade/noodle/")!
 let bundledURL = URL(string: "noodle://app/index.html")!
@@ -133,6 +134,12 @@ final class NativeBridge: NSObject, WKScriptMessageHandler {
       if let dur = (d["dur"] as? NSNumber)?.doubleValue { info[MPMediaItemPropertyPlaybackDuration] = dur }
       MPNowPlayingInfoCenter.default().nowPlayingInfo = info
     case "ready": pageReady = true; deliverLink()
+    case "dctoken":   // Apple DeviceCheck token for an invite (proves a real iPhone running Noodle); nil where unsupported (Simulator)
+      guard DCDevice.current.isSupported else { web?.evaluateJavaScript("window.noodleDeviceToken && window.noodleDeviceToken(null)"); return }
+      DCDevice.current.generateToken { data, _ in
+        let t = data?.base64EncodedString() ?? ""
+        Task { @MainActor in self.web?.evaluateJavaScript("window.noodleDeviceToken && window.noodleDeviceToken(\(t.isEmpty ? "null" : "'\(t)'"))") }
+      }
     case "rate":   // a happy moment (a song just shared): Apple decides whether the rating prompt shows (at most 3 times a year)
       if let scene = UIApplication.shared.connectedScenes.first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene {
         AppStore.requestReview(in: scene)   // StoreKit, iOS 16+

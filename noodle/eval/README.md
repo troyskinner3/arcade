@@ -535,3 +535,10 @@ How to work on it: one small step at a time; after each, `bash noodle/eval/run.s
   song effects, track effects, backing vocals and chord styles: heard on the part (which starts looping), never saved, undone or exported
   (the song is written through `pvKeep`, which uses each track's `_pvOrig` values and drops `_pvTemp` tracks), put back when the menu or
   editor closes, with a "Get Pro" note. Low pass and High pass are now fully editable for free.
+- **Brushes kit (Pro, proposed):** Karoryfer Swirly Drums (CC0), a kit played with brushes: 4 of each drum's 10-22 velocity layers, snare top+bottom
+  and kick beater+reso mixed, 1.8 MB. Each drum levelled to the Rock kit's (first 0.25 s, peak at most +3 dB, at most +18 dB: brushed toms stay
+  about 6 dB softer). `build_samples.py` gained `flat` (mics as file-name suffixes) and `keep` (layers kept).
+- **Backing vocals with no key (Chromatic):** the voices follow the chords playing at that moment (nearest chord note 3-7 semitones away),
+  else a major third. `harm_test.js`: sung A over an F chord gives C above and F below.
+- **Invites + DeviceCheck:** with the service's DeviceCheck secrets set, a join needs a token from a real iPhone running Noodle, and each
+  iPhone joins once ever (Apple keeps one bit per device). Tested with a mocked Apple endpoint (`noodle-api/test`).

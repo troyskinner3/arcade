@@ -531,10 +531,17 @@ function voxTuned(tr){
 }
 /* Backing vocals (Pro): your take shifted to a third above and a third below the note you sang (in the song's key), with the same
    pitch shifting that tunes vocals. Kept until the take, key, tuning or voice character changes. */
-function voxHarm(tr){ const fx=fxOf(tr), key=fx.tune+'|'+fx.form+'|'+(tr.vt||0)+'|'+JSON.stringify(currentKey());
+/* With no key (Chromatic), the voices follow the song's chords instead: the nearest chord note 3-7 semitones above / below the note you sing
+   (chords from any part playing chords at that moment), else a major third. chordAt: the chord's pitch classes at a song step. */
+function songChordMap(){ const m=new Map(); for(const t of S.tracks){ if(t.guide||!t.notes||INST[t.inst].kind!=='pitched'||!chordsOn(t)) continue;
+    for(const n of songEvents(t,t.notes)){ const pcs=notePitches(t,n).map(p=>((Math.round(p)%12)+12)%12); for(let s=n.s;s<n.s+n.l;s++){ const a=m.get(s)||new Set(); pcs.forEach(x=>a.add(x)); m.set(s,a); } } }
+  return m; }
+function chordVoice(n,dir,pcs){ if(pcs&&pcs.size) for(let d=3;d<=7;d++){ const h=n+dir*d; if(pcs.has(((h%12)+12)%12)) return h; } return n+dir*4; }
+function voxHarm(tr){ const fx=fxOf(tr), K=currentKey(), CM=K.none?songChordMap():null, key=fx.tune+'|'+fx.form+'|'+(tr.vt||0)+'|'+JSON.stringify(K)+(CM?'|'+JSON.stringify([...CM].map(([s,a])=>s+':'+[...a].sort().join('.'))):'')+'|'+(tr.off||0)+'|'+(tr.va||0);
   if(tr._harm && tr._harmKey===key) return tr._harm;
-  const {x,sr}=tr._raw, fr=voxPitch(tr), corr=voxTarget(tr), K=currentKey(), F=Math.pow(2,(fx.form-50)*0.12/12);
-  const voice=dir=>{ const c=new Float32Array(fr.length); fr.forEach((f,i)=>{ const m=f.ms+corr[i]; if(isNaN(f.ms)){ c[i]=corr[i]; return; } const n=K.none?Math.round(m):snap(m), h=K.none?n+dir*4:keySteps(n,2*dir); c[i]=corr[i]+(h-n); });
+  const {x,sr}=tr._raw, fr=voxPitch(tr), corr=voxTarget(tr), F=Math.pow(2,(fx.form-50)*0.12/12), sd=stepDur(), va=tr.va||0, off=(tr.off||0);
+  const voice=dir=>{ const c=new Float32Array(fr.length); fr.forEach((f,i)=>{ const m=f.ms+corr[i]; if(isNaN(f.ms)){ c[i]=corr[i]; return; }
+      const n=K.none?Math.round(m):snap(m), h=K.none?chordVoice(n,dir,CM.get(off+Math.floor((f.t-va)/sd))):keySteps(n,2*dir); c[i]=corr[i]+(h-n); });
     const o=psola(x,sr,fr,c,F); let pk=1e-6; for(let i=0;i<o.length;i++) pk=Math.max(pk,Math.abs(o[i])); const g=0.7/pk; for(let i=0;i<o.length;i++) o[i]*=g; return o; };
   tr._harm={up:voice(1), dn:voice(-1)}; tr._harmKey=key; return tr._harm; }
 /* Vocoder and Talkbox (Pro vocal sounds): the vocal (after tuning) is split into 18 bands; how loud each band is moment to moment

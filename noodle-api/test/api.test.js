@@ -152,3 +152,25 @@ test('invites: a code per phone, friends join once (never your own code), 3 frie
   r = await mine(I); assert.equal(r.reward, 'PROCODE1'); assert.equal((await mine(I)).reward, 'PROCODE1');
   assert.match(await (await call(env, 'GET', `/i/${me.code}`)).text(), new RegExp(me.code));
 });
+test('invites with DeviceCheck: a join needs a real device token, and an iPhone can join only once', async () => {
+  const { privateKey } = await crypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, true, ['sign', 'verify']);
+  const p8 = btoa(String.fromCharCode(...new Uint8Array(await crypto.subtle.exportKey('pkcs8', privateKey))));
+  const env = { TAKES: bucket(), DC_KEY: `-----BEGIN PRIVATE KEY-----\n${p8}\n-----END PRIVATE KEY-----`, DC_KEY_ID: 'KEY123', APPLE_APP_ID: 'TEAM123.io.tuttii.Noodle' };
+  const bits = new Map(), seen = []; const real = globalThis.fetch;
+  globalThis.fetch = async (u, o) => { const b = JSON.parse(o.body); seen.push({ u, auth: o.headers.Authorization });
+    if (b.device_token === 'fake') return new Response('Missing or badly formatted device token', { status: 400 });
+    if (u.endsWith('/query_two_bits')) return bits.has(b.device_token) ? Response.json({ bit0: bits.get(b.device_token), bit1: false }) : new Response('Failed to find bit state', { status: 200 });
+    bits.set(b.device_token, b.bit0); return new Response('', { status: 200 }); };
+  try {
+    const H = (o, d) => ({ 'X-Owner': o, ...(d ? { 'X-Device': d } : {}) }), F = (c) => c.repeat(22);
+    const me = await (await call(env, 'GET', '/v1/invites/mine', null, { 'X-Owner': I })).json();
+    assert.equal((await call(env, 'PUT', `/v1/invites/${me.code}/join`, null, H(F('c')))).status, 403);            // no token
+    assert.equal((await call(env, 'PUT', `/v1/invites/${me.code}/join`, null, H(F('c'), 'fake'))).status, 403);    // not a real device
+    assert.equal((await call(env, 'PUT', `/v1/invites/${me.code}/join`, null, H(F('c'), 'phone1'))).status, 200);
+    assert.equal((await call(env, 'PUT', `/v1/invites/${me.code}/join`, null, H(F('d'), 'phone1'))).status, 409);  // same iPhone, reinstalled
+    assert.equal((await call(env, 'PUT', `/v1/invites/${me.code}/join`, null, H(F('e'), 'phone2'))).status, 200);
+    assert.equal((await (await call(env, 'GET', '/v1/invites/mine', null, { 'X-Owner': I })).json()).joined, 2);
+    const [h, b] = seen[0].auth.slice(7).split('.'); assert.equal(JSON.parse(atob(h)).kid, 'KEY123'); assert.equal(JSON.parse(atob(b)).iss, 'TEAM123');
+    assert.match(seen[0].u, /^https:\/\/api\.devicecheck\.apple\.com\//);
+  } finally { globalThis.fetch = real; }
+});

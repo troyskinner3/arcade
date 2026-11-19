@@ -137,10 +137,12 @@ def build_kit(root, key, cfg):
     rd = lambda f: np.frombuffer(subprocess.run(['ffmpeg', '-v', 'error', '-i', f, '-ac', '2', '-ar', str(sr), '-f', 'f32le', '-'], check=True, capture_output=True).stdout, dtype=np.float32).reshape(-1, 2)
     slots = {}
     for slot, (d, pre, mics, secs) in cfg['slots'].items():
-        names = os.listdir(os.path.join(base, d, list(mics)[0])); vls = sorted({int(re.search(r'_vl(\d+)_rr1', n).group(1)) for n in names if '_rr1' in n})
+        flat = cfg.get('flat')   # flat: all mics in one folder, named <pre>_vl<n>_rr1<mic>.wav (mic = '' when there is one file per hit)
+        names = os.listdir(os.path.join(base, d) if flat else os.path.join(base, d, list(mics)[0])); vls = sorted({int(re.search(r'_vl(\d+)_rr1', n).group(1)) for n in names if '_rr1' in n})
+        if cfg.get('keep') and len(vls) > cfg['keep']: k = cfg['keep']; vls = sorted({vls[round(i * (len(vls) - 1) / (k - 1))] for i in range(k)})   # keep k layers, evenly spread, loudest included
         top = cfg['layers_of'][slot]; lay = []
         for v in vls:
-            xs = [g * rd(os.path.join(base, d, m, f'{pre}_vl{v}_rr1.flac')) for m, g in mics.items()]
+            xs = [g * rd(os.path.join(base, d, f'{pre}_vl{v}_rr1{m}.wav') if flat else os.path.join(base, d, m, f'{pre}_vl{v}_rr1.flac')) for m, g in mics.items()]
             n = min(len(x) for x in xs); x = sum(x[:n] for x in xs)[:int(secs * sr)]
             fd = min(int(0.3 * sr), len(x) // 3); x[-fd:] *= np.linspace(1, 0, fd)[:, None]
             name = f'{slot}_{v}.mp3'
@@ -222,6 +224,15 @@ SOURCES = {
         # each drum at the level the synth Rock kit had it (loudness over its first 0.25 s, peak at most 3 dB over the synth's), so songs keep their balance: mm/kit_test.js
         slot_gain={'kick': 2.43, 'snare': 1.02, 'rim': 1.78, 'hat': 1.3, 'openhat': 1.68, 'tomhi': 3.24, 'tommid': 3.13, 'tomlo': 2.54, 'crash': 2.75, 'ride': 1.32},
         layers_of={'kick': 14, 'snare': 10, 'rim': 4, 'hat': 6, 'openhat': 6, 'tomhi': 6, 'tommid': 7, 'tomlo': 8, 'crash': 5, 'ride': 10}),   # recorded layers per drum: a layer covers velocities up to its number / this
+    'brushkit': dict(   # Swirly Drums: a kit played with brushes (20" marching kick, snare, toms, hats, crash, ride). One stereo file per hit (snare: top + bottom, kick: beater + reso)
+        src='karoryfer.swirly-drums/Samples', kit=True, flat=True, keep=4, gain=1.0, name='Brushes kit', credit='Swirly Drums by Karoryfer Samples (CC0)',
+        slots={'kick': ('marching_kick', 'marching_kick', {'_beater': 1.0, '_reso': 0.7}, 1.0),
+               'snare': ('snare_main', 'snare_hit', {'_top': 1.0, '_btm': 0.5}, 1.2), 'rim': ('snare_edge', 'snare_edge', {'_top': 1.0, '_btm': 0.5}, 1.0),
+               'hat': ('hat_closed', 'hh_closed', {'': 1.0}, 0.7), 'openhat': ('hat_open', 'hh_open', {'': 1.0}, 2.0),
+               'tomhi': ('tom_mhi', 'tom_mhi', {'': 1.0}, 1.8), 'tommid': ('tom_mlow', 'tom_mlow', {'': 1.0}, 1.8), 'tomlo': ('tom_floor', 'tom_floor', {'': 1.0}, 2.2),
+               'crash': ('crash', 'crash', {'': 1.0}, 4.0), 'ride': ('ride', 'ride', {'': 1.0}, 3.5)},
+        slot_gain={'kick': 2.09, 'snare': 1.24, 'rim': 0.48, 'hat': 0.91, 'openhat': 0.88, 'tomhi': 7.94, 'tommid': 7.94, 'tomlo': 7.94, 'crash': 6.53, 'ride': 1.48},   # each drum at the Rock kit's level (first 0.25 s), peak at most 3 dB over it, toms and crash at most +18 dB (quiet brushed hits)
+        layers_of={'kick': 22, 'snare': 12, 'rim': 10, 'hat': 12, 'openhat': 14, 'tomhi': 10, 'tommid': 12, 'tomlo': 12, 'crash': 12, 'ride': 15}),
     # VS Chamber Orchestra CE names notes an octave low (its C4 file sounds at C5: measured on every file), hence shift=12
     'marimba': dict(src='VSCO-2-CE/Percussion/Marimba', named=True, pattern=r'_([A-G]#?\d)_loud_01\.wav$', layers=[(1, 1.0)], shift=12, retune=True,
         trim=[(127, 3.0)], release=0.3, gain=6.3, name='Marimba', credit='VS Chamber Orchestra: Community Edition by Versilian Studios (CC0)'),   # gain +16 dB: between the Piano (Keys, +20) and the Saw (Arp, +12)
