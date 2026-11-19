@@ -179,8 +179,9 @@ async function songFilePack(ids){ if(ids.includes(S.pid)) await projSaveCurrent(
 async function songFileSave(ids, name){ const songs=await songFilePack(ids);
   if(!songs.length){ toast('Nothing to save yet: make a song first.'); return false; }
   const day=new Date().toISOString().slice(0,10), fn=(ids.length>1?'Noodle songs '+day:(name||songs[0].title||'Untitled').replace(/[\\/:*?"<>|]+/g,' ').trim().slice(0,60)||'Untitled')+'.noodle';
-  await offerFile(fn, new Blob([JSON.stringify({noodle:'songs', v:1, build:NOODLE_BUILD, savedAt:new Date().toISOString(), songs})],{type:'application/json'})); return true; }
+  await offerFile(fn, new Blob([JSON.stringify({noodle:'songs', v:1, build:NOODLE_BUILD, savedAt:new Date().toISOString(), songs, presets:presetsAll()})],{type:'application/json'})); return true; }   /* your presets travel with your backups */
 async function songFileOpen(text){ let f; try{ f=JSON.parse(text); }catch(e){ f=null; } if(!f||f.noodle!=='songs'||!Array.isArray(f.songs)){ toast('That isn’t a Noodle song file.'); return -1; }
+  if(f.presets) try{ presetsMerge(f.presets); }catch(e){}
   const have=(await projDb.all())||[]; let added=0, nid=Math.max(S.nextId||10,10);
   for(const g of f.songs){ if(!g||!g.song||!Array.isArray(g.song.tracks)) continue;
     if(have.some(p=>p.createdAt===g.createdAt && (p.title||'')===(g.title||'') && p.updatedAt>=g.updatedAt)) continue;   /* already here (and not older) */

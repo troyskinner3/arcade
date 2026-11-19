@@ -3,7 +3,7 @@
 const {chromium,devices}=require('playwright');
 (async()=>{ const b=await chromium.launch(); const c=await b.newContext({...devices['iPhone SE'],colorScheme:'dark'}); const p=await c.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(e.message));
   await p.goto('http://localhost:8800/noodle-s2.html?studio'); await p.waitForTimeout(1000); const out={};
-  await p.evaluate(()=>{ S.key='0'; S.scale='major'; keyCache=null; S.bars=4; const a=mkTrack('lead',{id:S.nextId++,off:0,len:2,rep:false,lenSet:true,notes:[[0,4,60],[4,4,62],[8,12,64],[20,4,65],[24,8,67]].map(([s,l,p])=>({s,l,p,v:.8}))}); S.tracks.push(a); save(); flushSave(); renderTracks(); s2Edit(a); });
+  await p.evaluate(()=>{ S.key='0'; S.scale='major'; keyCache=null; s2.chrom=true; S.bars=4; const a=mkTrack('lead',{id:S.nextId++,off:0,len:2,rep:false,lenSet:true,notes:[[0,4,60],[4,4,62],[8,12,64],[20,4,65],[24,8,67]].map(([s,l,p])=>({s,l,p,v:.8}))}); S.tracks.push(a); save(); flushSave(); renderTracks(); s2Edit(a); });
   await p.waitForTimeout(500);
   const ps=()=>p.evaluate(()=>S.tracks[0].notes.map(n=>[n.s,n.l,pitchOf(n)]));
   // one note: up and down step through the key (E -> F -> G, skipping F#)
@@ -16,7 +16,8 @@ const {chromium,devices}=require('playwright');
   // bar fits the smallest phone
   out.barFits=await p.evaluate(()=>{ const sb=document.querySelector('#s2EdBody .selbar')||document.querySelector('.selbar'); return [...sb.children].filter(x=>!x.hidden).every(x=>{ const r=x.getBoundingClientRect(); return r.right<=innerWidth+0.5; }); });
   // hold an empty spot, then drag a box over the first two notes
-  const cell=await p.evaluate(()=>{ const tr=S.tracks[0], G=tr._grid, R=tr._cv.getBoundingClientRect(); const at=(s,m)=>({x:R.left+G.gut+(s+0.5)*G.cw, y:R.top+1+(G.rows.indexOf(m)+0.5)*G.rh}); return {a:at(0,63), b:at(7,59), n0:at(1,60), far:at(15,G.rows[0])}; });
+  await p.evaluate(()=>{ $('s2EdBody').scrollTop=0; window.scrollTo(0,0); }); await p.waitForTimeout(100);
+  const cell=await p.evaluate(()=>{ const tr=S.tracks[0], G=tr._grid, R=tr._cv.getBoundingClientRect(); const at=(s,m)=>({x:R.left+G.gut+(s+0.5)*G.cw, y:R.top+1+(G.rows.indexOf(m)+0.5)*G.rh}); return {a:at(0,63), b:at(7,60), n0:at(1,60), far:at(15,G.rows[0])}; });
   await p.mouse.move(cell.a.x,cell.a.y); await p.mouse.down(); await p.waitForTimeout(500); await p.mouse.move(cell.b.x,cell.b.y,{steps:6}); await p.mouse.up(); await p.waitForTimeout(150);
   out.selected=await p.evaluate(()=>(S.tracks[0]._msel||[]).map(n=>n.s)); out.label=await p.textContent('.selbar .sb-n'); out.moveBtns=await p.isVisible('.selbar .sb-r');
   await p.tap('.selbar .sb-r'); await p.tap('.selbar .sb-up'); out.afterArrows=(await ps()).slice(0,2);

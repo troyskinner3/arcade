@@ -8,7 +8,7 @@ function toastPlace(t){ t.style.bottom=''; try{ if(s2On()){ const r=($('s2Ed').h
 document.addEventListener('pointerdown',()=>{ const t=$('toast'); if(t&&t.classList.contains('on')&&!t._busy){ clearTimeout(t._h); t.classList.remove('on'); } },{capture:true,passive:true});   /* any tap puts the message away */
 function showBusy(msg){ if(toastQuiet) return ()=>{}; const t=$('toast'); t.textContent=msg; toastPlace(t); t._busy=true; t.classList.add('on'); clearTimeout(t._h); return ()=>{ t._busy=false; }; }
 /* instrument picker: grouped, with the mouth sounds and a one-line description */
-const PICK_GROUPS=[['Percussion',['kit','kick','snare','hat','clap']],['Melodic',['bass','lead','keys','pad','arp']],['Vocals',['vox']],['Ear candy',['fx','mix']]];
+const PICK_GROUPS=[['Percussion',['kit']],   /* one drum track type (the kit); older songs' single Kick / Snare / Hi-hat / Clap tracks still play and edit */['Melodic',['bass','lead','keys','pad','arp']],['Vocals',['vox']],['Ear candy',['fx','mix']]];
 /* ---- spotlight ruler (vocals): drag to create, drag edges to resize, drag the middle to move, tap to select then ✕ to remove ---- */
 // (renderTracks keeps tr._spotSel, so a new region stays selected)
 /* ---- envelope designer: attack, decay/sustain and release points on a graph ---- */
@@ -72,6 +72,7 @@ function renderTracks(){ warmSounds(); }   /* the Studio (s2Render) draws the tr
 /* The song's recorded instruments and kits, read into memory as soon as it opens (or a part changes sound), so even the first note you tap plays the recording.
    Each loads once (cached); only what the song uses, to keep memory low. */
 function warmSounds(){ const used=new Set();
+  for(const k of ((S.kit&&S.kit.slots)||[]).map(x=>x.kit)) if(KIT_SAMPLED[k]&&S.tracks.some(t=>t.hits)){ used.add(KIT_SAMPLED[k]); loadSmp(KIT_SAMPLED[k]); }   /* drums taken from another kit */
   for(const t of S.tracks){ if(INST[t.inst].kind==='pitched'){ if(SAMPLED[t.sound]){ used.add(SAMPLED[t.sound]); loadSampled(t.sound); } } else if(t.hits && KIT_SAMPLED[t.sound]){ used.add(KIT_SAMPLED[t.sound]); loadSmp(KIT_SAMPLED[t.sound]); } }
   for(const k of Object.keys(SMP)) if(!used.has(k) && SMP[k].ok) delete SMP[k];   /* let go of instruments this song no longer uses (they load again if picked); the piano alone is ~130 MB */
   if(!S.tracks.some(t=>t.sound==='String pluck')) KS_C.clear(); }
@@ -112,7 +113,10 @@ function gridRows(tr){
   else if(tr._range){ lo=tr._range.lo; hi=tr._range.hi; }
   else { while(hi-lo<11){ hi++; if(hi-lo<11) lo--; } }
   tr._range={lo,hi};
-  const rows=[]; for(let m=hi;m>=lo;m--) rows.push(m); return {rows, rh:rows.length>20?9:11};
+  const rows=[]; for(let m=hi;m>=lo;m--) rows.push(m);
+  /* key notes only (the note editor's default when the song has a key): rows for notes in the key, plus any note already placed outside it */
+  const K=currentKey(); if(!K.none && !s2.chrom && s2.edId===tr.id){ const ink=m=>K.set.includes(((m-K.tonic)%12+12)%12), used=new Set(ps); let a=lo, z=hi; const pick=()=>{ const r=[]; for(let m=z;m>=a;m--) if(ink(m)||used.has(m)) r.push(m); return r; }; let kr=pick(); while(kr.length<10){ a--; z++; kr=pick(); } return {rows:kr, rh:kr.length>14?10:12}; }
+  return {rows, rh:rows.length>20?9:11};
 }
 function cssVar(n){ return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
 function drawVox(tr){

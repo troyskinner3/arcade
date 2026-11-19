@@ -51,6 +51,9 @@ Status: **confirmed** (owner agreed) or **proposed** (waiting on the owner).
 | Chords from your melody: Pad and Piano styles, chords every bar or half bar | proposed |
 | Drum fills every 4 or 8 bars (with a crash after each) | proposed |
 | Song sections: name, loop and duplicate Intro / Verse / Chorus / Bridge / Outro | proposed |
+| Your presets: vocal presets, track-effect presets, your own drum kits (any drum from any kit + your taught noises), saved on the phone and in backups (a preset with Pro parts is tried) | confirmed |
+| Beats: one per style (Night Drive trap, Dusty Steps boom bap, Rainy Window lo-fi, Night Bus drill, Sunny Side pop, Velvet R&B) | confirmed |
+| Simple track menus (basics first, More settings for the rest), key-only piano roll with + for all notes, Drums as the one percussion track | proposed |
 | Song links: share a song by link; friends listen and remix it in Noodle (growth: always free) | proposed |
 | Invite friends: 3 friends who make a song earn you Noodle Pro (an App Store offer code) | proposed |
 | Free videos end on a 2.5 s Noodle card ("Free on the App Store"); Pro videos end with the music | proposed |
@@ -70,6 +73,7 @@ Status: **confirmed** (owner agreed) or **proposed** (waiting on the owner).
 | Vocal sounds Vocoder and Talkbox (your voice shapes a synth) | proposed |
 | Recorded Trumpet, Clarinet, Xylophone | proposed |
 | Recorded Brushes drum kit (Karoryfer Swirly Drums) | proposed |
+| Beats: the other 6 (Glacier, Corner Store, Paper Plane, Cold Front, Weekend, Lagos Sun), tried by free users | confirmed |
 
 ### Planned for Pro (the owner's direction: make Pro really great)
 | Feature | Status |

@@ -18,7 +18,7 @@ function metal(c,out,t,dec,pk,bpf,hpf){ const g=c.createGain(), bp=c.createBiqua
   [205.3,304.4,369.6,522.7,540,800].forEach(f=>{ const o=c.createOscillator(); o.type='square'; o.frequency.value=f; o.connect(bp); o.start(t); o.stop(t+dec+0.05); });
   bp.connect(hp); hp.connect(g); g.connect(out); g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(pk,t+0.002); g.gain.exponentialRampToValueAtTime(0.0005,t+dec); }
 function drumHit(c,out,drumId,t,v,style,T){
-  let drum=soundOf(drumId);
+  let drum=soundOf(drumId); { const sl=slotOf(drumId); if(sl&&sl.kit) style=sl.kit; }   /* your own kit: each drum can come from any kit */
   if(KIT_SAMPLED[style]){ const e=SMP[KIT_SAMPLED[style]]; if(e&&e.ok&&e.slots[drum]){ kitHit(c,out,e,drum,t,v,T); return; } if(!e) loadSmp(KIT_SAMPLED[style]); }
   switch(drum){
     case 'openhat': noiseHit(c,out,t,'highpass',7000+T*1500,0.7,0.002,0.3+T*0.4,0.3*v); metal(c,out,t,0.3+T*0.3,0.06*v,10000,7000); return;
@@ -289,6 +289,7 @@ function tfxChain(oc,tr){ if(!tfxOn(tr)) return null; const f=tr.tfx, input=oc.c
 async function renderStem(tr){
   if(SAMPLED[tr.sound] && !smpReady(tr.sound) && INST[tr.inst].kind==='pitched') await loadSampled(tr.sound);
   if(tr.hits && INST[tr.inst].kind!=='pitched' && KIT_SAMPLED[tr.sound] && !kitReady(tr.sound)) await loadSmp(KIT_SAMPLED[tr.sound]);
+  if(tr.hits && INST[tr.inst].kind!=='pitched') for(const k of new Set(((S.kit&&S.kit.slots)||[]).map(x=>x.kit).filter(k=>KIT_SAMPLED[k]&&!kitReady(k)))) await loadSmp(KIT_SAMPLED[k]);
   if(tr.inst==='vox') return renderVox(tr);
   if(tr.inst==='fx') return renderFx(tr);
   const sr=ctx.sampleRate, L=bufLen(tr), PN=pSteps(tr), n=Math.round(L*sr), tail=3, oc=new OfflineAudioContext(2,n+tail*sr,sr), T=tr.tone/100;

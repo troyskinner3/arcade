@@ -89,13 +89,14 @@ function pvForget(tr, keys){ if(!tr._pvOrig) return; keys.forEach(k=>delete tr._
 /* leave the preview: everything goes back; a note says what was Pro (quiet: no note) */
 function pvEnd(quiet){ const p=proPv; let back=false;
   for(const t of S.tracks) if(t._pvOrig){ for(const k in t._pvOrig){ if(JSON.stringify(t[k])!==JSON.stringify(t._pvOrig[k])) back=true; if(t._pvOrig[k]===undefined) delete t[k]; else t[k]=t._pvOrig[k]; } delete t._pvOrig; t._dirty=true; t._tuned=null; t._harm=null; }
+  if(S._pvOrig){ for(const k in S._pvOrig){ if(JSON.stringify(S[k])!==JSON.stringify(S._pvOrig[k])) back=true; S[k]=S._pvOrig[k]; } delete S._pvOrig; scaleCache=null; S.tracks.forEach(t=>{ if(t.hits) t._dirty=true; }); }   /* a kit tried */
   const tmp=S.tracks.filter(t=>t._pvTemp); if(tmp.length){ back=true; tmp.forEach(t=>{ try{ disposeTrack(t); }catch(e){} }); S.tracks=S.tracks.filter(t=>!t._pvTemp); keyCache=null; }
   proPv=null; if(!p&&!back) return false;
   if(p&&p.started!=null){ s2.sec=p.sec; s2.loop=p.loop; try{ $('s2Loop').setAttribute('aria-pressed',String(!!s2.loop)); }catch(e){} if(p.started&&playing) togglePlay(); }
   if(back){ try{ renderTracks(); }catch(e){} scheduleRender(); if(!quiet&&p&&p.labels&&p.labels.length&&!isPro()) proNote(p.labels.slice(-2)); } else { try{ s2Render(); }catch(e){} }
   return back; }
 /* someone bought Pro while trying something: keep it */
-function pvCommitAll(){ S.tracks.forEach(t=>{ delete t._pvOrig; delete t._pvTemp; }); if(proPv){ proPv=null; save(); } }
+function pvCommitAll(){ delete S._pvOrig; S.tracks.forEach(t=>{ delete t._pvOrig; delete t._pvTemp; }); if(proPv){ proPv=null; save(); } }
 function proNote(ls){ toast((ls.length>1?ls.join(' and ')+' are':ls[0]+' is')+' Pro. Get Pro to keep '+(ls.length>1?'them':'it')+'.',5000); const t=$('toast'); t.classList.add('act'); t.onclick=()=>{ t.classList.remove('on'); proSheet(); }; }
 const proBridge=()=>!!(window.webkit&&window.webkit.messageHandlers&&window.webkit.messageHandlers.noodlePro);
 /* from the app: whether Pro is owned, and its price in the App Store's own words (e.g. "$6.99") */

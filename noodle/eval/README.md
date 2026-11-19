@@ -542,3 +542,16 @@ How to work on it: one small step at a time; after each, `bash noodle/eval/run.s
   else a major third. `harm_test.js`: sung A over an F chord gives C above and F below.
 - **Invites + DeviceCheck:** with the service's DeviceCheck secrets set, a join needs a token from a real iPhone running Noodle, and each
   iPhone joins once ever (Apple keeps one bit per device). Tested with a mocked Apple endpoint (`noodle-api/test`).
+
+## Round 6 (19 Nov 2026): presets, simpler menus, beats
+- **Presets (`presets_test.js`):** vocal presets (style, every knob, backing vocals), track-effect presets and your own drum kits (each drum
+  from any kit: `slot.kit`, plus taught noises), saved in `noodle.presets` on the phone, carried by "Back up all songs" / song files (not by
+  song links), offered under "Mine" in every song; Edit renames and deletes. Free; a preset with Pro parts is tried by free users.
+- **Track menus:** basics first (sound, pitch correction and backing vocals on vocals, fills on drums, volume, chords / duplicate / delete),
+  everything else under **More settings** (remembered). **Key-only piano roll** (`keyroll_test.js`): with a key, the note editor shows only
+  the key's notes (plus notes already outside it); "+ All notes" shows all 12. **Drums** is the one percussion track to add; old single-drum
+  tracks still work and can become a kit.
+- **Beats (`beats_test.js`):** 12 beats in 6 styles (one free per style), drums with fills, bass on the chord roots, chords (plus a pad or
+  arp), swing, master drive / punch / reverb, and Song FX sweeps; Pro beats add track effects and Pro song effects. Tapping one plays it in the
+  song as a try (`_pvTemp` tracks; a fresh song also tries the beat's tempo, key and feel through `S._pvOrig`); "Use this beat" keeps it.
+  In a song with a key, the beat follows that key and tempo. Mix levels: -7 to -15 dB RMS, peaks under 0 dBFS.
