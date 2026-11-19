@@ -15,6 +15,13 @@ const {chromium,devices}=require('playwright');
 await p.click('.mfx-k button[data-k="phaser"]'); await p.waitForTimeout(250); r.proSheet=await p.evaluate(()=>/Noodle Pro/.test($('nxSheet').textContent)&&!$('nxScrim').hidden); r.stillLp=await p.evaluate(()=>S.tracks.find(t=>t.mfx).mfx.k);
     await p.evaluate(()=>nxClose()); await p.click('.mfx-k button[data-k="hp"]'); await p.waitForTimeout(150); r.hpFree=await p.evaluate(()=>S.tracks.find(t=>t.mfx).mfx.k);
     r.noDraw=await p.evaluate(()=>!document.querySelector('.mfx-tools'));
+    r.fits=await p.evaluate(()=>{ const b=$('s2EdBody'); return b.scrollWidth<=b.clientWidth+1 && document.querySelector('.mfxe canvas').getBoundingClientRect().right<=innerWidth; });   /* no sideways scrolling */
+    // delete the lane's only effect with the clip bar's trash: it goes (the track stays, empty); then with two, the selected one goes
+    r.del=await p.evaluate(async()=>{ s2EdClose(); const t=S.tracks.find(t=>t.mfx); s2.selId=t.id; s2Render(); await new Promise(r=>setTimeout(r,100)); $('s2CbDel').click(); await new Promise(r=>setTimeout(r,100));
+      const one=S.tracks.filter(t=>t.mfx).length, laneKept=s2Lanes().some(L=>L.tracks[0].inst==='mix');
+      const L=s2Lanes().find(L=>L.tracks[0].inst==='mix'), a=L.tracks[0]; a.off=0; a.len=2; a.mfx={k:'lp',curve:null,params:{}}; const b=mkTrack('mix',{id:S.nextId++,lane:L.id,off:32,len:2,rep:false,lenSet:true}); b.mfx={k:'hp',curve:null,params:{}}; S.tracks.push(b); save(); renderTracks();
+      s2.selId=b.id; s2Render(); await new Promise(r=>setTimeout(r,100)); $('s2CbDel').click(); await new Promise(r=>setTimeout(r,100));
+      return {afterOnly:one, laneKept, afterTwo:S.tracks.filter(t=>t.mfx).map(t=>t.mfx.k).join(','), mixAfter:mfxParts().length}; });
     await p.evaluate(()=>s2EdClose()); await p.waitForTimeout(200); await p.click('.s2-tr [id], #s2Rec').catch(()=>{}); await p.waitForTimeout(200);
     r.recordSheetHasMix=await p.evaluate(()=>{ s2.armId=null; s2AddSheet(true); return !!document.querySelector('#nxSheet [data-k="mix"]')||[...document.querySelectorAll('#nxSheet [data-lane]')].some(b=>s2Lane(b.dataset.lane).tracks[0].inst==='mix'); });
     out.free=r; }
@@ -34,7 +41,7 @@ await p.click('.mfx-k button[data-k="phaser"]'); await p.waitForTimeout(250); r.
     r.mix=await p.evaluate(async()=>{ const m=await renderMix(1,false); let q=0; const d=m.getChannelData(0); for(let i=0;i<d.length;i++) q+=d[i]*d[i]; return +(10*Math.log10(q/d.length)).toFixed(1); });
     out.pro=r; }
   const f=out.free, pr=out.pro, bad=[];
-  if(!f.offered||!f.lanes.includes('mix')||f.armOnMix||!f.newShown||!f.part||f.part.k!=='lp'||f.part.len!==4||!f.part.editor||f.part.chips!==11||!f.proSheet||f.stillLp!=='lp'||f.hpFree!=='hp'||!f.noDraw||f.recordSheetHasMix) bad.push('free');
+  if(!f.offered||!f.lanes.includes('mix')||f.armOnMix||!f.newShown||!f.part||f.part.k!=='lp'||f.part.len!==4||!f.part.editor||f.part.chips!==11||!f.proSheet||f.stillLp!=='lp'||f.hpFree!=='hp'||!f.noDraw||f.recordSheetHasMix||f.del.afterOnly!==0||!f.del.laneKept||f.del.afterTwo!=='lp'||f.del.mixAfter!==1||!f.fits) bad.push('free');
   if(pr.added!==4||pr.dragged[0]!==0.4||Math.abs(pr.dragged[1]-0.5)>0.05||typeof pr.bent!=='number'||pr.afterDelete!==3||!pr.reset||pr.echo.k!=='echo'||pr.echo.params.div!==1||!pr.undo||!(pr.mix>-40)) bad.push('pro');
   if(bad.length) errs.push('mix fx ui: '+bad.join(', '));
   console.log(JSON.stringify(out),errs); await b.close(); })();

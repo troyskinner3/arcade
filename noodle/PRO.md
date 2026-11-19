@@ -12,7 +12,7 @@ The one list of what is free and what Noodle Pro unlocks. Update it with every n
 
 ## In the app
 Enforced in `noodle/index.html`: `PRO_SOUNDS` (Pro sounds), `MFX[...].free` (free mix effects), the DAW pack and the video tag in Share, curve drawing in
-the Mix FX editor. The purchase is `ProStore` in `noodle-ios/NoodleWeb/NoodleWebApp.swift` (product `io.tuttii.Noodle.pro`). Keep this list and the code in step.
+the Song FX editor. The purchase is `ProStore` in `noodle-ios/NoodleWeb/NoodleWebApp.swift` (product `io.tuttii.Noodle.pro`). Keep this list and the code in step.
 Songs that already contain Pro sounds or effects still play for everyone; only choosing and editing them is Pro.
 
 ## Rules of thumb
@@ -53,7 +53,7 @@ Status: **confirmed** (owner agreed) or **proposed** (waiting on the owner).
 |---|---|
 | More instruments than today (recorded and synth) | confirmed direction |
 | Premium FX with automation curves you draw over time, reusing the mechanics of the Tuttii prototype (feedback from both apps) | confirmed direction |
-| Mix effects from the prototype (`troyskinner3/tuttii-fx-prototype`): free gets High pass and Low pass sweeps with their default shape; Pro gets all 11 (adds Phaser, Washout, Echo throw, Tremolo, Auto-pan, Bitcrusher, Vinyl brake, Reverse swell, Ring mod), curves you draw, stacking, and per-effect controls | confirmed |
+| Song FX (mix effects) from the prototype (`troyskinner3/tuttii-fx-prototype`): free gets High pass and Low pass sweeps with their default shape; Pro gets all 11 (adds Phaser, Washout, Echo throw, Tremolo, Auto-pan, Bitcrusher, Vinyl brake, Reverse swell, Ring mod), curves you draw, stacking, and per-effect controls | confirmed |
 
 ### Limits on free
 - None at launch (confirmed): no caps on song length, parts or number of songs. Pro sells depth (sounds, FX, exports, no tag), not walls. Adding limits later would take away what people had, so start without them.
