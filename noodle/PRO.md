@@ -28,7 +28,8 @@ Status: **confirmed** (owner agreed) or **proposed** (waiting on the owner).
 | Styles (Pop, Hip hop, Rock, EDM, ...) | proposed |
 | Synth sounds: Saw, Supersaw, Square, Bell, Pluck, Sub, 808 glide, Synth bass, Reese, Warm pad, Choir, Sweep, Organ, Stab | proposed |
 | Synth drum kits: 808, Punchy, EDM, Lo-fi | proposed |
-| Recorded Piano, Strings and Rock drum kit (the first impression) | Strings confirmed; Piano and Rock kit proposed |
+| Recorded Piano, Strings and Rock drum kit (the first impression) | confirmed |
+| Recorded E-piano, Rock bass and Guitar (the Hip hop and Rock styles use them by default, so every style sounds right for free) | proposed |
 | Mix: volume, pan, reverb, drive, punch; Expression (follows your voice) | proposed |
 | Export a mixdown (WAV) and video, with a small "Made with Noodle" tag on video | proposed |
 | Song list, song files (save, back up all, open), sharing takes, email news, crash reports | proposed |
@@ -36,7 +37,7 @@ Status: **confirmed** (owner agreed) or **proposed** (waiting on the owner).
 ### Pro
 | Feature | Status |
 |---|---|
-| Recorded instruments: E-piano, Rock bass, Guitar, Marimba, Glockenspiel, Flute, Horns | proposed |
+| Recorded instruments: Marimba, Glockenspiel, Flute, Horns | proposed |
 | Your voice (Lead and Pad made from your own singing) | proposed |
 | Wavetable sounds: Glass, Chip, Theremin, Vowel pad, Digital pad, Growl | proposed |
 | Coded sounds: Acid, Wobble, String pluck, Chorus pad, Pump pad | proposed |
@@ -47,6 +48,8 @@ Status: **confirmed** (owner agreed) or **proposed** (waiting on the owner).
 |---|---|
 | More instruments than today (recorded and synth) | confirmed direction |
 | Premium FX with automation curves you draw over time, reusing the mechanics of the Tuttii prototype (feedback from both apps) | confirmed direction |
+| Mix effects from the prototype (`troyskinner3/tuttii-fx-prototype`): free gets High pass and Low pass sweeps with their default shape; Pro gets all 11 (adds Phaser, Washout, Echo throw, Tremolo, Auto-pan, Bitcrusher, Vinyl brake, Reverse swell, Ring mod), curves you draw, stacking, and per-effect controls | proposed |
 
-### To decide
-- Limits for free songs (number of parts or song length), or none at all.
+### Limits on free
+- None at launch (proposed): no caps on song length, parts or number of songs. Pro sells depth (sounds, FX, exports, no tag), not walls. Adding limits later would take away what people had, so start without them.
+- The "Made with Noodle" tag goes on video and the share caption only, never into the audio.
