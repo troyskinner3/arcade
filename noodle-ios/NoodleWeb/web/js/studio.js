@@ -208,9 +208,11 @@ function s2ShareSheet(){ if(!S.tracks.some(hasContent)){ toast('Record something
     <button class="nx-act" data-k="video"><span>Video<small>For TikTok, Reels and YouTube: your parts move to the beat</small></span></button>
     <button class="nx-act" data-k="link"><span>Link to remix<small>Friends listen, then add their own part in Noodle</small></span></button>
     ${S.link?`<div class="s2-lk"><span>Shared by link</span><button id="s2LkStop">Stop sharing</button></div>`:''}
+    ${S.remixOf&&S.remixOf.id?`<div class="s2-lk"><span>From a shared link: “${nxEsc(S.remixOf.title||'a song')}”</span><button id="s2Rep">Report</button></div>`:''}
     <div class="s2-shst" id="s2ShSt" hidden></div><div class="nx-bar s2-shbar" id="s2ShBar" hidden><i></i></div><div class="s2-shgo" id="s2ShGo" hidden><button class="go" id="s2ShNow">Share</button><button id="s2ShSave">Save to Files</button></div>`);
   const st=m=>{ const e=$('s2ShSt'); if(e){ e.hidden=!m; e.textContent=m||''; } }, bar=(mode,frac)=>{ const e=$('s2ShBar'); if(!e) return; e.hidden=!mode; e.classList.toggle('ind',mode==='ind'); if(mode==='pct') e.firstElementChild.style.width=Math.round(clamp(frac,0,1)*100)+'%'; else e.firstElementChild.style.width=''; }, lock=v=>$('nxSheet').querySelectorAll('.nx-act').forEach(b=>{ b.disabled=v; });
   $('s2ShNow').onclick=()=>shareNow(); $('s2ShSave').onclick=()=>{ if(shareUrl){ try{ navigator.clipboard.writeText(shareUrl); toast('Link copied'); }catch(e){ toast(shareUrl); } return; } if(shareFile) offerFile(shareFile.name, shareFile); };
+  if($('s2Rep')) $('s2Rep').onclick=()=>songReportSheet();
   if($('s2LkStop')) $('s2LkStop').onclick=async()=>{ const ok=await songLinkDelete(); toast(ok?'The link no longer works. Your song is still here.':'Couldn’t reach Noodle’s server. Try again with a connection.'); if(ok) s2ShareSheet(); };
   const linkGo=async()=>{ lock(true); $('s2ShGo').hidden=true; bar('ind'); shareFile=null; shareUrl=null;
     try{ shareUrl=await songLinkShare(st); bar(null); st('Your link is ready. Anyone with it can listen, and open it in Noodle to add their own part.'); $('s2ShGo').hidden=false; $('s2ShNow').hidden=!navigator.share; $('s2ShSave').textContent='Copy link'; }
@@ -226,6 +228,15 @@ function s2ShareSheet(){ if(!S.tracks.some(hasContent)){ toast('Record something
     st(k==='video'?'Making your video…':'Making your audio…'); bar('ind'); shareFile=null; let total=0; const prog=sec=>{ const left=Math.ceil(sec); total=Math.max(total,left); if(total>1){ bar('pct',1-left/total); st('Making your video… about '+left+' s left'); } };
     await prepareShare(k,prog); bar(null); lock(false); if(!$('s2ShSt')) return;
     if(shareFile){ st(shareMsg); $('s2ShGo').hidden=false; $('s2ShNow').hidden=!shareCan; } else st('That didn’t work here. Try the other option.'); }; }
+/* Report a song that came from someone else's link (offensive, spam, someone else's work...): the takes service hides it after 3 reports.
+   Offers to remove it from your songs too. With no accounts there is no one to block: songs only arrive when you open a link yourself. */
+function songReportSheet(){ const r=S.remixOf; if(!r||!r.id) return;
+  nxSheet(`<h2>Report this song</h2><p style="color:var(--muted);font-size:14px;margin:-4px 0 12px">“${nxEsc(r.title||'This song')}” came from a shared link. What’s wrong with it?</p>
+    <div class="s2-opts" id="repWhy">${['Offensive or hateful','Sexual content','Spam or scam','Someone else’s work','Something else'].map(x=>`<button data-r="${nxEsc(x)}">${nxEsc(x)}</button>`).join('')}</div>
+    <p style="color:var(--muted);font-size:13px;margin:12px 0 0">Reports go to Tuttii (info@tuttii.io). A song reported by several people is taken down.</p>`);
+  $('nxSheet').onclick=async e=>{ const b=e.target.closest('[data-r]'), d=e.target.closest('#repDel'); if(d){ nxClose(); await projDelete(S.pid); try{ nxGo('projects'); }catch(_){} toast('Removed from your songs.'); return; } if(!b) return;
+    let ok=false; try{ ok=(await fetch(`${NOODLE_API}/v1/songs/${r.id}/report`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({reason:b.dataset.r})})).ok; }catch(_){}
+    nxSheet(`<h2>${ok?'Thanks for telling us':'Couldn’t send the report'}</h2><p style="color:var(--muted);font-size:14px">${ok?'We’ll look at it.':'Check your connection and try again, or email info@tuttii.io.'}</p><button class="nx-primary" id="repDel">Remove this song from my songs</button>`); }; }
 /* Move a part along its lane, in whole bars. It can't land on another part. */
 /* where a part sits, for labels: "Bars 3–4", or with fractions "From bar 3½ · 1½ bars" */
 function partWhere(t){ const st=(t.off||0)/16, len=pBars(t)*pLoops(t); if(st%1===0 && len%1===0){ const b0=st+1, b1=st+len; return b1>b0?`Bars ${b0}–${b1}`:`Bar ${b0}`; } return `From bar ${barsTxt(st+1)} · ${barsTxt(len)} bar${len>1?'s':''}`; }
@@ -463,7 +474,7 @@ function s2Init(){ const _rt=renderTracks; renderTracks=function(){ warmSounds()
     nxSheet(`<h2>Your drum sounds</h2><p style="color:var(--muted);font-size:14px;margin:0 0 6px">Make your noise for a drum on every click, and Noodle learns to tell your sounds apart.</p>${rows}<button class="nx-primary" id="nxTeachAll">Teach them all</button>`);
     $('nxSheet').onclick=e=>{ const b=e.target.closest('[data-teach]'); const all=e.target.closest('#nxTeachAll'); if(!b&&!all) return; nxClose(); ensureCtx(); teachBack=true; startTeach(all?S.kit.slots.map(x=>x.id):[b.dataset.teach]); }; };
   let seen=true; try{ seen=!!localStorage.getItem('noodle.onboard'); }catch(e){}
-  if(nxResume || new URLSearchParams(location.search).has('studio')){ if(s2Use()) s2Show(true); } else { nxGo('projects'); if(!seen) nxOnboard(async()=>{ if(!((await projList())||[]).length) await nxExample(true); else await nxGo('projects'); }); } }
+  if(nxResume || new URLSearchParams(location.search).has('studio')){ if(s2Use()) s2Show(true); } else { nxGo('projects'); if(!seen) nxOnboard(async()=>{ const r=window.__remixAfterOb; if(r){ window.__remixAfterOb=null; await projOpen(r.pid); nxGo('studio'); toast(`Remixing “${r.title}”. Add your own part: tap + Add track.`,6000); return; } if(!((await projList())||[]).length) await nxExample(true); else await nxGo('projects'); });   /* opened from a song link on first launch: the remix opens after the welcome */ } }
 function reloadRaw(){ S.tracks.filter(t=>((t.inst==='vox' && t.va!=null) || (t.expr>0 && t.exprAlign!=null)) && !t._raw).forEach(tr=>loadVox(tr).then(ok=>{ if(!ok) return; redrawTrack(tr); if(ctx) scheduleRender(); })); }
 function storeVox(tr){ const {x,sr}=tr._raw; const pcm=new Int16Array(x.length); for(let i=0;i<x.length;i++) pcm[i]=Math.max(-32767,Math.min(32767,Math.round(x[i]*32767))); takeStore.put('vox'+tr.id,{sr,pcm}); }
 async function loadVox(tr){ const r=await takeStore.get('vox'+tr.id); if(!r) return false; const x=new Float32Array(r.pcm.length); for(let i=0;i<x.length;i++) x[i]=r.pcm[i]/32767; tr._raw={x,sr:r.sr}; tr._dirty=true; return true; }

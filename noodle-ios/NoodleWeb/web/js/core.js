@@ -214,6 +214,7 @@ async function songLinkOpen(ref){ const id=String(ref||'').replace(/^.*\/s\//,''
   if(!f||!f.songs||!f.songs[0]){ toast('That song isn’t available any more.'); return false; }
   const g=f.songs[0], t=g.title||'a song'; g.title=('Remix of '+t).slice(0,60); g.createdAt=Date.now(); g.updatedAt=Date.now(); if(g.song){ delete g.song.link; g.song.title=g.title; g.song.remixOf={id,title:t}; }
   const n=await songFileOpen(JSON.stringify(f)); if(n<1||!songFileOpen.last) return false;
+  if(!$('nxOb').hidden){ window.__remixAfterOb={pid:songFileOpen.last, title:t}; return true; }   /* first launch: open it once the welcome is done */
   await projOpen(songFileOpen.last); if(typeof nxGo==='function') nxGo('studio'); toast(`Remixing “${t}”. Add your own part: tap + Add track.`,6000); return true; }
 window.noodleOpenLink=ref=>{ const m=String(ref||'').match(/\/i\/([A-Za-z2-9]{6})\b/); return m?inviteUse(m[1]):songLinkOpen(ref); };
 /* ---- Invites: Noodle Pro for bringing friends. Your phone has a code (from the takes service); a friend types it (More > Invite friends)

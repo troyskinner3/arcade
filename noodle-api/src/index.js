@@ -150,6 +150,8 @@ async function handle(req, env) {
       }
       if (req.method === 'POST' && part === 'report') {
         if (!meta) return json(req, 404, { error: 'not found' }); meta.reports = (meta.reports || 0) + 1;
+        let why = ''; try { const buf = await readLimited(req, 1024); why = buf ? String(JSON.parse(new TextDecoder().decode(buf)).reason || '').slice(0, 40) : ''; } catch {}
+        if (why) meta.reasons = (meta.reasons || []).concat([why]).slice(-10);   // what reporters chose (no one's identity)
         await B.put(metaKey, JSON.stringify(meta), { expiresAt: Date.parse(meta.at) + SONG_DAYS * 864e5 }); return json(req, 200, { ok: true });
       }
       if (req.method === 'DELETE' && !part) { if (!(await isOwner())) return json(req, 403, { error: 'owner' }); return json(req, 200, { deleted: await deletePrefix(B, base) }); }

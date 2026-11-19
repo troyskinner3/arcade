@@ -14,12 +14,16 @@ const {chromium,devices}=require('playwright');
   // someone else opens it
   const ctxB=await b.newContext({...devices['iPhone 13']}); const p2=await ctxB.newPage(); p2.on('pageerror',e=>errs.push('B: '+e.message));
   await p2.addInitScript(()=>{ localStorage.setItem('noodle.api','http://localhost:8787'); });
-  await p2.goto('http://localhost:8800/noodle-s2.html?s='+id); await p2.waitForTimeout(2500);
+  await p2.goto('http://localhost:8800/noodle-s2.html?studio&s='+id); await p2.waitForTimeout(2500);
   out.remix=await p2.evaluate(()=>({title:S.title, notes:S.tracks.filter(t=>t.inst==='lead').map(t=>t.notes.map(n=>n.p).join(',')).join('|'), remixOf:S.remixOf&&S.remixOf.title, link:!!S.link}));
+  // the friend reports it from the app: reason stored, then they can remove it from their songs
+  await p2.evaluate(()=>s2ShareSheet()); await p2.waitForTimeout(200); await p2.tap('#s2Rep'); await p2.waitForTimeout(150); await p2.tap('#repWhy [data-r="Spam or scam"]'); await p2.waitForTimeout(500);
+  out.reported=await p2.textContent('#nxSheet h2'); const meta=await (await fetch(`http://localhost:8787/v1/admin/get?key=songs/${id}/meta.json`,{headers:{Authorization:'Bearer local'}})).json(); out.reasons=meta.reasons;
+  await p2.tap('#repDel'); await p2.waitForTimeout(500); out.removed=await p2.evaluate(async()=>!(await projDb.all()).some(x=>/Remix of/.test(x.title||'')));
   // the sharer stops sharing
   await a.evaluate(()=>{ nxClose(); s2ShareSheet(); }); await a.waitForTimeout(200); out.stopBtn=await a.isVisible('#s2LkStop'); await a.tap('#s2LkStop'); await a.waitForTimeout(600);
   out.after=(await fetch(`http://localhost:8787/v1/songs/${id}`)).status; out.linkGone=await a.evaluate(()=>!S.link);
-  const want={asked:true,copy:'Copy link',page:true,preview:200,remix:{title:'Remix of Night bus',notes:'60,64',remixOf:'Night bus',link:false},stopBtn:true,after:404,linkGone:true};
+  const want={asked:true,copy:'Copy link',page:true,preview:200,remix:{title:'Remix of Night bus',notes:'60,64',remixOf:'Night bus',link:false},stopBtn:true,after:404,linkGone:true,reported:'Thanks for telling us',reasons:['Spam or scam'],removed:true};
   for(const [k,v] of Object.entries(want)) if(JSON.stringify(out[k])!==JSON.stringify(v)) errs.push(k+': '+JSON.stringify(out[k]));
   if(!/^http:\/\/localhost:8787\/s\/s[\w-]{12}$/.test(out.url||'')) errs.push('url '+out.url);
   console.log(JSON.stringify({...out,errs})); await b.close(); })();
