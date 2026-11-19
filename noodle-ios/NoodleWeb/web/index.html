@@ -328,10 +328,10 @@ input[type=range]::-moz-range-thumb{width:10px;height:18px;border-radius:1px;bac
 .s2-trk{display:flex;height:var(--s2-rowh);border-bottom:1px solid var(--s2-line)}
 .s2-th{position:sticky;left:0;z-index:3;width:var(--s2-hdr);flex:none;background:var(--s2-panel);border-right:1px solid var(--s2-line);display:flex;flex-direction:column;justify-content:center;gap:5px;padding:4px 6px 4px 8px}
 .s2-th{box-shadow:0 1px 0 var(--s2-div)} .s2-trk{border-bottom-color:var(--s2-div)!important}
-.s2-nm{display:flex!important;align-items:center;gap:6px;font-weight:700!important;font-size:13px!important;text-align:left;min-width:0;height:30px;gap:5px;padding:0 3px 0 6px!important;border-radius:6px;background:var(--s2-raise)!important}
-.s2-nm .mo{margin-left:auto;flex:none;width:18px;height:18px;border-radius:50%;border:1.5px solid var(--s2-muted);color:var(--s2-muted);display:grid;place-items:center}
+.s2-nm{display:flex!important;align-items:center;gap:4px;font-weight:700!important;font-size:13px!important;text-align:left;min-width:0;height:30px;gap:5px;padding:0 3px 0 6px!important;border-radius:6px;background:var(--s2-raise)!important}
+.s2-nm .mo{margin-left:auto;flex:none;width:16px;height:16px;border-radius:50%;border:1.5px solid var(--s2-muted);color:var(--s2-muted);display:grid;place-items:center}
 .s2-nm .mo svg{width:11px;height:11px;fill:currentColor}
-.s2-nm span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.s2-nm span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:12.5px;letter-spacing:-0.01em}
 .s2-nm i{width:8px;height:8px;border-radius:2px;flex:none}
 .s2-ct{display:flex;align-items:center;gap:5px}
 .s2-arm{width:30px;height:30px;border-radius:50%!important;border:2px solid var(--rec)!important;display:grid!important;place-items:center;flex:none}
@@ -352,6 +352,8 @@ input[type=range]::-moz-range-thumb{width:10px;height:18px;border-radius:1px;bac
 .s2-clip{display:flex;align-items:center;gap:8px;padding-top:8px}
 .s2-clip span{flex:1;min-width:0;font:500 12px var(--f-mono);color:var(--s2-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .s2-clip span b{display:block;font:700 14px var(--f-body);color:var(--s2-ink)}
+@media (max-width:360px){ .s2-clip>span{display:none} .s2-clip{justify-content:space-between}
+  .s2 .s2-edbar{overflow-x:visible;gap:4px!important} .s2 .s2-edbar button{padding:0 7px!important;font-size:12px!important} .s2 .s2-edbar .s2-rw{width:38px!important} .s2 .s2-edbar .s2-play{width:42px!important} }   /* the smallest phones: the selected part shows itself; the toolbar fits */
 .s2-clip button{height:40px;padding:0 12px!important;border:1px solid var(--s2-line)!important;border-radius:8px;font-weight:600!important;font-size:14px!important;display:flex!important;align-items:center;gap:6px;flex:none}
 .s2-clip .go{background:var(--s2-amber)!important;color:var(--s2-amber-ink)!important;border-color:var(--s2-amber)!important}
 .s2 .s2-secb{position:absolute;top:2px;bottom:2px;background:color-mix(in srgb,var(--s2-amber) 30%,transparent);border:1px solid var(--s2-amber);border-radius:5px;z-index:1;padding:0}
@@ -383,6 +385,8 @@ input[type=range]::-moz-range-thumb{width:10px;height:18px;border-radius:1px;bac
 .s2-edb{flex:1;min-height:0;overflow-y:auto;padding-top:4px}
 .mfxe{max-width:100%;overflow-x:hidden}.mfxe .mfx-cv{position:relative;width:max-content;max-width:100%;margin:6px 0 8px}.mfxe canvas{display:block;border-radius:8px}.mfx-ph{position:absolute;left:0;top:0;width:2px;margin-left:-1px;background:var(--s2-amber);display:none;pointer-events:none}
 .s2 .mfx-btn,.mfx-btn{border:1px solid var(--s2-line);border-radius:10px;padding:11px 12px;background:var(--s2-panel);color:var(--s2-ink);font:600 15px var(--f-body);cursor:pointer}.s2 .mfx-btn:disabled{opacity:.45}
+.s2-tn{display:block;width:calc(100% - 52px);margin:0 0 12px;padding:2px 0 4px;border:0;border-bottom:1.5px dashed transparent;background:none;color:inherit;font:700 22px var(--f-head,var(--f-body));outline:none}.s2-tn::placeholder{color:inherit;opacity:1}.s2-tn:focus{border-bottom-color:var(--s2-line,#888)}   /* the sheet's title, and where you rename the track */
+.s2-sg{font-size:11px;letter-spacing:.08em;text-transform:uppercase;opacity:.55;margin:6px 0 4px}
 .mfx-row{display:flex;align-items:center;justify-content:space-between;margin:8px 0 2px}.mfx-row b{font-size:12px;letter-spacing:.12em;text-transform:uppercase;opacity:.7}.mfx-acts{display:flex;gap:6px}.s2 .mfx-btn.mfx-ic{width:40px;padding:6px 0;font-size:18px;line-height:1}.s2 .mfx-acts .mfx-btn{padding:6px 12px}.mfx-pro{width:100%}.mfx-pro{width:100%}.mfx-sl{display:flex;align-items:center;gap:10px;margin:8px 0;font-size:14px}.mfx-sl span{width:92px;flex:none}.mfx-st{margin:8px 0;font-size:14px}.mfx-st>span{display:block;margin-bottom:6px}.mfx-steps{flex-wrap:nowrap!important;gap:6px!important}.s2 .mfx-steps button{flex:1;padding:7px 0;min-width:0;text-align:center}.mfx-sl input{flex:1}.mfx-sl b{width:70px;text-align:right;font-weight:600}
 .fxg{overflow-x:auto;overscroll-behavior-x:contain} .fxg-in{position:relative;width:max-content} .fxg canvas{display:block;border-radius:8px}
 .fxsel{margin-top:10px;padding:10px 12px;border:1px solid var(--s2-line);border-radius:10px;background:var(--s2-panel)} .fxsel-h{display:flex;align-items:center;gap:8px} .fxsel-h b{font-size:15px} .fxsel-h small{flex:1;color:var(--s2-muted);font:500 12px var(--f-mono)}
@@ -479,7 +483,7 @@ input[type=range]::-moz-range-thumb{width:10px;height:18px;border-radius:1px;bac
       <button class="go" id="s2CbEdit"><svg class="nx-ico" viewBox="0 0 24 24"><path d="M4 20l4-1L19 8l-3-3L5 16l-1 4z"/></svg>Edit</button>
       <button id="s2CbDup" aria-label="Duplicate this part"><svg class="nx-ico" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 00-2-2H6a2 2 0 00-2 2v8a2 2 0 002 2h2"/></svg></button>
       <button id="s2CbCopy" aria-label="Copy this part to another song"><svg class="nx-ico" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="16" rx="2"/><path d="M9 5V3h6v2M9 11h6M9 15h4"/></svg></button>
-      <button id="s2CbLoop" aria-label="Loop this part"><svg class="nx-ico" viewBox="0 0 24 24"><path d="M17 2l4 4-4 4M3 11V9a3 3 0 013-3h15M7 22l-4-4 4-4M21 13v2a3 3 0 01-3 3H3"/></svg></button>
+      <button id="s2CbLoop" aria-label="Loop this part"><svg class="nx-ico" viewBox="0 0 24 24"><path d="M4 4H2v16h2M20 4h2v16h-2"/><path d="M14 7l2 2-2 2M8 9h8M10 17l-2-2 2-2M16 15H8"/></svg></button>
       <button class="del" id="s2CbDel" aria-label="Delete this part"><svg class="nx-ico" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg></button></div>
     <div class="s2-take s2-g" id="s2Take" hidden><span>New take</span><button id="s2TkRe">Retake</button><button id="s2TkDel">Discard</button><button class="ok" id="s2TkOk">Keep</button></div>
     <div class="s2-tr s2-g">
@@ -1074,7 +1078,7 @@ function fxGridMount(tr, host){ const ps=pSteps(tr), wrap=document.createElement
 function s2Edit(tr){ { const T=$('s2EdSeekT'); if(T) T.style.removeProperty('--es-bar'); } s2.edId=tr.id; S.activeId=tr.id; $('s2Ed').hidden=false; s2EdMount(); }
 function s2EdMount(){ if(s2.edId==null) return; const tr=S.tracks.find(t=>t.id===s2.edId); if(!tr||!hasContent(tr)){ s2EdClose(); return; }
   const host=$('s2EdBody'), kind=INST[tr.inst].kind, avail=Math.max(200,(host.clientHeight||window.innerHeight*0.6)-90);
-  GRID_H=Math.min(520,avail); GRID_RH=30; GRID_DRUM=kind==='pitched'||tr.inst==='fx'||tr.mfx?1:Math.min(36,Math.max(30,avail/gridRows(tr).rows.length))/gridRows(tr).rh;   /* drum rows as tall as the note editor's rows (a little taller when there's room), so hits read as notes */
+  GRID_H=Math.min(520,avail); GRID_RH=30; GRID_DRUM=kind==='pitched'||tr.inst==='fx'||tr.mfx?1:Math.min(60,Math.max(30,(avail-60)/gridRows(tr).rows.length))/gridRows(tr).rh;   /* drum rows as tall as the note editor's rows (a little taller when there's room), so hits read as notes */
   if(tr.mfx){ host.innerHTML=''; tr._cv=null; mfxEdMount(tr,host); }
   else if(tr.inst==='fx'){ const sx=host.querySelector('.fxg')?host.querySelector('.fxg').scrollLeft:0; host.innerHTML=''; tr._cv=null; fxGridMount(tr,host); if(sx) host.querySelector('.fxg').scrollLeft=sx; }
   else { const sx=tr._cv&&tr._cv.isConnected?tr._cv.parentElement.parentElement.scrollLeft:0; host.innerHTML=''; host.appendChild(buildCard(tr));
@@ -1087,9 +1091,9 @@ function s2EdClose(){ const tr=S.tracks.find(t=>t.id===s2.edId); if(tr){ tr._cv=
 /* Share, inside the Studio. A linear song is exported once through (Loop is only for listening). */
 function s2ShareSheet(){ if(!S.tracks.some(hasContent)){ toast('Record something first'); return; } if(playing) togglePlay();
   nxSheet(`<h2>Share “${nxEsc(S.title||'Untitled')}”</h2>
-    <button class="nx-act" data-k="daw"><span>DAW pack${isPro()?'':PRO_LOCK}<small>To finish it in Logic, Ableton, FL Studio or GarageBand: every track as audio and MIDI, with the tempo and key, in one .zip</small></span></button>
-    <button class="nx-act" data-k="audio"><span>Audio<small>The whole song as one file, to send to friends or put on SoundCloud</small></span></button>
-    <button class="nx-act" data-k="video"><span>Video<small>To post on TikTok, Reels or YouTube, or keep editing in CapCut: your parts move to the beat</small></span></button>
+    <button class="nx-act" data-k="daw"><span>DAW pack${isPro()?'':PRO_LOCK}<small>Every track as audio and MIDI, for Logic, Ableton, GarageBand</small></span></button>
+    <button class="nx-act" data-k="audio"><span>Audio<small>The whole song, one file</small></span></button>
+    <button class="nx-act" data-k="video"><span>Video<small>For TikTok, Reels and YouTube: your parts move to the beat</small></span></button>
     <div class="s2-shst" id="s2ShSt" hidden></div><div class="nx-bar s2-shbar" id="s2ShBar" hidden><i></i></div><div class="s2-shgo" id="s2ShGo" hidden><button class="go" id="s2ShNow">Share</button><button id="s2ShSave">Save to Files</button></div>`);
   const st=m=>{ const e=$('s2ShSt'); if(e){ e.hidden=!m; e.textContent=m||''; } }, bar=(mode,frac)=>{ const e=$('s2ShBar'); if(!e) return; e.hidden=!mode; e.classList.toggle('ind',mode==='ind'); if(mode==='pct') e.firstElementChild.style.width=Math.round(clamp(frac,0,1)*100)+'%'; else e.firstElementChild.style.width=''; }, lock=v=>$('nxSheet').querySelectorAll('.nx-act').forEach(b=>{ b.disabled=v; });
   $('s2ShNow').onclick=()=>shareNow(); $('s2ShSave').onclick=()=>{ if(shareFile) offerFile(shareFile.name, shareFile); };
@@ -1140,15 +1144,15 @@ function s2DeleteClip(tr){ const mates=S.tracks.filter(o=>o!==tr&&s2LaneId(o)===
   if(mates.length){ if(tr.lane==null) mates.forEach(o=>{ o.lane=mates[0].id; }); s2.recPrev=0; deletePart(tr); }
   else { tr.blank=false; if(tr.notes) tr.notes=[]; if(tr.hits) tr.hits=[]; if(tr.fxs) tr.fxs=[]; delete tr.mfx; tr._mfxph=null; tr._an=null; tr._takes=null; if(tr._raw){ tr._raw=null; tr.va=null; takeStore.del('vox'+tr.id); } tr._dirty=true; keyCache=null; save(); renderTracks(); scheduleRender(); toast('Part deleted'); } }
 function s2MixSheet(L){ const tr=L.tracks[0], nm=nxEsc(s2Name(L));
-  nxSheet(`<h2>${nm}</h2><input class="nx-txt" id="s2Tn" maxlength="32" value="${nxEsc(tr.name||'')}" placeholder="Song FX" aria-label="Track name" style="margin-bottom:12px"><p style="color:var(--muted);font-size:14px;margin:0 0 10px">Effects on the whole song. Tracks lower down are applied after the ones above. Tap an empty spot in this track to add one.</p><button class="nx-act danger" data-a="del">Delete track</button>`);
+  nxSheet(`<input class="s2-tn" id="s2Tn" maxlength="32" value="${nxEsc(tr.name||'')}" placeholder="Song FX" aria-label="Track name (tap to rename)"><p style="color:var(--muted);font-size:14px;margin:0 0 10px">Effects on the whole song. Tracks lower down are applied after the ones above. Tap an empty spot in this track to add one.</p><button class="nx-act danger" data-a="del">Delete track</button>`);
   $('s2Tn').onchange=e=>{ const v=e.target.value.trim().slice(0,32)||undefined; S.tracks.forEach(t=>{ if(s2LaneId(t)===L.id) t.name=v; }); save(); renderTracks(); };
   $('nxSheet').onclick=e=>{ if(e.target.closest('[data-a="del"]')){ nxClose(); S.tracks=S.tracks.filter(t=>s2LaneId(t)!==L.id); s2.selId=null; save(); renderTracks(); } }; }
 function s2TrackSheet(L){ if(L.tracks[0].inst==='mix') return s2MixSheet(L); const tr=L.tracks[0], all=()=>S.tracks.filter(t=>s2LaneId(t)===L.id), I=INST[tr.inst], nm=nxEsc(s2Name(L)), pit=I.kind==='pitched';
   const fam=pit?PICK_GROUPS[1][1]:I.kind==='audio'?[]:PICK_GROUPS[0][1], hasVoice=all().some(t=>t._raw&&(t._an||t.exprAlign!=null))&&tr.inst!=='arp';
   const dot=k=>`<i style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${INST[k].color};margin-right:6px"></i>`;
-  nxSheet(`<h2>${nm}</h2><input class="nx-txt" id="s2Tn" maxlength="32" value="${nxEsc(tr.name||'')}" placeholder="${nxEsc(I.label)}" aria-label="Track name" style="margin-bottom:12px">
+  nxSheet(`<input class="s2-tn" id="s2Tn" maxlength="32" value="${nxEsc(tr.name||'')}" placeholder="${nxEsc(I.label)}" aria-label="Track name (tap to rename)">
     ${fam.length>1?`<div class="nx-grp" style="padding-top:0">Instrument</div><div class="s2-opts" id="s2Ins">${fam.map(k=>`<button data-k="${k}" aria-pressed="${k===tr.inst}">${dot(k)}${INST[k].label}</button>`).join('')}</div>`:''}
-    ${I.sounds&&I.sounds.length?`<div class="nx-grp" style="padding-top:0">Sound</div><div class="s2-opts" id="s2Snd">${I.sounds.map(x=>`<button data-x="${nxEsc(x)}" aria-pressed="${x===tr.sound}">${nxEsc(x)}${proLocked(x)?PRO_LOCK:''}</button>`).join('')}</div>`:''}${tr.sound==='Your voice'&&S.yv&&S.yv.of>1?`<button class="nx-ghost" data-a="yvnext" style="width:100%;margin-top:10px">Try another moment · ${S.yv.rank+1} of ${S.yv.of}</button>`:''}
+    ${I.sounds&&I.sounds.length?`<div class="nx-grp" style="padding-top:0">Sound</div><div id="s2Snd">${soundGroups(I.sounds).map(([g,xs])=>`${g?`<div class="s2-sg">${g}</div>`:''}<div class="s2-opts">${xs.map(x=>`<button data-x="${nxEsc(x)}" aria-pressed="${x===tr.sound}">${nxEsc(x)}${proLocked(x)?PRO_LOCK:''}</button>`).join('')}</div>`).join('')}</div>`:''}${tr.sound==='Your voice'&&S.yv&&S.yv.of>1?`<button class="nx-ghost" data-a="yvnext" style="width:100%;margin-top:10px">Try another moment · ${S.yv.rank+1} of ${S.yv.of}</button>`:''}
     ${CHORD_ZONE[tr.inst]?`<div class="nx-grp" style="padding-top:0">Chord</div><select class="nx-txt" id="s2Chd" aria-label="Chord type" style="margin-bottom:12px">${Object.entries(CHORD_TYPES).map(([k,v])=>`<option value="${k}" ${k===chordType(tr)?'selected':''}>${v}</option>`).join('')}</select>`:''}
     ${tr.inst==='vox'?(()=>{ const fx=fxOf(tr), L={tune:'Pitch correction',form:'Voice character',low:'Low cut',pres:'Presence',air:'Air',comp:'Compression',dbl:'Double',echo:'Echo'}; return `<div class="nx-grp" style="padding-top:6px">Voice</div>${s2Fld('s2Fx_tune',L.tune,0,100,fx.tune)}<p style="color:var(--muted);font-size:13px;margin:-2px 0 6px">0 leaves your singing as it is. 100 is the hard-tuned sound. It follows the song’s key.</p>${VOX_KNOBS.filter(([k])=>k!=='tune').map(([k])=>s2Fld('s2Fx_'+k,L[k]||k,0,100,fx[k])).join('')}`; })():''}
     ${pit?`<div class="nx-grp" style="padding-top:6px">Notes</div><div class="s2-fld"><label>Octave</label><div class="s2-opts" style="padding:0"><button data-o="-1" aria-label="Octave down">−</button><output id="s2Oct" style="width:36px;text-align:center;align-self:center;font:700 15px var(--f-mono)">${tr.oct>0?'+':''}${tr.oct||0}</output><button data-o="1" aria-label="Octave up">+</button></div></div>
@@ -2130,6 +2134,8 @@ const PRO={owned:false, price:''}; try{ PRO.owned=localStorage.getItem('noodle.p
 const devAs=()=>{ if(!window.NOODLE_DEV) return ''; try{ return localStorage.getItem('noodle.devAs')||''; }catch(e){ return ''; } };
 const isPro=()=>devAs()?devAs()==='pro':PRO.owned;
 const PRO_SOUNDS=new Set(['Marimba','Glockenspiel','Flute','Horns','Your voice','Glass','Chip','Theremin','Vowel pad','Digital pad','Growl','Acid','Wobble','String pluck','Chorus pad','Pump pad']);
+/* a long sound list in groups: synths, recorded instruments (and kits), your voice */
+const soundGroups=list=>{ if(list.length<7) return [['',list]]; const rec=x=>!!SAMPLED[x]||!!KIT_SAMPLED[x], g=[['Synths',list.filter(x=>!rec(x)&&x!=='Your voice')],['Recorded',list.filter(rec)],['',list.filter(x=>x==='Your voice')]]; return g.filter(([,xs])=>xs.length); };
 const proLocked=snd=>!isPro()&&PRO_SOUNDS.has(snd);
 const PRO_LOCK='<svg class="nx-ico" viewBox="0 0 24 24" style="width:13px;height:13px;margin-left:4px;vertical-align:-2px"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/></svg>';
 const proBridge=()=>!!(window.webkit&&window.webkit.messageHandlers&&window.webkit.messageHandlers.noodlePro);
