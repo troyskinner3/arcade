@@ -960,7 +960,7 @@ function s2Chips(){ { const sp=$('s2Snap').lastElementChild, v=fracTxt(snapBars(
 /* the editor's playhead strip: where the playhead is within the part being edited */
 function edSeekDraw(){ const t=S.tracks.find(x=>x.id===s2.edId), d=$('s2EdSeekD'); if(!t||!d) return; const ps=pSteps(t), f=clamp(((s2.cur*16)-(t.off||0))/ps,0,1), v=(f*100).toFixed(2)+'%'; if(d.style.left!==v) d.style.left=v; const bw=(16/ps*100).toFixed(3)+'%'; const T=$('s2EdSeekT'); if(T.style.getPropertyValue('--es-bar')!==bw){ T.style.setProperty('--es-bar',bw); const b0=Math.floor((t.off||0)/16); T.querySelectorAll('span').forEach(x=>x.remove()); for(let k=0;k*16<ps;k++) T.insertAdjacentHTML('beforeend',`<span style="left:${(k*16/ps*100).toFixed(3)}%">${b0+k+1}</span>`); } }
 function s2Tick(frac){ if(!s2On()) return;
-  if(s2.edId!=null){ const t=S.tracks.find(x=>x.id===s2.edId); if(t&&t._mfxph&&t._mfxph.el.isConnected){ const P=t._mfxph, st=clamp(frac,0,1)*S.bars*16-(t.off||0), n=pSteps(t), on=(playing||!!recState)&&st>=0&&st<n; P.el.style.display=on?'block':'none'; if(on) P.el.style.transform=`translateX(${P.P+st/n*(P.W-2*P.P)}px)`; } } if(s2.edId!=null) edSeekDraw();
+  if(s2.edId!=null){ const t=S.tracks.find(x=>x.id===s2.edId); if(t&&t._mfxph&&t._mfxph.el.isConnected){ const P=t._mfxph, st=clamp(frac,0,1)*S.bars*16-(t.off||0), n=pSteps(t), on=(playing||!!recState)&&st>=0&&st<n; P.el.style.display=on?'block':'none'; if(on) P.el.style.transform=`translateX(${P.PL+st/n*(P.W-P.PL-P.PR)}px)`; } } if(s2.edId!=null) edSeekDraw();
   if(s2.edId!=null){ const t=S.tracks.find(x=>x.id===s2.edId); if(t&&t._fxg&&t._fxph&&t._fxph.isConnected){ const st=clamp(frac,0,1)*S.bars*16-(t.off||0), G=t._fxg, on=(playing||!!recState)&&st>=0&&st<G.ps; t._fxph.style.display=on?'block':'none'; if(on) t._fxph.style.transform=`translateX(${G.gut+st*G.cw}px)`; } } const bars=S.bars, live=playing||!!recState; if(live) s2.cur=clamp(frac,0,1)*bars; const pos=live?s2.cur:s2.cur;
   if(playing && !recState && !s2.loop && ctx && ctx.currentTime-t0>=loopLen()-0.03){ togglePlay().then(()=>{ playFrom=0; s2.cur=0; }); }
   if(Math.abs(pos-s2.pos)>0.002){ s2.pos=pos; const a=$('s2Ph'), b=$('s2PhH'); if(a){ a.style.left=`calc(var(--s2-hdr) + ${pos} * var(--s2-barw))`; b.style.left=`calc(${pos} * var(--s2-barw))`; }
@@ -2113,22 +2113,26 @@ function nxProSync(){ const e=$('nxProS'); if(!e) return; e.textContent=(devAs()
 /* ---- Mix FX editor ---- */
 function mfxEdMount(tr, host){ const pro=isPro(), cfg=()=>MFX[tr.mfx.k], dur=()=>pSteps(tr)*stepDur(), w=document.createElement('div'); w.className='mfxe'; host.appendChild(w);
   const lock='<svg class="nx-ico" viewBox="0 0 24 24" style="width:13px;height:13px;margin-left:4px;vertical-align:-2px"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/></svg>';
-  const H=Math.max(140,Math.min(220,(host.clientHeight||420)-(pro&&(MFX[tr.mfx.k].params||[]).length?330:250))), W=Math.max(240,Math.floor(w.clientWidth||(host.clientWidth||340)-24)), P=14;   /* the width actually available inside the editor's padding */
+  const H=Math.max(140,Math.min(220,(host.clientHeight||420)-(pro&&(MFX[tr.mfx.k].params||[]).length?330:250))), W=Math.max(240,Math.floor(w.clientWidth||(host.clientWidth||340)-24)), P=24, PL=38, PR=12, PB=22;   /* room for Mix % on the left and bar numbers below */   /* the width actually available inside the editor's padding */
   w.innerHTML=`<div class="s2-opts mfx-k">${Object.entries(MFX).map(([k,c])=>`<button data-k="${k}" aria-pressed="${k===tr.mfx.k}">${c.label}${!pro&&!c.free?lock:''}</button>`).join('')}</div>
     <div class="mfx-cv"><canvas></canvas><div class="mfx-ph"></div></div>
     ${pro?`<div class="mfx-tools"><button class="mfx-btn" data-a="del" disabled>Delete point</button><button class="mfx-btn" data-a="reset">Reset shape</button></div><div class="mfx-par"></div>`:`<button class="mfx-btn mfx-pro" data-a="pro">Draw your own shape, and 9 more effects ${lock}</button>`}`;
-  const cv=w.querySelector('canvas'), ph=w.querySelector('.mfx-ph'); tr._mfxph={el:ph,W,P};
+  const cv=w.querySelector('canvas'), ph=w.querySelector('.mfx-ph'); tr._mfxph={el:ph,W,PL,PR};
   let sel=-1, drag=null;
   const nodes=()=>mfxNodes(tr,dur()), own=()=>{ if(!tr.mfx.curve){ const n=mfxDefaultNodes(dur()).map(x=>({...x})); tr.mfx.curve={nodes:n, curves:Array(n.length-1).fill(null)}; } return tr.mfx.curve; };
-  const X=t=>P+t*(W-2*P), Y=v=>P+(1-v)*(H-2*P), T=x=>clamp((x-P)/(W-2*P),0,1), V=y=>clamp(1-(y-P)/(H-2*P),0,1);
+  const X=t=>PL+t*(W-PL-PR), Y=v=>P+(1-v)*(H-P-PB), T=x=>clamp((x-PL)/(W-PL-PR),0,1), V=y=>clamp(1-(y-P)/(H-P-PB),0,1);   /* x: share of the region (so it scales with it), y: how much of the effect is mixed in */
   const draw=()=>{ const dpr=Math.min(2,window.devicePixelRatio||1); cv.width=Math.round(W*dpr); cv.height=Math.round(H*dpr); cv.style.width=W+'px'; cv.style.height=H+'px'; ph.style.height=H+'px';
     const g=cv.getContext('2d'), cs=getComputedStyle($('s2')), c=n=>cs.getPropertyValue(n).trim(), col=INST.mix.color; g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,W,H);
-    g.fillStyle=c('--s2-lane'); g.fillRect(P,P,W-2*P,H-2*P); const bars=pBars(tr); g.strokeStyle=c('--s2-line'); g.lineWidth=1; for(let b=0;b<=bars;b++){ const x=Math.round(X(b/bars))+0.5; g.beginPath(); g.moveTo(x,P); g.lineTo(x,H-P); g.stroke(); }
+    g.fillStyle=c('--s2-lane'); g.fillRect(X(0),Y(1),X(1)-X(0),Y(0)-Y(1)); const bars=pBars(tr), b0=(tr.off||0)/16; g.strokeStyle=c('--s2-line'); g.lineWidth=1;
+    [0.5].forEach(v=>{ g.globalAlpha=0.6; g.setLineDash([3,4]); g.beginPath(); g.moveTo(X(0),Math.round(Y(v))+0.5); g.lineTo(X(1),Math.round(Y(v))+0.5); g.stroke(); g.setLineDash([]); g.globalAlpha=1; });
+    const lab=n=>{ g.fillStyle=c('--s2-ink'); g.globalAlpha=0.65; g.font='600 11px '+(c('--f-body')||'sans-serif'); return n; };
+    const every=Math.max(1,Math.ceil(bars/Math.max(1,Math.floor((X(1)-X(0))/34))));   /* as many bar numbers as fit */
+    for(let b=0;b<=Math.floor(bars+1e-9);b++){ const x=Math.round(X(b/bars))+0.5; g.beginPath(); g.moveTo(x,Y(1)); g.lineTo(x,Y(0)); g.stroke(); if(b<bars-1e-9 && b%every===0){ lab(); g.textAlign='left'; g.textBaseline='top'; g.fillText(String(Math.floor(b0+b)+1),x+3,Y(0)+5); g.globalAlpha=1; } }
+    lab(); g.textAlign='right'; g.textBaseline='middle'; g.fillText('100%',X(0)-5,Y(1)); g.fillText('50%',X(0)-5,Y(0.5)); g.fillText('0%',X(0)-5,Y(0)); g.textAlign='left'; g.textBaseline='top'; g.fillText('Mix',4,2); g.globalAlpha=1;   /* the scale's name, above it */
     const ns=nodes(), cvv=tr.mfx.curve&&tr.mfx.curve.curves, N=240; g.beginPath(); g.moveTo(X(0),Y(0)); for(let i=0;i<=N;i++){ const t=i/N; g.lineTo(X(t),Y(clamp(mfxValAt(ns,t,cvv),0,1))); } g.lineTo(X(1),Y(0)); g.closePath(); g.fillStyle=col; g.globalAlpha=0.25; g.fill(); g.globalAlpha=1;
     g.beginPath(); for(let i=0;i<=N;i++){ const t=i/N, y=Y(clamp(mfxValAt(ns,t,cvv),0,1)); i?g.lineTo(X(t),y):g.moveTo(X(t),y); } g.strokeStyle=col; g.lineWidth=2.5; g.stroke();
     if(pro){ for(let i=0;i<ns.length-1;i++){ const m=(ns[i].t+ns[i+1].t)/2; g.fillStyle=c('--s2-ink'); g.globalAlpha=0.5; g.beginPath(); g.arc(X(m),Y(clamp(mfxValAt(ns,m,cvv),0,1)),3.5,0,7); g.fill(); g.globalAlpha=1; }   /* drag a line's middle to bend it */
       ns.forEach((n,i)=>{ const end=i===0||i===ns.length-1; g.beginPath(); g.arc(X(n.t),Y(n.v),end?4:7,0,7); g.fillStyle=end?c('--s2-line'):col; g.fill(); if(i===sel){ g.lineWidth=2.5; g.strokeStyle=c('--s2-ink'); g.stroke(); } }); }
-    g.fillStyle=c('--s2-ink'); g.globalAlpha=0.6; g.font='600 11px '+(c('--f-body')||'sans-serif'); g.textBaseline='top'; g.fillText('Full',P+4,P+3); g.textBaseline='bottom'; g.fillText('Off',P+4,H-P-3); g.globalAlpha=1;
     const db=w.querySelector('[data-a="del"]'); if(db) db.disabled=!(sel>0&&sel<nodes().length-1); };
   const changed=()=>{ save(); draw(); const L=s2Lane(s2LaneId(tr)), lc=L&&$('s2In').querySelector(`canvas[data-cv="${L.id}"]`); if(lc) s2DrawLane(L,lc); $('s2EdS').textContent=partWhere(tr)+' · '+MFX[tr.mfx.k].label; };
   const at=ev=>{ const R=cv.getBoundingClientRect(); return {x:ev.clientX-R.left, y:ev.clientY-R.top}; };

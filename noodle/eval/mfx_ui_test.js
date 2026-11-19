@@ -27,7 +27,7 @@ await p.click('.mfx-k button[data-k="phaser"]'); await p.waitForTimeout(250); r.
     out.free=r; }
   { const p=await page(true), r={};
     await p.evaluate(()=>{ const t=mkTrack('mix',{id:S.nextId++,off:16,len:4,rep:false,lenSet:true}); t.mfx={k:'lp',curve:null,params:{}}; S.tracks.push(t); save(); renderTracks(); s2Edit(t); }); await p.waitForTimeout(400);
-    const R=await p.evaluate(()=>{ const c=document.querySelector('.mfxe canvas').getBoundingClientRect(); return {x:c.left,y:c.top,w:c.width,h:c.height}; }), P=14, X=t=>R.x+P+t*(R.w-2*P), Y=v=>R.y+P+(1-v)*(R.h-2*P);
+    const R=await p.evaluate(()=>{ const c=document.querySelector('.mfxe canvas').getBoundingClientRect(); return {x:c.left,y:c.top,w:c.width,h:c.height}; }), X=t=>R.x+38+t*(R.w-38-12), Y=v=>R.y+24+(1-v)*(R.h-24-22);   /* the editor's margins: Mix % on the left, bar numbers below */
     await p.mouse.click(X(0.3),Y(0.8)); await p.waitForTimeout(150); r.added=await p.evaluate(()=>S.tracks.find(t=>t.mfx).mfx.curve.nodes.length);
     await p.mouse.move(X(0.3),Y(0.8)); await p.mouse.down(); await p.mouse.move(X(0.4),Y(0.5),{steps:5}); await p.mouse.up(); await p.waitForTimeout(150);
     r.dragged=await p.evaluate(()=>{ const n=S.tracks.find(t=>t.mfx).mfx.curve.nodes[1]; return [+n.t.toFixed(2),+n.v.toFixed(2)]; });
