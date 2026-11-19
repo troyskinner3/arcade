@@ -265,29 +265,33 @@ function s2TrackSheet(L){ if(L.tracks[0].inst==='mix') return s2MixSheet(L); con
     ${I.sounds&&I.sounds.length?`<div class="nx-grp" style="padding-top:0">Sound</div><div id="s2Snd">${soundGroups(I.sounds).map(([g,xs])=>`${g?`<div class="s2-sg">${g}</div>`:''}<div class="s2-opts">${xs.map(x=>`<button data-x="${nxEsc(x)}" aria-pressed="${x===tr.sound}">${nxEsc(x)}${proLocked(x)?PRO_LOCK:''}</button>`).join('')}</div>`).join('')}</div>`:''}${tr.sound==='Your voice'&&S.yv&&S.yv.of>1?`<button class="nx-ghost" data-a="yvnext" style="width:100%;margin-top:10px">Try another moment · ${S.yv.rank+1} of ${S.yv.of}</button>`:''}
     ${tr.inst==='kit'?`<div class="nx-grp" style="padding-top:0">Fills</div><div class="s2-opts" id="s2Fill">${[[0,'Off'],[4,'Every 4 bars'],[8,'Every 8 bars']].map(([n,l])=>`<button data-f="${n}" aria-pressed="${(tr.fill||0)===n}">${l}</button>`).join('')}</div>`:''}
     ${CHORD_ZONE[tr.inst]?`<div class="nx-grp" style="padding-top:0">Chord</div><select class="nx-txt" id="s2Chd" aria-label="Chord type" style="margin-bottom:12px">${Object.entries(CHORD_TYPES).map(([k,v])=>`<option value="${k}" ${k===chordType(tr)?'selected':''}>${v}</option>`).join('')}</select>`:''}
-    ${tr.inst==='vox'?(()=>{ const fx=fxOf(tr), L={tune:'Pitch correction',form:'Voice character',low:'Low cut',pres:'Presence',air:'Air',comp:'Compression',dbl:'Double',echo:'Echo'}; return `<div class="nx-grp" style="padding-top:6px">Voice</div>${s2Fld('s2Fx_tune',L.tune,0,100,fx.tune)}<p style="color:var(--muted);font-size:13px;margin:-2px 0 6px">0 leaves your singing as it is. 100 is the hard-tuned sound. It follows the song’s key.</p>${VOX_KNOBS.filter(([k])=>k!=='tune').map(([k])=>s2Fld('s2Fx_'+k,L[k]||k,0,100,fx[k])).join('')}`; })():''}
+    ${tr.inst==='vox'?(()=>{ const fx=fxOf(tr), L={tune:'Pitch correction',form:'Voice character',low:'Low cut',pres:'Presence',air:'Air',comp:'Compression',dbl:'Double',echo:'Echo'}; return `<div class="nx-grp" style="padding-top:6px">Voice</div>${s2Fld('s2Fx_tune',L.tune,0,100,fx.tune)}<p style="color:var(--muted);font-size:13px;margin:-2px 0 6px">0 leaves your singing as it is. 100 is the hard-tuned sound. It follows the song’s key.</p>${VOX_KNOBS.filter(([k])=>k!=='tune').map(([k])=>s2Fld('s2Fx_'+k,L[k]||k,0,100,fx[k])).join('')}${isPro()?s2Fld('s2Fx_harm','Backing vocals',0,100,fx.harm||0)+'<p style="color:var(--muted);font-size:13px;margin:-2px 0 6px">Two more voices, a third above and below you, in the song’s key.</p>':`<button class="nx-ghost" data-a="harmpro" style="width:100%;margin-top:6px">Backing vocals${PRO_LOCK}</button>`}`; })():''}
     ${pit?`<div class="nx-grp" style="padding-top:6px">Notes</div><div class="s2-fld"><label>Octave</label><div class="s2-opts" style="padding:0"><button data-o="-1" aria-label="Octave down">−</button><output id="s2Oct" style="width:36px;text-align:center;align-self:center;font:700 15px var(--f-mono)">${tr.oct>0?'+':''}${tr.oct||0}</output><button data-o="1" aria-label="Octave up">+</button></div></div>
       ${hasVoice?s2Fld('s2Expr','Expression',0,100,tr.expr||0,10)+'<p style="color:var(--muted);font-size:13px;margin:-2px 0 6px">0 plays clean, steady notes. Turn it up to keep the slides, wobbles and swells of your take.</p>':''}`:''}
 
     <div class="nx-grp" style="padding-top:6px">Mix</div>${s2Fld('s2Vol','Volume',0,100,tr.vol??80)}${s2Fld('s2Rev','Reverb',0,100,tr.send??0)}${s2Fld('s2Pan','Left / right',-100,100,tr.pan??0)}${tr.inst==='vox'||tr.inst==='fx'?'':s2Fld('s2Tone',pit?'Brightness':'Tone',0,100,tr.tone??50)}
+    ${(pit||I.kind==='drums'||I.kind==='drum')?`<div class="nx-grp" style="padding-top:6px">Effects</div>${isPro()?TFX.map(([k,l])=>s2Fld('s2Tfx_'+k,l,0,100,(tr.tfx&&tr.tfx[k])||0)).join(''):`<button class="nx-ghost" data-a="tfxpro" style="width:100%">Echo, chorus and drive${PRO_LOCK}</button>`}`:''}
     ${(pit||tr.inst==='vox')&&tr.inst!=='mix'?`<button class="nx-ghost" data-a="chords" style="width:100%;margin-top:14px">Add chords to this melody</button>`:''}<button class="nx-ghost" data-a="dup" style="width:100%;margin-top:${(pit||tr.inst==='vox')?8:14}px">Duplicate track</button><button class="nx-act danger" data-a="del">Delete track</button>`);
   const each=f=>all().forEach(f), rerender=()=>{ save(); scheduleRender(); };
   $('s2Tn').onchange=e=>{ const v=e.target.value.trim().slice(0,32)||undefined; each(t=>{ t.name=v; }); save(); renderTracks(); };
   $('nxSheet').onclick=e=>{ let b;
     if(b=e.target.closest('#s2Ins button')){ const k=b.dataset.k; each(t=>changeInst(t,k)); keyCache=null; save(); renderTracks(); scheduleRender(); s2TrackSheet(s2Lane(L.id)); }
     else if((b=e.target.closest('#s2Snd button')) && proLocked(b.dataset.x)){ proSheet(b.dataset.x+' is part of Noodle Pro, with 15 more sounds and 11 song effects.'); }
-    else if(b=e.target.closest('#s2Snd button')){ each(t=>{ t.sound=b.dataset.x; if(t.inst==='vox') t.fx=Object.assign({},VOX_PRESETS[t.sound]); t._dirty=true; }); warmSounds();
+    else if(b=e.target.closest('#s2Snd button')){ each(t=>{ t.sound=b.dataset.x; if(t.inst==='vox') t.fx=Object.assign({},VOX_PRESETS[t.sound],t.fx&&t.fx.harm?{harm:t.fx.harm}:{}); t._dirty=true; }); warmSounds();
       if(b.dataset.x==='Your voice' && !S.yv && !yvCapture()) toast('Sing a take first: Your voice is made from it. Until then it plays Choir.'); rerender(); s2TrackSheet(s2Lane(L.id)); }
     else if(b=e.target.closest('#s2Fill button')){ const n=+b.dataset.f; each(t=>{ if(n) t.fill=n; else delete t.fill; t._dirty=true; }); rerender(); s2TrackSheet(s2Lane(L.id)); }
     else if(b=e.target.closest('[data-o]')){ each(t=>{ t.oct=clamp((t.oct||0)+(+b.dataset.o),-3,3); t.octSet=true; t._dirty=true; }); $('s2Oct').textContent=(tr.oct>0?'+':'')+tr.oct; rerender(); renderTracks(); }
     else if((b=e.target.closest('[data-a]')) && b.dataset.a==='yvnext'){ const r=(S.yv.rank||0)+1; if(yvCapture(r)){ S.tracks.forEach(t=>{ if(t.sound==='Your voice') t._dirty=true; }); rerender(); s2TrackSheet(s2Lane(L.id)); } }   /* the next steadiest moment of your singing */
     else if((b=e.target.closest('[data-a]')) && b.dataset.a==='chords'){ chordSheet(L); }
+    else if((b=e.target.closest('[data-a]')) && b.dataset.a==='harmpro'){ proSheet('Backing vocals (harmonies made from your own voice) are part of Noodle Pro.'); }
+    else if((b=e.target.closest('[data-a]')) && b.dataset.a==='tfxpro'){ proSheet('Effects on one track (echo, chorus, drive) are part of Noodle Pro.'); }
     else if((b=e.target.closest('[data-a]')) && b.dataset.a==='dup'){ nxClose(); const nl=s2DupTrack(L); if(nl){ s2.selId=null; renderTracks(); setTimeout(()=>s2TrackSheet(s2Lane(nl)),80); toast('Track duplicated. Pick its instrument, e.g. Keys or Pad for chords.'); } }
     else if(b=e.target.closest('[data-a]')){ nxClose(); const ms=all(); ms.slice(1).forEach(t=>{ disposeTrack(t); }); S.tracks=S.tracks.filter(t=>!ms.slice(1).includes(t)); deletePart(ms[0]); } };
   $('nxSheet').oninput=e=>{ const id=e.target.id, v=+e.target.value;
     if(id==='s2Vol'){ each(t=>{ t.vol=v; }); applyAllMix(); save(); } if(id==='s2Rev'){ each(t=>{ t.send=v; }); applyAllMix(); save(); } if(id==='s2Pan'){ each(t=>{ t.pan=v; }); applyAllMix(); save(); } };
   $('nxSheet').onchange=e=>{ const id=e.target.id, v=e.target.value;
     if(id==='s2Tone'){ each(t=>{ t.tone=+v; t._dirty=true; }); rerender(); }
+    if(id.startsWith('s2Tfx_')){ const k=id.slice(6); each(t=>{ t.tfx=Object.assign({},t.tfx,{[k]:+v}); if(!tfxOn(t)) delete t.tfx; t._dirty=true; }); rerender(); }
     if(id.startsWith('s2Fx_')){ const k=id.slice(5); each(t=>{ t.fx=Object.assign(fxOf(t),{[k]:+v}); t._tuned=null; t._dirty=true; }); rerender(); }
     if(id==='s2Chd'){ each(t=>{ t.chordType=v; delete t.chords; t._dirty=true; }); if(autoOct(tr)) $('s2Oct').textContent=(tr.oct>0?'+':'')+tr.oct; rerender(); renderTracks(); }
     if(id==='s2Expr'){ each(t=>{ t.expr=+v; if(t.expr>0&&t._raw){ if(t._an) t.exprAlign=t._an.align; storeVox(t); } t._dirty=true; }); rerender(); } }; }
@@ -492,6 +496,34 @@ function voxTuned(tr){
   let pk=1e-6; for(let i=0;i<out.length;i++) pk=Math.max(pk,Math.abs(out[i])); const g=0.7/pk; const o2=new Float32Array(out.length); for(let i=0;i<out.length;i++) o2[i]=out[i]*g;
   tr._tuned=o2; tr._tunedKey=key; return o2;
 }
+/* Backing vocals (Pro): your take shifted to a third above and a third below the note you sang (in the song's key), with the same
+   pitch shifting that tunes vocals. Kept until the take, key, tuning or voice character changes. */
+function voxHarm(tr){ const fx=fxOf(tr), key=fx.tune+'|'+fx.form+'|'+(tr.vt||0)+'|'+JSON.stringify(currentKey());
+  if(tr._harm && tr._harmKey===key) return tr._harm;
+  const {x,sr}=tr._raw, fr=voxPitch(tr), corr=voxTarget(tr), K=currentKey(), F=Math.pow(2,(fx.form-50)*0.12/12);
+  const voice=dir=>{ const c=new Float32Array(fr.length); fr.forEach((f,i)=>{ const m=f.ms+corr[i]; if(isNaN(f.ms)){ c[i]=corr[i]; return; } const n=K.none?Math.round(m):snap(m), h=K.none?n+dir*4:keySteps(n,2*dir); c[i]=corr[i]+(h-n); });
+    const o=psola(x,sr,fr,c,F); let pk=1e-6; for(let i=0;i<o.length;i++) pk=Math.max(pk,Math.abs(o[i])); const g=0.7/pk; for(let i=0;i<o.length;i++) o[i]*=g; return o; };
+  tr._harm={up:voice(1), dn:voice(-1)}; tr._harmKey=key; return tr._harm; }
+/* Vocoder and Talkbox (Pro vocal sounds): the vocal (after tuning) is split into 18 bands; how loud each band is moment to moment
+   sets the level of the same band of a synth. Talkbox: the synth plays the note you sang (tuned to the key). Vocoder: a chord in the
+   key on each note. Noise in the synth lets consonants through. starts: where each copy of the take plays [{o, va, PL}]. */
+const VOC_BANDS=18;
+function vocoder(oc, modIn, dest, tr, starts){
+  const fr=voxPitch(tr), corr=voxTarget(tr), chord=tr.sound==='Vocoder', mix=oc.createGain(); mix.gain.value=chord?1.3:1.6;
+  const car=oc.createGain(), noise=oc.createBufferSource(), nb=oc.createBuffer(1,oc.sampleRate*2,oc.sampleRate), nd=nb.getChannelData(0); let seed=1;
+  for(let i=0;i<nd.length;i++){ seed=(seed*16807)%2147483647; nd[i]=seed/1073741824-1; } noise.buffer=nb; noise.loop=true; const nh=oc.createBiquadFilter(); nh.type='highpass'; nh.frequency.value=3000; const ng=oc.createGain(); ng.gain.value=0.35;
+  noise.connect(nh); nh.connect(ng); ng.connect(car); noise.start(0);
+  const voices=chord?[0,1,2]:[0,0.07]; const oscs=voices.map((v,j)=>{ const o=oc.createOscillator(); o.type=chord||j===0?'sawtooth':'square'; const g=oc.createGain(); g.gain.value=chord?0.33:0.5; o.connect(g); g.connect(car); o.start(0); return o; });
+  for(const st of starts){ let last=null; fr.forEach((f,i)=>{ const at=st.o+(f.t-st.va); if(at<st.o-0.01||at>st.o+st.PL) return; const m=f.ms+corr[i]; if(isNaN(m)) return;
+      const n=snap(m), ps=chord?chordTones(n,'triad').map(p=>p-12):[m, m+0.07]; if(last&&last.n===n&&!(!chord&&Math.abs(last.m-m)>0.05)) return; last={n,m};
+      oscs.forEach((o,j)=>o.frequency.setTargetAtTime(mtof(ps[Math.min(j,ps.length-1)]),Math.max(0,at),0.006)); }); }
+  const abs=new Float32Array(1025); for(let i=0;i<1025;i++) abs[i]=Math.abs(i/512-1);   /* odd length: silence maps to exactly 0 */
+  for(let k=0;k<VOC_BANDS;k++){ const fc=130*Math.pow(8000/130,k/(VOC_BANDS-1)), Q=5;
+    const bm=oc.createBiquadFilter(), bc=oc.createBiquadFilter(), sh=oc.createWaveShaper(), lp=oc.createBiquadFilter(), vca=oc.createGain();
+    bm.type=bc.type='bandpass'; bm.frequency.value=bc.frequency.value=fc; bm.Q.value=bc.Q.value=Q; sh.curve=abs; lp.type='lowpass'; lp.frequency.value=28; vca.gain.value=0;
+    const env=oc.createGain(); env.gain.value=6*Math.sqrt(fc/600);   /* higher bands are quieter in a voice: lift them */
+    modIn.connect(bm); bm.connect(sh); sh.connect(lp); lp.connect(env); env.connect(vca.gain); car.connect(bc); bc.connect(vca); vca.connect(mix); }
+  mix.connect(dest); }
 async function renderVox(tr){
   const sr=ctx.sampleRate, L=bufLen(tr), n=Math.round(L*sr), tail=2, oc=new OfflineAudioContext(2,n+tail*sr,sr), b=ctx.createBuffer(2,n,sr);
   if(!tr._raw){ return b; }
@@ -503,7 +535,7 @@ async function renderVox(tr){
   const mud=oc.createBiquadFilter(); mud.type='peaking'; mud.frequency.value=320; mud.Q.value=1; mud.gain.value=-fx.comp/40;
   const comp=oc.createDynamicsCompressor(); comp.threshold.value=-8-fx.comp*0.3; comp.ratio.value=1.5+fx.comp*0.065; comp.attack.value=0.004; comp.release.value=0.12; comp.knee.value=6;
   const mk=oc.createGain(); mk.gain.value=0.75*(1+fx.comp*0.012);
-  src.connect(hp); hp.connect(mud); mud.connect(pres); pres.connect(air); air.connect(comp); comp.connect(mk);
+  src.connect(hp); hp.connect(mud); mud.connect(pres); pres.connect(air); const voc=tr.sound==='Vocoder'||tr.sound==='Talkbox'; if(!voc) air.connect(comp); comp.connect(mk);
   const out=oc.createGain(); out.connect(oc.destination); mk.connect(out);
   if(fx.dbl>0){ [[0.013,0.6,-0.8],[0.021,0.83,0.8]].forEach(([dt,rate,pan])=>{ const dl=oc.createDelay(0.1), lfo=oc.createOscillator(), lg=oc.createGain(), p=oc.createStereoPanner(), g=oc.createGain();
       dl.delayTime.value=dt; lfo.frequency.value=rate; lg.gain.value=0.0025; lfo.connect(lg); lg.connect(dl.delayTime); lfo.start(0); p.pan.value=pan; g.gain.value=fx.dbl/100*0.7;
@@ -511,7 +543,13 @@ async function renderVox(tr){
   if(fx.echo>0){ const dl=oc.createDelay(2), fb=oc.createGain(), lp=oc.createBiquadFilter(), wet=oc.createGain(); dl.delayTime.value=stepDur()*2; fb.gain.value=0.35; lp.type='lowpass'; lp.frequency.value=4500; wet.gain.value=fx.echo/100*0.5;
     mk.connect(dl); dl.connect(lp); lp.connect(fb); fb.connect(dl); lp.connect(wet); wet.connect(oc.destination); }
   const va=tr.va||0, PL=pSteps(tr)*stepDur(), SC=scOn(tr), reps=(SC&&!tr.off)?pLoops(tr):1, offT=(tr.off||0)*stepDur();
-  for(let r=0;r<reps;r++){ const sN=r?oc.createBufferSource():src; if(r){ sN.buffer=ab; sN.connect(hp); } const o=r*PL+offT; if(va>=0) sN.start(o,va,PL); else sN.start(o-va,0,Math.max(0.01,PL+va)); }
+  const play=(sN,r)=>{ const o=r*PL+offT; if(va>=0) sN.start(o,va,PL); else sN.start(o-va,0,Math.max(0.01,PL+va)); };
+  for(let r=0;r<reps;r++){ const sN=r?oc.createBufferSource():src; if(r){ sN.buffer=ab; sN.connect(hp); } play(sN,r); }
+  if(voc) vocoder(oc, air, comp, tr, Array.from({length:reps},(_,r)=>({o:r*PL+offT+(va<0?-va:0), va:Math.max(0,va), PL})));
+  if(fx.harm>0){ const H=voxHarm(tr); [[H.up,-0.55],[H.dn,0.55]].forEach(([hx,pan])=>{ const hb=oc.createBuffer(1,hx.length,rsr); hb.copyToChannel(hx,0);
+      const hh=oc.createBiquadFilter(); hh.type='highpass'; hh.frequency.value=hp.frequency.value+80; const g=oc.createGain(); g.gain.value=fx.harm/100*0.42; const p=oc.createStereoPanner(); p.pan.value=pan;
+      hh.connect(g); g.connect(p); p.connect(out);
+      for(let r=0;r<reps;r++){ const sN=oc.createBufferSource(); sN.buffer=hb; sN.connect(hh); play(sN,r); } }); }
   const r=await oc.startRendering();
   for(let ch=0;ch<2;ch++){ const s2=r.getChannelData(ch), dst=b.getChannelData(ch); for(let i=0;i<s2.length;i++) dst[i%n]+=s2[i]; }
   if(SC) applyDuck(b,tr);

@@ -515,3 +515,13 @@ How to work on it: one small step at a time; after each, `bash noodle/eval/run.s
 - **Song sections (shipped, `sections_test.js`):** Sections (the corner of the ruler) names stretches of bars; the names show in the ruler.
   Duplicate copies every part that starts in the section right after it and moves the rest of the song later (looping parts keep looping;
   up to 64 bars); Loop loops it; ✕ removes the name. Undo covers all of it.
+- **Effects on one track (Pro, `tfx_test.js`):** Echo (dotted eighth, ping-pong), Chorus, Drive in a melodic or drum track's sheet, built into
+  the part when it renders (so playback and exports carry them; a Lo-fi kit keeps its own colour too). Drive is level-matched (+0.7 dB at 80).
+- **Backing vocals (Pro, `harm_test.js`):** two voices from your own take, a third above (left) and below (right) in the key, made with the
+  same pitch shifting that tunes vocals; a sung A3 in A minor gives C4 and F3 exactly. About 6 dB under the lead at 80.
+- **Vocoder and Talkbox (Pro vocal sounds, `vocoder_test.js`):** 18-band channel vocoder (130 Hz-8 kHz) built from Web Audio nodes: the tuned
+  vocal's band levels drive the same bands of a synth (Talkbox: the note you sang; Vocoder: a chord in the key on it, an octave down) plus noise
+  for consonants. Silent between phrases (the rectifier curve has an odd length, so silence maps to exactly 0; an even length leaked -23 dB).
+- **New recorded instruments (Pro):** VSCO 2 CE (CC0) trumpet (sustain, 2 dynamics), clarinet (sustain, 3) and xylophone; same +12 octave
+  naming as the other VSCO instruments (measured). Levels set against the Saw / Marimba (clarinet +10 dB, xylophone +2 dB). A second recorded
+  kit (Karoryfer Swirly or Unruly Drums, CC0) is next: each needs its mics mixed and every drum levelled against the synth kits.

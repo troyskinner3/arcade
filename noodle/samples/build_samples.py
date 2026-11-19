@@ -231,6 +231,12 @@ SOURCES = {
         trim=[(127, 5.0)], loop=(2.0, 0.3), release=0.3, gain=5.5, name='Flute', credit='VS Chamber Orchestra: Community Edition by Versilian Studios (CC0)'),   # gain +15 dB, with the Saw
     'horn': dict(src='VSCO-2-CE/Brass/F Horn/sus', named=True, pattern=r'_sus_([A-G]#?\d)_v([1-3])_1\.wav$', layers=[(1, 0.45), (2, 0.8), (3, 1.0)], shift=12, retune=True,
         trim=[(127, 6.0)], loop=(2.5, 0.35), release=0.4, gain=2.5, name='French horn', credit='VS Chamber Orchestra: Community Edition by Versilian Studios (CC0)'),   # gain +8 dB, with the Warm pad
+    'trumpet': dict(src='VSCO-2-CE/Brass/Trumpet/sus', named=True, pattern=r'_sus_([A-G]#?\d)_v([13])_rr1\.wav$', layers=[(1, 0.55), (3, 1.0)], shift=12, retune=True,
+        trim=[(127, 5.0)], loop=(2.0, 0.3), release=0.25, gain=1.0, name='Trumpet', credit='VS Chamber Orchestra: Community Edition by Versilian Studios (CC0)'),   # gain 0 dB: already level with the Saw
+    'clarinet': dict(src='VSCO-2-CE/Woodwinds/Clarinet/susLong', named=True, pattern=r'_susLong_([A-G]#?\d)_v([1-3])_rr1_sum\.wav$', layers=[(1, 0.45), (2, 0.8), (3, 1.0)], shift=12, retune=True,
+        trim=[(127, 5.0)], loop=(2.0, 0.3), release=0.25, gain=3.3, name='Clarinet', credit='VS Chamber Orchestra: Community Edition by Versilian Studios (CC0)'),   # gain +10 dB, with the Saw
+    'xylo': dict(src='VSCO-2-CE/Percussion/Xylo', named=True, pattern=r'Xylo_Medium_([A-G]#?\d)_ff_01_far\.wav$', layers=[(1, 1.0)], shift=12, fold=True,
+        trim=[(127, 2.0)], release=0.3, gain=1.3, name='Xylophone', credit='VS Chamber Orchestra: Community Edition by Versilian Studios (CC0)'),   # gain +2 dB, with the Marimba
 }
 
 def build(root, key):

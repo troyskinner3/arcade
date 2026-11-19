@@ -8,11 +8,11 @@ const INST = {
   hat:  {label:'Hi-hat', kind:'drum', drum:'hat', color:'#22b0a0', say:'“ts” · “tk”', sounds:DRUM_SOUNDS, hint:'Just the hi-hats. Say “ts”, “tk” or “tss”.'},
   clap: {label:'Clap', kind:'drum', drum:'clap', color:'#e2689f', say:'“k” · clap', sounds:DRUM_SOUNDS, hint:'Claps. Say “k”, clap your hands, or snap your fingers. Any short, sharp sound works.'},
   bass: {label:'Bass', kind:'pitched', oct:-1, color:'#7b6cf6', say:'sing low', sounds:['Sub','808 glide','Synth bass','Reese','Pluck','Rock bass','Growl','Acid','Wobble'], hint:'Sing or hum the bass line. It plays an octave lower than you sing.'},
-  lead: {label:'Lead', kind:'pitched', oct:0, color:'#3a8dde', say:'sing · whistle', sounds:['Saw','Supersaw','Square','Bell','Guitar','Glass','Chip','Theremin','Flute','Glockenspiel','Your voice'], hint:'Sing (“ahh”, “ooo”, “doo”), hum, or whistle a melody. Slides between notes are fine.'},
-  keys: {label:'Keys', kind:'pitched', oct:0, color:'#8fbf3a', say:'sing roots', sounds:['Piano','E-piano','Organ','Stab','String pluck','Marimba','Horns'], hint:'Sing or hum a riff. Each note becomes a chord on electric piano or organ.'},
+  lead: {label:'Lead', kind:'pitched', oct:0, color:'#3a8dde', say:'sing · whistle', sounds:['Saw','Supersaw','Square','Bell','Guitar','Glass','Chip','Theremin','Flute','Trumpet','Clarinet','Glockenspiel','Your voice'], hint:'Sing (“ahh”, “ooo”, “doo”), hum, or whistle a melody. Slides between notes are fine.'},
+  keys: {label:'Keys', kind:'pitched', oct:0, color:'#8fbf3a', say:'sing roots', sounds:['Piano','E-piano','Organ','Stab','String pluck','Marimba','Xylophone','Horns'], hint:'Sing or hum a riff. Each note becomes a chord on electric piano or organ.'},
   pad:  {label:'Pad', kind:'pitched', oct:0, color:'#b77ce8', say:'sing long', sounds:['Warm pad','Strings','Choir','Sweep','Vowel pad','Digital pad','Chorus pad','Pump pad','Horns','Your voice'], hint:'Sing or hum long, slow notes. Each becomes a chord on a soft pad.'},
-  arp:  {label:'Arp', kind:'pitched', oct:0, color:'#2fb3c9', say:'sing roots', sounds:['Pluck','Bell','Supersaw','Square','Saw','Chip','Glass','String pluck','Marimba','Glockenspiel'], hint:'Sing, hum or draw root notes. Each one plays its chord from the key as an arpeggio. Set the pattern, speed and chord size under Controls.'},
-  vox:  {label:'Vocals', kind:'audio', color:'#f7768e', say:'sing words', sounds:['Pop','Hip hop','Hard tune','EDM','Rock','Natural'], hint:'Sing the real thing: lyrics, ad-libs, harmonies. Your voice is kept as audio and polished with tuning, EQ, compression, doubling and echo. Wear headphones: the other parts play while you sing.'},
+  arp:  {label:'Arp', kind:'pitched', oct:0, color:'#2fb3c9', say:'sing roots', sounds:['Pluck','Bell','Supersaw','Square','Saw','Chip','Glass','String pluck','Marimba','Xylophone','Glockenspiel'], hint:'Sing, hum or draw root notes. Each one plays its chord from the key as an arpeggio. Set the pattern, speed and chord size under Controls.'},
+  vox:  {label:'Vocals', kind:'audio', color:'#f7768e', say:'sing words', sounds:['Pop','Hip hop','Hard tune','EDM','Rock','Natural','Vocoder','Talkbox'], hint:'Sing the real thing: lyrics, ad-libs, harmonies. Your voice is kept as audio and polished with tuning, EQ, compression, doubling and echo. Wear headphones: the other parts play while you sing.'},
   mix:  {label:'Song FX', kind:'mix', color:'#e0a43a', say:'', sounds:[], hint:'Effects on the whole song: sweeps, echoes, phasers. Tap an empty spot in this track to add one.'},
   fx:   {label:'Sound FX', kind:'audio', color:'#9b8cff', say:'“woooop” · “shhh” · “pshh”', sounds:['Synth'], hint:'Ear candy from your mouth: a rising “woooop” is a riser, a falling one a downlifter, “shhh” a noise sweep, a short “pshh” an impact.'},
 };
@@ -122,6 +122,8 @@ const VOX_PRESETS={
   'EDM':      {tune:65, low:50, pres:55, air:75, comp:65, dbl:35, echo:30},
   'Rock':     {tune:10, low:45, pres:72, air:35, comp:72, dbl:10, echo:5},
   'Natural':  {tune:0,  low:30, pres:35, air:30, comp:30, dbl:0,  echo:0},
+  'Vocoder':  {tune:100,low:45, pres:50, air:50, comp:60, dbl:30, echo:20},   /* your voice shapes a synth: chords on each note you sing */
+  'Talkbox':  {tune:100,low:45, pres:55, air:40, comp:65, dbl:10, echo:10},   /* your voice shapes a synth playing your melody */
 };
 const fmtSt=v=>{ const st=Math.round((v-50)*1.2)/10; return st===0?'0':(st>0?'+':'')+st.toFixed(1)+' st'; };
 const VOX_KNOBS=[['tune','Tune',v=>v?v+'%':'off'],['form','Formant',fmtSt],['low','Low cut',v=>Math.round(40+v*2.6)+' Hz'],['pres','Presence',v=>{const g=(v-25)/75*9; return (g>0?'+':'')+g.toFixed(1)+' dB';}],['air','Air',v=>'+'+(v/10).toFixed(1)+' dB'],['comp','Compression',v=>v+'%'],['dbl','Double',v=>v+'%'],['echo','Echo',v=>v+'%']];

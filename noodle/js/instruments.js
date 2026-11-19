@@ -82,7 +82,7 @@ let ENV_OVR=null, ENV_LAST=null;   // a part's own ADSR (replaces the sound's), 
 /* ---- Sampled instruments: real recordings, played back at the right pitch and loudness ----
    Built by samples/build_samples.py from open libraries (see samples/CREDITS.md). Each instrument loads the first time a song uses it;
    until then (or if it can't load) the synthesized sound of the same name plays, so nothing ever goes silent. */
-const SAMPLED={'Piano':'piano','E-piano':'epiano','Strings':'strings','Rock bass':'bass','Guitar':'guitar','Marimba':'marimba','Glockenspiel':'glock','Flute':'flute','Horns':'horn'};
+const SAMPLED={'Piano':'piano','E-piano':'epiano','Strings':'strings','Rock bass':'bass','Guitar':'guitar','Marimba':'marimba','Glockenspiel':'glock','Flute':'flute','Horns':'horn','Trumpet':'trumpet','Clarinet':'clarinet','Xylophone':'xylo'};
 const SOUND_CREDITS=[   /* shown in More > Sound credits (required by CC BY; CC0 libraries are listed too, as thanks) */
   {sound:'Piano', lib:'Salamander Grand Piano', by:'Alexander Holm', lic:'CC BY 3.0', url:'https://creativecommons.org/licenses/by/3.0/'},
   {sound:'Strings, Marimba, Glockenspiel, Flute, Horns', lib:'VS Chamber Orchestra: Community Edition', by:'Versilian Studios', lic:'CC0 (public domain)', url:'https://creativecommons.org/publicdomain/zero/1.0/'},
@@ -269,15 +269,32 @@ function exprCurves(tr, nt, dur, target){ const E=exprFrames(tr); if(!E) return 
   const sm=(A,w)=>{ const B=A.slice(); for(let k=0;k<A.length;k++){ let s=0,c=0; for(let j=Math.max(0,k-w);j<=Math.min(A.length-1,k+w);j++){ s+=A[j]; c++; } B[k]=s/c; } return B; };
   return {bend:sm(bend,2),gain:sm(gain,2),cut:sm(cut,3)}; }
 function stepTime(s){ const sd=stepDur(); return (s + (s%2===1 ? (S.swing/100)*0.5 : 0))*sd; }
+/* ---- Effects on one track (Pro): echo (dotted eighth, ping-pong), chorus, drive. Built into the part's sound when it is rendered,
+   so playback and every export carry them. tr.tfx = {echo, chorus, drive}, 0-100 each (0 = off). ---- */
+const TFX=[['echo','Echo'],['chorus','Chorus'],['drive','Drive']];
+const tfxOn=tr=>!!(tr.tfx&&TFX.some(([k])=>tr.tfx[k]>0));
+function tfxChain(oc,tr){ if(!tfxOn(tr)) return null; const f=tr.tfx, input=oc.createGain(); let node=input;
+  if(f.drive>0){ const a=f.drive/100, pre=oc.createGain(), sh=oc.createWaveShaper(), post=oc.createGain(), lp=oc.createBiquadFilter();
+    const amt=0.25+0.75*a, k=amt*14, x0=0.08; pre.gain.value=1+4*a; sh.curve=driveCurve(amt); sh.oversample='2x'; post.gain.value=1.2*x0*Math.tanh(k)/Math.tanh(k*pre.gain.value*x0);   /* about the same loudness, just dirtier */ lp.type='lowpass'; lp.frequency.value=9000-4000*a;
+    node.connect(pre); pre.connect(sh); sh.connect(lp); lp.connect(post); node=post; }
+  if(f.chorus>0){ const a=f.chorus/100, out=oc.createGain(); node.connect(out);
+    [[0.011,0.55,-0.75],[0.016,0.8,0.75]].forEach(([dt,rate,pan])=>{ const dl=oc.createDelay(0.05), lfo=oc.createOscillator(), lg=oc.createGain(), p=oc.createStereoPanner(), g=oc.createGain();
+      dl.delayTime.value=dt; lfo.frequency.value=rate; lg.gain.value=0.0035; lfo.connect(lg); lg.connect(dl.delayTime); lfo.start(0); p.pan.value=pan; g.gain.value=0.7*a; node.connect(dl); dl.connect(g); g.connect(p); p.connect(out); });
+    node=out; }
+  if(f.echo>0){ const a=f.echo/100, out=oc.createGain(), t=Math.min(1.9,stepDur()*3), d1=oc.createDelay(2), d2=oc.createDelay(2), fb=oc.createGain(), lp=oc.createBiquadFilter(), wet=oc.createGain(), pl=oc.createStereoPanner(), pr=oc.createStereoPanner();
+    node.connect(out); d1.delayTime.value=t; d2.delayTime.value=t; fb.gain.value=0.25+0.3*a; lp.type='lowpass'; lp.frequency.value=4200; wet.gain.value=0.55*a; pl.pan.value=-0.6; pr.pan.value=0.6;
+    node.connect(lp); lp.connect(d1); d1.connect(pl); d1.connect(d2); d2.connect(pr); d2.connect(fb); fb.connect(d1); pl.connect(wet); pr.connect(wet); wet.connect(out); node=out; }
+  return {input, output:node}; }
 async function renderStem(tr){
   if(SAMPLED[tr.sound] && !smpReady(tr.sound) && INST[tr.inst].kind==='pitched') await loadSampled(tr.sound);
   if(tr.hits && INST[tr.inst].kind!=='pitched' && KIT_SAMPLED[tr.sound] && !kitReady(tr.sound)) await loadSmp(KIT_SAMPLED[tr.sound]);
   if(tr.inst==='vox') return renderVox(tr);
   if(tr.inst==='fx') return renderFx(tr);
   const sr=ctx.sampleRate, L=bufLen(tr), PN=pSteps(tr), n=Math.round(L*sr), tail=3, oc=new OfflineAudioContext(2,n+tail*sr,sr), T=tr.tone/100;
-  let out=oc.createGain(); out.connect(oc.destination);
+  let out=oc.createGain(), sink=oc.destination; { const fx=tfxChain(oc,tr); if(fx){ fx.output.connect(oc.destination); sink=fx.input; } }   /* effects on this track */
+  out.connect(sink);
   const d=INST[tr.inst];
-  if(d.kind!=='pitched' && tr.sound==='Lo-fi'){ const lp=oc.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=3600; const sh=oc.createWaveShaper(); sh.curve=driveCurve(0.5); out.disconnect(); out.connect(sh); sh.connect(lp); lp.connect(oc.destination); }
+  if(d.kind!=='pitched' && tr.sound==='Lo-fi'){ const lp=oc.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=3600; const sh=oc.createWaveShaper(); sh.curve=driveCurve(0.5); out.disconnect(); out.connect(sh); sh.connect(lp); lp.connect(sink); }
   enforceMono(tr);
   ENV_OVR=INST[tr.inst].kind==='pitched'?(tr.adsr||null):null;
   const SC=scOn(tr), FULL=fullSong(tr), SP=spotRanges(), keep=x=>!SP.length||!inSpot(x,SP);

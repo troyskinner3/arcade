@@ -11,7 +11,7 @@ The one list of what is free and what Noodle Pro unlocks. Update it with every n
 - In the app, "has Pro" = owns the one-time purchase **or** has an active yearly plan (StoreKit), so both can coexist.
 
 ## In the app
-Enforced in `noodle/js/` (mostly `engine.js`, `studio.js`, `export.js`): `PRO_SOUNDS` (Pro sounds), `MFX[...].free` (free mix effects), the DAW pack and the video tag in Share, curve drawing in
+Enforced in `noodle/js/` (mostly `engine.js`, `studio.js`, `export.js`): `PRO_SOUNDS` (Pro sounds, including Vocoder and Talkbox), `CHORD_STYLES[...].pro`, `isPro()` for track effects and backing vocals, `MFX[...].free` (free mix effects), the DAW pack and the video tag in Share, curve drawing in
 the Song FX editor. The purchase is `ProStore` in `noodle-ios/NoodleWeb/NoodleWebApp.swift` (product `io.tuttii.Noodle.pro`). Keep this list and the code in step.
 Songs that already contain Pro sounds or effects still play for everyone; only choosing and editing them is Pro.
 
@@ -55,6 +55,10 @@ Status: **confirmed** (owner agreed) or **proposed** (waiting on the owner).
 | MIDI export, stems (each part as its own file), video without the tag | proposed |
 | Copy a part to another song (Paste part in Add track) | confirmed |
 | Chords from your melody in the Pulse and Arp styles | proposed |
+| Effects on one track: Echo, Chorus, Drive (in the track's sheet) | proposed |
+| Backing vocals: two harmonies made from your own voice, a third above and below | proposed |
+| Vocal sounds Vocoder and Talkbox (your voice shapes a synth) | proposed |
+| Recorded Trumpet, Clarinet, Xylophone | proposed |
 
 ### Planned for Pro (the owner's direction: make Pro really great)
 | Feature | Status |

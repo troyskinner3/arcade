@@ -65,7 +65,7 @@ const PRO={owned:false, price:''}; try{ PRO.owned=localStorage.getItem('noodle.p
 /* Builds run from Xcode (DEBUG) set NOODLE_DEV: More then has "Test as: Free / Pro / App Store" to try both versions; App Store and TestFlight builds don't */
 const devAs=()=>{ if(!window.NOODLE_DEV) return ''; try{ return localStorage.getItem('noodle.devAs')||''; }catch(e){ return ''; } };
 const isPro=()=>devAs()?devAs()==='pro':PRO.owned;
-const PRO_SOUNDS=new Set(['Marimba','Glockenspiel','Flute','Horns','Your voice','Glass','Chip','Theremin','Vowel pad','Digital pad','Growl','Acid','Wobble','String pluck','Chorus pad','Pump pad']);
+const PRO_SOUNDS=new Set(['Vocoder','Talkbox','Trumpet','Clarinet','Xylophone','Marimba','Glockenspiel','Flute','Horns','Your voice','Glass','Chip','Theremin','Vowel pad','Digital pad','Growl','Acid','Wobble','String pluck','Chorus pad','Pump pad']);
 /* a long sound list in groups: synths, recorded instruments (and kits), your voice */
 const soundGroups=list=>{ if(list.length<7) return [['',list]]; const rec=x=>!!SAMPLED[x]||!!KIT_SAMPLED[x], g=[['Synths',list.filter(x=>!rec(x)&&x!=='Your voice')],['Recorded',list.filter(rec)],['',list.filter(x=>x==='Your voice')]]; return g.filter(([,xs])=>xs.length); };
 const proLocked=snd=>!isPro()&&PRO_SOUNDS.has(snd);
