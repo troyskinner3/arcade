@@ -293,7 +293,7 @@ async function renderStem(tr){
       g.gain.setValueCurveAtTime(X.gain,ts+0.002,dur); lpf.frequency.setValueCurveAtTime(X.cut,ts+0.002,dur);
       const cs=oc.createConstantSource(); cs.offset.value=0; cs.offset.setValueCurveAtTime(X.bend,ts+0.002,dur); cs.start(ts); cs.stop(ts+dur+1); EXPR_DET=cs; nout=g; if(VOICE_DONE) VOICE_DONE.push({n:lpf,end:ts+dur+1}); }
     ps.forEach((pp,j)=>voice(oc,nout,tr.sound,ts+0.002,dur,pp+12*tr.oct,nt.v*(ps.length>1?1.1/Math.sqrt(ps.length+0.2):1),T, pps?pps[Math.min(j,pps.length-1)]+12*tr.oct:null)); EXPR_DET=null; })); } }
-  else { for(const h of (FULL?songEvents(tr,tr.hits):inWin(tr.hits,PN)).filter(h=>keep(h.s))){ const t=stepTime(h.s)+0.002; at(t,job(()=>drumHit(oc,out,h.d,t,h.v,tr.sound,T))); } }
+  else { for(const h of (FULL?withFills(tr,songEvents(tr,tr.hits)):inWin(tr.hits,PN)).filter(h=>keep(h.s))){ const t=stepTime(h.s)+0.002; at(t,job(()=>drumHit(oc,out,h.d,t,h.v,tr.sound,T))); } }
   ENV_OVR=null;
   let jobErr=null; if(jobs.length){ const CH=2, LEAD=0.25, total=(n+tail*sr)/sr; jobs.sort((a,b)=>a.t-b.t); let ji=0; const run=lim=>{ while(ji<jobs.length && jobs[ji].t<lim){ try{ jobs[ji++].f(); }catch(e){ jobErr=jobErr||e; } } };   /* an error never stalls the render; it's reported after */   /* a stable sort: same-time notes keep their order */
     run(CH+LEAD); for(let k=1;k*CH<total && k*CH<=jobs[jobs.length-1].t+LEAD;k++){ const lim=(k+1)*CH+LEAD; const now=k*CH; oc.suspend(now).then(()=>{ for(const v of done) if(!v.x && v.end+0.5<now){ try{ v.n.disconnect(); }catch(e){} v.x=1; }   /* notes over for half a second: let go */

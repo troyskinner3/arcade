@@ -504,3 +504,14 @@ How to work on it: one small step at a time; after each, `bash noodle/eval/run.s
   note got a tap, a note start with no tap is joined back to the note before. The tap delay is worked out from the take. Replay of the
   owner's 31 guided takes with simulated taps at the Guide's notes, edits per 10 notes (today 3.88): ±30 ms 3.52, ±60 ms 3.68,
   all taps 100 ms late 3.52, only every other note tapped 3.94.
+- **Chords from your melody (shipped, `chords_test.js`):** "Add chords to this melody" in a melodic or vocal track's sheet makes a chord
+  track under it. One chord per bar or half bar from the key's seven chords (pentatonic and blues use their parent scale), chosen by
+  Viterbi: chord tones of the melody score (notes starting on beats 1 and 3 count 1.5x), other key notes cost 0.6, out-of-key notes 1,
+  plus a small preference for I / IV / V / vi and for common moves (V-I, IV-V, ii-V...), a cost for repeating a chord, and starting and
+  ending at home. Twinkle in C: C G F C by bar, C G F C F C G C by half bar; Ode to Joy: I V I V. Styles: Pad, Piano (free), Pulse, Arp (Pro).
+- **Drum fills (shipped, `fills_test.js`):** a kit part's sheet: every 4 or 8 bars the last beat becomes a fill (snare roll or toms,
+  alternating; every 8th bar a two-beat fill) and the next bar starts with a crash. Made at render time from the part's own beat, also in
+  MIDI export. Rendering is identical outside the fill bars.
+- **Song sections (shipped, `sections_test.js`):** Sections (the corner of the ruler) names stretches of bars; the names show in the ruler.
+  Duplicate copies every part that starts in the section right after it and moves the rest of the song later (looping parts keep looping;
+  up to 64 bars); Loop loops it; ✕ removes the name. Undo covers all of it.

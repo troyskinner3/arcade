@@ -41,6 +41,9 @@ Status: **confirmed** (owner agreed) or **proposed** (waiting on the owner).
 | Change key moves the whole song (transpose), loop a section, tap tempo, lock-screen controls, haptic taps | confirmed |
 | Faster fixes: ▼ ▲ on a note, split into 2 / 3 / 4, select several notes and move or delete them together | proposed |
 | Tap along while you hum (catches repeated notes) and learning from your fixes (accuracy for everyone) | proposed |
+| Chords from your melody: Pad and Piano styles, chords every bar or half bar | proposed |
+| Drum fills every 4 or 8 bars (with a crash after each) | proposed |
+| Song sections: name, loop and duplicate Intro / Verse / Chorus / Bridge / Outro | proposed |
 
 ### Pro
 | Feature | Status |
@@ -51,6 +54,7 @@ Status: **confirmed** (owner agreed) or **proposed** (waiting on the owner).
 | Coded sounds: Acid, Wobble, String pluck, Chorus pad, Pump pad | proposed |
 | MIDI export, stems (each part as its own file), video without the tag | proposed |
 | Copy a part to another song (Paste part in Add track) | confirmed |
+| Chords from your melody in the Pulse and Arp styles | proposed |
 
 ### Planned for Pro (the owner's direction: make Pro really great)
 | Feature | Status |

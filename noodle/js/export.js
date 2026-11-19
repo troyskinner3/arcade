@@ -28,7 +28,7 @@ function midiBytes(list){
     for(let L=0;L<loops;L++){ const base=L*n*tick16;
       if(pitched && tr.inst==='arp') songEvents(tr,arpEvents(tr)).filter(keepM).map(e=>SP.length?spotClip(e,SP,'x'):e).forEach(e=>{ const t=base+Math.round(e.x*tick16)+sw(Math.floor(e.x)), p=clamp(e.p+12*tr.oct,0,127); ev.push({t,o:1,b:[0x90|ch,p,Math.round(e.v*120)]},{t:t+Math.max(2,Math.round(e.l*tick16)),o:0,b:[0x80|ch,p,0]}); });
       else if(pitched) songEvents(tr,tr.notes).filter(keepM).map(e=>SP.length?spotClip(e,SP):e).forEach(nt=>{ const t=base+nt.s*tick16+sw(nt.s); notePitches(tr,nt).forEach(pp=>{ const p=clamp(pp+12*tr.oct,0,127); ev.push({t,o:1,b:[0x90|ch,p,Math.round(nt.v*120)]},{t:t+nt.l*tick16-2,o:0,b:[0x80|ch,p,0]}); }); });
-      else songEvents(tr,tr.hits).filter(keepM).forEach(h=>{ const t=base+h.s*tick16+sw(h.s); ev.push({t,o:1,b:[0x99,drumNote(h.d),Math.round(h.v*120)]},{t:t+12,o:0,b:[0x89,drumNote(h.d),0]}); }); }
+      else withFills(tr,songEvents(tr,tr.hits)).filter(keepM).forEach(h=>{ const t=base+h.s*tick16+sw(h.s); ev.push({t,o:1,b:[0x99,drumNote(h.d),Math.round(h.v*120)]},{t:t+12,o:0,b:[0x89,drumNote(h.d),0]}); }); }
     tracks.push(trk(ev)); });
   const head=[0x4d,0x54,0x68,0x64,0,0,0,6,0,1,0,tracks.length,0,PPQ];
   return new Uint8Array([...head,...tracks.flat()]);

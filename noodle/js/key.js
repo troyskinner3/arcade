@@ -207,4 +207,28 @@ function arpEvents(tr){
 }
 const tAt=x=>{ const f=Math.floor(x); return stepTime(f)+(x-f)*stepDur(); };
 function keyChanged(){ keyCache=null; S.tracks.forEach(t=>{ if(INST[t.inst].kind==='pitched' || (t.inst==='vox' && fxOf(t).tune>0)) t._dirty=true; }); }
-
+/* ---- Chords from your melody: one chord per bar (or half bar) from the key's own chords, picked to fit the melody ----
+   Each chord is scored by how much of the melody in its stretch is a chord tone (notes on the strong beats count more, other
+   notes of the key cost a little, notes outside the key cost more), plus how naturally it follows the chord before (V to I,
+   IV to V, ii to V...). The best whole sequence wins (Viterbi). Empty stretches keep the chord before. Starts and ends at home. */
+const HARM_PRIOR={major:[0.3,0.1,0,0.2,0.2,0.15,-1.5], minor:[0.3,-1.5,0.1,0.2,0.15,0.2,0.15]};
+const HARM_MOVE={'4>0':0.45,'3>4':0.25,'3>0':0.2,'1>4':0.3,'5>3':0.2,'0>3':0.1,'0>4':0.1,'0>5':0.1,'5>1':0.15,'2>5':0.15,'6>0':0.2,'4>5':0.15};
+function harmonize(notes, K, steps, per){   /* notes: [{s,l,p}] on the song's steps; returns [{s,l,deg,root}] */
+  if(K.none) return null; const par=PARENT[K.scale]||(K.mode==='minor'?'minor':'major'), set=SCALES[par], mode=['minor','dorian','phrygian','harm-minor','locrian'].includes(par)?'minor':'major', nseg=Math.ceil(steps/per);
+  if(!set||set.length!==7) return null;
+  const tones=d=>[0,2,4].map(k=>set[(d+k)%7]);   /* the triad on scale degree d, as pitch classes from the tonic */
+  const pcOf=p=>((Math.round(p)-K.tonic)%12+12)%12;
+  const fit=[]; for(let g=0;g<nseg;g++){ const a=g*per, b=a+per, row=[]; let any=false;
+    for(let d=0;d<7;d++){ const T=tones(d); let sc=0;
+      for(const n of notes){ const o=Math.min(b,n.s+n.l)-Math.max(a,n.s); if(o<=0) continue; any=true; const pc=pcOf(n.p), w=o*(n.s>=a&&n.s%8===0?1.5:1)/per;
+        sc+= T.includes(pc)?w : set.includes(pc)?-0.6*w : -1*w; }
+      row.push(sc+HARM_PRIOR[mode][d]); }
+    fit.push(any?row:null); }
+  const V=[], B=[]; for(let g=0;g<nseg;g++){ V.push(new Array(7).fill(-1e9)); B.push(new Array(7).fill(0));
+    for(let d=0;d<7;d++){ const f=fit[g]?fit[g][d]:HARM_PRIOR[mode][d]*0.5, here=f+(g===0&&d===0?0.4:0)+(g===nseg-1&&d===0?0.5:0);
+      if(g===0){ V[g][d]=here; continue; }
+      for(let e=0;e<7;e++){ const mv=e===d?(fit[g]?-0.45:0.6):(HARM_MOVE[e+'>'+d]||0)+(fit[g]?0:-0.6), v=V[g-1][e]+mv+here; if(v>V[g][d]){ V[g][d]=v; B[g][d]=e; } } } }
+  let d=V[nseg-1].indexOf(Math.max(...V[nseg-1])); const path=[]; for(let g=nseg-1;g>=0;g--){ path.unshift(d); d=B[g][d]; }
+  const out=[]; path.forEach((d,g)=>{ const s=g*per, l=Math.min(per,steps-s), root=48+((K.tonic+set[d])%12); const last=out[out.length-1];
+    if(last&&last.deg===d&&!fit[g]) last.l+=l; else out.push({s,l,deg:d,root}); });
+  return out; }
