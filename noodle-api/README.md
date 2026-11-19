@@ -10,6 +10,14 @@ Stores takes people chose to share (opt-in, 13+) so Noodle can learn from them. 
 - Optional email list (`/v1/signups`): address + date + the consent wording agreed to, deduplicated, removable; 400 new addresses a day at most.
   Not linked to takes. To be copied into Tuttii's marketing sheet (by hand or a script using the admin endpoints).
 - Crash reports (`/v1/errors`): error message, a few stack lines, app build, app or web, screen. No recordings, song content or ID. One record per distinct error per day (`errors/<day>/<hash>.json`), kept 90 days, at most 150 new ones a day. Read them with `/v1/admin/list?prefix=errors/`.
+- Song links (`/v1/songs/*`, listen page `/s/<id>`): a song someone chose to share by link (song file up to 8 MB + a 30 s WAV preview).
+  Anyone with the link can read it; only the sharing phone (its install id, stored hashed) can replace or delete it. Kept 2 years;
+  3 reports hide it; 250 new links a day at most (about 750 of the free plan's 1,000 daily writes in the worst case).
+  Variables: `APPLE_APP_ID` (for `/.well-known/apple-app-site-association`), `APP_STORE_ID`, `APP_STORE_URL` (listen page).
+- Invites (`/v1/invites/*`, page `/i/<code>`): a 6-letter code per phone; friends' phones count once (hashed ids). 3 friends earn a Noodle Pro
+  offer code from a pool: App Store Connect → Noodle → Monetization → In-App Purchases → Noodle Pro → Offer Codes → create one-time-use
+  codes, download them, then `curl -X PUT -H "Authorization: Bearer $ADMIN_KEY" --data '["CODE1","CODE2"]' https://noodle-takes.cracked.workers.dev/v1/admin/codes`.
+  At most 25 handed out a day. Abuse risk: a script could fake friends; the pool size and daily cap bound it (Apple's DeviceCheck would close it).
 - Owner access (`/v1/admin/*`) needs the `ADMIN_KEY` secret.
 
 ## Cost: none, by design

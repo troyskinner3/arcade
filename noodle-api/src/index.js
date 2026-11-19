@@ -12,12 +12,31 @@
 // Shared takes are kept for 3 years at most (KEEP_DAYS), counted from when the take first arrived; storage removes them on its own.
 //   PUT    /v1/errors                       body = {msg, stack, build, app, where}  an anonymous error report (no recordings, no song content)
 //                                           stored once per distinct error per day, kept 90 days, at most MAX_ERRORS_PER_DAY a day
+// Song links (someone chose to share a song by link: anyone with the link can listen and copy it into their own Noodle to remix it):
+//   PUT    /v1/songs/:id                    body = the song file (JSON, a Noodle song file with one song), header X-Owner = the sharer's install id
+//   PUT    /v1/songs/:id/preview            body = WAV, the start of the song for the listen page (X-Owner)
+//   GET    /v1/songs/:id                    the song file (Remix in the app);  GET /v1/songs/:id/preview  the preview
+//   DELETE /v1/songs/:id                    X-Owner: only the phone that shared it can delete it
+//   POST   /v1/songs/:id/report             someone reports it; after REPORTS_TO_HIDE reports it is no longer served
+//   GET    /s/:id                           the listen page (Smart App Banner opens the app when it is installed)
+//   GET    /.well-known/apple-app-site-association   lets /s/ links open the iPhone app (APPLE_APP_ID, e.g. TEAMID.io.tuttii.Noodle)
+// Song links are kept SONG_DAYS from when they were shared. The sharer's install id is stored only as a hash.
+// Invites (Noodle Pro for bringing friends): each phone has an invite code; a friend's phone joins with it after making its first song.
+//   GET    /v1/invites/mine                 X-Owner: this phone's code (made on first ask), how many friends joined, and its reward code once earned
+//   PUT    /v1/invites/:code/join           X-Owner = the friend's install id: counts once per friend phone, never your own code
+//   GET    /i/:code                         the invite page (App Store link, and the code to type in if the link can't open the app)
+// A reward is one Noodle Pro offer code (App Store Connect → the app → Offer Codes, for the Pro in-app purchase) from a pool the owner
+// uploads (PUT /v1/admin/codes, a JSON list); INVITES_FOR_PRO friends earn one; at most REWARDS_PER_DAY are handed out a day.
 //   GET    /v1/admin/list?prefix=&cursor=   owner only (Authorization: Bearer ADMIN_KEY)
 //   GET    /v1/admin/get?key=               owner only
 const ORIGINS = ['noodle://app', 'https://troyskinner3.github.io'];
 const KEEP_DAYS = 3 * 365, MAX_SIGNUPS_PER_DAY = 400, ERROR_DAYS = 90, MAX_ERRORS_PER_DAY = 150;
 const MAX_AUDIO = 3 * 1024 * 1024, MAX_META = 256 * 1024, MAX_TAKES_PER_DAY = 300;
 const ID = /^[A-Za-z0-9_-]{22,64}$/, TAKE = /^[A-Za-z0-9_-]{6,96}$/;
+const INVITE = /^[A-Z2-9]{6}$/, INVITES_FOR_PRO = 3, REWARDS_PER_DAY = 25;
+const SONG = /^[A-Za-z0-9_-]{10,32}$/, SONG_DAYS = 2 * 365, MAX_SONG = 8 * 1024 * 1024, MAX_PREVIEW = 3 * 1024 * 1024, MAX_SONGS_PER_DAY = 250, REPORTS_TO_HIDE = 3;
+const sha = async (t) => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t)))].map((x) => x.toString(16).padStart(2, '0')).join('');
+const esc = (t) => String(t).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 // A light brake on floods: at most RATE writes a minute from one address, counted in this worker's memory only (nothing about the address is stored).
 // It is best-effort (each worker instance counts on its own); the free plan's daily limits are the hard stop.
@@ -35,7 +54,7 @@ function cors(req) {
   const o = req.headers.get('Origin') || '';
   const ok = ORIGINS.includes(o) || /^http:\/\/localhost(:\d+)?$/.test(o);
   return { 'Access-Control-Allow-Origin': ok ? o : ORIGINS[1], 'Vary': 'Origin',
-    'Access-Control-Allow-Methods': 'PUT, DELETE, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type', 'Access-Control-Max-Age': '86400' };
+    'Access-Control-Allow-Methods': 'GET, PUT, POST, DELETE, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type, X-Owner', 'Access-Control-Max-Age': '86400' };
 }
 const json = (req, status, body) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json', ...cors(req) } });
 
@@ -91,19 +110,85 @@ async function handle(req, env) {
   {
     const url = new URL(req.url), p = url.pathname.split('/').filter(Boolean), B = store(env);
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors(req) });
+    if (p[0] === '.well-known' && p[1] === 'apple-app-site-association') return new Response(JSON.stringify({ applinks: { details: [{ appIDs: env.APPLE_APP_ID ? [env.APPLE_APP_ID] : [], components: [{ '/': '/s/*' }, { '/': '/i/*' }] }] } }), { headers: { 'Content-Type': 'application/json' } });
+    if (p[0] === 's' && p.length === 2 && req.method === 'GET') return listenPage(req, env, B, p[1]);
+    if (p[0] === 'i' && p.length === 2 && req.method === 'GET') return invitePage(req, env, p[1]);
     if (p[0] !== 'v1') return json(req, 404, { error: 'not found' });
-    if ((req.method === 'PUT' || req.method === 'DELETE') && tooFast(req)) return json(req, 429, { error: 'slow down' });
+    if ((req.method === 'PUT' || req.method === 'DELETE' || req.method === 'POST') && tooFast(req)) return json(req, 429, { error: 'slow down' });
+
+    if (p[1] === 'invites') {
+      const owner = req.headers.get('X-Owner') || ''; if (!ID.test(owner)) return json(req, 403, { error: 'owner' }); const oh = await sha(owner);
+      if (p[2] === 'mine' && req.method === 'GET') {
+        const k = `invites/owners/${oh}.json`, cur = await B.get(k); let me = cur ? await cur.json() : null;
+        if (!me) { let code; for (let i = 0; i < 6; i++) { const b = crypto.getRandomValues(new Uint8Array(6)); code = [...b].map((x) => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[x % 32]).join(''); if (!(await B.head(`invites/codes/${code}.json`))) break; }
+          me = { code, joined: [], reward: null }; await B.put(`invites/codes/${code}.json`, JSON.stringify({ owner: oh })); await B.put(k, JSON.stringify(me)); }
+        if (!me.reward && me.joined.length >= INVITES_FOR_PRO) {   // earned: hand out a code from the pool, if there is one today
+          const day = new Date().toISOString().slice(0, 10), dk = `quota/rewards/${day}.json`, dc = await B.get(dk), n = dc ? (await dc.json()).n : 0, pc = await B.get('rewards/pool.json'), pool = pc ? await pc.json() : [];
+          if (n < REWARDS_PER_DAY && pool.length) { me.reward = pool.shift(); await B.put('rewards/pool.json', JSON.stringify(pool)); await B.put(dk, JSON.stringify({ n: n + 1 }), { expiresAt: Date.now() + 3 * 864e5 }); await B.put(k, JSON.stringify(me)); }
+        }
+        return json(req, 200, { code: me.code, joined: me.joined.length, need: INVITES_FOR_PRO, reward: me.reward, url: `${url.origin}/i/${me.code}` });
+      }
+      if (p.length === 4 && p[3] === 'join' && req.method === 'PUT') {
+        const code = String(p[2] || '').toUpperCase(); if (!INVITE.test(code)) return json(req, 400, { error: 'code' });
+        const c = await B.get(`invites/codes/${code}.json`); if (!c) return json(req, 404, { error: 'no such code' }); const inviter = (await c.json()).owner;
+        if (inviter === oh) return json(req, 409, { error: 'own code' });
+        if (await B.head(`invites/joined/${oh}.json`)) return json(req, 200, { ok: true, already: true });   // a phone joins once, with one code
+        const k = `invites/owners/${inviter}.json`, cur = await B.get(k), me = cur ? await cur.json() : { code, joined: [], reward: null };
+        if (!me.joined.includes(oh)) me.joined.push(oh); await B.put(k, JSON.stringify(me)); await B.put(`invites/joined/${oh}.json`, JSON.stringify({ code, at: new Date().toISOString() }));
+        return json(req, 200, { ok: true });
+      }
+      return json(req, 404, { error: 'not found' });
+    }
+    if (p[1] === 'songs' && (p.length === 3 || p.length === 4)) {
+      const id = p[2], part = p[3] || ''; if (!SONG.test(id)) return json(req, 400, { error: 'id' });
+      const base = `songs/${id}/`, metaKey = base + 'meta.json', m0 = await B.get(metaKey), meta = m0 ? await m0.json() : null;
+      const owner = req.headers.get('X-Owner') || '', isOwner = async () => meta && ID.test(owner) && meta.owner === await sha(owner);
+      if (req.method === 'GET') {
+        if (!meta || meta.reports >= REPORTS_TO_HIDE) return json(req, 404, { error: 'not found' });
+        const o = await B.get(base + (part === 'preview' ? 'preview.wav' : 'song.json')); if (!o) return json(req, 404, { error: 'not found' });
+        return new Response(o.body, { headers: { 'Content-Type': part === 'preview' ? 'audio/wav' : 'application/json', 'Cache-Control': 'public, max-age=300', ...cors(req) } });
+      }
+      if (req.method === 'POST' && part === 'report') {
+        if (!meta) return json(req, 404, { error: 'not found' }); meta.reports = (meta.reports || 0) + 1;
+        await B.put(metaKey, JSON.stringify(meta), { expiresAt: Date.parse(meta.at) + SONG_DAYS * 864e5 }); return json(req, 200, { ok: true });
+      }
+      if (req.method === 'DELETE' && !part) { if (!(await isOwner())) return json(req, 403, { error: 'owner' }); return json(req, 200, { deleted: await deletePrefix(B, base) }); }
+      if (req.method !== 'PUT') return json(req, 405, { error: 'method' });
+      if (!ID.test(owner)) return json(req, 403, { error: 'owner' });
+      if (meta && !(await isOwner())) return json(req, 403, { error: 'owner' });
+      if (part === 'preview') {
+        if (!meta) return json(req, 409, { error: 'send the song first' });
+        const buf = await readLimited(req, MAX_PREVIEW); if (!buf) return json(req, 413, { error: 'too large' }); if (!isWav(buf)) return json(req, 415, { error: 'wav only' });
+        await B.put(base + 'preview.wav', buf, { expiresAt: Date.parse(meta.at) + SONG_DAYS * 864e5 }); return json(req, 200, { ok: true });
+      }
+      if (part) return json(req, 404, { error: 'not found' });
+      const buf = await readLimited(req, MAX_SONG); if (!buf) return json(req, 413, { error: 'too large' });
+      let f; try { f = JSON.parse(new TextDecoder().decode(buf)); } catch { return json(req, 400, { error: 'json' }); }
+      if (!f || f.noodle !== 'songs' || !Array.isArray(f.songs) || f.songs.length !== 1 || !f.songs[0].song) return json(req, 400, { error: 'song file' });
+      if (!meta) { const day = new Date().toISOString().slice(0, 10), ck = `quota/songs/${day}.json`, cur = await B.get(ck), n = cur ? (await cur.json()).n : 0;
+        if (n >= MAX_SONGS_PER_DAY) return json(req, 429, { error: 'daily limit' }); await B.put(ck, JSON.stringify({ n: n + 1 }), { expiresAt: Date.now() + 3 * 864e5 }); }
+      const at = meta ? meta.at : new Date().toISOString(), exp = Date.parse(at) + SONG_DAYS * 864e5;
+      await B.put(base + 'song.json', buf, { expiresAt: exp });
+      await B.put(metaKey, JSON.stringify({ owner: await sha(owner), title: String(f.songs[0].title || '').slice(0, 80), at, reports: meta ? meta.reports || 0 : 0 }), { expiresAt: exp });
+      return json(req, 200, { ok: true, url: `${url.origin}/s/${id}` });
+    }
 
     if (p[1] === 'admin') {
       const auth = req.headers.get('Authorization') || '';
       if (!env.ADMIN_KEY || auth !== `Bearer ${env.ADMIN_KEY}`) return json(req, 401, { error: 'unauthorized' });
+      if (p[2] === 'codes' && req.method === 'PUT') {   // a list of unused Noodle Pro offer codes, added to the pool
+        const buf = await readLimited(req, 256 * 1024); let codes; try { codes = JSON.parse(new TextDecoder().decode(buf)); } catch { return json(req, 400, { error: 'json' }); }
+        if (!Array.isArray(codes)) return json(req, 400, { error: 'list' }); const cur = await B.get('rewards/pool.json'), pool = cur ? await cur.json() : [];
+        for (const c of codes) if (typeof c === 'string' && /^[A-Z0-9]{6,32}$/.test(c) && !pool.includes(c)) pool.push(c);
+        await B.put('rewards/pool.json', JSON.stringify(pool)); return json(req, 200, { pool: pool.length });
+      }
       if (req.method !== 'GET') return json(req, 405, { error: 'method' });
       if (p[2] === 'list') {
         const page = await B.list({ prefix: url.searchParams.get('prefix') || 'takes/', cursor: url.searchParams.get('cursor') || undefined, limit: 1000 });
         return json(req, 200, { keys: page.objects.map((o) => ({ key: o.key, size: o.size, uploaded: o.uploaded })), cursor: page.truncated ? page.cursor : null });
       }
       if (p[2] === 'get') {
-        const key = url.searchParams.get('key') || ''; if (!key.startsWith('takes/') && !key.startsWith('signups/') && !key.startsWith('errors/')) return json(req, 400, { error: 'key' });
+        const key = url.searchParams.get('key') || ''; if (!/^(takes|signups|errors|songs|invites|rewards)\//.test(key)) return json(req, 400, { error: 'key' });
         const o = await B.get(key); if (!o) return json(req, 404, { error: 'not found' });
         return new Response(o.body, { headers: { 'Content-Type': key.endsWith('.json') ? 'application/json' : 'audio/wav' } });
       }
@@ -176,3 +261,37 @@ async function handle(req, env) {
     return json(req, 404, { error: 'not found' });
   }
 }
+// The listen page for a shared song: its name, the start of it to play, and a way to get Noodle. On an iPhone with Noodle installed,
+// the link opens the app directly (universal link) or Safari's banner offers Open; the app then offers to remix it.
+async function listenPage(req, env, B, id) {
+  const page = (title, body, status = 200) => new Response(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${esc(title)}</title>${env.APP_STORE_ID ? `<meta name="apple-itunes-app" content="app-id=${esc(env.APP_STORE_ID)}, app-argument=${esc(new URL(req.url).href)}">` : ''}
+<meta property="og:title" content="${esc(title)}"><meta property="og:description" content="Made with Noodle: hum it, get a song.">
+<style>:root{color-scheme:dark}body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#121418;color:#eceef2;font:16px/1.45 -apple-system,system-ui,sans-serif}
+main{width:min(420px,100% - 32px);text-align:center}h1{font-size:30px;margin:6px 0 2px}.wm{font:800 22px system-ui;letter-spacing:.02em}.wm b{color:#f1c75b}p{color:#9aa1ad;margin:6px 0 18px}
+audio{width:100%;margin:12px 0 20px}a.btn{display:block;padding:14px;border-radius:12px;background:#f1c75b;color:#121418;font-weight:700;text-decoration:none;margin:10px 0}
+a.alt{background:#262a31;color:#eceef2}small{display:block;color:#6b7280;margin-top:22px}small button{background:none;border:0;color:#6b7280;text-decoration:underline;font:inherit;cursor:pointer}</style></head>
+<body><main><div class="wm">N<b>oo</b>dle</div>${body}</main></body></html>`, { status, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'public, max-age=300' } });
+  if (!SONG.test(id)) return page('Not found', '<h1>Song not found</h1><p>This link is not right.</p>', 404);
+  const m = await B.get(`songs/${id}/meta.json`), meta = m ? await m.json() : null;
+  if (!meta || meta.reports >= REPORTS_TO_HIDE) return page('Not found', '<h1>Song not found</h1><p>It may have been deleted, or the link has expired.</p>', 404);
+  const store = env.APP_STORE_URL || 'https://apps.apple.com/', title = meta.title || 'A song made with Noodle';
+  return page(title, `<h1>${esc(title)}</h1><p>Made with Noodle. Open it in Noodle to hear all of it and add your own part.</p>
+<audio controls preload="none" src="/v1/songs/${esc(id)}/preview"></audio>
+<a class="btn" href="noodleapp://s/${esc(id)}">Remix in Noodle</a><a class="btn alt" href="${esc(store)}">Get Noodle on the App Store</a>
+<small>Hum, beatbox or sing, and Noodle turns it into a song. <button onclick="fetch('/v1/songs/${esc(id)}/report',{method:'POST'}).then(()=>{this.textContent='Reported. Thank you.';this.disabled=true})">Report this song</button></small>`);
+}
+// The invite page: what Noodle is, the App Store link, and the code to type into Noodle (More → Invite code) if the link didn't open it.
+function invitePage(req, env, code) {
+  const c = String(code || '').toUpperCase(), store = env.APP_STORE_URL || 'https://apps.apple.com/';
+  const body = INVITE.test(c) ? `<h1>You’re invited to Noodle</h1><p>Hum, beatbox or sing, and Noodle turns it into a song.</p>
+<a class="btn" href="${esc(store)}">Get Noodle on the App Store</a><a class="btn alt" href="noodleapp://i/${c}">I have Noodle: open it</a>
+<p>Your invite code: <b style="color:#eceef2;letter-spacing:.12em">${c}</b><br>Type it in Noodle (More → Invite code) after your first song.</p>` : '<h1>Invite not found</h1>';
+  return new Response(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Noodle invite</title>
+${env.APP_STORE_ID ? `<meta name="apple-itunes-app" content="app-id=${esc(env.APP_STORE_ID)}, app-argument=${esc(new URL(req.url).href)}">` : ''}
+<style>:root{color-scheme:dark}body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#121418;color:#eceef2;font:16px/1.45 -apple-system,system-ui,sans-serif}
+main{width:min(420px,100% - 32px);text-align:center}h1{font-size:28px;margin:6px 0 2px}.wm{font:800 22px system-ui}.wm b{color:#f1c75b}p{color:#9aa1ad;margin:8px 0 18px}
+a.btn{display:block;padding:14px;border-radius:12px;background:#f1c75b;color:#121418;font-weight:700;text-decoration:none;margin:10px 0}a.alt{background:#262a31;color:#eceef2}</style></head>
+<body><main><div class="wm">N<b>oo</b>dle</div>${body}</main></body></html>`, { status: INVITE.test(c) ? 200 : 404, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+}
+

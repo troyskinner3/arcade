@@ -403,6 +403,8 @@ function init(){
   hist.cur=snapNow(); 
   // bring back vocal recordings saved in this browser
   reloadRaw(); nxInit(); s2Init();
+  { const q=new URLSearchParams(location.search).get('s')||(location.hash.match(/^#s=([\w-]+)/)||[])[1]; if(q) setTimeout(()=>songLinkOpen(q),300); }   /* a song link opened on the web */
+  native({type:'ready'});   /* the iPhone app sends a song link it was opened with (if any) once the page is ready */
   try{ if('serviceWorker' in navigator && (location.protocol==='https:'||location.hostname==='localhost')) navigator.serviceWorker.register('sw.js').then(()=>navigator.serviceWorker.ready).then(r=>r.active&&r.active.postMessage('prune')).catch(()=>{}); }catch(e){}   /* so the web version opens without a connection (the iPhone app carries its own copy) */
   // iOS only lets audio start on a finger lift (touchend/click), not on touch-down: unlock (or re-wake) on every such gesture while it's suspended
   const unlockAudio=()=>{ if(ctx && ctx.state!=='running' && !document.hidden){ try{ ctx.resume(); }catch(e){} } };

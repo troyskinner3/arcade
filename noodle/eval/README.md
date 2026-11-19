@@ -525,3 +525,9 @@ How to work on it: one small step at a time; after each, `bash noodle/eval/run.s
 - **New recorded instruments (Pro):** VSCO 2 CE (CC0) trumpet (sustain, 2 dynamics), clarinet (sustain, 3) and xylophone; same +12 octave
   naming as the other VSCO instruments (measured). Levels set against the Saw / Marimba (clarinet +10 dB, xylophone +2 dB). A second recorded
   kit (Karoryfer Swirly or Unruly Drums, CC0) is next: each needs its mics mixed and every drum levelled against the synth kits.
+- **Growth (shipped):** a rating prompt (Apple's own, after a song is shared; at most once per 120 days from Noodle); a 2.5 s end card on
+  free videos (`endcard_test.js`); **song links** (Share → Link to remix: the song file and a 30 s preview go to the takes service; `/s/<id>`
+  is a listen page; opening the link in Noodle, or `?s=<id>` on the web, adds "Remix of …"; Stop sharing deletes it; `songlink_test.js`);
+  **invites** (More → Invite friends: a 6-letter code per phone; a friend's phone counts once, after its first song; 3 friends earn a Noodle
+  Pro offer code from a pool the owner uploads; `invite_test.js`). Both need the takes service deployed; links opening the app need
+  Associated Domains and a URL type in Xcode (`noodle-ios/README.md`).

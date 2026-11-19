@@ -107,6 +107,15 @@ final class NativeBridge: NSObject, WKScriptMessageHandler {
     UIApplication.shared.beginReceivingRemoteControlEvents()
   }
   private func remote(_ cmd: String) { web?.evaluateJavaScript("window.noodleRemote && window.noodleRemote('\(cmd)')") }
+  /* Song links: https://<takes service>/s/<id> (universal link) or noodleapp://s/<id> (the listen page's button). Kept until the page says it is ready. */
+  private var pageReady = false, pendingLink: URL?
+  func openLink(_ u: URL) { pendingLink = u; deliverLink() }
+  private func deliverLink() {
+    guard pageReady, let u = pendingLink, let w = web else { return }
+    pendingLink = nil
+    let s = u.absoluteString.filter { $0.isLetter || $0.isNumber || "-_/:.?=#".contains($0) }   // only URL characters reach the page
+    w.evaluateJavaScript("window.noodleOpenLink && window.noodleOpenLink('\(s)')")
+  }
   func userContentController(_ c: WKUserContentController, didReceive m: WKScriptMessage) {   // WebKit calls this on the main thread
     guard let d = m.body as? [String: Any], let type = d["type"] as? String else { return }
     switch type {
@@ -123,6 +132,11 @@ final class NativeBridge: NSObject, WKScriptMessageHandler {
                                  MPNowPlayingInfoPropertyElapsedPlaybackTime: (d["pos"] as? NSNumber)?.doubleValue ?? 0]
       if let dur = (d["dur"] as? NSNumber)?.doubleValue { info[MPMediaItemPropertyPlaybackDuration] = dur }
       MPNowPlayingInfoCenter.default().nowPlayingInfo = info
+    case "ready": pageReady = true; deliverLink()
+    case "rate":   // a happy moment (a song just shared): Apple decides whether the rating prompt shows (at most 3 times a year)
+      if let scene = UIApplication.shared.connectedScenes.first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene {
+        AppStore.requestReview(in: scene)   // StoreKit, iOS 16+
+      }
     default: break
     }
   }
@@ -137,6 +151,7 @@ struct NoodleWebApp: App {
   }
   var body: some Scene {
     WindowGroup { NoodleWeb().ignoresSafeArea()   // the page handles the notch and home bar itself (viewport-fit=cover + safe-area insets)
+     .onOpenURL { NativeBridge.shared.openLink($0) }   // a song link: remix it
      .background(Color(red: 0.07, green: 0.08, blue: 0.09)) }
   }
 }

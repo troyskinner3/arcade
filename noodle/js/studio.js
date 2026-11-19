@@ -204,10 +204,21 @@ function s2ShareSheet(){ if(!S.tracks.some(hasContent)){ toast('Record something
     <button class="nx-act" data-k="daw"><span>DAW pack${isPro()?'':PRO_LOCK}<small>Every track as audio and MIDI, for Logic, Ableton, GarageBand</small></span></button>
     <button class="nx-act" data-k="audio"><span>Audio<small>The whole song, one file</small></span></button>
     <button class="nx-act" data-k="video"><span>Video<small>For TikTok, Reels and YouTube: your parts move to the beat</small></span></button>
+    <button class="nx-act" data-k="link"><span>Link to remix<small>Friends listen, then add their own part in Noodle</small></span></button>
+    ${S.link?`<div class="s2-lk"><span>Shared by link</span><button id="s2LkStop">Stop sharing</button></div>`:''}
     <div class="s2-shst" id="s2ShSt" hidden></div><div class="nx-bar s2-shbar" id="s2ShBar" hidden><i></i></div><div class="s2-shgo" id="s2ShGo" hidden><button class="go" id="s2ShNow">Share</button><button id="s2ShSave">Save to Files</button></div>`);
   const st=m=>{ const e=$('s2ShSt'); if(e){ e.hidden=!m; e.textContent=m||''; } }, bar=(mode,frac)=>{ const e=$('s2ShBar'); if(!e) return; e.hidden=!mode; e.classList.toggle('ind',mode==='ind'); if(mode==='pct') e.firstElementChild.style.width=Math.round(clamp(frac,0,1)*100)+'%'; else e.firstElementChild.style.width=''; }, lock=v=>$('nxSheet').querySelectorAll('.nx-act').forEach(b=>{ b.disabled=v; });
-  $('s2ShNow').onclick=()=>shareNow(); $('s2ShSave').onclick=()=>{ if(shareFile) offerFile(shareFile.name, shareFile); };
-  $('nxSheet').onclick=async e=>{ const b=e.target.closest('[data-k]'); if(!b||b.disabled) return; const k=b.dataset.k; if(k==='daw'&&!isPro()){ proSheet('The DAW pack (every track as audio and MIDI, ready for Logic, Ableton or GarageBand) is part of Noodle Pro.'); return; } S.loops=1; lock(true); $('s2ShGo').hidden=true;
+  $('s2ShNow').onclick=()=>shareNow(); $('s2ShSave').onclick=()=>{ if(shareUrl){ try{ navigator.clipboard.writeText(shareUrl); toast('Link copied'); }catch(e){ toast(shareUrl); } return; } if(shareFile) offerFile(shareFile.name, shareFile); };
+  if($('s2LkStop')) $('s2LkStop').onclick=async()=>{ const ok=await songLinkDelete(); toast(ok?'The link no longer works. Your song is still here.':'Couldn’t reach Noodle’s server. Try again with a connection.'); if(ok) s2ShareSheet(); };
+  const linkGo=async()=>{ lock(true); $('s2ShGo').hidden=true; bar('ind'); shareFile=null; shareUrl=null;
+    try{ shareUrl=await songLinkShare(st); bar(null); st('Your link is ready. Anyone with it can listen, and open it in Noodle to add their own part.'); $('s2ShGo').hidden=false; $('s2ShNow').hidden=!navigator.share; $('s2ShSave').textContent='Copy link'; }
+    catch(e){ bar(null); st('The link couldn’t be made: '+(e&&e.message||e)+'.'); } lock(false); };
+  $('nxSheet').onclick=async e=>{ if(e.target.closest('#s2LkOk')){ try{ localStorage.setItem('noodle.linkOk','1'); }catch(_){} return linkGo(); }
+    const b=e.target.closest('[data-k]'); if(!b||b.disabled) return; const k=b.dataset.k; $('s2ShSave').textContent='Save to Files'; shareUrl=null;
+    if(k==='link'){ let ok=null; try{ ok=localStorage.getItem('noodle.linkOk'); }catch(_){} if(ok) return linkGo();
+      st('Anyone with the link can listen to this song and copy it into their own Noodle (your recordings included). You can stop sharing it here any time.'); $('s2ShGo').hidden=true;
+      const c=document.createElement('button'); c.className='nx-primary'; c.id='s2LkOk'; c.textContent='Make the link'; $('s2ShSt').appendChild(c); return; }
+    if(k==='daw'&&!isPro()){ proSheet('The DAW pack (every track as audio and MIDI, ready for Logic, Ableton or GarageBand) is part of Noodle Pro.'); return; } S.loops=1; lock(true); $('s2ShGo').hidden=true;
     S.exportedAt=new Date().toISOString(); save(); try{ dropSync(true); }catch(e){}   /* exporting says: these notes are what I meant */
     if(k==='daw'){ st('Preparing your tracks…'); bar('ind'); await exportZip(); bar(null); st('Done. Look for the .zip in your downloads or the share sheet.'); lock(false); return; }
     st(k==='video'?'Making your video…':'Making your audio…'); bar('ind'); shareFile=null; let total=0; const prog=sec=>{ const left=Math.ceil(sec); total=Math.max(total,left); if(total>1){ bar('pct',1-left/total); st('Making your video… about '+left+' s left'); } };
@@ -305,7 +316,7 @@ function chordSheet(L){ const melody=S.tracks.filter(t=>s2LaneId(t)===L.id&&melo
   const draw=()=>nxSheet(`<h2>Chords from your melody</h2><p style="color:var(--muted);font-size:14px;margin:-4px 0 12px">A new track of chords that fit what you sang, in the song’s key.</p>
     <div class="nx-grp" style="padding-top:0">Style</div><div class="s2-opts" id="chSt">${Object.entries(CHORD_STYLES).map(([k,v])=>`<button data-k="${k}" aria-pressed="${k===style}">${v.label}${v.pro&&!isPro()?PRO_LOCK:''}</button>`).join('')}</div>
     <div class="nx-grp">Chords change</div><div class="s2-opts" id="chPer"><button data-p="16" aria-pressed="${per===16}">Every bar</button><button data-p="8" aria-pressed="${per===8}">Every half bar</button></div>
-    <button class="mfx-btn" id="chGo" style="width:100%;margin-top:16px">Add chords</button>`);
+    <button class="nx-primary" id="chGo" style="margin-top:16px">Add chords</button>`);
   draw();
   $('nxSheet').onclick=e=>{ let b;
     if(b=e.target.closest('#chSt button')){ const k=b.dataset.k; if(CHORD_STYLES[k].pro&&!isPro()){ proSheet('Pulse and Arp chords are part of Noodle Pro.'); return; } style=k; draw(); }
@@ -332,7 +343,7 @@ function secSheet(){ secsTidy(); const secs=S.secs, cur=Math.min(S.bars-1,Math.m
     <div class="nx-grp">Name a section</div><div class="s2-opts" id="secNm">${SEC_NAMES.map(n=>`<button data-n="${n}" aria-pressed="${n===name}">${n}</button>`).join('')}</div>
     <div class="s2-fld"><label for="secAt">From bar</label><select class="nx-txt" id="secAt">${Array.from({length:S.bars},(_,b)=>`<option value="${b}" ${b===at?'selected':''}>${b+1}</option>`).join('')}</select></div>
     <div class="s2-fld"><label for="secLen">Bars</label><select class="nx-txt" id="secLen">${Array.from({length:room(at)},(_,i)=>i+1).map(n=>`<option value="${n}" ${n===len?'selected':''}>${n}</option>`).join('')}</select></div>
-    <button class="mfx-btn" id="secAdd" style="width:100%;margin-top:14px">Add ${nxEsc(name)}</button>`); };
+    <button class="nx-primary" id="secAdd" style="margin-top:14px">Add ${nxEsc(name)}</button>`); };
   draw();
   $('nxSheet').onchange=e=>{ if(e.target.id==='secAt'){ at=+e.target.value; len=Math.min(len,room(at)); draw(); } if(e.target.id==='secLen') len=+e.target.value; };
   $('nxSheet').onclick=e=>{ let b;

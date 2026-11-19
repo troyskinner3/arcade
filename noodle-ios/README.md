@@ -51,6 +51,18 @@ Owner setup, once:
 Trying both versions: in builds run from Xcode, More → **Test as** switches between Free, Pro and your real App Store purchase (not in TestFlight or App Store builds).
 Adding a yearly plan later: create it in App Store Connect and add its product id to `ProStore.ids`; anyone with the one-time purchase keeps Pro.
 
+### Song links (Share → Link to remix) and the rating prompt
+Songs shared by link live on the takes service (`noodle-api/`, `/s/<id>` is the listen page). For a link to open the app instead of the page:
+1. **Associated Domains:** Xcode → target **NoodleWeb** → Signing & Capabilities → **+ Capability** → Associated Domains → add
+   `applinks:noodle-takes.cracked.workers.dev`.
+2. **URL type** (the page's "Remix in Noodle" button): target → **Info** tab → URL Types → **+** → Identifier `io.tuttii.Noodle.links`,
+   URL Schemes `noodleapp`.
+3. **On the service** (Cloudflare → Workers → noodle-takes → Settings → Variables): `APPLE_APP_ID` = `<Team ID>.io.tuttii.Noodle` (Team ID:
+   developer.apple.com → Membership), and once the app is live `APP_STORE_ID` (the number in its App Store URL, for Safari's Open banner) and
+   `APP_STORE_URL`. Then run the takes service deploy (see `noodle-api/README.md`).
+The rating prompt uses Apple's own `requestReview` after a song is shared (at most once every 120 days from Noodle; Apple shows it at most
+3 times a year). Nothing to set up.
+
 ### TestFlight
 1. https://appstoreconnect.apple.com → Apps → **+** → New App: platform iOS, name (e.g. "Noodle: Hum to Music" if "Noodle" is taken), the bundle ID from step 1, any SKU.
 2. Xcode: destination **Any iOS Device (arm64)** → Product → **Archive** → Distribute App → **App Store Connect** → Upload.

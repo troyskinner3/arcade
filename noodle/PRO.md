@@ -44,6 +44,9 @@ Status: **confirmed** (owner agreed) or **proposed** (waiting on the owner).
 | Chords from your melody: Pad and Piano styles, chords every bar or half bar | proposed |
 | Drum fills every 4 or 8 bars (with a crash after each) | proposed |
 | Song sections: name, loop and duplicate Intro / Verse / Chorus / Bridge / Outro | proposed |
+| Song links: share a song by link; friends listen and remix it in Noodle (growth: always free) | proposed |
+| Invite friends: 3 friends who make a song earn you Noodle Pro (an App Store offer code) | proposed |
+| Free videos end on a 2.5 s Noodle card ("Free on the App Store"); Pro videos end with the music | proposed |
 
 ### Pro
 | Feature | Status |

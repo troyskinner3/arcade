@@ -172,9 +172,11 @@ const b64of=u8=>{ let s=''; for(let i=0;i<u8.length;i+=8192) s+=String.fromCharC
 const u8of=b=>{ const s=atob(b), u=new Uint8Array(s.length); for(let i=0;i<s.length;i++) u[i]=s.charCodeAt(i); return u; };
 const packV=v=>v instanceof Int16Array?{__i16:b64of(new Uint8Array(v.buffer,v.byteOffset,v.byteLength))}:v instanceof Float32Array?{__f32:b64of(new Uint8Array(v.buffer,v.byteOffset,v.byteLength))}:Array.isArray(v)?v.map(packV):v&&typeof v==='object'?Object.fromEntries(Object.entries(v).map(([k,x])=>[k,packV(x)])):v;
 const unpackV=v=>v&&typeof v==='object'?(v.__i16!=null?new Int16Array(u8of(v.__i16).buffer):v.__f32!=null?new Float32Array(u8of(v.__f32).buffer):Array.isArray(v)?v.map(unpackV):Object.fromEntries(Object.entries(v).map(([k,x])=>[k,unpackV(x)]))):v;
-async function songFileSave(ids, name){ if(ids.includes(S.pid)) await projSaveCurrent(); const songs=[];
+async function songFilePack(ids){ if(ids.includes(S.pid)) await projSaveCurrent(); const songs=[];
   for(const id of ids){ const p=await projDb.get(id); if(!p) continue; const o=JSON.parse(p.json), takes={}; for(const t of o.tracks||[]){ const r=await takeStore.get('vox'+t.id); if(r) takes[t.id]=packV(r); }
     songs.push({title:p.title||'', createdAt:p.createdAt, updatedAt:p.updatedAt, song:o, takes}); }
+  return songs; }
+async function songFileSave(ids, name){ const songs=await songFilePack(ids);
   if(!songs.length){ toast('Nothing to save yet: make a song first.'); return false; }
   const day=new Date().toISOString().slice(0,10), fn=(ids.length>1?'Noodle songs '+day:(name||songs[0].title||'Untitled').replace(/[\\/:*?"<>|]+/g,' ').trim().slice(0,60)||'Untitled')+'.noodle';
   await offerFile(fn, new Blob([JSON.stringify({noodle:'songs', v:1, build:NOODLE_BUILD, savedAt:new Date().toISOString(), songs})],{type:'application/json'})); return true; }
@@ -184,8 +186,60 @@ async function songFileOpen(text){ let f; try{ f=JSON.parse(text); }catch(e){ f=
     if(have.some(p=>p.createdAt===g.createdAt && (p.title||'')===(g.title||'') && p.updatedAt>=g.updatedAt)) continue;   /* already here (and not older) */
     const o=g.song; for(const t of o.tracks){ const old=t.id; t.id=nid++; if(o.activeId===old) o.activeId=t.id; if(g.takes&&g.takes[old]) await takeStore.put('vox'+t.id, unpackV(g.takes[old])); }   /* each part gets a new id, so nothing here is overwritten */
     o.nextId=nid; o.pid=projId(); const now=Date.now();
-    await projDb.put({id:o.pid, title:g.title||'', createdAt:g.createdAt||now, updatedAt:g.updatedAt||now, bpm:o.bpm, bars:o.bars, key:'', parts:o.tracks.filter(t=>!t.guide).map(t=>t.inst), json:JSON.stringify(o)}); added++; }
+    await projDb.put({id:o.pid, title:g.title||'', createdAt:g.createdAt||now, updatedAt:g.updatedAt||now, bpm:o.bpm, bars:o.bars, key:'', parts:o.tracks.filter(t=>!t.guide).map(t=>t.inst), json:JSON.stringify(o)}); added++; songFileOpen.last=o.pid; }
   S.nextId=Math.max(S.nextId||10,nid); persist(); return added; }
+/* ---- Song links: share a song by link; whoever opens it (in Noodle) gets their own copy to remix. Anyone with the link can listen.
+   The song file goes to the takes service with this phone's owner id (a random id kept on this phone, stored there only as a hash),
+   so only this phone can replace or delete it. S.link remembers the song's link. ---- */
+function ownerId(){ try{ let o=localStorage.getItem('noodle.owner'); if(!o){ const b=crypto.getRandomValues(new Uint8Array(18)); o=btoa(String.fromCharCode(...b)).replace(/\+/g,'-').replace(/\//g,'_'); localStorage.setItem('noodle.owner',o); } return o; }catch(e){ return null; } }
+function linkId(){ const b=crypto.getRandomValues(new Uint8Array(9)); return 's'+btoa(String.fromCharCode(...b)).replace(/\+/g,'-').replace(/\//g,'_'); }
+function previewWav(mix, secs=30){ const R=22050, sr=mix.sampleRate, L=mix.getChannelData(0), Rc=mix.numberOfChannels>1?mix.getChannelData(1):L, len=Math.min(mix.length,Math.round(secs*sr)), n=Math.floor((len-1)*R/sr);
+  const x=new Float32Array(len); for(let i=0;i<len;i++) x[i]=(L[i]+Rc[i])/2; const z=biquad(biquad(x,'lp',9500,0.707,sr),'lp',9500,0.707,sr), out=new DataView(new ArrayBuffer(44+n*2)), w=(o,t)=>{ for(let i=0;i<t.length;i++) out.setUint8(o+i,t.charCodeAt(i)); };
+  w(0,'RIFF'); out.setUint32(4,36+n*2,true); w(8,'WAVE'); w(12,'fmt '); out.setUint32(16,16,true); out.setUint16(20,1,true); out.setUint16(22,1,true); out.setUint32(24,R,true); out.setUint32(28,R*2,true); out.setUint16(32,2,true); out.setUint16(34,16,true); w(36,'data'); out.setUint32(40,n*2,true);
+  const fade=Math.round(1.5*R); for(let i=0;i<n;i++){ const q=i*sr/R, i0=Math.floor(q), fr=q-i0, v=(z[i0]*(1-fr)+z[i0+1]*fr)*Math.min(1,(n-i)/fade); out.setInt16(44+i*2,Math.max(-32768,Math.min(32767,Math.round(v*32767))),true); }
+  return out.buffer; }
+async function songLinkShare(onStep){ const owner=ownerId(); if(!owner) throw new Error('storage is off');
+  await projSaveCurrent(); const songs=await songFilePack([S.pid]); if(!songs.length) throw new Error('nothing to share');
+  const id=(S.link&&S.link.id)||linkId(), H={'Content-Type':'application/json','X-Owner':owner};
+  onStep&&onStep('Uploading your song…'); const body=JSON.stringify({noodle:'songs', v:1, build:NOODLE_BUILD, savedAt:new Date().toISOString(), songs});
+  let r=await fetch(`${NOODLE_API}/v1/songs/${id}`,{method:'PUT',headers:H,body}); if(r.status===413) throw new Error('this song is too big to share by link (8 MB at most)'); if(!r.ok) throw new Error('the upload didn’t go through ('+r.status+')');
+  const url=(await r.json()).url; S.link={id, url, at:new Date().toISOString()}; save(); await projSaveCurrent();
+  onStep&&onStep('Making a preview…'); try{ const mix=await renderMix(1,true); await fetch(`${NOODLE_API}/v1/songs/${id}/preview`,{method:'PUT',headers:{'Content-Type':'audio/wav','X-Owner':owner},body:previewWav(mix)}); }catch(e){}   /* the link works without it */
+  return url; }
+async function songLinkDelete(){ const L=S.link; if(!L) return true; let ok=false; try{ ok=(await fetch(`${NOODLE_API}/v1/songs/${L.id}`,{method:'DELETE',headers:{'X-Owner':ownerId()}})).ok; }catch(e){}
+  if(ok){ delete S.link; save(); await projSaveCurrent(); } return ok; }
+/* Opening a song link (in the app, or ?s=<id> on the web): a copy of the song becomes a new song here, "Remix of …", ready for your part. */
+async function songLinkOpen(ref){ const id=String(ref||'').replace(/^.*\/s\//,'').replace(/[?#].*$/,''); if(!/^[A-Za-z0-9_-]{10,32}$/.test(id)) return false;
+  toast('Opening the song…'); let f=null; try{ const r=await fetch(`${NOODLE_API}/v1/songs/${id}`); if(r.ok) f=await r.json(); }catch(e){}
+  if(!f||!f.songs||!f.songs[0]){ toast('That song isn’t available any more.'); return false; }
+  const g=f.songs[0], t=g.title||'a song'; g.title=('Remix of '+t).slice(0,60); g.createdAt=Date.now(); g.updatedAt=Date.now(); if(g.song){ delete g.song.link; g.song.title=g.title; g.song.remixOf={id,title:t}; }
+  const n=await songFileOpen(JSON.stringify(f)); if(n<1||!songFileOpen.last) return false;
+  await projOpen(songFileOpen.last); if(typeof nxGo==='function') nxGo('studio'); toast(`Remixing “${t}”. Add your own part: tap + Add track.`,6000); return true; }
+window.noodleOpenLink=ref=>{ const m=String(ref||'').match(/\/i\/([A-Za-z2-9]{6})\b/); return m?inviteUse(m[1]):songLinkOpen(ref); };
+/* ---- Invites: Noodle Pro for bringing friends. Your phone has a code (from the takes service); a friend types it (More > Invite friends)
+   or opens your link, and it counts once they have made a song. 3 friends earn a Noodle Pro offer code, redeemed in the App Store. ---- */
+const APP_STORE_ID='';   /* the number in Noodle's App Store URL, once it is live (prefills the code on Apple's redeem page) */
+async function inviteMine(){ try{ const r=await fetch(`${NOODLE_API}/v1/invites/mine`,{headers:{'X-Owner':ownerId()}}); return r.ok?await r.json():null; }catch(e){ return null; } }
+function inviteUse(code){ code=String(code||'').toUpperCase().trim(); if(!/^[A-Z2-9]{6}$/.test(code)){ toast('That invite code isn’t right: 6 letters and numbers.'); return false; }
+  try{ localStorage.setItem('noodle.inviteBy',code); }catch(e){} inviteSend(true); return true; }
+async function inviteSend(say){ let code=null; try{ code=localStorage.getItem('noodle.inviteBy'); }catch(e){} if(!code) return;
+  const made=(await projDb.all().catch(()=>[])||[]).some(p=>(p.parts||[]).length)||S.tracks.some(t=>!t.guide&&hasContent(t));
+  if(!made){ if(say) toast('Invite saved. It counts for your friend once you’ve made your first song.',5000); return; }
+  let st=0; try{ st=(await fetch(`${NOODLE_API}/v1/invites/${code}/join`,{method:'PUT',headers:{'X-Owner':ownerId()}})).status; }catch(e){ return; }   /* offline: try again later */
+  if(st===200||st===404||st===409||st===400){ try{ localStorage.removeItem('noodle.inviteBy'); }catch(e){} }
+  if(say||st===200) toast(st===200?'Invite counted. Thanks for joining Noodle!':st===409?'That’s your own invite code.':st===404?'That invite code wasn’t found.':'The invite didn’t go through.',5000); }
+async function inviteSheet(){ nxSheet(`<h2>Invite friends</h2><p style="color:var(--muted);font-size:14px;margin:-4px 0 12px">When 3 friends make their first song with your invite, you get Noodle Pro free.</p><div id="invBody" style="color:var(--muted)">Loading…</div>
+    <div class="nx-grp">Have an invite code?</div><div style="display:flex;gap:8px"><input class="nx-txt" id="invCode" maxlength="6" autocapitalize="characters" autocomplete="off" placeholder="6 letters" style="flex:1;text-transform:uppercase"><button class="nx-ghost" id="invUse" style="width:auto;padding:0 18px">Use</button></div>`);
+  $('invUse').onclick=()=>{ if(inviteUse($('invCode').value)) $('invCode').value=''; };
+  const me=await inviteMine(), body=$('invBody'); if(!body) return;
+  if(!me){ body.textContent='Couldn’t reach Noodle’s server. Try again with a connection.'; return; }
+  const redeem=me.reward?(APP_STORE_ID?`https://apps.apple.com/redeem?ctx=offercodes&id=${APP_STORE_ID}&code=${encodeURIComponent(me.reward)}`:'https://apps.apple.com/redeem'):null;
+  body.innerHTML=`${me.reward?`<p style="color:var(--ink);font-weight:600">You earned Noodle Pro! Your code: <b style="letter-spacing:.1em">${nxEsc(me.reward)}</b></p><a class="nx-primary" href="${nxEsc(redeem)}" target="_blank" style="display:flex;align-items:center;justify-content:center;text-decoration:none;margin-bottom:12px">Redeem in the App Store</a>`:
+      `<div class="nx-bar" style="margin:4px 0 6px"><i style="width:${Math.min(100,me.joined/me.need*100)}%"></i></div><p>${isPro()?'You have Pro already. Friends still get Noodle.':`${me.joined} of ${me.need} friends so far.`}${me.joined>=me.need&&!me.reward?' Your Pro code is on its way: check back soon.':''}</p>`}
+    <p>Your code: <b style="color:var(--ink);letter-spacing:.12em">${nxEsc(me.code)}</b></p><button class="nx-primary" id="invShare">Send your invite</button>`;
+  $('invShare').onclick=async()=>{ const text=`Make songs by humming with Noodle. Use my invite code ${me.code}:`; try{ if(navigator.share) await navigator.share({title:'Noodle', text, url:me.url}); else { await navigator.clipboard.writeText(text+' '+me.url); toast('Invite copied'); } }catch(e){} }; }
+document.getElementById('nxInv').onclick=()=>inviteSheet();   /* ($ is defined in a later file) */
+/* ---- App shell ---- */
 /* ---- App shell ---- */
 const nxEsc=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 let nxSortBy='updatedAt', nxAt='studio', nxResume=false;

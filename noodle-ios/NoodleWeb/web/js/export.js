@@ -118,7 +118,7 @@ ${map}
 `:''}`;
 }
 /* ---- share your song: audio (WAV) or a vertical video, through the phone's share sheet ---- */
-let shareFile=null, shareMsg='', shareCan=false;
+let shareFile=null, shareMsg='', shareCan=false, shareUrl=null;
 async function prepareShare(kind,onProg){
   ensureCtx(); if(!S.tracks.length){ toast('Add a part first'); return; }
   try{
@@ -129,7 +129,11 @@ async function prepareShare(kind,onProg){
     shareCan=canShare; shareMsg=`Your ${kind==='audio'?'audio':'video'} is ready (${(shareFile.size/1048576).toFixed(1)} MB, ${Math.round(mix.duration)} s). `+(canShare?(kind==='video'?'Tap Share to save it to Photos or send it to Messages, CapCut, TikTok and more.':'Tap Share to send it to Messages, CapCut, TikTok and more.'):'Save it, then add it to any app.');
   } catch(e){ toast((kind==='video'?'Video export':'Export')+' didn’t work here: '+(e&&e.message||e)); }
 }
-async function shareNow(){ if(!shareFile) return; try{ await navigator.share({files:[shareFile], title:songTitle(), text:'Made with Noodle'}); } catch(e){ if(e&&e.name!=='AbortError') toast('Sharing didn’t open. Tap Save to Files instead.'); } }
+/* After a song is shared (a happy moment), the iPhone app may ask for a rating with Apple's own prompt: at most once every 120 days from here,
+   and Apple shows it at most 3 times a year. Never on the web. */
+function askRating(){ try{ if(!(window.webkit&&window.webkit.messageHandlers&&window.webkit.messageHandlers.noodleNative)) return; const k='noodle.rateAt', last=+localStorage.getItem(k)||0;
+  if(Date.now()-last<120*864e5) return; localStorage.setItem(k,String(Date.now())); setTimeout(()=>native({type:'rate'}),1200); }catch(e){} }
+async function shareNow(){ if(shareUrl){ try{ await navigator.share({url:shareUrl, title:songTitle(), text:'I made this with Noodle. Open it to add your own part:'}); askRating(); }catch(e){} return; } if(!shareFile) return; try{ await navigator.share({files:[shareFile], title:songTitle(), text:'Made with Noodle'}); askRating(); } catch(e){ if(e&&e.name!=='AbortError') toast('Sharing didn’t open. Tap Save to Files instead.'); } }
 /* real-time render of a 720x1280 clip: the parts as lanes with a moving playhead, pulsing on each beat */
 /* Video export. Preferred: encode frame by frame (WebCodecs) into a regular MP4: faster than real time, silent, and the
    file has a correct length everywhere (Photos included). Fallback: record the canvas and audio in real time (MediaRecorder). */
@@ -154,7 +158,12 @@ async function encodeVideo(mix, cfg, onProgress){
     if(ve.encodeQueueSize>8 || f%15===0){ onProgress&&onProgress((frames-f)/FPS); await new Promise(r=>setTimeout(r,0)); } }
   await ve.flush(); await ae.flush(); if(err) throw err; ve.close(); ae.close(); muxer.finalize();
   return new Blob([muxer.target.buffer],{type:'video/mp4'}); }
+/* Free videos end on a card (about 2.5 s after the music): the Noodle name and "Free on the App Store". Pro videos end with the music. */
+const END_CARD_S=2.5;
+function withEndCard(mix){ if(isPro()) return mix; const n=mix.length+Math.round(END_CARD_S*mix.sampleRate), out=new AudioBuffer({numberOfChannels:mix.numberOfChannels,length:n,sampleRate:mix.sampleRate});
+  for(let c=0;c<mix.numberOfChannels;c++) out.copyToChannel(mix.getChannelData(c),c); out._songEnd=mix.duration; return out; }
 async function recordVideo(mix, onProgress){
+  mix=withEndCard(mix);
   const cfg=await videoEncodeConfig(mix.sampleRate);
   if(cfg){ try{ return await encodeVideo(mix,cfg,onProgress); }catch(e){ console.warn('frame-by-frame video failed, recording in real time instead',e); } }
   return recordVideoRT(mix,onProgress); }
@@ -178,6 +187,12 @@ function videoPainter(mix){
     g.fillStyle='#eceef2'; g.fillRect(x0+ph*lw,top-4,3,parts.length*laneH-14);
     g.fillStyle='#2f343d'; g.fillRect(x0,H-120,lw,6); g.fillStyle='#ef4a3c'; g.fillRect(x0,H-120,lw*Math.min(1,tt/mix.duration),6);
     if(!isPro()){ g.fillStyle='#5d6470'; g.font='500 24px Figtree, sans-serif'; g.textAlign='center'; g.fillText('made with Noodle',W/2,H-60); }   /* the free version's tag */
+    if(mix._songEnd!=null && tt>mix._songEnd){ const a=Math.min(1,(tt-mix._songEnd)/0.4); g.globalAlpha=a; g.fillStyle='#121418'; g.fillRect(0,0,W,H);
+      g.fillStyle='rgba(241,199,91,0.14)'; g.beginPath(); g.arc(W/2,H*0.42,190,0,7); g.fill();
+      g.font='700 104px Unbounded, Arial Black, sans-serif'; g.textAlign='left'; const a1=g.measureText('N').width, a2=g.measureText('oo').width, a3=g.measureText('dle').width, x1=(W-a1-a2-a3)/2, y1=H*0.42+36;
+      g.fillStyle='#eceef2'; g.fillText('N',x1,y1); g.fillText('dle',x1+a1+a2,y1); g.fillStyle='#f1c75b'; g.fillText('oo',x1+a1,y1);
+      g.textAlign='center'; g.fillStyle='#c9ced6'; g.font='500 36px Figtree, sans-serif'; g.fillText('Hum it. Get a song.',W/2,H*0.42+120);
+      g.fillStyle='#eceef2'; g.font='700 34px Figtree, sans-serif'; g.fillText('Free on the App Store',W/2,H*0.42+250); g.globalAlpha=1; }   /* the end card (free videos) */
   };
   return {cv,draw,W,H};
 }

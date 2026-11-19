@@ -112,3 +112,43 @@ test('error reports: stored once per distinct error a day, capped, admin can rea
   assert.equal((await one.json()).msg, 'boom');
   assert.equal((await call(env, 'PUT', '/v1/errors', 'x'.repeat(9000))).status, 413);
 });
+const songFile = (title = 'My song') => JSON.stringify({ noodle: 'songs', v: 1, songs: [{ title, song: { tracks: [] }, takes: {} }] });
+test('song links: the sharer uploads, anyone can get it, only the sharer can replace or delete it', async () => {
+  const env = { TAKES: bucket(), APPLE_APP_ID: 'T.io.tuttii.Noodle', APP_STORE_ID: '123' }, S = 'song_abc123XYZ';
+  assert.equal((await call(env, 'PUT', `/v1/songs/${S}`, songFile())).status, 403);   // no owner
+  const r = await call(env, 'PUT', `/v1/songs/${S}`, songFile(), { 'X-Owner': I }); assert.equal(r.status, 200); assert.equal((await r.json()).url, `${U}/s/${S}`);
+  assert.equal((await call(env, 'PUT', `/v1/songs/${S}`, songFile('Hijack'), { 'X-Owner': I2 })).status, 403);
+  assert.equal((await call(env, 'PUT', `/v1/songs/${S}/preview`, wav(), { 'X-Owner': I })).status, 200);
+  assert.equal((await call(env, 'PUT', `/v1/songs/${S}/preview`, 'nope', { 'X-Owner': I })).status, 415);
+  const g = await call(env, 'GET', `/v1/songs/${S}`); assert.equal(g.status, 200); assert.equal((await g.json()).songs[0].title, 'My song');
+  assert.equal((await call(env, 'GET', `/v1/songs/${S}/preview`)).status, 200);
+  const meta = JSON.parse(new TextDecoder().decode(env.TAKES.m.get(`songs/${S}/meta.json`))); assert.notEqual(meta.owner, I); assert.equal(meta.owner.length, 64);   // only a hash
+  const pg = await call(env, 'GET', `/s/${S}`); const html = await pg.text(); assert.equal(pg.status, 200);
+  assert.match(html, /My song/); assert.match(html, /app-id=123/); assert.match(html, /noodleapp:\/\/s\/song_abc123XYZ/);
+  const aasa = await (await call(env, 'GET', '/.well-known/apple-app-site-association')).json(); assert.deepEqual(aasa.applinks.details[0].appIDs, ['T.io.tuttii.Noodle']);
+  assert.equal((await call(env, 'DELETE', `/v1/songs/${S}`, null, { 'X-Owner': I2 })).status, 403);
+  assert.equal((await call(env, 'DELETE', `/v1/songs/${S}`, null, { 'X-Owner': I })).status, 200);
+  assert.equal((await call(env, 'GET', `/v1/songs/${S}`)).status, 404); assert.equal((await call(env, 'GET', `/s/${S}`)).status, 404);
+});
+test('song links: not a song file is refused, titles are escaped, reports hide a song', async () => {
+  const env = { TAKES: bucket() }, S = 'song_def456UVW';
+  assert.equal((await call(env, 'PUT', `/v1/songs/${S}`, JSON.stringify({ noodle: 'songs', songs: [] }), { 'X-Owner': I })).status, 400);
+  assert.equal((await call(env, 'PUT', `/v1/songs/bad`, songFile(), { 'X-Owner': I })).status, 400);
+  await call(env, 'PUT', `/v1/songs/${S}`, songFile('<script>x</script>'), { 'X-Owner': I });
+  assert.doesNotMatch(await (await call(env, 'GET', `/s/${S}`)).text(), /<script>x/);
+  for (let i = 0; i < 3; i++) assert.equal((await call(env, 'POST', `/v1/songs/${S}/report`)).status, 200);
+  assert.equal((await call(env, 'GET', `/v1/songs/${S}`)).status, 404);
+});
+test('invites: a code per phone, friends join once (never your own code), 3 friends earn a Pro code from the pool', async () => {
+  const env = { TAKES: bucket(), ADMIN_KEY: 'k' }, F = (c) => c.repeat(22), H = (o) => ({ 'X-Owner': o });
+  const mine = async (o) => (await call(env, 'GET', '/v1/invites/mine', null, H(o))).json();
+  const me = await mine(I); assert.match(me.code, /^[A-Z2-9]{6}$/); assert.equal(me.joined, 0); assert.equal((await mine(I)).code, me.code);
+  assert.equal((await call(env, 'PUT', `/v1/invites/${me.code}/join`, null, H(I))).status, 409);
+  assert.equal((await call(env, 'PUT', `/v1/invites/ZZZZZZ/join`, null, H(F('c')))).status, 404);
+  for (const c of 'cde') assert.equal((await call(env, 'PUT', `/v1/invites/${me.code.toLowerCase()}/join`, null, H(F(c)))).status, 200);
+  await call(env, 'PUT', `/v1/invites/${me.code}/join`, null, H(F('c')));   // the same friend again: not counted twice
+  let r = await mine(I); assert.equal(r.joined, 3); assert.equal(r.reward, null);   // earned, but the pool is empty
+  assert.equal((await call(env, 'PUT', '/v1/admin/codes', JSON.stringify(['PROCODE1', 'PROCODE2', 'bad code']), { Authorization: 'Bearer k' })).status, 200);
+  r = await mine(I); assert.equal(r.reward, 'PROCODE1'); assert.equal((await mine(I)).reward, 'PROCODE1');
+  assert.match(await (await call(env, 'GET', `/i/${me.code}`)).text(), new RegExp(me.code));
+});

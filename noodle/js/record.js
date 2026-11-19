@@ -113,7 +113,7 @@ function importInto(id){ lastNoise=null;
   flushSave(); rs={mode:'take', pre:hist.cur, histLen:hist.undo.length}; takeBar=null;
   S.target=tr.id; S.activeId=tr.id; S.inst=tr.inst; $('fileIn').click();
 }
-function afterTake(){
+function afterTake(){ setTimeout(()=>{ try{ inviteSend(false); }catch(e){} },1500);
   const changed = rs.pre && snapNow().json!==rs.pre.json;
   if(changed && S.tracks.some(t=>t.id===S.activeId&&hasContent(t))){ takeBar={id:S.activeId, pre:rs.pre, histLen:rs.histLen, hint:bleedHint, prevBars:s2.recPrev}; } bleedHint=false;
   S.target=null; rs.mode=null; renderTracks();

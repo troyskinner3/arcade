@@ -9,9 +9,9 @@ If what Noodle sends ever changes, update all three together.
 
 | Data type (App Store wording) | Collected when | Linked to the user? | Used for tracking? | Purposes |
 |---|---|---|---|---|
-| Audio Data | "Share my takes" is on (opt-in, 13+) | No | No | Analytics; App Functionality |
-| Other User Content (what Noodle heard, edits, song name and settings) | "Share my takes" is on | No | No | Analytics; App Functionality |
-| Device ID (a random ID made on the phone, so shared takes can be deleted) | "Share my takes" is on | No | No | App Functionality |
+| Audio Data | "Share my takes" is on (opt-in, 13+); or a song is shared by link (its recordings and a 30 s preview) | No | No | Analytics; App Functionality |
+| Other User Content (what Noodle heard, edits, song name and settings; a song shared by link) | "Share my takes" is on, or Share → Link to remix | No | No | Analytics; App Functionality |
+| Device ID (a random ID made on the phone, so shared takes and song links can be deleted; stored hashed for links) | "Share my takes" is on, or a song is shared by link | No | No | App Functionality |
 | Email Address | Someone signs up for email news | Yes | No | Developer's Advertising or Marketing |
 | Crash Data | Something goes wrong (on unless turned off in More) | No | No | App Functionality |
 
