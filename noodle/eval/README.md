@@ -339,7 +339,7 @@ Real noise (DEMAND, CC BY 4.0: street traffic, cafeteria, bus, town square, park
   from those elements (`$('key')`, `$('bars')`, `$('recLabel')`, the hidden sliders the Studio's sheets write to), so each needs moving to plain state first.
 
 ### Stage 3 cleanup log (removing the first prototype's page)
-How to work on it: one small step at a time; after each, `bash noodle/eval/run.sh` must print ALL PASS (56 scripts, replay 3.88); only then commit and push. (`eval/tools/prune.js` predates the split into `js/` files and works on a single-file copy only.)
+How to work on it: one small step at a time; after each, `bash noodle/eval/run.sh` must print ALL PASS (replay 3.82 since round 7); only then commit and push. (`eval/tools/prune.js` predates the split into `js/` files and works on a single-file copy only.)
 - **Batch 1 (done):** removed the old "How it works" card, New song button, the header's back button and brand, the +/− tempo buttons, with their wiring and styles; `newSong` went with them (tests use `projNew`).
 - **Batch 2 (done):** removed the owner's old test-link UI (`guided`, `dropLine`), the `genre`, `quant` and `loops` rows, `keyInfo`, `snapV`, the old calibrate button, with their wiring; `applyStyle` went with them.
 - **Batch 3 (done):** removed the old header (tempo, length, metronome fields), the bottom dock (seek bar, undo/redo, play, record), the song-name field and the old parts container. The Studio's metronome button now calls `toggleMetro`; `syncTransport`, `updatePlayBtn`, `updateDock` and `updateHistBtns` are empty hooks to delete once nothing calls them. `proj_test` and `shell_test` read the title from the Studio.
@@ -555,3 +555,18 @@ How to work on it: one small step at a time; after each, `bash noodle/eval/run.s
   arp), swing, master drive / punch / reverb, and Song FX sweeps; Pro beats add track effects and Pro song effects. Tapping one plays it in the
   song as a try (`_pvTemp` tracks; a fresh song also tries the beat's tempo, key and feel through `S._pvOrig`); "Use this beat" keeps it.
   In a song with a key, the beat follows that key and tempo. Mix levels: -7 to -15 dB RMS, peaks under 0 dBFS.
+
+## Round 7 (19 Nov 2026): pre-processing, note rules, a melody model, Tidy
+Owner's 31 guided takes, edits per 10 notes (today 3.88):
+- **De-plosive (shipped):** high-pass 150 Hz on the signal used to find note starts only (melody parts, not bass): 3.82 (90 Hz: 3.84).
+  On 350 other recordings (HumTrans, Vocadito, VocalSet; `sweep.js` + `sweep_score.py`) key-free note F1 is unchanged (0.493 both).
+- **De-esser (not shipped):** low-pass 4 kHz or 2.5 kHz on the same signal: 3.88, no change. Both together: 3.86.
+- **Dropping / joining short notes in the reader (not shipped):** 80 ms 3.88, 120 ms 3.90.
+- **Rules on the output MIDI (`tidy_exp.py`):** join recorded one-step blips into the note before 3.82 (fewer extra notes, more missed
+  fast ones); starts onto the 8th grid 3.86; both 3.82; drop one-step notes 3.84; anything two steps or longer 5.2+; phrase ends moved to
+  the home chord 4.14. Shipped as the editor's **Tidy** button (join + grid + fill gaps, recorded notes only, undoable), not automatic.
+- **Melody model choosing among readings (not shipped, `mus_rerank.py`):** trigram over scale degree, interval and beat strength from
+  public-domain folk tunes (abc-collection, guide tunes removed). Chooses among the decoder's top readings: cross-validated by tune 4.44
+  (no beat strength) and 4.78 (with), against 4.12 for the decoder alone: worse, like the earlier folk judge. A general "what melodies do"
+  model doesn't pick the melody this person meant. Large pop melody sets (Lakh MIDI, POP909) are transcriptions of copyrighted songs:
+  not used. The way forward is learning from people's own fixes (already logged with shared takes) once there are enough.

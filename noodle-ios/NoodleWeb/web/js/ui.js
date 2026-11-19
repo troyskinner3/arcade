@@ -16,11 +16,18 @@ const ENV_MAX={a:2,d:3,r:3};
 /* ---- part tools: length, repeat, duplicate, change instrument ---- */
 function deletePart(tr){ const nm=partName(tr); disposeTrack(tr); S.tracks=S.tracks.filter(t=>t!==tr); takeBar=null; keyChanged(); save(); applyAllMix(); renderTracks(); scheduleRender(); toast('Deleted '+nm+'. Tap Undo to bring it back.'); }
 /* legato: every note lasts until the next note starts; the last one runs to the end of the part's loop */
-function fillGaps(tr){ const n=pSteps(tr), ns=tr.notes.filter(x=>x.s>=0&&x.s<n); if(!ns.length) return;
-  const starts=[...new Set(ns.map(x=>x.s))].sort((a,b)=>a-b); let changed=0;
+/* Tidy (the note editor): one tap for a cleaner, more musical part. Recorded blips one step long join the note before; a note starting just off
+   the 8th grid moves onto it; then every note lasts until the next one starts (no gaps). Measured on the owner's 31 guided takes: join + grid
+   3.88 -> 3.82 edits per 10 notes (tidy_exp.py); the gap filling changes no notes. Undo brings it back. */
+function fillGaps(tr){ const n=pSteps(tr), q=S.quant==8?2:1; let joined=0, moved=0, changed=0;
+  let ns=tr.notes.filter(x=>x.s>=0&&x.s<n).sort((a,b)=>a.s-b.s); if(!ns.length) return;
+  for(let i=1;i<ns.length;i++){ const a=ns[i-1], b=ns[i]; if(!b.x && b.l<=1 && b.s-(a.s+a.l)<=1){ a.l=b.s+b.l-a.s; tr.notes.splice(tr.notes.indexOf(b),1); ns.splice(i,1); i--; joined++; } }
+  if(q===1) ns.forEach((x,i)=>{ if(x.s%2 && !x.x){   /* recorded notes only: notes you drew stay where you put them */ const to=x.s-1, pv=ns[i-1]; if(!pv||pv.s<to){ x.s=to; x.l+=1; moved++; } } });
+  const starts=[...new Set(ns.map(x=>x.s))].sort((a,b)=>a-b);
   ns.forEach(x=>{ const nx=starts.find(v=>v>x.s), l=(nx==null?n:nx)-x.s; if(l!==x.l){ x.l=l; changed++; } });
-  if(!changed){ toast('No gaps to fill'); return; }
-  tr.notes.sort((a,b)=>a.s-b.s); tr._dirty=true; save(); redrawTrack(tr); renderNoteBar(tr); scheduleRender(); toast(`Filled the gaps in ${partName(tr)}. Tap Undo to go back.`); }
+  if(!joined&&!moved&&!changed){ toast('Already tidy'); return; }
+  logEdit(tr,{k:'tidy',joined,moved}); tr.notes.sort((a,b)=>a.s-b.s); tr._dirty=true; keyCache=null; save(); redrawTrack(tr); renderNoteBar(tr); scheduleRender();
+  toast(`Tidied ${partName(tr)}${joined?`: ${joined} tiny note${joined>1?'s':''} joined`:''}${moved?`${joined?',':':'} ${moved} lined up on the beat`:''}. Tap Undo to go back.`); }
 function changeInst(tr,k){ if(tr.inst===k) return; const from=INST[tr.inst], to=INST[k];
   if(to.kind==='drum'){ const m=new Map(); tr.hits.forEach(h=>{ if(!m.has(h.s)||m.get(h.s).v<h.v) m.set(h.s,{...h,d:to.drum}); }); tr.hits=[...m.values()].sort((a,b)=>a.s-b.s); tr._an=null; tr._takes=null; }
   if(k==='kit'){ tr.hits.forEach(h=>{ if(!slotOf(h.d) && S.kit.slots.length<MAX_SLOTS && !S.kit.slots.some(x=>x.sound===h.d)) S.kit.slots.push({id:h.d,sound:h.d,say:''}); }); tr._an=null; tr._takes=null; }

@@ -4,6 +4,7 @@ const {chromium}=require('playwright'); const fs=require('fs'); const AL=JSON.pa
   const metas=fs.readdirSync(D).filter(f=>/^2.*\.json$/.test(f)).sort().map(f=>({f,m:JSON.parse(fs.readFileSync(D+'/'+f))})).filter(x=>x.m.prompt&&x.m.heard&&x.m.inst==='lead'&&!/^(long-|beat|drums)/.test(x.m.prompt));
   const b=await chromium.launch(); const p=await b.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(e.message));
   await p.goto('http://localhost:8800/'+page); await p.waitForTimeout(900);
+  if(process.env.NT_JSON) await p.evaluate(j=>Object.assign(NT,JSON.parse(j)),process.env.NT_JSON);   /* experiments: reader settings */
   await p.evaluate(()=>{ drop={url:'http://localhost:9/',k:'x'}; localStorage.setItem('noodle.drop',JSON.stringify(drop)); });
   const res={};
   for(const {f,m} of metas){ const wav=f.replace('.json','.wav');

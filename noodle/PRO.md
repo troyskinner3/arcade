@@ -54,6 +54,7 @@ Status: **confirmed** (owner agreed) or **proposed** (waiting on the owner).
 | Your presets: vocal presets, track-effect presets, your own drum kits (any drum from any kit + your taught noises), saved on the phone and in backups (a preset with Pro parts is tried) | confirmed |
 | Beats: one per style (Night Drive trap, Dusty Steps boom bap, Rainy Window lo-fi, Night Bus drill, Sunny Side pop, Velvet R&B) | confirmed |
 | Simple track menus (basics first, More settings for the rest), key-only piano roll with + for all notes, Drums as the one percussion track | proposed |
+| Tidy in the note editor (joins tiny blips, lines notes up on the beat, fills gaps) | proposed |
 | Song links: share a song by link; friends listen and remix it in Noodle (growth: always free) | proposed |
 | Invite friends: 3 friends who make a song earn you Noodle Pro (an App Store offer code) | proposed |
 | Free videos end on a 2.5 s Noodle card ("Free on the App Store"); Pro videos end with the music | proposed |
