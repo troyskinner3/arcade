@@ -10,6 +10,11 @@ The one list of what is free and what Noodle Pro unlocks. Update it with every n
   costs (for example cloud sync) might be subscription-only, and even then lifetime buyers should be considered for it.
 - In the app, "has Pro" = owns the one-time purchase **or** has an active yearly plan (StoreKit), so both can coexist.
 
+## In the app
+Enforced in `noodle/index.html`: `PRO_SOUNDS` (Pro sounds), `MFX[...].free` (free mix effects), the DAW pack and the video tag in Share, curve drawing in
+the Mix FX editor. The purchase is `ProStore` in `noodle-ios/NoodleWeb/NoodleWebApp.swift` (product `io.tuttii.Noodle.pro`). Keep this list and the code in step.
+Songs that already contain Pro sounds or effects still play for everyone; only choosing and editing them is Pro.
+
 ## Rules of thumb
 - Free must be great on its own: hum a tune, get a song that sounds good, share it. Never gate the first wow.
 - Pro is depth and polish: more sounds, more control, pro-quality exports.
@@ -29,7 +34,7 @@ Status: **confirmed** (owner agreed) or **proposed** (waiting on the owner).
 | Synth sounds: Saw, Supersaw, Square, Bell, Pluck, Sub, 808 glide, Synth bass, Reese, Warm pad, Choir, Sweep, Organ, Stab | proposed |
 | Synth drum kits: 808, Punchy, EDM, Lo-fi | proposed |
 | Recorded Piano, Strings and Rock drum kit (the first impression) | confirmed |
-| Recorded E-piano, Rock bass and Guitar (the Hip hop and Rock styles use them by default, so every style sounds right for free) | proposed |
+| Recorded E-piano, Rock bass and Guitar (the Hip hop and Rock styles use them by default, so every style sounds right for free) | confirmed |
 | Mix: volume, pan, reverb, drive, punch; Expression (follows your voice) | proposed |
 | Export a mixdown (WAV) and video, with a small "Made with Noodle" tag on video | proposed |
 | Song list, song files (save, back up all, open), sharing takes, email news, crash reports | proposed |
@@ -48,8 +53,8 @@ Status: **confirmed** (owner agreed) or **proposed** (waiting on the owner).
 |---|---|
 | More instruments than today (recorded and synth) | confirmed direction |
 | Premium FX with automation curves you draw over time, reusing the mechanics of the Tuttii prototype (feedback from both apps) | confirmed direction |
-| Mix effects from the prototype (`troyskinner3/tuttii-fx-prototype`): free gets High pass and Low pass sweeps with their default shape; Pro gets all 11 (adds Phaser, Washout, Echo throw, Tremolo, Auto-pan, Bitcrusher, Vinyl brake, Reverse swell, Ring mod), curves you draw, stacking, and per-effect controls | proposed |
+| Mix effects from the prototype (`troyskinner3/tuttii-fx-prototype`): free gets High pass and Low pass sweeps with their default shape; Pro gets all 11 (adds Phaser, Washout, Echo throw, Tremolo, Auto-pan, Bitcrusher, Vinyl brake, Reverse swell, Ring mod), curves you draw, stacking, and per-effect controls | confirmed |
 
 ### Limits on free
-- None at launch (proposed): no caps on song length, parts or number of songs. Pro sells depth (sounds, FX, exports, no tag), not walls. Adding limits later would take away what people had, so start without them.
+- None at launch (confirmed): no caps on song length, parts or number of songs. Pro sells depth (sounds, FX, exports, no tag), not walls. Adding limits later would take away what people had, so start without them.
 - The "Made with Noodle" tag goes on video and the share caption only, never into the audio.

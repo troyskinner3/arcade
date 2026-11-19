@@ -3,11 +3,12 @@
 // so it works offline and each release is a fixed version. If this iOS version doesn't let a bundled page use the
 // microphone, the shell falls back to the live site.
 // Native pieces: the audio session (plays through the silent switch, records with the speaker on), microphone permission
-// without the web prompt each time, and saving exported files (WAV, MIDI, video) through the share sheet.
+// without the web prompt each time, saving exported files (WAV, MIDI, video) through the share sheet, and the Noodle Pro purchase (StoreKit 2).
 // Next builds move the heavy and live parts (pitch reading, the note reader, live expression) into Swift (see ../NoodleKit).
 import SwiftUI
 import WebKit
 import AVFoundation
+import StoreKit
 
 let liveURL = URL(string: "https://troyskinner3.github.io/arcade/noodle/")!
 let bundledURL = URL(string: "noodle://app/index.html")!
@@ -31,6 +32,59 @@ final class BundleSchemeHandler: NSObject, WKURLSchemeHandler {
   func webView(_ webView: WKWebView, stop task: WKURLSchemeTask) {}
 }
 
+/* Noodle Pro: a one-time, non-consumable purchase, kept for life. Ownership comes from the App Store's own record (Transaction.currentEntitlements),
+   checked on every launch and whenever a transaction arrives (Ask to Buy approvals, purchases on another device), and sent to the page.
+   The page asks for "buy", "restore" or "state". A yearly plan added later: put its product id in `ids` too; owning any of them is Pro. */
+@MainActor
+final class ProStore: NSObject, WKScriptMessageHandler {
+  static let shared = ProStore()
+  static let proID = "io.tuttii.Noodle.pro"            // create this In-App Purchase in App Store Connect (type: Non-Consumable)
+  let ids: Set<String> = [ProStore.proID]
+  weak var web: WKWebView?
+  private var product: Product?
+  private var owned = false
+  private var updates: Task<Void, Never>?
+
+  func start() {
+    guard updates == nil else { return }
+    updates = Task { for await r in Transaction.updates { if case .verified(let t) = r { await t.finish() }; await refresh() } }
+    Task { await refresh(); await loadProduct(); send() }
+  }
+  private func loadProduct() async { if product == nil { product = try? await Product.products(for: [ProStore.proID]).first } }
+  func refresh() async {
+    var o = false
+    for await r in Transaction.currentEntitlements { if case .verified(let t) = r, ids.contains(t.productID), t.revocationDate == nil { o = true } }
+    owned = o; send()
+  }
+  private func js(_ s: String) -> String { let d = try? JSONSerialization.data(withJSONObject: [s]); return String(data: d ?? Data("[\"\"]".utf8), encoding: .utf8).map { String($0.dropFirst().dropLast()) } ?? "\"\"" }
+  func send() { web?.evaluateJavaScript("window.noodlePro && window.noodlePro(\(owned), \(js(product?.displayPrice ?? "")))") }
+  private func result(_ r: String) { web?.evaluateJavaScript("window.noodleProResult && window.noodleProResult(\(js(r)))") }
+  func buy() async {
+    await loadProduct()
+    guard let p = product else { result("unavailable"); return }
+    do {
+      switch try await p.purchase() {
+      case .success(let v):
+        if case .verified(let t) = v { await t.finish(); await refresh(); result(owned ? "bought" : "failed") } else { result("failed") }
+      case .pending: result("pending")
+      case .userCancelled: result("cancelled")
+      @unknown default: result("cancelled")
+      }
+    } catch { result("failed") }
+  }
+  func restore() async { try? await AppStore.sync(); await refresh(); result(owned ? "restored" : "none") }
+  func userContentController(_ c: WKUserContentController, didReceive m: WKScriptMessage) {   // WebKit calls this on the main thread
+    let what = m.body as? String ?? ""
+    Task {
+      switch what {
+      case "buy": await buy()
+      case "restore": await restore()
+      default: await refresh()
+      }
+    }
+  }
+}
+
 @main
 struct NoodleWebApp: App {
   init() {
@@ -52,6 +106,7 @@ struct NoodleWeb: UIViewRepresentable {
     cfg.mediaTypesRequiringUserActionForPlayback = []
     cfg.applicationNameForUserAgent = "NoodleApp/1"          // lets the web app know it runs inside the app
     cfg.setURLSchemeHandler(BundleSchemeHandler(), forURLScheme: "noodle")
+    cfg.userContentController.add(ProStore.shared, name: "noodlePro")   // the page asks to buy / restore Noodle Pro
     let web = WKWebView(frame: .zero, configuration: cfg)
     web.uiDelegate = context.coordinator
     web.navigationDelegate = context.coordinator
@@ -63,6 +118,7 @@ struct NoodleWeb: UIViewRepresentable {
     if #available(iOS 16.4, *) { web.isInspectable = true }   // Safari > Develop can inspect it while testing
     #endif
     web.load(URLRequest(url: webRoot != nil ? bundledURL : liveURL))
+    ProStore.shared.web = web; ProStore.shared.start()
     return web
   }
   func updateUIView(_ web: WKWebView, context: Context) {}

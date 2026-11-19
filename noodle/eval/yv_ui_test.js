@@ -5,7 +5,7 @@ const wav=f=>{ const b=fs.readFileSync(f); let o=12, data=null, sr=0, ch=1; whil
 (async()=>{ const b=await chromium.launch(); const p=await (await b.newContext({...devices['iPhone 13']})).newPage(); const errs=[]; p.on('pageerror',e=>errs.push(e.message));
   await p.goto('http://localhost:8800/noodle-s2.html?studio'); await p.waitForTimeout(900);
   const f=fs.readdirSync(D).find(f=>/long-vowels-lead\.wav$/.test(f)), {x,sr}=wav(D+'/'+f);
-  const r=await p.evaluate(async({x,sr})=>{ ensureCtx(); const out={}; const X=Float32Array.from(x);
+  const r=await p.evaluate(async({x,sr})=>{ ensureCtx(); PRO.owned=true; const out={}; const X=Float32Array.from(x);   /* Your voice is a Pro sound */
     const o=defaultState(); o.tracks=[mkTrack('pad',{id:900,off:0,len:2,rep:false,lenSet:true,sound:'Warm pad',notes:[{s:0,l:16,p:57,v:.8},{s:0,l:16,p:60,v:.8},{s:0,l:16,p:64,v:.8}]})]; S.yv=null; await projLoadState(o);
     const t=S.tracks[0]; t._raw={x:X,sr}; t._an=analyzeTake(X,sr,'lead',S.sens,true);
     s2TrackSheet(s2Lane(s2LaneId(t))); await new Promise(r=>setTimeout(r,300));

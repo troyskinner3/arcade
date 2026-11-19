@@ -31,6 +31,20 @@ The Xcode project is in the repo (`NoodleWeb/Noodle.xcodeproj`): nothing to crea
 To update later: `cd ~/arcade && git pull`, then ▶ again. (`sync-web.sh` copies `../noodle` into `NoodleWeb/web`; it is run before each commit, so the folder in the repo is already current.)
 The App Store build should use Tuttii Inc.'s team and bundle identifier (it cannot be changed after release).
 
+### Noodle Pro (in-app purchase)
+The app sells one thing: **Noodle Pro**, a one-time purchase (Non-Consumable) with product ID `io.tuttii.Noodle.pro`, kept for life.
+The code is `ProStore` in `NoodleWebApp.swift` (StoreKit 2); what Pro unlocks is `noodle/PRO.md` (and `PRO_SOUNDS`/`MFX` in the web app).
+Owner setup, once:
+1. https://appstoreconnect.apple.com → **Business** (or "Agreements, Tax, and Banking") → the **Paid Apps** agreement must be active, with bank and tax info. Purchases don't work without it.
+2. App Store Connect → your app → **Monetization → In-App Purchases** → **+** → type **Non-Consumable**; Reference name `Noodle Pro`; Product ID **`io.tuttii.Noodle.pro`** (exactly).
+   Then: price; under App Store Localization a display name (`Noodle Pro`) and description (`More instruments, 11 mix effects with shapes you draw, the DAW pack, and everything added to Pro later. Pay once.`);
+   a Review screenshot (any screenshot of the Pro screen); Save.
+3. Xcode → target **Noodle** → **Signing & Capabilities** → **+ Capability** → **In-App Purchase**.
+4. Test before release: App Store Connect → **Users and Access → Sandbox** → add a tester (any email you control). On the iPhone: Settings → App Store → **Sandbox Account** → sign in with it.
+   Build from Xcode, open More → Noodle Pro → Unlock: the purchase sheet says [Environment: Sandbox] and nothing is charged. TestFlight builds also buy for free.
+5. The first time, the In-App Purchase is reviewed together with an app version: on the version page, under **In-App Purchases**, add Noodle Pro before you submit.
+Adding a yearly plan later: create it in App Store Connect and add its product id to `ProStore.ids`; anyone with the one-time purchase keeps Pro.
+
 ### TestFlight
 1. https://appstoreconnect.apple.com → Apps → **+** → New App: platform iOS, name (e.g. "Noodle: Hum to Music" if "Noodle" is taken), the bundle ID from step 1, any SKU.
 2. Xcode: destination **Any iOS Device (arm64)** → Product → **Archive** → Distribute App → **App Store Connect** → Upload.
