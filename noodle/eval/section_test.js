@@ -12,6 +12,8 @@ const {chromium,devices}=require('playwright');
     await togglePlay();
     document.querySelector('.s2-secb').click(); await w(100); out.cleared=s2.sec===null&&!document.querySelector('.s2-secb');
     $('s2CbLoop').click(); await w(50); $('s2Loop').click(); out.offClears=s2.sec===null;
+    s2.selId=k.id; s2Render(); $('s2CbLoop').click(); await w(50); s2DeleteClip(k); await w(50); s2Render(); out.partGoneClears=s2.sec===null&&!document.querySelector('.s2-secb');   /* its part deleted */
+    const k2=S.tracks.find(t=>t.inst==='lead'); s2.selId=k2.id; s2Render(); s2SecSet({off:64,len:2,rep:false,id:k2.id}); const before=!!s2.sec; S.bars=3; s2SecValid(); out.songEndsFirst=before&&s2.sec===null;   /* the song ends before the section */
     return out; });
-  const ok=r.sec&&r.sec.a===32&&r.sec.b===48&&r.loop&&r.band&&r.inside&&r.jumps>=1&&r.cleared&&r.offClears; if(!ok) errs.push('section loop failed');
+  const ok=r.sec&&r.sec.a===32&&r.sec.b===48&&r.loop&&r.band&&r.inside&&r.jumps>=1&&r.cleared&&r.offClears&&r.partGoneClears&&r.songEndsFirst; if(!ok) errs.push('section loop failed');
   console.log(JSON.stringify(r),errs); await b.close(); })();
