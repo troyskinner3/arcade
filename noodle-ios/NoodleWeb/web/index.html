@@ -1095,7 +1095,7 @@ function s2MoveClip(tr, bars){ const off=Math.round((tr.off||0)+bars*16), len=pS
 /* Trim or extend a part by whole bars: ds moves its start (+ later, - earlier), de moves its end (+ later, - earlier). Never onto another part. */
 function s2ResizeClip(tr, ds, de){ if(pLoops(tr)>1 || (!ds&&!de)) return false; let n=pSteps(tr); const off=tr.off||0, a=off+16*ds, b=off+n+16*de;
   if(b-a<Math.round(16*Math.min(1,snapBars())) || a<0 || b>64*16) return false; if(S.tracks.some(t=>t!==tr&&s2LaneId(t)===s2LaneId(tr)&&hasContent(t)&&(t.off||0)<b&&(t.off||0)+pSteps(t)*pLoops(t)>a)) return false;
-  if(tr.inst!=='vox'){ const lo=Math.max(0,16*ds), hi=n+Math.min(0,16*de); if(![...(tr.notes||[]),...(tr.hits||[]),...(tr.fxs||[])].some(x=>x.s<hi&&x.s+(x.l||1)>lo)) return false; }   /* a trim never leaves a part with nothing in it */
+  if(tr.inst!=='vox' && !tr.mfx){ const lo=Math.max(0,16*ds), hi=n+Math.min(0,16*de); if(![...(tr.notes||[]),...(tr.hits||[]),...(tr.fxs||[])].some(x=>x.s<hi&&x.s+(x.l||1)>lo)) return false; }   /* a trim never leaves a part with nothing in it */
   tr.len=pBars(tr); tr.lenSet=true; tr.rep=false; if(S.bars<b/16) S.bars=Math.ceil(b/16-1e-9);
   if(ds){ const k=-ds*16;   /* the window's start moves by -k steps: the content shifts by +k so it stays where it was in the song (nothing is removed) */ if(tr.notes) tr.notes.forEach(x=>{ x.s+=k; }); if(tr.hits) tr.hits.forEach(x=>{ x.s+=k; }); if(tr.fxs) tr.fxs.forEach(x=>{ x.s+=k; }); if(tr.inst==='vox'){ tr.va=+((tr.va||0)-k*stepDur()).toFixed(4); if(tr.vn) tr.vn.forEach(v=>{ v.t+=k*stepDur(); }); tr._tuned=null; tr._pitch=null; } tr.off=off-k; tr.len+=-ds; }
   tr.len+=de;   /* the window's end: whatever is past it stays, unheard, until you extend again */
@@ -2675,6 +2675,7 @@ async function startRecord(calib=false, teach=null){
   // before you sing, and the count-in gives a clean stretch to measure this take's real delay
   const preroll = along && !calib && !teach && S.inst==='vox', SL=loopLen(), poff=(((tgp&&tgp.off?tgp.off:0)*stepDur()-bar)%SL+SL)%SL;   /* the bar before where this take starts */
   if(along) S.tracks.forEach(tr=>{ if(tr._buf && !tr.guide){ ensureNodes(tr); tr._src=preroll?startSrc(tr._buf,tr._g,when,poff):startSrc(tr._buf,tr._g,when+bar,P); } });
+  if(along && !calib && !teach){ if(preroll) mfxStart(when,poff); else mfxStart(when+bar,P); }   /* Song FX play along too, so a take is sung against what the song will sound like */
   if(guideAlong && !calib && !teach) S.tracks.forEach(tr=>{ if(tr._buf && tr.guide){ ensureNodes(tr); tr._src=startSrc(tr._buf,tr._g,when+bar,P); } });   /* hum-along screens: the tune under your take */
   if(!metroGain){ metroGain=ctx.createGain(); metroGain.connect(ctx.destination); }
   metroGain.gain.value=0.75; metroSrc=startSrc(metroBuf,metroGain,when,0); gateOpen(when);
@@ -3186,7 +3187,7 @@ async function addTake0(x, sr, inst, opt){
     const isDrum = kind!=='pitched';
     let tg=S.tracks.find(t=>t.id===S.target); if(tg&&tg.guide) tg=S.tracks.find(t=>!t.guide&&t.inst===tg.inst)||null; if(!tg&&S.prompt) tg=S.tracks.find(t=>!t.guide&&t.inst===inst)||null;   // never record over a guided take's Guide
     if(detBars){ tr.len=detBars; if(tg) tg.len=detBars; }
-    const tgFits = tg && (isDrum ? INST[tg.inst].kind!=='pitched' && INST[tg.inst].kind!=='audio' : tg.inst===inst);
+    const tgFits = tg && (isDrum ? INST[tg.inst].kind!=='pitched' && INST[tg.inst].kind!=='audio' && INST[tg.inst].kind!=='mix' : tg.inst===inst);
     if(tgFits && !hasContent(tg)){ tr=tg; tr.sens=S.sens; }               // an empty part: this take fills it
     if(tg && tg.ex && tgFits){ tg.ex=false; }
     const tgtTonal = !isDrum ? (tgFits ? (hasContent(tg)?tg:null) : (S.replaceTonal && !tg ? [...userTracks()].reverse().find(t=>t.inst===inst&&hasContent(t)&&!t.guide) : null)) : null;
@@ -3198,7 +3199,7 @@ async function addTake0(x, sr, inst, opt){
       if(!playing){ playing=true; playFrom=takeStart(); startAll(ctx.currentTime+0.08, playFrom); }
       return;
     }
-    const target = isDrum ? (tgFits ? (hasContent(tg)?tg:null) : (S.mergeDrums && !tg ? [...userTracks()].reverse().find(t=>INST[t.inst].kind!=='pitched'&&INST[t.inst].kind!=='audio'&&hasContent(t)) : null)) : null;
+    const target = isDrum ? (tgFits ? (hasContent(tg)?tg:null) : (S.mergeDrums && !tg ? [...userTracks()].reverse().find(t=>INST[t.inst].kind!=='pitched'&&INST[t.inst].kind!=='audio'&&INST[t.inst].kind!=='mix'&&hasContent(t)) : null)) : null;
     if(target){
       const id=(target.takeN||1)+1; target.takeN=id;
       if(!target._takes) target._takes = target._an ? [{id:id-1, inst:target.inst, an:target._an, raw:target._raw}] : [];
@@ -3628,7 +3629,7 @@ function keySigBytes(){ const K=currentKey(); if(K.none) return [0xff,0x59,0x02,
   const R=SCALE_REL[K.scale]||[0,0], rel=(K.tonic+R[0])%12; const sf=fifths[rel]; return [0xff,0x59,0x02,(sf+256)&255, R[1]]; }
 function midiBytes(list){
   const SP=spotRanges(), keepM=e=>!SP.length||!inSpot(e.s!==undefined?e.s:e.x,SP);
-  const PPQ=96, tick16=24, n=steps(), loops=S.loops; list=(list||S.tracks).filter(tr=>INST[tr.inst].kind!=='audio');
+  const PPQ=96, tick16=24, n=steps(), loops=S.loops; list=(list||S.tracks).filter(tr=>INST[tr.inst].kind!=='audio'&&INST[tr.inst].kind!=='mix')   /* no MIDI for audio or Song FX */;
   const vlq=v=>{ const b=[v&0x7f]; while(v>>=7) b.unshift((v&0x7f)|0x80); return b; };
   const trk=(events)=>{ events.sort((a,b)=>a.t-b.t||a.o-b.o); let last=0; const bytes=[]; for(const e of events){ bytes.push(...vlq(e.t-last),...e.b); last=e.t; } bytes.push(0,0xff,0x2f,0); return [0x4d,0x54,0x72,0x6b,(bytes.length>>>24)&255,(bytes.length>>>16)&255,(bytes.length>>>8)&255,bytes.length&255,...bytes]; };
   const name=s2=>{ const b=[...new TextEncoder().encode(s2)]; return [0xff,0x03,...vlq(b.length),...b]; };
@@ -3695,7 +3696,7 @@ async function exportZip(){
 function packReadme(parts,K){
   const Kk=currentKey(), kR=SCALE_REL[Kk.scale], kSame=(!Kk.none&&kR&&!['major','minor','pent-major','pent-minor','blues'].includes(Kk.scale)) ? ` (set your DAW's key to ${NOTE_NAMES[(Kk.tonic+kR[0])%12]} major${['harm-minor','mel-minor','phryg-dom'].includes(Kk.scale)?', the closest match; one note of this scale sits outside it':', which has the same notes'})` : '',
       key=Kk.none?'no fixed key':NOTE_NAMES[Kk.tonic]+' '+(SCALE_LABEL[Kk.scale]||Kk.scale)+kSame, bars=S.bars*K;
-  const drums=parts.filter(t=>INST[t.inst].kind!=='pitched'&&INST[t.inst].kind!=='audio');
+  const drums=parts.filter(t=>INST[t.inst].kind!=='pitched'&&INST[t.inst].kind!=='audio'&&INST[t.inst].kind!=='mix');
   const map=[...new Set(drums.flatMap(t=>t.hits.map(h=>h.d)))].map(d=>`  note ${drumNote(d)}  ${slotLabel(d)}`).join('\n');
   return `${songTitle()}
 Made with Noodle

@@ -1,0 +1,23 @@
+// Song FX through everyday flows: duplicate a part (independent copy) and a whole track, undo/redo, resize from either edge, tempo change while
+// playing, song file, mix render, DAW pack (MIDI skips Song FX), a song with only Song FX, deleting the track while its editor is open.
+const {chromium,devices}=require('playwright');
+(async()=>{ const b=await chromium.launch({args:['--autoplay-policy=no-user-gesture-required']}); const c=await b.newContext({...devices['iPhone 13']}); await c.addInitScript(()=>localStorage.setItem('noodle.pro','1')); const p=await c.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(e.message)); p.on('console',m=>{ if(m.type()==='error') errs.push('console: '+m.text().slice(0,160)); });
+  await p.goto('http://localhost:8800/noodle-s2.html?studio'); await p.waitForTimeout(900);
+  const r=await p.evaluate(async()=>{ ensureCtx(); const out={}, w=ms=>new Promise(r=>setTimeout(r,ms)), step=async(name,f)=>{ try{ out[name]=await f(); }catch(e){ out[name]='THREW '+e.message; } };
+    const o=defaultState(); o.bpm=120; o.bars=8; o.pid=projId(); o.title='Review'; o.tracks=[mkTrack('pad',{id:900,off:0,len:8,rep:false,lenSet:true,sound:'Warm pad',notes:[{s:0,l:64,p:57,v:.8,x:true}]}),mkTrack('kit',{id:901,off:0,len:8,rep:false,lenSet:true,sound:'Punchy',hits:Array.from({length:32},(_,i)=>({s:i*4,d:i%2?'snare':'kick',v:.8}))})]; await projLoadState(o); s2Render();
+    const mix=mkTrack('mix',{id:S.nextId++,off:16,len:2,rep:false,lenSet:true}); mix.mfx={k:'echo',curve:{nodes:[{t:0,v:0},{t:0.5,v:1},{t:1,v:0}],curves:[0.8,null]},params:{div:1}}; S.tracks.push(mix); save(); renderTracks(); await w(400);
+    await step('dupClip', async()=>{ s2.selId=mix.id; s2Render(); await w(100); $('s2CbDup').click(); await w(200); const m=S.tracks.filter(t=>t.mfx); return {n:m.length, sameObj:m.length>1&&m[0].mfx===m[1].mfx, offs:m.map(t=>t.off)}; });
+    await step('editCopyIndependent', async()=>{ const m=S.tracks.filter(t=>t.mfx); if(m.length<2) return 'no copy'; m[1].mfx.params.div=2; return m[0].mfx.params.div; });
+    await step('undoRedo', async()=>{ flushSave(); const n0=S.tracks.filter(t=>t.mfx).length; undo(); await w(200); const n1=S.tracks.filter(t=>t.mfx).length; redo(); await w(200); return [n0,n1,S.tracks.filter(t=>t.mfx).length]; });
+    await step('resize', async()=>{ const t=S.tracks.find(t=>t.mfx&&t.off===16), others=S.tracks.filter(o=>o!==t&&s2LaneId(o)===s2LaneId(t)); others.forEach(o=>{ o.lane=-99; }); const a=s2ResizeClip(t,0,1), b=s2ResizeClip(t,-1,0); others.forEach(o=>{ o.lane=s2LaneId(t); });   /* with room on both sides */ await w(100); return [a,b,t.off,t.len,!!t.mfx]; });
+    await step('trackDup', async()=>{ const L=s2Lanes().find(L=>L.tracks[0].inst==='mix'); if(typeof s2DupTrack!=='function') return 'no fn'; const nl=s2DupTrack(L); await w(100); return {lanes:s2Lanes().filter(L=>L.tracks[0].inst==='mix').length, parts:S.tracks.filter(t=>t.mfx).length}; });
+    await step('playTempo', async()=>{ s2.loop=true; await togglePlay(); await w(600); S.bpm=100; save(); scheduleRender(); await w(1500); const a=!!mfxLive && mfxLive.units.length; await togglePlay(); return a; });
+    await step('songFile', async()=>{ let saved=null; const of=window.offerFile; window.offerFile=async(fn,bl)=>{ saved=await bl.text(); }; await songFileSave([S.pid],'Review'); window.offerFile=of; const f=JSON.parse(saved); return f.songs[0].song.tracks.filter(t=>t.mfx).length; });
+    await step('exportMix', async()=>{ const m=await renderMix(1,false); return m.length>0; });
+    await step('midiPack', async()=>{ let got=null; const of=window.offerFile; window.offerFile=async(fn,bl)=>{ got=fn+' '+bl.size; }; await exportZip(); window.offerFile=of; return got; });
+    await step('changeTempoKeepsFx', async()=>S.tracks.filter(t=>t.mfx).length);
+    await step('onlyFxSong', async()=>{ const keep=S.tracks; S.tracks=S.tracks.filter(t=>t.inst==='mix'); let r; try{ r=await renderMix(1,false); }finally{ S.tracks=keep; } return !!r; });
+    await step('deleteLaneWhileEditing', async()=>{ const t=S.tracks.find(t=>t.mfx); s2Edit(t); await w(200); const L=s2Lane(s2LaneId(t)); S.tracks=S.tracks.filter(x=>s2LaneId(x)!==L.id); save(); renderTracks(); await w(200); return {edOpen:!$('s2Ed').hidden}; });
+    return out; });
+  const ok=r.dupClip.n===2&&!r.dupClip.sameObj&&r.editCopyIndependent===1&&r.undoRedo.join()==='2,1,2'&&r.resize.join()==='true,true,0,4,true'&&r.trackDup.lanes===2&&r.playTempo>0&&r.songFile===4&&r.exportMix===true&&typeof r.midiPack==='string'&&r.onlyFxSong===true&&r.deleteLaneWhileEditing.edOpen===false; if(!ok) errs.push('song fx flows failed');
+  console.log(JSON.stringify(r),errs); await b.close(); })();
