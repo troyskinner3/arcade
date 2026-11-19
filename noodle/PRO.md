@@ -11,7 +11,7 @@ The one list of what is free and what Noodle Pro unlocks. Update it with every n
 - In the app, "has Pro" = owns the one-time purchase **or** has an active yearly plan (StoreKit), so both can coexist.
 
 ## In the app
-Enforced in `noodle/index.html`: `PRO_SOUNDS` (Pro sounds), `MFX[...].free` (free mix effects), the DAW pack and the video tag in Share, curve drawing in
+Enforced in `noodle/js/` (mostly `engine.js`, `studio.js`, `export.js`): `PRO_SOUNDS` (Pro sounds), `MFX[...].free` (free mix effects), the DAW pack and the video tag in Share, curve drawing in
 the Song FX editor. The purchase is `ProStore` in `noodle-ios/NoodleWeb/NoodleWebApp.swift` (product `io.tuttii.Noodle.pro`). Keep this list and the code in step.
 Songs that already contain Pro sounds or effects still play for everyone; only choosing and editing them is Pro.
 
@@ -39,6 +39,8 @@ Status: **confirmed** (owner agreed) or **proposed** (waiting on the owner).
 | Export a mixdown (WAV) and video, with a small "Made with Noodle" tag on video | proposed |
 | Song list, song files (save, back up all, open), sharing takes, email news, crash reports | proposed |
 | Change key moves the whole song (transpose), loop a section, tap tempo, lock-screen controls, haptic taps | confirmed |
+| Faster fixes: ▼ ▲ on a note, split into 2 / 3 / 4, select several notes and move or delete them together | proposed |
+| Tap along while you hum (catches repeated notes) and learning from your fixes (accuracy for everyone) | proposed |
 
 ### Pro
 | Feature | Status |

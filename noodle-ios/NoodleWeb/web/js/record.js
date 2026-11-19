@@ -71,7 +71,7 @@ async function startRecord(calib=false, teach=null){
   metroGain.gain.value=0.75; metroSrc=startSrc(metroBuf,metroGain,when,0); gateOpen(when);
   let arp=false; if(S.keyRef && !calib && !teach && INST[S.inst].kind==='pitched'){ const K=keyKnown(), g=S.prompt&&S.tracks.find(t=>t.guide&&t.notes&&t.notes.length), first=g?g.notes.slice().sort((a,b)=>a.s-b.s)[0]:null;
     if(first){ playKeyArp(K, when, bar, pitchOf(first)); arp=true; } else if(K){ playKeyArp(K, when, bar); arp=true; } }   /* a guided tune: the arpeggio starts and ends on its first note */
-  recState={arp, calib, teach, inst:S.inst, countStart:when, start:when+bar, end:when+bar+L, preroll, poff, along, lat:calib?0:(!teach&&S.inst==='vox'&&S.vocLat!=null?S.vocLat:latency()), chunks:[]};
+  recState={arp, calib, teach, taps:[], inst:S.inst, countStart:when, start:when+bar, end:when+bar+L, preroll, poff, along, lat:calib?0:(!teach&&S.inst==='vox'&&S.vocLat!=null?S.vocLat:latency()), chunks:[]};
   if(!teach) teachQueue=null;
   capturing=true; setRecUI(true);
 }
@@ -119,7 +119,11 @@ function afterTake(){
   S.target=null; rs.mode=null; renderTracks();
   const tr=S.tracks.find(t=>t.id===S.activeId);
 }
+/* Tap along: while a melody records into a part, a pad under the timeline takes one tap per note (optional; More > Timing & mic turns it off) */
+function tapPadOn(){ const r=recState; return !!(r && !r.calib && !r.teach && INST[r.inst].kind==='pitched' && takeMode() && S.tapPad!==false); }
+$('s2TapPad').addEventListener('pointerdown',e=>{ e.preventDefault(); const r=recState; if(!r||!ctx) return; r.taps.push(ctx.currentTime); haptic('light'); const b=$('s2TapPad'); b.classList.remove('hit'); void b.offsetWidth; b.classList.add('hit'); });
 function setRecUI(on){
+ $('s2TapPad').hidden=!(on&&tapPadOn());
  RSE.hidden=!on; $('recBtn').classList.toggle('live',on); $('recTxt').textContent=on?'Stop':'Start recording';
  }
 function assemble(chunks, a, b, sr){
@@ -177,7 +181,8 @@ async function finishRecord(){
   const fd=frameDbs(x,sr), top=fd.length?fd[Math.floor((fd.length-1)*0.99)]:null; lastNoise = nf!=null&&top!=null ? {floor:+nf.toFixed(1), top:+top.toFixed(1)} : null;
   if(lastNoise && lastNoise.top-lastNoise.floor<NOISY_DB && INST[r.inst].kind==='pitched'){   /* noisy: clean the take before reading notes from it */
     try{ const ck=x.click; x=denoiseTake(x, sr, assemble(r.chunks, r.countStart+r.lat+0.05, r.start+r.lat-0.05, sr)); if(ck) x.click=ck; lastNoise.den=1; }catch(e){} }
-  await addTake(x, sr, r.inst, {align:pre, notch:true, live:true});
+  const taps=r.taps.filter(t=>t>=r.start-0.1 && t<=r.end+0.1).map(t=>t+r.lat-a);   /* in the take's seconds */
+  await addTake(x, sr, r.inst, {align:pre, notch:true, live:true, taps:taps.length>=2?taps:null});
   if(lastNoise){ const loud=lastNoise.top-lastNoise.floor; if(loud>=NOISY_DB && INST[r.inst].kind==='pitched'){ S.voxTop=+(S.voxTop==null?lastNoise.top:0.7*S.voxTop+0.3*lastNoise.top).toFixed(1); save(); }   /* your usual level, for the count-in check */
     if(loud<NOISY_DB) toast((lastMsg?lastMsg+' ':'')+(lastNoise.den?'Noisy here, so Noodle cleaned it up. Holding the phone closer gives cleaner notes.':'Noisy here: hold the phone closer and retake for cleaner notes.'),6000); }
   flushSave(); if(takeMode()) afterTake(); else showReview();

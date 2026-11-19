@@ -118,6 +118,19 @@ function learnSqueeze(tr){ const g=S.tracks.find(t=>t.guide); if(!g||!tr.notes) 
   const q=S.sq||(S.sq={nu:0,xxu:0,xyu:0,nd:0,xxd:0,xyd:0});
   for(let i=1;i<pairs.length;i++){ const [a,ga]=pairs[i-1], [b,gb]=pairs[i]; if(ga===gb) continue; const d=Math.round(gb.p)-Math.round(ga.p), y=b.p-a.p; if(!d) continue;
     if(d>0){ q.nu++; q.xxu+=d*d; q.xyu+=d*y; } else { q.nd++; q.xxd+=d*d; q.xyd+=d*y; } } }
+/* The same interval profile, learned from your fixes: once you've fixed the pitch of a recorded note in a part, that part counts as
+   reviewed. Each pair of neighbouring recorded notes then adds what you sang (the raw pitch) against what the part now shows (your
+   fix, or the note you left as it was). A part counts once; editing it again replaces its share. Notes you drew yourself don't count. */
+function learnSqueezeFromFixes(tr){ if(!tr||tr.guide||!tr.notes||INST[tr.inst].kind!=='pitched') return;
+  const fixed=tr.notes.some(n=>n.x&&n.r0!=null); const q=S.sq||(S.sq={nu:0,xxu:0,xyu:0,nd:0,xxd:0,xyd:0}), old=tr.sqc, was=squeezeOn();
+  if(old) for(const k in old) q[k]=(q[k]||0)-old[k];
+  const c={nu:0,xxu:0,xyu:0,nd:0,xxd:0,xyd:0};
+  if(fixed){ const sung=n=>n.x?(n.r0??null):+n.p, rec=tr.notes.filter(n=>sung(n)!=null).sort((a,b)=>a.s-b.s);
+    for(let i=1;i<rec.length;i++){ const a=rec[i-1], b=rec[i]; if(b.s-(a.s+a.l)>8) continue;   /* across a rest of more than half a bar: a new phrase */
+      const d=pitchOf(b)-pitchOf(a), y=sung(b)-sung(a); if(!d||Math.abs(d)>12) continue;
+      if(d>0){ c.nu++; c.xxu+=d*d; c.xyu+=d*y; } else { c.nd++; c.xxd+=d*d; c.xyd+=d*y; } } }
+  for(const k in c) q[k]+=c[k]; if(c.nu||c.nd) tr.sqc=c; else delete tr.sqc;
+  const now=squeezeOn(); if(now!==was){ save(); learnNote(now?'Noted: you tend to sing upward jumps a little narrow. Recorded notes now allow for it.':'Noted: you sing jumps about as wide as they’re meant. Recorded notes go to the nearest note again.'); } else if(old||c.nu) save(); }
 /* Each recorded note's pitch is worked out once for its whole part and kept; it is worked out again only when the key,
    Snap strength or your interval profile changes (so editing one note never moves the others). */
 /* Snap strength: Tight keeps every recorded note in the key; looser lets clearly sung out-of-key notes through */

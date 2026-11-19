@@ -492,3 +492,15 @@ How to work on it: one small step at a time; after each, `bash noodle/eval/run.s
   At 4x CPU slowdown an 11 s take had frozen the screen for 1.9 s (notes) + 2.0 s (learned reader). `worker_test.js`: the worker's result is
   identical to reading on the page, field for field, on 14 of the owner's takes × 2 instruments × 2 detail settings (56 checks), and timers keep
   running while it reads. If a worker can't start, takes are read on the page as before. A new recording waits until the last take is read.
+- **Faster fixes (shipped, `corr_test.js`):** under the grid, ▼ ▲ move the selected note to the next note of the key; Split asks
+  "Into 2 / 3 / 4" for notes long enough (double-tap still splits in two); hold an empty spot, then drag, to box-select several notes or
+  hits, which then move together (arrows, or drag one of them; pitch moves step along the key so a phrase keeps its shape) or delete together.
+- **Learning from fixes (shipped, `learnfix_test.js`):** closing the editor on a part where you fixed a recorded note's pitch adds that
+  part's sung-vs-shown intervals to the same interval profile the voice check fills (once per part; editing it again replaces its share;
+  needs 10+ upward jumps, ratio < 0.9, as before). On the owner's guided takes, "fixing" every wrong note to the Guide gives an upward
+  ratio of 0.70 (134 jumps) against 0.745 (152) from the guided takes themselves: both well under 0.9.
+- **Tap along (shipped, `taprec_test.js`, `replay_taps.js`):** while a melody records into a part, a pad under the timeline takes one tap
+  per note (optional; More > Timing & mic turns it off). Taps split held notes (a repeat keeps the held note's pitch); when nearly every
+  note got a tap, a note start with no tap is joined back to the note before. The tap delay is worked out from the take. Replay of the
+  owner's 31 guided takes with simulated taps at the Guide's notes, edits per 10 notes (today 3.88): ±30 ms 3.52, ±60 ms 3.68,
+  all taps 100 ms late 3.52, only every other note tapped 3.94.

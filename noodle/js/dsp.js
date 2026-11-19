@@ -87,6 +87,21 @@ async function readerSplit(an, x, sr){
       if(seg.length>=4){ const q=Math.floor(seg.length/4), mid=seg.slice(q,Math.max(q+1,Math.floor(3*seg.length/4))).sort((a,c)=>a-c), h=mid.length>>1; p=(mid.length%2?mid[h]:(mid[h-1]+mid[h])/2)-tune; }
       out.push({...nt,t0:b[k],t1:b[k+1],p,g:k===0?nt.g:0}); } }
   const keep={whistled:an.notes.whistled,tune:an.notes.tune,frames:fr}; an.notes.length=0; an.notes.push(...out); Object.assign(an.notes,keep); }
+/* Tap along (optional): one tap per note while you hum. A held note with taps inside it becomes one note per tap, each with the pitch
+   sung there, which fixes repeats hummed as one sound. Taps are in the take's seconds; how late your taps sit against what was heard is
+   worked out from the take itself (the median gap between note starts and their nearest tap). Returns how many notes were added. */
+function tapSplit(an, taps){ const ns=an.notes; if(!taps||taps.length<2||!ns||!ns.length) return 0;
+  const fr=ns.frames||[], tune=ns.tune||0, d=[];
+  for(const n of ns){ let b=null; for(const t of taps) if(b===null||Math.abs(t-n.t0)<Math.abs(b-n.t0)) b=t; if(Math.abs(b-n.t0)<0.15) d.push(n.t0-b); }
+  const off=d.length>=2?median(d):0, T=taps.map(t=>t+off), out=[]; let added=0;
+  for(const nt of ns){ const c=T.filter(t=>t>=nt.t0+0.1&&t<=nt.t1-0.1); if(!c.length){ out.push(nt); continue; }
+    const b=[nt.t0,...c,nt.t1];
+    for(let k=0;k<b.length-1;k++){ const seg=fr.filter(f=>f.t>=b[k]+0.03&&f.t<b[k+1]-0.03&&f.conf<0.25).map(f=>f.m).sort((x,y)=>x-y);
+      const sp=seg.length>=4?seg[seg.length>>1]-tune:nt.p, p=Math.abs(sp-nt.p)<0.75?nt.p:sp;   /* a repeat keeps the held note's pitch */ out.push({...nt,t0:b[k],t1:b[k+1],p,g:k===0?nt.g:0}); if(k) added++; } }
+  /* and the other way: a note that starts with no tap near it, right where the one before ends, was one sound read as two: join them */
+  const cover=out.filter(nt=>T.some(t=>Math.abs(t-nt.t0)<0.12)).length/out.length, MG=cover>=0.75?2:0, joined=[];   /* only when you tapped (nearly) every note */ for(const nt of out){ const pv=joined[joined.length-1], tapped=T.some(t=>Math.abs(t-nt.t0)<0.12);
+    if(MG && pv && !tapped && nt.t0-pv.t1<0.06){ pv.t1=nt.t1; pv.db=Math.max(pv.db,nt.db); added--; } else joined.push(nt); }
+  const keep={whistled:ns.whistled,tune:ns.tune,frames:fr}; ns.length=0; ns.push(...joined); Object.assign(ns,keep); return added; }
 function fitWhistle(an, inst){
   if(!an.notes || !an.notes.whistled || !an.notes.length) return '';
   const center = inst==='bass' ? 57 : 69, med=median(an.notes.map(n=>n.p)), k=Math.max(0,Math.round((med-center)/12));

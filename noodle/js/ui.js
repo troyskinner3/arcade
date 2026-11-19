@@ -80,17 +80,19 @@ function buildCard(tr){
     const d=INST[tr.inst];
     const el=document.createElement('article'); el.className='track'; el.style.setProperty('--c',d.color); tr._el=el;
     const pitched=d.kind==='pitched';
-    el.innerHTML=`<div class="gridbox"><div class="gridwrap"><div class="gridin"><canvas></canvas><div class="ph"></div><div class="nsel" hidden></div></div></div><div class="glabels"></div></div><div class="selbar" hidden><span class="sb-n"></span><button class="btn sb-split" title="Split in two (or double-tap the note)">Split</button><button class="btn sb-del">Delete</button><label class="sb-vel"><span>Velocity</span><input type="range" min="5" max="100" step="1" aria-label="Velocity: how hard this note or hit is played"><output></output></label></div><div class="ovrow"><div class="ovw" hidden aria-hidden="true"><canvas></canvas><div class="ovw-win"></div></div></div>`;
+    el.innerHTML=`<div class="gridbox"><div class="gridwrap"><div class="gridin"><canvas></canvas><div class="ph"></div><div class="nsel" hidden></div></div></div><div class="glabels"></div></div><div class="selbar" hidden><span class="sb-n"></span><span class="sb-mv"><button class="btn sb-l" aria-label="Earlier"><svg class="nx-ico" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><button class="btn sb-r" aria-label="Later"><svg class="nx-ico" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button></span><span class="sb-pt"><button class="btn sb-dn" aria-label="Lower"><svg class="nx-ico" viewBox="0 0 24 24"><path d="M5 9l7 7 7-7"/></svg></button><button class="btn sb-up" aria-label="Higher"><svg class="nx-ico" viewBox="0 0 24 24"><path d="M5 15l7-7 7 7"/></svg></button></span><button class="btn sb-split" title="Split into repeats (or double-tap the note)">Split</button><span class="sb-sp" hidden>Into <button class="btn" data-n="2">2</button><button class="btn" data-n="3">3</button><button class="btn" data-n="4">4</button></span><button class="btn sb-del">Delete</button><label class="sb-vel"><span>Velocity</span><input type="range" min="5" max="100" step="1" aria-label="Velocity: how hard this note or hit is played"><output></output></label></div><div class="ovrow"><div class="ovw" hidden aria-hidden="true"><canvas></canvas><div class="ovw-win"></div></div></div>`;
     if(tr._sel && !evs(tr).includes(tr._sel)) tr._sel=null;
     const cv=el.querySelector('canvas');
     const hs=el.querySelector('.nsel'); tr._nsel=hs; 
     tr._selbar=el.querySelector('.selbar'); tr._ndel=null; tr._nsplit=null;
-    if(tr._selbar){ tr._selbar.querySelector('.sb-del').onclick=()=>deleteSelNote(tr); tr._selbar.querySelector('.sb-split').onclick=()=>splitSelNote(tr);
+    if(tr._selbar){ const sb=tr._selbar; sb.querySelector('.sb-del').onclick=()=>tr._msel&&tr._msel.length?deleteGroup(tr):deleteSelNote(tr); sb.querySelector('.sb-split').onclick=()=>splitAsk(tr);
+      sb.querySelector('.sb-sp').onclick=e=>{ const b=e.target.closest('[data-n]'); if(b) splitInto(tr,+b.dataset.n); };
+      sb.querySelector('.sb-up').onclick=()=>nudge(tr,0,1); sb.querySelector('.sb-dn').onclick=()=>nudge(tr,0,-1); sb.querySelector('.sb-l').onclick=()=>nudge(tr,-1,0); sb.querySelector('.sb-r').onclick=()=>nudge(tr,1,0);
       const vs=tr._selbar.querySelector('.sb-vel input'), vo=tr._selbar.querySelector('.sb-vel output');   /* velocity of the selected note or hit: how hard it is played (louder; brighter for some sounds) */
-      vs.oninput=()=>{ vo.textContent=vs.value; }; vs.onchange=()=>{ const n=tr._sel; if(!n||!evs(tr).includes(n)) return; const to=+vs.value/100; logEdit(tr,{k:'vel',s:n.s,from:+(n.v??0.85).toFixed(2),to}); n.v=to; evChanged(tr); if(!playing) previewEv(tr,n); }; }
+      vs.oninput=()=>{ vo.textContent=vs.value; }; vs.onchange=()=>{ if(tr._msel&&tr._msel.length){ const to=+vs.value/100; tr._msel.forEach(n=>{ logEdit(tr,{k:'vel',s:n.s,from:+(n.v??0.85).toFixed(2),to}); n.v=to; }); evChanged(tr); return; } const n=tr._sel; if(!n||!evs(tr).includes(n)) return; const to=+vs.value/100; logEdit(tr,{k:'vel',s:n.s,from:+(n.v??0.85).toFixed(2),to}); n.v=to; evChanged(tr); if(!playing) previewEv(tr,n); }; }
     if(tr._ndel){ tr._ndel.addEventListener('pointerdown',e=>e.stopPropagation()); tr._ndel.onclick=e=>{ e.stopPropagation(); deleteSelNote(tr); }; }
     if(hs){ hs.addEventListener('pointerdown',e=>{ e.stopPropagation(); noteDown(tr,e,true); }); hs.addEventListener('pointermove',e=>noteMove(tr,e)); hs.addEventListener('pointerup',e=>noteUp(tr,e)); hs.addEventListener('pointercancel',e=>noteUp(tr,e,true)); }
-    if(d.kind!=='audio'){ cv.style.touchAction='pan-x pan-y'; cv.addEventListener('pointerdown',e=>noteDown(tr,e)); cv.addEventListener('pointermove',e=>noteMove(tr,e)); cv.addEventListener('pointerup',e=>noteUp(tr,e)); cv.addEventListener('pointercancel',e=>noteUp(tr,e,true)); }   /* notes and drum hits alike */
+    if(d.kind!=='audio'){ cv.style.touchAction='pan-x pan-y'; cv.addEventListener('touchstart',e=>{ if(e.touches.length===1 && groupHit(tr,e.touches[0])) e.preventDefault(); },{passive:false}); cv.addEventListener('touchmove',e=>{ const dd=tr._drag; if(dd&&(dd.box||dd.group)) e.preventDefault(); },{passive:false}); cv.addEventListener('pointerdown',e=>noteDown(tr,e)); cv.addEventListener('pointermove',e=>noteMove(tr,e)); cv.addEventListener('pointerup',e=>noteUp(tr,e)); cv.addEventListener('pointercancel',e=>noteUp(tr,e,true)); }   /* notes and drum hits alike */
     tr._cv=cv; tr._ph=el.querySelector('.ph');
     wireGrid(tr,el);
     drawGrid(tr);
@@ -164,6 +166,7 @@ function drawGrid(tr){
     rawTicks(tr,g,X,Y,cw,lineH,n,sPL,gut,lines,gapH);
     const selH=tr._sel, hw=Math.max(cw-2,6);
     VH.forEach(h=>{ const i=rows.indexOf(h.d); if(i<0) return; g.globalAlpha=h===selH?1:0.45+0.55*h.v; g.fillStyle=col; rr(g,X(h.s)+1,Y(h.s)+1+i*rh+0.5,hw,rh-1,1.5); g.fill(); }); g.globalAlpha=1;
+    (tr._msel||[]).forEach(h=>{ const i=rows.indexOf(h.d); if(i<0||!VH.includes(h)) return; g.strokeStyle=cssVar('--ink'); g.lineWidth=2; rr(g,X(h.s)+1,Y(h.s)+1+i*rh+0.5,hw,rh-1,1.5); g.stroke(); });
     if(selH && VH.includes(selH)){ const i=rows.indexOf(selH.d); if(i>=0){ g.strokeStyle=cssVar('--ink'); g.lineWidth=2; rr(g,X(selH.s)+1,Y(selH.s)+1+i*rh+0.5,hw,rh-1,1.5); g.stroke(); } }
     placeHandle(tr);
   } else {
@@ -182,6 +185,7 @@ function drawGrid(tr){
         if(tw+6<=w){ g.fillStyle=cssVar('--bg'); g.globalAlpha=0.9; g.fillText(name,x+3,y); }
         else if(cw>=12 && !VN.some(o=>o!==nt && o.s>nt.s && o.s<=nt.s+nt.l+Math.ceil((tw+4)/cw) && Math.abs(pitchOf(o)-pitchOf(nt))<=1)){ g.fillStyle=col; g.globalAlpha=0.9; g.fillText(name,x+Math.max(w,3)+2,y); } });
       g.globalAlpha=1; g.textBaseline='alphabetic'; }
+    (tr._msel||[]).forEach(nt=>{ if(!VN.includes(nt)) return; const i=rows.indexOf(pitchOf(nt)); if(i<0) return; g.strokeStyle=cssVar('--ink'); g.lineWidth=2; rr(g,X(nt.s)+1,Y(nt.s)+1+i*rh+0.5,Math.max(cw*Math.min(nt.l,n-nt.s)-2,3),rh-1,1.5); g.stroke(); });
     if(selN && tr.notes.includes(selN)){ const i=rows.indexOf(pitchOf(selN)); if(i>=0){ g.strokeStyle=cssVar('--ink'); g.lineWidth=2;
       let s2=selN.s, left=selN.l; while(left>0){ const room=sPL-(s2%sPL), seg=Math.min(left,room); rr(g,X(s2)+1,Y(s2)+1+i*rh+0.5,Math.max(cw*seg-2,3),rh-1,1.5); g.stroke(); s2=(s2+seg)%n; left-=seg; }
       const e=selN.s+selN.l-1; g.fillStyle=cssVar('--ink'); g.fillRect(X(e)+cw-5,Y(e)+1+i*rh+2,3,Math.max(3,rh-5)); } }
@@ -263,16 +267,21 @@ function noteDown(tr,e,onSel){
     tr._drag={note:n, mode:(isPitchedTr(tr)&&c.s>=n.s+n.l-q)?'resize':'move', s0:c.s, row0:c.row, ns:n.s, np:evRow(tr,n), moved:false, created:false, rec:isPitchedTr(tr)&&!n.x};
     previewEv(tr,n); return; }
   const c=cellAt(tr,e); if(!c||!c.inRow) return;
+  if(groupHit(tr,e)){ try{ tr._cv.setPointerCapture(e.pointerId); }catch(_){} tr._drag={group:true, s0:c.s, row0:c.row, orig:tr._msel.map(n=>({n,s:n.s,p:evRow(tr,n),x:n.x,r0:n.r0,pv:n.p})), moved:false, id:e.pointerId}; return; }
   // the grid only reacts to a tap (so a swipe always scrolls): tap a note to select it, tap empty space to deselect or add a note
   const n=evs(tr).find(nt=>evRow(tr,nt)===c.row && nt.s>=0 && nt.s<pSteps(tr) && c.s>=nt.s && c.s<nt.s+evLen(nt));
   tr._drag={pending:true, c, hit:n||null, x0:e.clientX, y0:e.clientY, id:e.pointerId};
+  if(!n){ const dd=tr._drag; dd.hold=setTimeout(()=>{ if(tr._drag!==dd) return; dd.pending=false; dd.box={c0:c, c1:c}; haptic('light'); try{ tr._cv.setPointerCapture(dd.id); }catch(_){} tr._sel=null; tr._msel=[]; drawGrid(tr); drawBox(tr); },380); }   /* hold still on an empty spot, then drag: select several */
 }
 function startNewNote(tr,c){ haptic('light'); if(!isPitchedTr(tr)){ const q=S.quant==8?2:1, h={s:Math.floor(c.s/q)*q, d:c.row, v:0.85}; tr.hits.push(h); tr._drag={note:h,mode:'move',s0:c.s,row0:c.row,ns:h.s,np:c.row,moved:false,created:true}; tr._sel=h; drawGrid(tr); previewHit(tr,c.row); return; }
   const q=S.quant==8?2:1, kp=snap(c.row); const nt={s:Math.floor(c.s/q)*q,l:q,p:kp,v:0.85,x:true}; tr.notes.push(nt); keyCache=null;
   tr._drag={note:nt,mode:'resize',s0:c.s,row0:c.row,ns:nt.s,np:kp,moved:false,created:true}; tr._sel=nt; drawGrid(tr); previewNote(tr,kp); }
 function noteMove(tr,e){
   let d=tr._drag; if(!d) return;
-  if(d.pending){ const dx=Math.abs(e.clientX-d.x0), dy=Math.abs(e.clientY-d.y0); if(dx>=8||dy>=8) tr._drag=null; return; }   // a swipe scrolls
+  if(d.pending){ const dx=Math.abs(e.clientX-d.x0), dy=Math.abs(e.clientY-d.y0); if(dx>=8||dy>=8){ clearTimeout(d.hold); tr._drag=null; } return; }   // a swipe scrolls
+  if(d.box){ const c=cellAt(tr,e,true); if(c){ d.box.c1=c; boxSelect(tr,d.box); } return; }
+  if(d.group){ const c=cellAt(tr,e,true); if(!c) return; const ds=Math.round((c.s-d.s0)/(S.quant==8?2:1))*(S.quant==8?2:1), G=tr._grid, dr=isPitchedTr(tr)?keyIndex(snap(c.row))-keyIndex(snap(d.row0)):0;
+    if(!d.moved && !ds && !dr) return; d.moved=true; groupPlace(tr,d,ds,isPitchedTr(tr)?dr:0, isPitchedTr(tr)?0:G.rows.indexOf(c.row)-G.rows.indexOf(d.row0)); return; }
   tr._touchT=Date.now(); const c=cellAt(tr,e,true); if(!c) return; const n=pSteps(tr), q=S.quant==8?2:1;
   if(c.s!==d.s0 || c.row!==d.row0) d.moved=true; if(!d.moved) return;
   if(d.mode==='resize') d.note.l=clamp(Math.floor((c.s-d.note.s)/q)*q+q, q, n-d.note.s);
@@ -282,8 +291,11 @@ function noteMove(tr,e){
   drawGrid(tr);
 }
 function noteUp(tr,e,cancel){
-  const d=tr._drag; if(!d) return; tr._drag=null;
+  const d=tr._drag; if(!d) return; tr._drag=null; clearTimeout(d.hold);
+  if(d.box){ drawBox(tr,true); if(!tr._msel.length){ tr._msel=null; } else if(tr._msel.length===1){ tr._sel=tr._msel[0]; tr._msel=null; } drawGrid(tr); renderNoteBar(tr); return; }
+  if(d.group){ if(d.moved){ d.orig.forEach(o=>logEdit(tr,isPitchedTr(tr)?{k:'move',s:o.n.s,from:o.s,group:1}:{k:'hitmove',s:o.n.s,from:o.s,d:o.n.d,fromD:o.p})); evChanged(tr); } else { tr._msel=null; drawGrid(tr); renderNoteBar(tr); } return; }
   if(d.pending){ if(cancel) return;
+    if(tr._msel && tr._msel.length){ tr._msel=null; if(!d.hit){ drawGrid(tr); renderNoteBar(tr); return; } }
     if(isPitchedTr(tr) && d.hit && d.c && d.hit.hs && tr._sel!==d.hit){ const o=d.hit.hs.find(h=>d.c.s===d.hit.s+h||d.c.s===d.hit.s+h-1);
       if(o!=null){ tr._sel=d.hit; tr._lastTap=null; splitSelNote(tr, d.hit.s+o); return; } }   /* tap a split hint: split there */
     if(d.hit){ const lt=tr._lastTap, now=Date.now(); tr._lastTap={n:d.hit,t:now};
@@ -303,8 +315,49 @@ function noteUp(tr,e,cancel){
     if(d.note && lt && lt.n===d.note && now-lt.t<400){ tr._lastTap=null; splitSelNote(tr,d.s0); return; }
     tr._lastTap={n:d.note,t:now}; drawGrid(tr); renderNoteBar(tr); }
 }
+/* ---- faster fixes: nudge with arrows, split into 2-4 repeats, select several notes (hold an empty spot, then drag) and move them together ---- */
+const qStep=()=>S.quant==8?2:1;
+function groupHit(tr,e){ const ms=tr._msel; if(!ms||ms.length<2) return false; const c=cellAt(tr,e); if(!c||!c.inRow) return false; return ms.some(n=>evRow(tr,n)===c.row && c.s>=n.s && c.s<n.s+evLen(n)); }
+function boxSelect(tr,b){ const G=tr._grid, s0=Math.min(b.c0.s,b.c1.s), s1=Math.max(b.c0.s,b.c1.s), i0=Math.min(G.rows.indexOf(b.c0.row),G.rows.indexOf(b.c1.row)), i1=Math.max(G.rows.indexOf(b.c0.row),G.rows.indexOf(b.c1.row));
+  tr._msel=evs(tr).filter(n=>{ const i=G.rows.indexOf(evRow(tr,n)); return i>=i0&&i<=i1 && n.s<=s1 && n.s+evLen(n)>s0; }); drawGrid(tr); drawBox(tr); renderNoteBar(tr); }
+function drawBox(tr,off){ let el=tr._boxEl; const d=tr._drag; if(off||!d||!d.box){ if(el) el.hidden=true; return; }
+  if(!el){ el=tr._boxEl=document.createElement('div'); el.className='nbox'; tr._cv.parentElement.appendChild(el); }
+  const G=tr._grid, b=d.box, s0=Math.min(b.c0.s,b.c1.s), s1=Math.max(b.c0.s,b.c1.s), i0=Math.min(G.rows.indexOf(b.c0.row),G.rows.indexOf(b.c1.row)), i1=Math.max(G.rows.indexOf(b.c0.row),G.rows.indexOf(b.c1.row));
+  el.hidden=false; Object.assign(el.style,{left:(G.gut+s0*G.cw)+'px', top:(1+i0*G.rh)+'px', width:((s1-s0+1)*G.cw)+'px', height:((i1-i0+1)*G.rh)+'px'}); }
+/* a pitch moved by k notes of the key (semitones when there is no key), so a moved phrase keeps its shape */
+function keySteps(m,k){ const K=currentKey(); if(K.none) return m+k; const ink=x=>K.set.includes(((x-K.tonic)%12+12)%12); let x=snap(m); const d=Math.sign(k); for(let i=0;i<Math.abs(k);i++){ x+=d; while(!ink(x)) x+=d; } return x; }
+const keyIndex=m=>{ const K=currentKey(); if(K.none) return m; let i=0; for(let x=0;x<m;x++) if(K.set.includes(((x-K.tonic)%12+12)%12)) i++; return i; };
+/* move the selected notes from where they were: ds steps, dr rows up (pitch), or dd drum rows down */
+function groupPlace(tr,d,ds,dr,dd){ const n=pSteps(tr), lo=Math.min(...d.orig.map(o=>o.s)), hi=Math.max(...d.orig.map(o=>o.s+evLen(o.n)));
+  ds=clamp(ds,-lo,n-hi); const G=tr._grid;
+  d.orig.forEach(o=>{ o.n.s=o.s+ds;
+    if(isPitchedTr(tr)){ if(dr){ if(!o.x && o.r0==null) o.n.r0=+(+o.pv).toFixed(2); o.n.p=keySteps(o.p,dr); o.n.x=true; } else { o.n.p=o.pv; o.n.x=o.x; if(o.r0===undefined) delete o.n.r0; } }
+    else { const i=clamp(G.rows.indexOf(o.p)+dd,0,G.rows.length-1); o.n.d=G.rows[i]; } });
+  drawGrid(tr); }
+/* the arrows under the grid: one note (pitch) or several (pitch and time) */
+function nudge(tr,ds,dp){ const P=isPitchedTr(tr), ms=(tr._msel||[]).filter(x=>evs(tr).includes(x));
+  if(ms.length>1){ const d={orig:ms.map(n=>({n,s:n.s,p:evRow(tr,n),x:n.x,r0:n.r0,pv:n.p}))}; groupPlace(tr,d,ds*qStep(),P?dp:0,P?0:-dp);
+    d.orig.forEach(o=>logEdit(tr,P?{k:'move',s:o.n.s,from:o.s,group:1}:{k:'hitmove',s:o.n.s,from:o.s,d:o.n.d,fromD:o.p})); evChanged(tr); return; }
+  const n=tr._sel; if(!n||!evs(tr).includes(n)||!dp) return; haptic('light');
+  if(!P){ const G=tr._grid, i=G?G.rows.indexOf(n.d):-1; if(i<0) return; const j=clamp(i-dp,0,G.rows.length-1); if(j===i) return; logEdit(tr,{k:'hitmove',s:n.s,from:n.s,d:G.rows[j],fromD:n.d}); n.d=G.rows[j]; previewHit(tr,n.d,n.v??0.85); hitsChanged(tr); return; }
+  const from=pitchOf(n); let to=from; for(let m=from+dp;Math.abs(m-from)<=12;m+=dp){ const k=snap(m); if(k!==from && Math.sign(k-from)===dp){ to=k; break; } } if(to===from) return;
+  if(!n.x && n.r0==null) n.r0=+(+n.p).toFixed(2); n.p=to; n.x=true; logEdit(tr,{k:'pitch',s:n.s,from,to,raw:n.r0??null,nudge:1});
+  if(n.r0!=null && Math.abs(to-from)<=2) learnFromPitchFix(from,to); previewNote(tr,to,n.v??0.8); noteChanged(tr); }
+function deleteGroup(tr){ const ms=(tr._msel||[]).filter(x=>evs(tr).includes(x)); if(!ms.length) return; haptic('light');
+  ms.forEach(n=>{ if(isPitchedTr(tr)){ logEdit(tr,{k:'del',s:n.s,l:n.l,from:pitchOf(n),raw:n.x?(n.r0??null):+(+n.p).toFixed(2),drawn:!!n.x&&n.r0==null,group:1}); tr.notes.splice(tr.notes.indexOf(n),1); } else { logEdit(tr,{k:'hitdel',s:n.s,d:n.d,group:1}); tr.hits.splice(tr.hits.indexOf(n),1); } });
+  tr._msel=null; tr._sel=null; evChanged(tr); }
+/* Split: two pieces at once, or ask how many when the note is long enough for 3 or 4 */
+function splitAsk(tr){ const n=tr._sel, q=qStep(); if(!n||!tr.notes.includes(n)) return; if(n.l<3*q){ splitSelNote(tr); return; }
+  const sp=tr._selbar.querySelector('.sb-sp'); sp.hidden=false; sp.querySelectorAll('[data-n]').forEach(b=>b.hidden=+b.dataset.n*q>n.l); tr._selbar.querySelector('.sb-split').hidden=true; tr._selbar.querySelector('.sb-del').hidden=true; }
+function splitInto(tr,k){ const n=tr._sel, q=qStep(); if(!n||!tr.notes.includes(n)||n.l<k*q) return; logEdit(tr,{k:'split',s:n.s,l:n.l,into:k});
+  const len=n.l, cuts=[]; for(let i=1;i<k;i++) cuts.push(n.s+Math.round(len*i/k/q)*q); const parts=[];
+  let start=n.s; [...cuts,n.s+len].forEach((e,i)=>{ if(i===0){ n.l=e-n.s; delete n.hs; parts.push(n); } else { const b={...n, s:start, l:e-start}; delete b.g; delete b.hs; tr.notes.push(b); parts.push(b); } start=e; });
+  tr._sel=parts[0]; haptic('light'); keyCache=null; noteChanged(tr); }
 function renderNoteBar(tr){
-  const sb=tr._selbar; if(sb){ const n=tr._sel, on=!!(n&&evs(tr).includes(n)); sb.hidden=!on;
+  const sb=tr._selbar; if(sb){ const n=tr._sel, ms=(tr._msel||[]).filter(x=>evs(tr).includes(x)), many=ms.length>1, on=many||!!(n&&evs(tr).includes(n)); sb.hidden=!on;
+    if(on){ sb.querySelector('.sb-mv').hidden=!many; sb.querySelector('.sb-pt').hidden=!isPitchedTr(tr)&&!many; sb.querySelector('.sb-sp').hidden=true; sb.querySelector('.sb-del').hidden=false; }
+    if(many){ const vs=sb.querySelector('.sb-vel input'); sb.querySelector('.sb-n').textContent=ms.length+(isPitchedTr(tr)?' notes':' hits'); sb.querySelector('.sb-split').hidden=true; if(vs&&document.activeElement!==vs){ vs.value=Math.round(ms.reduce((a,x)=>a+(x.v??0.85),0)/ms.length*100); sb.querySelector('.sb-vel output').textContent=vs.value; } }
+    else
     if(on){ const vs=sb.querySelector('.sb-vel input'); if(vs && document.activeElement!==vs){ vs.value=Math.round((n.v??0.85)*100); sb.querySelector('.sb-vel output').textContent=vs.value; } if(!isPitchedTr(tr)){ sb.querySelector('.sb-n').textContent=slotLabel(n.d)+' · step '+(n.s+1); sb.querySelector('.sb-split').hidden=true; }
       else { const nm=m=>NOTE_NAMES[((m%12)+12)%12]+(Math.floor(m/12)-1); sb.querySelector('.sb-n').textContent=nm(pitchOf(n)+12*(tr.oct||0)); sb.querySelector('.sb-split').hidden=n.l<2*(S.quant==8?2:1); } } }
   const bar=tr._el&&tr._el.querySelector('.notebar'); if(!bar||!isPitchedTr(tr)) return; const n=tr._sel;
