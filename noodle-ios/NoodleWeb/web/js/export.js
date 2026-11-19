@@ -60,7 +60,7 @@ async function renderMix(K, fade){
 const songTitle=()=>{ if(S.title) return S.title; const K=currentKey(); return `Noodle ${S.bpm} BPM${K.none?'':' '+NOTE_NAMES[K.tonic].replace('♯','#').replace('♭','b')+' '+(SCALE_LABEL[PARENT[K.scale]||K.scale]||K.scale)}`; };
 const fileSafe=t=>t.replace(/[\/\\:*?"<>|]/g,'-');
 /* Producer pack: a folder you can drop into any DAW */
-async function exportZip(){
+async function exportZip(){ pvEnd(true);
   ensureCtx(); if(!S.tracks.length){ toast('Add a part first'); return; }
   try{
     const sr=ctx.sampleRate, L=loopLen(), n=Math.round(L*sr), K=S.loops, len=n*K+Math.round(2.5*sr), top=fileSafe(songTitle())+'/';
@@ -120,7 +120,7 @@ ${map}
 /* ---- share your song: audio (WAV) or a vertical video, through the phone's share sheet ---- */
 let shareFile=null, shareMsg='', shareCan=false, shareUrl=null;
 async function prepareShare(kind,onProg){
-  ensureCtx(); if(!S.tracks.length){ toast('Add a part first'); return; }
+  pvEnd(true); ensureCtx(); if(!S.tracks.length){ toast('Add a part first'); return; }
   try{
     const mix=await renderMix(S.loops,true), base=fileSafe(songTitle());
     if(kind==='audio'){ shareFile=new File([wavBytes(mix,16)], base+'.wav', {type:'audio/wav'}); }

@@ -6,7 +6,7 @@ const {chromium,devices}=require('playwright');
   const r=await p.evaluate(async()=>{ const out={}; S.bars=2; S.bpm=120; S.key='9'; S.scale='minor'; keyCache=null; const sr=44100, n=sr*3, x=new Float32Array(n); let ph=0;
     for(let i=0;i<n;i++){ const f=220*(1+0.004*Math.sin(2*Math.PI*5*i/sr)); ph+=f/sr; let v=0; for(let h=1;h<=12;h++) v+=Math.sin(2*Math.PI*h*ph)/h*(h<4?1:0.6); x[i]=0.25*v*Math.min(1,i/2000,(n-i)/2000); }
     const t=mkTrack('vox',{id:S.nextId++,off:0,len:2,rep:false,lenSet:true,sound:'Pop'}); t._raw={x,sr}; t.va=0; t.fx=Object.assign({},VOX_PRESETS.Pop,{tune:0}); S.tracks.push(t); renderTracks();
-    PRO.owned=false; s2TrackSheet(s2Lane(s2LaneId(t))); out.freeBtn=!!document.querySelector('[data-a="harmpro"]')&&!document.querySelector('#s2Fx_harm'); nxClose();
+    PRO.owned=false; s2TrackSheet(s2Lane(s2LaneId(t))); out.freeBtn=!!document.querySelector('#s2Fx_harm')&&!!document.querySelector('label[for="s2Fx_harm"] .pro-b');   /* free users try it (badge) */ nxClose();
     PRO.owned=true; s2TrackSheet(s2Lane(s2LaneId(t))); out.slider=!!document.querySelector('#s2Fx_harm'); nxClose();
     const hz=y=>{ const a=Math.floor(sr*1), L=4096; let best=0,bl=0; for(let lag=80;lag<400;lag++){ let s=0,e=0; for(let i=a;i<a+L;i++){ s+=y[i]*y[i+lag]; e+=y[i+lag]*y[i+lag]; } const c=s/Math.sqrt(e+1e-9); if(c>best){ best=c; bl=lag; } } return sr/bl; };
     const H=voxHarm(t), midi=f=>+(69+12*Math.log2(f/440)).toFixed(1); out.up=midi(hz(H.up)); out.dn=midi(hz(H.dn)); out.lead=midi(hz(x));

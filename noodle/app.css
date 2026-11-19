@@ -431,3 +431,10 @@ input[type=range]::-moz-range-thumb{width:10px;height:18px;border-radius:1px;bac
 .sec-list{display:flex;flex-direction:column;gap:8px;margin-bottom:6px}.sec-row{display:flex;align-items:center;gap:8px}.sec-row>div{flex:1;min-width:0;display:flex;flex-direction:column}.sec-row small{color:var(--muted);font-size:13px}
 .sec-row button{height:36px;padding:0 12px;border:1px solid var(--line);border-radius:8px;background:var(--raise,transparent);font:600 14px var(--f-body);color:inherit}.sec-row button.del{color:var(--rec)}
 .s2-lk{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 2px;color:var(--muted);font-size:14px}.s2-lk button{border:1px solid var(--line);border-radius:8px;padding:6px 12px;background:transparent;color:var(--rec);font:600 14px var(--f-body)}
+/* the Pro badge (free users only): an amber sparkle; on option buttons it sits on the top-right corner */
+.pro-b{display:inline-flex;width:13px;height:13px;margin-left:5px;vertical-align:-1px;flex:none}.pro-b svg{width:100%;height:100%;fill:#f1c75b;stroke:rgba(20,16,4,.45);stroke-width:1.2;stroke-linejoin:round}
+.s2-opts button,.mfx-k button{position:relative}.s2-opts button .pro-b,.mfx-k button .pro-b,.s2-clip button .pro-b{position:absolute;top:-6px;right:-6px;width:15px;height:15px;margin:0}
+.s2-clip button{position:relative}
+.pv-line{display:flex;align-items:center;gap:8px;margin:8px 0 4px;padding:8px 10px;border-radius:10px;background:color-mix(in srgb,#f1c75b 14%,transparent);font-size:13px}.pv-line span{flex:1}.pv-line .pro-b{margin:0}
+.pv-line button{border:0;border-radius:8px;padding:6px 10px;background:#f1c75b;color:#1b1608;font:700 13px var(--f-body);white-space:nowrap}
+.toast.act{pointer-events:auto;cursor:pointer}.toast.act::after{content:"Get Pro";display:inline-block;margin-left:10px;padding:3px 9px;border-radius:7px;background:#f1c75b;color:#1b1608;font-weight:700;font-size:13px}

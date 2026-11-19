@@ -4,7 +4,7 @@ const {chromium,devices}=require('playwright');
 (async()=>{ const b=await chromium.launch(); const c=await b.newContext({...devices['iPhone 13']}); const p=await c.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(e.message));
   await p.goto('http://localhost:8800/noodle-s2.html?studio'); await p.waitForTimeout(1000);
   const r=await p.evaluate(async()=>{ const out={}; S.bars=2; S.bpm=120; const t=mkTrack('lead',{id:S.nextId++,off:0,len:2,rep:false,lenSet:true,sound:'Saw',notes:[{s:0,l:2,p:60,v:.8},{s:8,l:2,p:64,v:.8}]}); S.tracks.push(t); renderTracks();
-    PRO.owned=false; s2TrackSheet(s2Lane(s2LaneId(t))); out.freeBtn=!!document.querySelector('[data-a="tfxpro"]'); out.freeSliders=!!document.querySelector('#s2Tfx_echo'); nxClose();
+    PRO.owned=false; s2TrackSheet(s2Lane(s2LaneId(t))); out.freeBtn=!!document.querySelector('.nx-grp .pro-b'); out.freeSliders=!document.querySelector('#s2Tfx_echo');   /* free users try them: sliders with a badge */ nxClose();
     PRO.owned=true; s2TrackSheet(s2Lane(s2LaneId(t))); out.proSliders=['echo','chorus','drive'].every(k=>!!document.querySelector('#s2Tfx_'+k));
     const el=document.querySelector('#s2Tfx_echo'); el.value=70; el.dispatchEvent(new Event('change',{bubbles:true})); out.set=JSON.stringify(t.tfx); nxClose();
     const seg=async(a,b)=>{ t._dirty=true; await renderDirty(); const d=t._buf.getChannelData(0), sr=t._buf.sampleRate; let q=0; for(let i=Math.floor(a*sr);i<Math.floor(b*sr);i++) q+=d[i]*d[i]; return 10*Math.log10(q/((b-a)*sr)+1e-12); };

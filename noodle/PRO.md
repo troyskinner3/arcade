@@ -13,7 +13,14 @@ The one list of what is free and what Noodle Pro unlocks. Update it with every n
 ## In the app
 Enforced in `noodle/js/` (mostly `engine.js`, `studio.js`, `export.js`): `PRO_SOUNDS` (Pro sounds, including Vocoder and Talkbox), `CHORD_STYLES[...].pro`, `isPro()` for track effects and backing vocals, `MFX[...].free` (free mix effects), the DAW pack and the video tag in Share, curve drawing in
 the Song FX editor. The purchase is `ProStore` in `noodle-ios/NoodleWeb/NoodleWebApp.swift` (product `io.tuttii.Noodle.pro`). Keep this list and the code in step.
-Songs that already contain Pro sounds or effects still play for everyone; only choosing and editing them is Pro.
+**How free users see Pro (confirmed):** every Pro option carries a small amber sparkle (`PRO_LOCK`), gone once Pro is owned. Free users can *try*
+Pro sounds, the 9 Pro song effects, track effects, backing vocals and the Pulse / Arp chord styles: the part plays, looping, with the Pro thing
+on it, but a try is never saved, undone, shared or exported (`pvKeep` writes the song without it), and it goes back when the menu or editor
+closes, with a "… is Pro. Get Pro to keep it." note. Buying Pro during a try keeps it. Not previewable (badge only): DAW pack, copy a part to
+another song, video without the tag.
+**Songs that already contain Pro content (confirmed, the generous rule):** e.g. a friend's remix with a Trumpet part. It plays and exports as it is
+for everyone, and normal editing (notes, volume, moving, new parts) keeps the Pro sound. Changing the Pro thing itself is a try (goes back),
+and once swapped for a free one, choosing the Pro one again needs Pro. Deleting is always allowed.
 
 ## Rules of thumb
 - Free must be great on its own: hum a tune, get a song that sounds good, share it. Never gate the first wow.
@@ -68,7 +75,7 @@ Status: **confirmed** (owner agreed) or **proposed** (waiting on the owner).
 |---|---|
 | More instruments than today (recorded and synth) | confirmed direction |
 | Premium FX with automation curves you draw over time, reusing the mechanics of the Tuttii prototype (feedback from both apps) | confirmed direction |
-| Song FX (mix effects) from the prototype (`troyskinner3/tuttii-fx-prototype`): free gets High pass and Low pass sweeps with their default shape; Pro gets all 11 (adds Phaser, Washout, Echo throw, Tremolo, Auto-pan, Bitcrusher, Vinyl brake, Reverse swell, Ring mod), curves you draw, stacking, and per-effect controls | confirmed |
+| Song FX (mix effects) from the prototype (`troyskinner3/tuttii-fx-prototype`): free gets High pass and Low pass **with full control** (draw and bow the curve, controls, Reset); Pro gets the other 9 (Phaser, Washout, Echo throw, Tremolo, Auto-pan, Bitcrusher, Vinyl brake, Reverse swell, Ring mod), which free users can try | confirmed |
 
 ### Limits on free
 - None at launch (confirmed): no caps on song length, parts or number of songs. Pro sells depth (sounds, FX, exports, no tag), not walls. Adding limits later would take away what people had, so start without them.

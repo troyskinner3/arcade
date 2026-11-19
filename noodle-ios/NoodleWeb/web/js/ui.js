@@ -3,7 +3,7 @@
 let lastMsg='';
 let toastQuiet=false;   /* the voice check shows its own messages */
 function toast(msg,ms=4200){ lastMsg=msg; if(toastQuiet || !$('recSheet').hidden) return;   /* that screen shows its own messages */
-  const t=$('toast'); t.textContent=msg; toastPlace(t); t.classList.add('on'); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('on'),ms); }
+  const t=$('toast'); t.textContent=msg; t.classList.remove('act'); t.onclick=null; toastPlace(t); t.classList.add('on'); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('on'),ms); }
 function toastPlace(t){ t.style.bottom=''; try{ if(s2On()){ const r=($('s2Ed').hidden?$('s2Tl'):$('s2EdBody')).getBoundingClientRect(); t.style.bottom=Math.max(8,window.innerHeight-r.bottom+8)+'px'; } }catch(e){} }
 document.addEventListener('pointerdown',()=>{ const t=$('toast'); if(t&&t.classList.contains('on')&&!t._busy){ clearTimeout(t._h); t.classList.remove('on'); } },{capture:true,passive:true});   /* any tap puts the message away */
 function showBusy(msg){ if(toastQuiet) return ()=>{}; const t=$('toast'); t.textContent=msg; toastPlace(t); t._busy=true; t.classList.add('on'); clearTimeout(t._h); return ()=>{ t._busy=false; }; }

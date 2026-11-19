@@ -85,14 +85,14 @@ let S = defaultState();
   S.tracks.forEach(t=>{ t._dirty=true; });
 })();
 let saveTimer=0;
-function persist(){ try{ localStorage.setItem(STORE_KEY, JSON.stringify(S,(k,v)=>k[0]==='_'?undefined:v)); }catch(e){} try{ projSoon(); }catch(e){} }
+function persist(){ try{ localStorage.setItem(STORE_KEY, JSON.stringify(S,pvKeep)); }catch(e){} try{ projSoon(); }catch(e){} }
 function save(){ clearTimeout(saveTimer); saveTimer=setTimeout(()=>{ saveTimer=0; persist(); histCommit(); dropSoon(); },300); histUI(); }
 /* Undo and Redo are lit as soon as there is something to undo (a change waiting to be saved counts), in the Studio and in the editor */
 function histUI(){ const u=!hist.undo.length&&!saveTimer, r=!hist.redo.length; ['s2Undo','s2EdUndo'].forEach(id=>{ const e=$(id); if(e&&e.disabled!==u) e.disabled=u; }); ['s2Redo','s2EdRedo'].forEach(id=>{ const e=$(id); if(e&&e.disabled!==r) e.disabled=r; }); }
 /* Undo / redo: every saved change becomes a step (rapid changes such as a slider drag merge into one).
    A step remembers the song plus the recordings behind each part, so undoing a deleted part brings its take back. */
 const hist={undo:[],redo:[],cur:null,busy:false};
-function snapNow(){ const json=JSON.stringify(S,function(k,v){ if(k[0]==='_') return undefined; if(this===S && (k==='ui'||k==='inst')) return undefined; return v; }); const rt=new Map(); S.tracks.forEach(t=>rt.set(t.id,{_raw:t._raw,_an:t._an,_takes:t._takes,_range:t._range})); return {json,rt}; }
+function snapNow(){ const json=JSON.stringify(S,function(k,v){ if(this===S && (k==='ui'||k==='inst')) return undefined; return pvKeep.call(this,k,v); });   /* Pro previews are not part of the song (pvKeep) */ const rt=new Map(); S.tracks.forEach(t=>rt.set(t.id,{_raw:t._raw,_an:t._an,_takes:t._takes,_range:t._range})); return {json,rt}; }
 function histCommit(){ if(hist.busy) return; const sn=snapNow(); if(!hist.cur){ hist.cur=sn; return; } if(sn.json===hist.cur.json){ hist.cur.rt=sn.rt; return; }
   hist.undo.push(hist.cur); if(hist.undo.length>80) hist.undo.shift(); hist.redo=[]; hist.cur=sn; histUI(); }
 function flushSave(){ if(saveTimer){ clearTimeout(saveTimer); saveTimer=0; persist(); histCommit(); } }
@@ -142,7 +142,7 @@ const projDb={
   get(id){ return this.req('readonly',st=>st.get(id)); }, all(){ return this.req('readonly',st=>st.getAll()); },
   put(p){ return this.req('readwrite',st=>st.put(p,p.id)); }, del(id){ return this.req('readwrite',st=>st.delete(id)); } };
 const projId=()=>'p'+Date.now().toString(36)+Math.random().toString(36).slice(2,8);
-const songJson=()=>JSON.stringify(S,(k,v)=>k[0]==='_'?undefined:v);
+const songJson=()=>JSON.stringify(S,pvKeep);
 const projWorthKeeping=()=>!S.prompt && (!!S.title || S.tracks.some(t=>!t.ex && !t.guide));   /* not the untouched example, not a guided-take song */
 let projTimer=0, projSaved='';
 async function projSaveCurrent(){ clearTimeout(projTimer); projTimer=0; if(!projWorthKeeping()) return null;
@@ -151,7 +151,7 @@ async function projSaveCurrent(){ clearTimeout(projTimer); projTimer=0; if(!proj
   await projDb.put({id:S.pid, title:S.title||'', createdAt:old?old.createdAt:now, updatedAt:now, bpm:S.bpm, bars:S.bars, key:projKeyLabel(), parts:S.tracks.filter(t=>!t.guide).map(t=>t.inst), json}); projSaved=json; return S.pid; }
 function projSoon(){ clearTimeout(projTimer); projTimer=setTimeout(()=>projSaveCurrent().catch(()=>{}),1500); }
 async function projList(){ const all=(await projDb.all())||[]; return all.map(({json,...p})=>({...p, current:p.id===S.pid})).sort((a,b)=>b.updatedAt-a.updatedAt); }
-async function projLoadState(o){ flushSave(); if(typeof s2!=='undefined') s2.sec=null; if(playing){ stopAll(); playing=false; }
+async function projLoadState(o){ try{ pvEnd(true); }catch(e){} flushSave(); if(typeof s2!=='undefined') s2.sec=null; if(playing){ stopAll(); playing=false; }
   const st=defaultState(); Object.assign(st,o); SETUP_KEYS.forEach(k=>{ if(k in S) st[k]=S[k]; else delete st[k]; }); st.nextId=Math.max(S.nextId||10, o.nextId||10);
   takeBar=null; await restoreSnap({json:JSON.stringify(st), rt:new Map()}); hist.undo=[]; hist.redo=[]; hist.cur=snapNow(); projSaved=songJson(); reloadRaw(); }
 async function projOpen(id){ await projSaveCurrent(); const p=await projDb.get(id); if(!p) return false; await projLoadState(JSON.parse(p.json)); return true; }
@@ -198,7 +198,7 @@ function previewWav(mix, secs=30){ const R=22050, sr=mix.sampleRate, L=mix.getCh
   w(0,'RIFF'); out.setUint32(4,36+n*2,true); w(8,'WAVE'); w(12,'fmt '); out.setUint32(16,16,true); out.setUint16(20,1,true); out.setUint16(22,1,true); out.setUint32(24,R,true); out.setUint32(28,R*2,true); out.setUint16(32,2,true); out.setUint16(34,16,true); w(36,'data'); out.setUint32(40,n*2,true);
   const fade=Math.round(1.5*R); for(let i=0;i<n;i++){ const q=i*sr/R, i0=Math.floor(q), fr=q-i0, v=(z[i0]*(1-fr)+z[i0+1]*fr)*Math.min(1,(n-i)/fade); out.setInt16(44+i*2,Math.max(-32768,Math.min(32767,Math.round(v*32767))),true); }
   return out.buffer; }
-async function songLinkShare(onStep){ const owner=ownerId(); if(!owner) throw new Error('storage is off');
+async function songLinkShare(onStep){ pvEnd(true); const owner=ownerId(); if(!owner) throw new Error('storage is off');
   await projSaveCurrent(); const songs=await songFilePack([S.pid]); if(!songs.length) throw new Error('nothing to share');
   const id=(S.link&&S.link.id)||linkId(), H={'Content-Type':'application/json','X-Owner':owner};
   onStep&&onStep('Uploading your song…'); const body=JSON.stringify({noodle:'songs', v:1, build:NOODLE_BUILD, savedAt:new Date().toISOString(), songs});
@@ -271,7 +271,7 @@ function nxSheetSwipe(){ const sh=$('nxSheet'); let y0=null, dy=0;
 function sheetAboveTransport(){ const sc=$('nxScrim'), tr=document.querySelector('.s2-tr'); let b=0;
   try{ if(s2On() && $('s2Ed').hidden && tr && tr.offsetParent){ b=Math.max(0,window.innerHeight-tr.getBoundingClientRect().top); } }catch(e){}
   sc.style.bottom=b?b+'px':''; document.body.classList.toggle('s2-sheet',!!b); }
-function nxClose(){ $('nxScrim').hidden=true; $('nxScrim').style.bottom=''; document.body.classList.remove('s2-sheet'); $('nxSheet').onclick=null; $('nxSheet').oninput=null; $('nxSheet').onchange=null; }
+function nxClose(){ try{ pvEnd(); }catch(e){} $('nxScrim').hidden=true; $('nxScrim').style.bottom=''; document.body.classList.remove('s2-sheet'); $('nxSheet').onclick=null; $('nxSheet').oninput=null; $('nxSheet').onchange=null; }
 async function nxMenu(id){ const p=(await projList()).find(x=>x.id===id); if(!p) return; const name=p.title||'Untitled';
   nxSheet(`<h2>${nxEsc(name)}</h2><button class="nx-act" data-a="rename">Rename</button><button class="nx-act" data-a="dup">Duplicate</button><button class="nx-act" data-a="file">Save song file<small>To keep, or open on another device</small></button><button class="nx-act danger" data-a="del">Delete</button>`);
   $('nxSheet').onclick=async e=>{ const a=e.target.closest('[data-a]'); if(!a) return; const k=a.dataset.a;

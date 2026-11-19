@@ -531,3 +531,7 @@ How to work on it: one small step at a time; after each, `bash noodle/eval/run.s
   **invites** (More → Invite friends: a 6-letter code per phone; a friend's phone counts once, after its first song; 3 friends earn a Noodle
   Pro offer code from a pool the owner uploads; `invite_test.js`). Both need the takes service deployed; links opening the app need
   Associated Domains and a URL type in Xcode (`noodle-ios/README.md`).
+- **Pro badges and tries (shipped, `propreview_test.js`):** an amber sparkle marks every Pro option for free users. Free users try Pro sounds,
+  song effects, track effects, backing vocals and chord styles: heard on the part (which starts looping), never saved, undone or exported
+  (the song is written through `pvKeep`, which uses each track's `_pvOrig` values and drops `_pvTemp` tracks), put back when the menu or
+  editor closes, with a "Get Pro" note. Low pass and High pass are now fully editable for free.

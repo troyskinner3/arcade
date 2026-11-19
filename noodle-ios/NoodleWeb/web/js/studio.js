@@ -65,6 +65,7 @@ function s2Render(){ if(!s2On()) return; const el=$('s2'), bars=S.bars, view=Mat
   { const t=S.tracks.find(x=>x.id===s2.selId), show=!!t&&!tk&&!recState, em=!!s2.empty; $('s2Clip').hidden=!show&&!em; $('s2CbNew').hidden=!em; ['s2CbEdit','s2CbDup','s2CbDel'].forEach(id=>{ $(id).hidden=em; });
     if(em){ const L=s2Lane(s2.empty.lane); $('s2CbL').innerHTML=`<b>${nxEsc(s2Name(L))}</b>${partWhere({off:s2.empty.at,len:newPartLen(L,s2.empty.at)/16,rep:false})} · empty`; }
     if(show){ $('s2CbL').innerHTML=`<b>${nxEsc(s2Name(s2Lane(s2LaneId(t))))}</b>${partWhere(t)}`; $('s2CbEdit').hidden=t.inst==='vox'; $('s2CbEdit').lastChild.textContent='Edit'; } }
+  { const cb=$('s2CbCopy'), has=cb.querySelector('.pro-b'); if(!isPro()&&!has) cb.insertAdjacentHTML('beforeend',PRO_LOCK); else if(isPro()&&has) has.remove(); }   /* copying a part to another song is Pro */
   s2.pos=-1; s2Chips(); s2Seek(); s2Clip(); { const t=$('toast'); if(t.classList.contains('on')) toastPlace(t); } }
 /* keep the playhead out from under the track headers, and the header panel as tall as the timeline */
 function s2Clip(){ const tl=$('s2Tl'), a=$('s2Ph'), b=$('s2PhH'); if(!a) return; $('s2').style.setProperty('--s2-sideh',Math.max(0,tl.clientHeight-26)+'px'); const hid=Math.max(0,s2.pos)*s2.barw<tl.scrollLeft-1?'hidden':'visible'; a.style.visibility=hid; b.style.visibility=hid; }
@@ -195,9 +196,10 @@ function s2EdMount(){ if(s2.edId==null) return; const tr=S.tracks.find(t=>t.id==
   requestAnimationFrame(()=>{ if(tr._cv&&tr._cv.isConnected){ drawGrid(tr); if(sx){ tr._autoScroll=true; tr._cv.parentElement.parentElement.scrollLeft=sx; } } }); }
   $('s2EdT').textContent=s2Name(s2Lane(s2LaneId(tr))); $('s2EdS').textContent=partWhere(tr)+' · '+(tr.mfx?MFX[tr.mfx.k].label:tr.inst==='fx'?(tr.fxs||[]).length+' FX':tr.notes?tr.notes.length+' notes':tr.hits?tr.hits.length+' hits':'audio');
   const pit=kind==='pitched'&&tr.inst!=='arp'; $('s2EdVer').hidden=!pit; $('s2EdVerI').hidden=!pit; $('s2EdFill').hidden=!pit; if(pit){ if(tr._vi && verSig(tr)!==tr._verSig) tr._vi=0; verUI(tr); } else $('s2EdMine').hidden=true;
-  $('s2EdHint').textContent=tr.mfx?(isPro()?'Tap + to add a point, drag to reshape, tap a point then − to remove it. Drag a line’s middle up or down to bow it.':'Rises to full, then lets go at the end.'):tr.inst==='fx'?'Tap empty space to add. Tap an effect to select it. Drag to move it or change its kind; drag its right end for length.':kind==='pitched'?'Tap a note to select it, drag to move. Double-tap to split. Hold an empty spot, then drag, to select several.':tr.hits?'Tap empty space to add a hit. Tap a hit to select it, drag to move. Hold an empty spot, then drag, to select several.':'';
+  $('s2EdHint').textContent=tr.mfx?mfxHint(tr):tr.inst==='fx'?'Tap empty space to add. Tap an effect to select it. Drag to move it or change its kind; drag its right end for length.':kind==='pitched'?'Tap a note to select it, drag to move. Double-tap to split. Hold an empty spot, then drag, to select several.':tr.hits?'Tap empty space to add a hit. Tap a hit to select it, drag to move. Hold an empty spot, then drag, to select several.':'';
   $('s2EdUndo').disabled=!hist.undo.length; $('s2EdRedo').disabled=!hist.redo.length; }
-function s2EdClose(){ const tr=S.tracks.find(t=>t.id===s2.edId); if(tr){ tr._cv=null; tr._sel=null; tr._msel=null; try{ learnSqueezeFromFixes(tr); }catch(e){} } s2.edId=null; GRID_H=176; GRID_RH=15; GRID_DRUM=1; $('s2Ed').hidden=true; $('s2EdBody').innerHTML=''; s2Render(); }
+const mfxHint=tr=>isPro()||MFX[tr.mfx.k].free?'Tap + to add a point, drag to reshape, tap a point then − to remove it. Drag a line’s middle up or down to bow it.':'Pro effect: shape it and listen. It goes back when you leave, unless you get Pro.';
+function s2EdClose(){ try{ pvEnd(); }catch(e){} const tr=S.tracks.find(t=>t.id===s2.edId); if(tr){ tr._cv=null; tr._sel=null; tr._msel=null; try{ learnSqueezeFromFixes(tr); }catch(e){} } s2.edId=null; GRID_H=176; GRID_RH=15; GRID_DRUM=1; $('s2Ed').hidden=true; $('s2EdBody').innerHTML=''; s2Render(); }
 /* Share, inside the Studio. A linear song is exported once through (Loop is only for listening). */
 function s2ShareSheet(){ if(!S.tracks.some(hasContent)){ toast('Record something first'); return; } if(playing) togglePlay();
   nxSheet(`<h2>Share “${nxEsc(S.title||'Untitled')}”</h2>
@@ -273,65 +275,74 @@ function s2TrackSheet(L){ if(L.tracks[0].inst==='mix') return s2MixSheet(L); con
   const dot=k=>`<i style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${INST[k].color};margin-right:6px"></i>`;
   nxSheet(`<input class="s2-tn" id="s2Tn" maxlength="32" value="${nxEsc(tr.name||'')}" placeholder="${nxEsc(I.label)}" aria-label="Track name (tap to rename)">
     ${fam.length>1?`<div class="nx-grp" style="padding-top:0">Instrument</div><div class="s2-opts" id="s2Ins">${fam.map(k=>`<button data-k="${k}" aria-pressed="${k===tr.inst}">${dot(k)}${INST[k].label}</button>`).join('')}</div>`:''}
-    ${I.sounds&&I.sounds.length?`<div class="nx-grp" style="padding-top:0">Sound</div><div id="s2Snd">${soundGroups(I.sounds).map(([g,xs])=>`${g?`<div class="s2-sg">${g}</div>`:''}<div class="s2-opts">${xs.map(x=>`<button data-x="${nxEsc(x)}" aria-pressed="${x===tr.sound}">${nxEsc(x)}${proLocked(x)?PRO_LOCK:''}</button>`).join('')}</div>`).join('')}</div>`:''}${tr.sound==='Your voice'&&S.yv&&S.yv.of>1?`<button class="nx-ghost" data-a="yvnext" style="width:100%;margin-top:10px">Try another moment · ${S.yv.rank+1} of ${S.yv.of}</button>`:''}
+    ${I.sounds&&I.sounds.length?`<div class="nx-grp" style="padding-top:0">Sound</div><div id="s2Snd">${soundGroups(I.sounds).map(([g,xs])=>`${g?`<div class="s2-sg">${g}</div>`:''}<div class="s2-opts">${xs.map(x=>`<button data-x="${nxEsc(x)}" aria-pressed="${x===tr.sound}">${nxEsc(x)}${proLocked(x)?PRO_LOCK:''}</button>`).join('')}</div>`).join('')}</div>`:''}${tr._pvOrig&&'sound' in tr._pvOrig?pvLine('Trying '+tr.sound):''}${tr.sound==='Your voice'&&S.yv&&S.yv.of>1?`<button class="nx-ghost" data-a="yvnext" style="width:100%;margin-top:10px">Try another moment · ${S.yv.rank+1} of ${S.yv.of}</button>`:''}
     ${tr.inst==='kit'?`<div class="nx-grp" style="padding-top:0">Fills</div><div class="s2-opts" id="s2Fill">${[[0,'Off'],[4,'Every 4 bars'],[8,'Every 8 bars']].map(([n,l])=>`<button data-f="${n}" aria-pressed="${(tr.fill||0)===n}">${l}</button>`).join('')}</div>`:''}
     ${CHORD_ZONE[tr.inst]?`<div class="nx-grp" style="padding-top:0">Chord</div><select class="nx-txt" id="s2Chd" aria-label="Chord type" style="margin-bottom:12px">${Object.entries(CHORD_TYPES).map(([k,v])=>`<option value="${k}" ${k===chordType(tr)?'selected':''}>${v}</option>`).join('')}</select>`:''}
-    ${tr.inst==='vox'?(()=>{ const fx=fxOf(tr), L={tune:'Pitch correction',form:'Voice character',low:'Low cut',pres:'Presence',air:'Air',comp:'Compression',dbl:'Double',echo:'Echo'}; return `<div class="nx-grp" style="padding-top:6px">Voice</div>${s2Fld('s2Fx_tune',L.tune,0,100,fx.tune)}<p style="color:var(--muted);font-size:13px;margin:-2px 0 6px">0 leaves your singing as it is. 100 is the hard-tuned sound. It follows the song’s key.</p>${VOX_KNOBS.filter(([k])=>k!=='tune').map(([k])=>s2Fld('s2Fx_'+k,L[k]||k,0,100,fx[k])).join('')}${isPro()?s2Fld('s2Fx_harm','Backing vocals',0,100,fx.harm||0)+'<p style="color:var(--muted);font-size:13px;margin:-2px 0 6px">Two more voices, a third above and below you, in the song’s key.</p>':`<button class="nx-ghost" data-a="harmpro" style="width:100%;margin-top:6px">Backing vocals${PRO_LOCK}</button>`}`; })():''}
+    ${tr.inst==='vox'?(()=>{ const fx=fxOf(tr), L={tune:'Pitch correction',form:'Voice character',low:'Low cut',pres:'Presence',air:'Air',comp:'Compression',dbl:'Double',echo:'Echo'}; return `<div class="nx-grp" style="padding-top:6px">Voice</div>${s2Fld('s2Fx_tune',L.tune,0,100,fx.tune)}<p style="color:var(--muted);font-size:13px;margin:-2px 0 6px">0 leaves your singing as it is. 100 is the hard-tuned sound. It follows the song’s key.</p>${VOX_KNOBS.filter(([k])=>k!=='tune').map(([k])=>s2Fld('s2Fx_'+k,L[k]||k,0,100,fx[k])).join('')}${s2Fld('s2Fx_harm','Backing vocals'+(isPro()?'':PRO_LOCK),0,100,fx.harm||0)}<p style="color:var(--muted);font-size:13px;margin:-2px 0 6px">Two more voices, a third above and below you, in the song’s key.${isPro()?'':' Try it: it plays while this menu is open.'}</p>${tr._pvOrig&&'fx' in tr._pvOrig?pvLine('Trying backing vocals'):''}`; })():''}
     ${pit?`<div class="nx-grp" style="padding-top:6px">Notes</div><div class="s2-fld"><label>Octave</label><div class="s2-opts" style="padding:0"><button data-o="-1" aria-label="Octave down">−</button><output id="s2Oct" style="width:36px;text-align:center;align-self:center;font:700 15px var(--f-mono)">${tr.oct>0?'+':''}${tr.oct||0}</output><button data-o="1" aria-label="Octave up">+</button></div></div>
       ${hasVoice?s2Fld('s2Expr','Expression',0,100,tr.expr||0,10)+'<p style="color:var(--muted);font-size:13px;margin:-2px 0 6px">0 plays clean, steady notes. Turn it up to keep the slides, wobbles and swells of your take.</p>':''}`:''}
 
     <div class="nx-grp" style="padding-top:6px">Mix</div>${s2Fld('s2Vol','Volume',0,100,tr.vol??80)}${s2Fld('s2Rev','Reverb',0,100,tr.send??0)}${s2Fld('s2Pan','Left / right',-100,100,tr.pan??0)}${tr.inst==='vox'||tr.inst==='fx'?'':s2Fld('s2Tone',pit?'Brightness':'Tone',0,100,tr.tone??50)}
-    ${(pit||I.kind==='drums'||I.kind==='drum')?`<div class="nx-grp" style="padding-top:6px">Effects</div>${isPro()?TFX.map(([k,l])=>s2Fld('s2Tfx_'+k,l,0,100,(tr.tfx&&tr.tfx[k])||0)).join(''):`<button class="nx-ghost" data-a="tfxpro" style="width:100%">Echo, chorus and drive${PRO_LOCK}</button>`}`:''}
+    ${(pit||I.kind==='drums'||I.kind==='drum')?`<div class="nx-grp" style="padding-top:6px">Effects${isPro()?'':PRO_LOCK}</div>${isPro()?'':'<p style="color:var(--muted);font-size:13px;margin:-2px 0 6px">Try them: they play while this menu is open.</p>'}${TFX.map(([k,l])=>s2Fld('s2Tfx_'+k,l,0,100,(tr.tfx&&tr.tfx[k])||0)).join('')}${tr._pvOrig&&'tfx' in tr._pvOrig?pvLine('Trying effects'):''}`:''}
     ${(pit||tr.inst==='vox')&&tr.inst!=='mix'?`<button class="nx-ghost" data-a="chords" style="width:100%;margin-top:14px">Add chords to this melody</button>`:''}<button class="nx-ghost" data-a="dup" style="width:100%;margin-top:${(pit||tr.inst==='vox')?8:14}px">Duplicate track</button><button class="nx-act danger" data-a="del">Delete track</button>`);
   const each=f=>all().forEach(f), rerender=()=>{ save(); scheduleRender(); };
   $('s2Tn').onchange=e=>{ const v=e.target.value.trim().slice(0,32)||undefined; each(t=>{ t.name=v; }); save(); renderTracks(); };
   $('nxSheet').onclick=e=>{ let b;
     if(b=e.target.closest('#s2Ins button')){ const k=b.dataset.k; each(t=>changeInst(t,k)); keyCache=null; save(); renderTracks(); scheduleRender(); s2TrackSheet(s2Lane(L.id)); }
-    else if((b=e.target.closest('#s2Snd button')) && proLocked(b.dataset.x)){ proSheet(b.dataset.x+' is part of Noodle Pro, with 15 more sounds and 11 song effects.'); }
-    else if(b=e.target.closest('#s2Snd button')){ each(t=>{ t.sound=b.dataset.x; if(t.inst==='vox') t.fx=Object.assign({},VOX_PRESETS[t.sound],t.fx&&t.fx.harm?{harm:t.fx.harm}:{}); t._dirty=true; }); warmSounds();
+    else if(e.target.closest('[data-a="pvpro"]')){ proSheet(); }
+    else if((b=e.target.closest('#s2Snd button')) && proLocked(b.dataset.x)){ const x=b.dataset.x, part=all().find(t=>t.id===s2.selId)||all().find(hasContent);   /* a Pro sound: try it on this part */
+      each(t=>pvTry(t, t.inst==='vox'?{sound:x, fx:Object.assign({},VOX_PRESETS[x]||VOX_PRESETS.Pop,t.fx&&t.fx.harm?{harm:t.fx.harm}:{})}:{sound:x}, x, part)); warmSounds();
+      if(x==='Your voice' && !S.yv && !yvCapture()) toast('Sing a take first: Your voice is made from it. Until then it plays Choir.'); s2TrackSheet(s2Lane(L.id)); }
+    else if(b=e.target.closest('#s2Snd button')){ each(t=>pvForget(t,['sound','fx'])); each(t=>{ t.sound=b.dataset.x; if(t.inst==='vox') t.fx=Object.assign({},VOX_PRESETS[t.sound],t.fx&&t.fx.harm?{harm:t.fx.harm}:{}); t._dirty=true; }); warmSounds();
       if(b.dataset.x==='Your voice' && !S.yv && !yvCapture()) toast('Sing a take first: Your voice is made from it. Until then it plays Choir.'); rerender(); s2TrackSheet(s2Lane(L.id)); }
     else if(b=e.target.closest('#s2Fill button')){ const n=+b.dataset.f; each(t=>{ if(n) t.fill=n; else delete t.fill; t._dirty=true; }); rerender(); s2TrackSheet(s2Lane(L.id)); }
     else if(b=e.target.closest('[data-o]')){ each(t=>{ t.oct=clamp((t.oct||0)+(+b.dataset.o),-3,3); t.octSet=true; t._dirty=true; }); $('s2Oct').textContent=(tr.oct>0?'+':'')+tr.oct; rerender(); renderTracks(); }
     else if((b=e.target.closest('[data-a]')) && b.dataset.a==='yvnext'){ const r=(S.yv.rank||0)+1; if(yvCapture(r)){ S.tracks.forEach(t=>{ if(t.sound==='Your voice') t._dirty=true; }); rerender(); s2TrackSheet(s2Lane(L.id)); } }   /* the next steadiest moment of your singing */
     else if((b=e.target.closest('[data-a]')) && b.dataset.a==='chords'){ chordSheet(L); }
-    else if((b=e.target.closest('[data-a]')) && b.dataset.a==='harmpro'){ proSheet('Backing vocals (harmonies made from your own voice) are part of Noodle Pro.'); }
-    else if((b=e.target.closest('[data-a]')) && b.dataset.a==='tfxpro'){ proSheet('Effects on one track (echo, chorus, drive) are part of Noodle Pro.'); }
     else if((b=e.target.closest('[data-a]')) && b.dataset.a==='dup'){ nxClose(); const nl=s2DupTrack(L); if(nl){ s2.selId=null; renderTracks(); setTimeout(()=>s2TrackSheet(s2Lane(nl)),80); toast('Track duplicated. Pick its instrument, e.g. Keys or Pad for chords.'); } }
     else if(b=e.target.closest('[data-a]')){ nxClose(); const ms=all(); ms.slice(1).forEach(t=>{ disposeTrack(t); }); S.tracks=S.tracks.filter(t=>!ms.slice(1).includes(t)); deletePart(ms[0]); } };
   $('nxSheet').oninput=e=>{ const id=e.target.id, v=+e.target.value;
     if(id==='s2Vol'){ each(t=>{ t.vol=v; }); applyAllMix(); save(); } if(id==='s2Rev'){ each(t=>{ t.send=v; }); applyAllMix(); save(); } if(id==='s2Pan'){ each(t=>{ t.pan=v; }); applyAllMix(); save(); } };
   $('nxSheet').onchange=e=>{ const id=e.target.id, v=e.target.value;
     if(id==='s2Tone'){ each(t=>{ t.tone=+v; t._dirty=true; }); rerender(); }
-    if(id.startsWith('s2Tfx_')){ const k=id.slice(6); each(t=>{ t.tfx=Object.assign({},t.tfx,{[k]:+v}); if(!tfxOn(t)) delete t.tfx; t._dirty=true; }); rerender(); }
-    if(id.startsWith('s2Fx_')){ const k=id.slice(5); each(t=>{ t.fx=Object.assign(fxOf(t),{[k]:+v}); t._tuned=null; t._dirty=true; }); rerender(); }
+    if(id.startsWith('s2Tfx_')){ const k=id.slice(6);
+      if(!isPro()){ const part=all().find(t=>t.id===s2.selId)||all().find(hasContent); each(t=>{ const f=Object.assign({},t.tfx,{[k]:+v}); pvTry(t,{tfx:TFX.some(([q])=>f[q]>0)?f:undefined},'Track effects',part); }); if(!$('nxSheet').querySelector('.pv-line')) s2TrackSheet(s2Lane(L.id)); return; }
+      each(t=>{ t.tfx=Object.assign({},t.tfx,{[k]:+v}); if(!tfxOn(t)) delete t.tfx; t._dirty=true; }); rerender(); }
+    if(id==='s2Fx_harm' && !isPro()){ const part=all().find(t=>t.id===s2.selId)||all().find(hasContent); each(t=>pvTry(t,{fx:Object.assign({},fxOf(t),{harm:+v})},'Backing vocals',part)); if(!$('nxSheet').querySelector('.pv-line')) s2TrackSheet(s2Lane(L.id)); return; }
+    if(id.startsWith('s2Fx_')){ const k=id.slice(5); each(t=>{ if(t._pvOrig&&t._pvOrig.fx) t._pvOrig.fx[k]=+v; /* a free knob moved while trying backing vocals: keep it */ t.fx=Object.assign(fxOf(t),{[k]:+v}); t._tuned=null; t._dirty=true; }); rerender(); }
     if(id==='s2Chd'){ each(t=>{ t.chordType=v; delete t.chords; t._dirty=true; }); if(autoOct(tr)) $('s2Oct').textContent=(tr.oct>0?'+':'')+tr.oct; rerender(); renderTracks(); }
     if(id==='s2Expr'){ each(t=>{ t.expr=+v; if(t.expr>0&&t._raw){ if(t._an) t.exprAlign=t._an.align; storeVox(t); } t._dirty=true; }); rerender(); } }; }
+/* the line under something being tried: what it is, and a way to get Pro */
+const pvLine=what=>`<div class="pv-line">${PRO_LOCK}<span>${nxEsc(what)}. It plays while this menu is open.</span><button data-a="pvpro">Get Pro</button></div>`;
 /* ---- Chords from your melody: a new chord track under the melody, one chord per bar or half bar (harmonize in key.js) ---- */
 const CHORD_STYLES={pad:{label:'Pad',inst:'pad',sound:'Warm pad'}, piano:{label:'Piano',inst:'keys',sound:'Piano'}, pulse:{label:'Pulse',inst:'keys',sound:'E-piano',pro:true}, arp:{label:'Arp',inst:'arp',sound:'Pluck',pro:true}};
 function melodyNotes(t){ if(t.inst==='vox') return (t.vn||[]).map(v=>({s:Math.round(v.t/stepDur()), l:Math.max(1,Math.round(v.l/stepDur())), p:v.p}));
   return (t.notes||[]).filter(n=>n.s>=0&&n.s<pSteps(t)).map(n=>({s:n.s,l:n.l,p:pitchOf(n)})); }
 function chordSheet(L){ const melody=S.tracks.filter(t=>s2LaneId(t)===L.id&&melodyNotes(t).length); if(!melody.length){ toast('Record or draw a melody first: the chords are made to fit it.'); return; }
   if(currentKey().none){ toast('Pick a key first (KEY at the top): chords come from the key.'); return; }
-  let style=S.chordStyle&&CHORD_STYLES[S.chordStyle]&&(!CHORD_STYLES[S.chordStyle].pro||isPro())?S.chordStyle:'pad', per=S.chordPer||16;
+  let style=S.chordStyle&&CHORD_STYLES[S.chordStyle]&&(!CHORD_STYLES[S.chordStyle].pro||isPro())?S.chordStyle:'pad', per=S.chordPer||16;   /* (melody: the parts the chords are made for) */
   const draw=()=>nxSheet(`<h2>Chords from your melody</h2><p style="color:var(--muted);font-size:14px;margin:-4px 0 12px">A new track of chords that fit what you sang, in the song’s key.</p>
-    <div class="nx-grp" style="padding-top:0">Style</div><div class="s2-opts" id="chSt">${Object.entries(CHORD_STYLES).map(([k,v])=>`<button data-k="${k}" aria-pressed="${k===style}">${v.label}${v.pro&&!isPro()?PRO_LOCK:''}</button>`).join('')}</div>
+    <div class="nx-grp" style="padding-top:0">Style</div><div class="s2-opts" id="chSt">${Object.entries(CHORD_STYLES).map(([k,v])=>`<button data-k="${k}" aria-pressed="${k===style}">${v.label}${v.pro&&!isPro()?PRO_LOCK:''}</button>`).join('')}</div>${CHORD_STYLES[style].pro&&!isPro()?pvLine('Trying '+CHORD_STYLES[style].label+' chords'):''}
     <div class="nx-grp">Chords change</div><div class="s2-opts" id="chPer"><button data-p="16" aria-pressed="${per===16}">Every bar</button><button data-p="8" aria-pressed="${per===8}">Every half bar</button></div>
     <button class="nx-primary" id="chGo" style="margin-top:16px">Add chords</button>`);
   draw();
   $('nxSheet').onclick=e=>{ let b;
-    if(b=e.target.closest('#chSt button')){ const k=b.dataset.k; if(CHORD_STYLES[k].pro&&!isPro()){ proSheet('Pulse and Arp chords are part of Noodle Pro.'); return; } style=k; draw(); }
-    else if(b=e.target.closest('#chPer button')){ per=+b.dataset.p; draw(); }
-    else if(e.target.closest('#chGo')){ S.chordStyle=style; S.chordPer=per; const r=addChords(L,style,per); nxClose(); if(r) toast('Chords added: '+r.names.join(' · ')+(r.more?' …':'')+'. Tap the track to change its sound.',6000); } }; }
-function addChords(L,style,per){ const K=currentKey(), st=CHORD_STYLES[style], melody=S.tracks.filter(t=>s2LaneId(t)===L.id&&melodyNotes(t).length); if(!melody.length||K.none) return null;
+    const trying=()=>CHORD_STYLES[style].pro&&!isPro(), tryIt=()=>{ pvEnd(true); const r=addChords(L,style,per,true); if(r) pvOpen(CHORD_STYLES[style].label+' chords', melody.find(t=>t.id===s2.selId)||melody[0]); };
+    if(e.target.closest('[data-a="pvpro"]')){ proSheet(); }
+    else if(b=e.target.closest('#chSt button')){ style=b.dataset.k; if(trying()) tryIt(); else pvEnd(true); draw(); }   /* Pulse and Arp (Pro): hear them on your song first */
+    else if(b=e.target.closest('#chPer button')){ per=+b.dataset.p; if(trying()) tryIt(); draw(); }
+    else if(e.target.closest('#chGo')&&trying()){ proSheet('Pulse and Arp chords are part of Noodle Pro.'); }
+    else if(e.target.closest('#chGo')){ pvEnd(true); S.chordStyle=style; S.chordPer=per; const r=addChords(L,style,per); nxClose(); if(r) toast('Chords added: '+r.names.join(' · ')+(r.more?' …':'')+'. Tap the track to change its sound.',6000); } }; }
+function addChords(L,style,per,temp){   /* temp: only to try a Pro style (never saved) */ const K=currentKey(), st=CHORD_STYLES[style], melody=S.tracks.filter(t=>s2LaneId(t)===L.id&&melodyNotes(t).length); if(!melody.length||K.none) return null;
   flushSave(); const made=[], names=[]; let laneId=null;
   for(const m of melody){ const steps=pSteps(m), ch=harmonize(melodyNotes(m),K,steps,per); if(!ch) return null;
     let notes=ch.map(c=>({s:c.s,l:c.l,p:c.root,v:0.72,x:true}));
     if(style==='pulse') notes=notes.flatMap(n=>{ const o=[]; for(let s=n.s;s<n.s+n.l;s+=4) o.push({s,l:Math.min(3,n.s+n.l-s),p:n.p,v:s%16===0?0.8:0.62,x:true}); return o; });
-    const t=mkTrack(st.inst,{id:S.nextId++, off:m.off||0, len:m.len, lenSet:true, rep:m.rep, notes, sound:st.sound, vol:style==='pad'?62:66, send:30, name:'Chords'});
+    const t=mkTrack(st.inst,{id:S.nextId++, off:m.off||0, len:m.len, lenSet:true, rep:m.rep, notes, sound:st.sound, vol:style==='pad'?62:66, send:30, name:'Chords'}); if(temp) t._pvTemp=true;
     if(laneId==null){ laneId=t.id; delete t.lane; } else t.lane=laneId; made.push(t);
     ch.forEach(c=>{ const nm=chordName(chordTones(c.root,chordType(t))); if(names[names.length-1]!==nm) names.push(nm); }); }
   const at=Math.max(...S.tracks.filter(t=>s2LaneId(t)===L.id).map(t=>S.tracks.indexOf(t)))+1; S.tracks.splice(at,0,...made); made.forEach(t=>autoOct(t));
-  warmSounds(); keyCache=null; save(); renderTracks(); scheduleRender(); return {names:names.slice(0,8), more:names.length>8}; }
+  warmSounds(); keyCache=null; if(!temp) save(); renderTracks(); scheduleRender(); return {names:names.slice(0,8), more:names.length>8}; }
 /* ---- Song sections: name stretches of bars (Intro, Verse, Chorus...), then duplicate one (every part in it is copied right after it and
    the rest of the song moves later), loop it, or remove the name. Kept as S.secs [{a,b,name}] in bars (b not included). ---- */
 const SEC_NAMES=['Intro','Verse','Chorus','Bridge','Outro'];

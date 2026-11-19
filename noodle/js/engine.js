@@ -69,11 +69,38 @@ const PRO_SOUNDS=new Set(['Vocoder','Talkbox','Trumpet','Clarinet','Xylophone','
 /* a long sound list in groups: synths, recorded instruments (and kits), your voice */
 const soundGroups=list=>{ if(list.length<7) return [['',list]]; const rec=x=>!!SAMPLED[x]||!!KIT_SAMPLED[x], g=[['Synths',list.filter(x=>!rec(x)&&x!=='Your voice')],['Recorded',list.filter(rec)],['',list.filter(x=>x==='Your voice')]]; return g.filter(([,xs])=>xs.length); };
 const proLocked=snd=>!isPro()&&PRO_SOUNDS.has(snd);
-const PRO_LOCK='<svg class="nx-ico" viewBox="0 0 24 24" style="width:13px;height:13px;margin-left:4px;vertical-align:-2px"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/></svg>';
+/* The Pro badge: a small amber sparkle, shown to free users only (on option buttons it sits on the top-right corner) */
+const PRO_LOCK='<i class="pro-b" role="img" aria-label="Pro" title="Noodle Pro"><svg viewBox="0 0 24 24"><path d="M12 1.5c.9 6.6 3.9 9.6 10.5 10.5-6.6.9-9.6 3.9-10.5 10.5-.9-6.6-3.9-9.6-10.5-10.5C8.1 11.1 11.1 8.1 12 1.5z"/></svg></i>';
+/* ---- Previews of Pro features for free users: try a Pro sound or effect and hear it in your song. A preview is never saved, undone,
+   shared or exported (pvKeep writes the song as it was), and it goes back when you leave the menu or editor, with a note.
+   tr._pvOrig holds the real values of the fields being previewed; tracks marked _pvTemp exist only for the preview. ---- */
+let proPv=null;   /* {label, started (we started playback), sec, loop} */
+const pvKeep=function(k,v){ if(k[0]==='_') return undefined; if(k==='tracks'&&Array.isArray(v)&&v.some(t=>t&&t._pvTemp)) return v.filter(t=>!t._pvTemp);
+  const o=this&&this._pvOrig; return o&&Object.prototype.hasOwnProperty.call(o,k)?o[k]:v; };
+const pvCopy=v=>v===undefined?undefined:JSON.parse(JSON.stringify(v));
+function pvTry(tr, fields, label, part){ for(const k in fields){ if(!tr._pvOrig) tr._pvOrig={}; if(!(k in tr._pvOrig)) tr._pvOrig[k]=pvCopy(tr[k]); tr[k]=fields[k]; }
+  pvOpen(label, part||tr); tr._dirty=true; tr._tuned=null; tr._harm=null; scheduleRender(); }
+/* the start of a preview: the part plays, looping, so you hear it at once */
+function pvOpen(label, part){ if(!proPv) proPv={labels:[]}; proPv.labels=proPv.labels.filter(x=>x!==label).concat([label]); if(part) pvPlay(part); }
+function pvPlay(t){ const p=proPv; if(!p||p.started!=null||recState) return; p.sec=s2.sec; p.loop=s2.loop; p.started=!playing;
+  try{ if(hasContent(t)&&!t.guide) s2SecSet(t); }catch(e){} if(!playing) togglePlay(); }
+/* a free choice made while previewing (say Piano after trying Trumpet) becomes the real value */
+function pvForget(tr, keys){ if(!tr._pvOrig) return; keys.forEach(k=>delete tr._pvOrig[k]); if(!Object.keys(tr._pvOrig).length) delete tr._pvOrig; }
+/* leave the preview: everything goes back; a note says what was Pro (quiet: no note) */
+function pvEnd(quiet){ const p=proPv; let back=false;
+  for(const t of S.tracks) if(t._pvOrig){ for(const k in t._pvOrig){ if(JSON.stringify(t[k])!==JSON.stringify(t._pvOrig[k])) back=true; if(t._pvOrig[k]===undefined) delete t[k]; else t[k]=t._pvOrig[k]; } delete t._pvOrig; t._dirty=true; t._tuned=null; t._harm=null; }
+  const tmp=S.tracks.filter(t=>t._pvTemp); if(tmp.length){ back=true; tmp.forEach(t=>{ try{ disposeTrack(t); }catch(e){} }); S.tracks=S.tracks.filter(t=>!t._pvTemp); keyCache=null; }
+  proPv=null; if(!p&&!back) return false;
+  if(p&&p.started!=null){ s2.sec=p.sec; s2.loop=p.loop; try{ $('s2Loop').setAttribute('aria-pressed',String(!!s2.loop)); }catch(e){} if(p.started&&playing) togglePlay(); }
+  if(back){ try{ renderTracks(); }catch(e){} scheduleRender(); if(!quiet&&p&&p.labels&&p.labels.length&&!isPro()) proNote(p.labels.slice(-2)); } else { try{ s2Render(); }catch(e){} }
+  return back; }
+/* someone bought Pro while trying something: keep it */
+function pvCommitAll(){ S.tracks.forEach(t=>{ delete t._pvOrig; delete t._pvTemp; }); if(proPv){ proPv=null; save(); } }
+function proNote(ls){ toast((ls.length>1?ls.join(' and ')+' are':ls[0]+' is')+' Pro. Get Pro to keep '+(ls.length>1?'them':'it')+'.',5000); const t=$('toast'); t.classList.add('act'); t.onclick=()=>{ t.classList.remove('on'); proSheet(); }; }
 const proBridge=()=>!!(window.webkit&&window.webkit.messageHandlers&&window.webkit.messageHandlers.noodlePro);
 /* from the app: whether Pro is owned, and its price in the App Store's own words (e.g. "$6.99") */
 window.noodlePro=(owned, price)=>{ const was=PRO.owned; PRO.owned=!!owned; if(price) PRO.price=price; try{ localStorage.setItem('noodle.pro',PRO.owned?'1':'0'); }catch(e){}
-  nxProSync(); if(was!==PRO.owned){ try{ renderTracks(); if(s2.edId!=null) s2EdMount(); }catch(e){} } };
+  nxProSync(); if(was!==PRO.owned){ if(PRO.owned) pvCommitAll(); try{ renderTracks(); if(s2.edId!=null) s2EdMount(); }catch(e){} } };
 window.noodleProResult=r=>{ PRO.busy=false; const m={bought:'Pro unlocked. Thank you!', restored:'Pro restored.', none:'No Pro purchase found for this Apple ID.', pending:'Waiting for approval. Pro unlocks as soon as it’s approved.', failed:'The purchase didn’t go through. Nothing was charged.', unavailable:'The App Store isn’t reachable right now. Try again in a moment.'}[r];
   if(r==='bought'||r==='restored'){ nxClose(); haptic('success'); } if(m) toast(m,5200); nxProSync(); };
 function proSheet(why){ nxSheet(`<h2>Noodle Pro</h2><p style="color:var(--muted);margin:0 0 10px">${nxEsc(why||'Everything Noodle can do.')}</p><ul style="margin:0 0 14px;padding-left:20px;line-height:1.5"><li>More instruments: Marimba, Glockenspiel, Flute, Horns, and 11 more sounds</li><li>Your voice: an instrument made from your singing</li><li>11 song effects with shapes you draw</li><li>DAW pack (every track as audio and MIDI), videos without the tag</li><li>Everything we add to Pro later. Pay once, keep it.</li></ul>
@@ -86,9 +113,11 @@ function nxProSync(){ const e=$('nxProS'); if(!e) return; e.textContent=(devAs()
 /* The Song FX editor, as in the Tuttii FX prototype: pick the effect; its curve over the region (x: bars of the region, so it scales with it;
    y: the cutoff in Hz on a log scale for High pass / Low pass, how much of the effect is mixed in for the rest); + adds a point in the widest gap,
    tap a point then − to remove it, drag points to reshape, drag a line's middle up or down to bow it, Reset; then the effect's own settings. */
-function mfxEdMount(tr, host){ const pro=isPro(), cfg=()=>MFX[tr.mfx.k], dur=()=>pSteps(tr)*stepDur(), w=document.createElement('div'); w.className='mfxe'; host.appendChild(w);
-  const lock='<svg class="nx-ico" viewBox="0 0 24 24" style="width:13px;height:13px;margin-left:4px;vertical-align:-2px"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/></svg>';
-  w.innerHTML=`<div class="s2-opts mfx-k">${Object.entries(MFX).map(([k,c])=>`<button data-k="${k}" aria-pressed="${k===tr.mfx.k}">${c.label}${!pro&&!c.free?lock:''}</button>`).join('')}</div>
+function mfxEdMount(tr, host){ const pro=true,   /* everyone shapes curves; the 9 Pro effects are previews for free users (mfxTry) */ cfg=()=>MFX[tr.mfx.k], dur=()=>pSteps(tr)*stepDur(), w=document.createElement('div'); w.className='mfxe'; host.appendChild(w);
+  const lock=PRO_LOCK, free=()=>isPro()||MFX[tr.mfx.k].free;
+  /* a free user on a Pro effect: what is saved stays as it was before trying (tr._pvOrig.mfx); leaving the editor puts it back */
+  if(!free()&&(!tr._pvOrig||!('mfx' in tr._pvOrig))){ tr._pvOrig=tr._pvOrig||{}; tr._pvOrig.mfx=pvCopy(tr.mfx); }   /* a Pro effect already in the song (a friend's remix): edits are tries */
+  w.innerHTML=`<div class="s2-opts mfx-k">${Object.entries(MFX).map(([k,c])=>`<button data-k="${k}" aria-pressed="${k===tr.mfx.k}">${c.label}${!isPro()&&!c.free?lock:''}</button>`).join('')}</div>
     <div class="mfx-row"><b>Curve</b>${pro?`<span class="mfx-acts"><button class="mfx-btn mfx-ic" data-a="add" aria-label="Add a point">+</button><button class="mfx-btn mfx-ic" data-a="del" aria-label="Remove the selected point" disabled>−</button><button class="mfx-btn" data-a="reset">Reset</button></span>`:''}</div>
     <div class="mfx-cv"><canvas></canvas><div class="mfx-ph"></div></div>
     ${pro?`<div class="mfx-par"></div>`:`<button class="mfx-btn mfx-pro" data-a="pro">Draw your own shape, and 9 more effects ${lock}</button>`}`;
@@ -115,7 +144,7 @@ function mfxEdMount(tr, host){ const pro=isPro(), cfg=()=>MFX[tr.mfx.k], dur=()=
     for(let i=0;i<ns.length-1;i++){ const m=(ns[i].t+ns[i+1].t)/2; g.fillStyle=ink; g.globalAlpha=0.45; g.beginPath(); g.arc(X(m),at(m),3,0,7); g.fill(); g.globalAlpha=1; }   /* drag a line's middle to bow it */
     ns.forEach((n,i)=>{ const end=i===0||i===ns.length-1; g.beginPath(); g.arc(X(n.t),Y(disp(n.v)),end?4:6.5,0,7); g.fillStyle=end?c('--s2-line'):col; g.fill(); if(i===sel){ g.lineWidth=2.5; g.strokeStyle=ink; g.stroke(); } });
     const db=w.querySelector('[data-a="del"]'); if(db) db.disabled=!(sel>0&&sel<nodes().length-1); };
-  const changed=()=>{ save(); draw(); const L=s2Lane(s2LaneId(tr)), lc=L&&$('s2In').querySelector(`canvas[data-cv="${L.id}"]`); if(lc) s2DrawLane(L,lc); $('s2EdS').textContent=partWhere(tr)+' · '+MFX[tr.mfx.k].label; };
+  const changed=()=>{ if(!free()) pvOpen(MFX[tr.mfx.k].label,tr); save(); draw(); const L=s2Lane(s2LaneId(tr)), lc=L&&$('s2In').querySelector(`canvas[data-cv="${L.id}"]`); if(lc) s2DrawLane(L,lc); $('s2EdS').textContent=partWhere(tr)+' · '+MFX[tr.mfx.k].label; };
   const pt=ev=>{ const R=cv.getBoundingClientRect(); return {x:ev.clientX-R.left, y:ev.clientY-R.top}; };
   cv.style.touchAction=pro?'none':'pan-y';
   cv.addEventListener('pointerdown',ev=>{ if(!pro){ proSheet('Draw your own shape for each effect, and get 9 more effects.'); return; } const q=pt(ev), ns=nodes(), cvv=tr.mfx.curve&&tr.mfx.curve.curves; flushSave();
@@ -137,7 +166,8 @@ function mfxEdMount(tr, host){ const pro=isPro(), cfg=()=>MFX[tr.mfx.k], dur=()=
       if(pm.type==='steps') return `<div class="mfx-st"><span>${pm.label}</span><div class="s2-opts mfx-steps">${pm.options.map(([x,l])=>`<button data-pk="${pm.key}" data-pv="${x}" aria-pressed="${x===v}">${l}</button>`).join('')}</div></div>`;
       return `<label class="mfx-sl"><span>${pm.label}</span><input type="range" data-pk="${pm.key}" min="${pm.min}" max="${pm.max}" step="${pm.step}" value="${v}"><b>${fmt(v,pm)}</b></label>`; }).join(''); };
   w.addEventListener('click',ev=>{ const b=ev.target.closest('button'); if(!b) return;
-    if(b.dataset.k){ const k=b.dataset.k; if(!pro&&!MFX[k].free){ proSheet(MFX[k].label+' and 8 more effects, with shapes you draw.'); return; } tr.mfx.k=k; tr.mfx.params={}; w.querySelectorAll('.mfx-k button').forEach(x=>x.setAttribute('aria-pressed',String(x.dataset.k===k))); params(); changed(); return; }
+    if(b.dataset.k){ const k=b.dataset.k; if(!isPro()){ if(MFX[k].free){ pvForget(tr,['mfx']); } else if(!tr._pvOrig||!('mfx' in tr._pvOrig)){ tr._pvOrig=tr._pvOrig||{}; tr._pvOrig.mfx=pvCopy(tr.mfx); } }   /* a free effect is kept; a Pro one is tried */
+      tr.mfx.k=k; tr.mfx.params={}; try{ $('s2EdHint').textContent=mfxHint(tr); }catch(e){} w.querySelectorAll('.mfx-k button').forEach(x=>x.setAttribute('aria-pressed',String(x.dataset.k===k))); params(); changed(); return; }
     if(b.dataset.pk){ tr.mfx.params[b.dataset.pk]=+b.dataset.pv; params(); changed(); return; }
     const a=b.dataset.a; if(a==='pro') proSheet('Draw your own shape for each effect, and get 9 more effects.');
     else if(a==='add'){ flushSave(); const C=own(); let i=0, gap=-1; for(let j=0;j<C.nodes.length-1;j++){ const gj=C.nodes[j+1].t-C.nodes[j].t; if(gj>gap){ gap=gj; i=j; } } if(gap<0.02) return;   /* in the widest gap, on the curve as it is */

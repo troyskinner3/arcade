@@ -12,9 +12,9 @@ const {chromium,devices}=require('playwright');
     const box=await p.evaluate(()=>{ const L=s2Lanes().find(L=>L.tracks[0].inst==='mix'), el=document.querySelector(`[data-ln="${L.id}"]`), R=el.getBoundingClientRect(); return {x:R.left+s2.barw*2.5, y:R.top+R.height/2}; });
     await p.mouse.click(box.x,box.y); await p.waitForTimeout(250); r.newShown=await p.isVisible('#s2CbNew'); await p.click('#s2CbNew'); await p.waitForTimeout(500);
     r.part=await p.evaluate(()=>{ const t=S.tracks.find(t=>t.mfx); return t&&{k:t.mfx.k, off:t.off, len:t.len, editor:!$('s2Ed').hidden, chips:document.querySelectorAll('.mfx-k button').length}; });
-await p.click('.mfx-k button[data-k="phaser"]'); await p.waitForTimeout(250); r.proSheet=await p.evaluate(()=>/Noodle Pro/.test($('nxSheet').textContent)&&!$('nxScrim').hidden); r.stillLp=await p.evaluate(()=>S.tracks.find(t=>t.mfx).mfx.k);
+await p.click('.mfx-k button[data-k="phaser"]'); await p.waitForTimeout(250); r.proSheet=await p.evaluate(()=>S.tracks.find(t=>t.mfx).mfx.k==='phaser');   /* free users try Pro effects (heard, not saved) */ r.stillLp=await p.evaluate(()=>{ flushSave(); return JSON.parse(localStorage.getItem(STORE_KEY)).tracks.find(t=>t.mfx).mfx.k; });
     await p.evaluate(()=>nxClose()); await p.click('.mfx-k button[data-k="hp"]'); await p.waitForTimeout(150); r.hpFree=await p.evaluate(()=>S.tracks.find(t=>t.mfx).mfx.k);
-    r.noDraw=await p.evaluate(()=>!document.querySelector('.mfx-tools'));
+    r.noDraw=await p.evaluate(()=>!!document.querySelector('.mfxe [data-a="add"]'));   /* (now: free users draw Low and High pass curves too) */
     r.fits=await p.evaluate(()=>{ const b=$('s2EdBody'); return b.scrollWidth<=b.clientWidth+1 && document.querySelector('.mfxe canvas').getBoundingClientRect().right<=innerWidth; });   /* no sideways scrolling */
     // delete the lane's only effect with the clip bar's trash: it goes (the track stays, empty); then with two, the selected one goes
     r.del=await p.evaluate(async()=>{ s2EdClose(); const t=S.tracks.find(t=>t.mfx); s2.selId=t.id; s2Render(); await new Promise(r=>setTimeout(r,100)); $('s2CbDel').click(); await new Promise(r=>setTimeout(r,100));
