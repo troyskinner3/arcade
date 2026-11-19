@@ -1,6 +1,6 @@
 // The owner's phone drum takes (Nov 16): every onset with its time against the beat, loudness and class; and how many sit on a machine-exact beat comb (metronome leaking into the mic)
 const {chromium}=require('playwright'); const fs=require('fs');
-(async()=>{ const D=__dirname+'/../data/phone'; const b=await chromium.launch(); const p=await b.newPage(); p.on('pageerror',e=>console.log('ERR',e.message)); await p.goto('http://localhost:8800/noodle-s2.html'); await p.waitForTimeout(900);
+(async()=>{ const D=__dirname+'/data/phone'; const b=await chromium.launch(); const p=await b.newPage(); p.on('pageerror',e=>console.log('ERR',e.message)); await p.goto('http://localhost:8800/noodle-s2.html'); await p.waitForTimeout(900);
   for(const f of fs.readdirSync(D).filter(f=>/kit\.wav$/.test(f))){ const m=JSON.parse(fs.readFileSync(D+'/'+f.replace('.wav','.json')));
     const r=await p.evaluate(async([f,bpm])=>{ ensureCtx(); S.bpm=bpm; const ab=await ctx.decodeAudioData(await (await fetch('/data/phone/'+f)).arrayBuffer()); const x=mono(ab), sr=ab.sampleRate; const an=analyzeTake(x,sr,'kit',55,true); const beat=60/bpm, pre=0.08;
       let best=[], bph=0; for(const o of an.onsets){ const ph=(((o.t-pre)%beat)+beat)%beat; const mm=an.onsets.filter(q=>{ const d=(((q.t-pre-ph)%beat)+beat*1.5)%beat-beat/2; return Math.abs(d)<0.004; }); if(mm.length>best.length){ best=mm; bph=ph; } }

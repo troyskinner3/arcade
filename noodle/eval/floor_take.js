@@ -1,6 +1,6 @@
 // Whole-take loudness over the count-in background (top 1% frame minus the count-in's 30th percentile) for background-only recordings
 const {chromium}=require('playwright'); const fs=require('fs');
-(async()=>{ const D=__dirname+'/../data'; const b=await chromium.launch(); const p=await b.newPage();
+(async()=>{ const D=__dirname+'/data'; const b=await chromium.launch(); const p=await b.newPage();
   await p.goto('http://localhost:8800/noodle-s2.html'); await p.waitForTimeout(900);
   const files=[]; for(const d of fs.readdirSync(D+'/noise')){ const dir=D+'/noise/'+d; if(!fs.statSync(dir).isDirectory()) continue; for(const f of fs.readdirSync(dir).filter(f=>/\.wav$/.test(f)).slice(0,4)) files.push('noise/'+d+'/'+f); }
   const r=await p.evaluate(async(files)=>{ ensureCtx(); const out=[]; for(const f of files){ let ab; try{ ab=await ctx.decodeAudioData(await (await fetch('/data/'+f)).arrayBuffer()); }catch(e){ continue; } const all=mono(ab), sr=ab.sampleRate;

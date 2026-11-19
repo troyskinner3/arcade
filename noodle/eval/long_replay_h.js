@@ -1,6 +1,6 @@
 // the long-note guided takes through a page version: how many notes does one sustained sound become?
 const {chromium}=require('playwright'); const fs=require('fs');
-(async()=>{ const page=process.argv[2]; const D=__dirname+'/../data/user';
+(async()=>{ const page=process.argv[2]; const D=__dirname+'/data/user';
   const files=fs.readdirSync(D).filter(f=>/long-.*\.wav$/.test(f)).sort();
   const b=await chromium.launch(); const p=await b.newPage(); await p.goto('http://localhost:8800/'+page); await p.waitForTimeout(900);
   await p.evaluate(()=>{ drop={url:'http://localhost:9/',k:'x'}; });

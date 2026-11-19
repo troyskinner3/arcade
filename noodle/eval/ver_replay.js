@@ -1,6 +1,6 @@
 // replay guided takes in a page version and collect every "Other versions" reading of each take
 const {chromium}=require('playwright'); const fs=require('fs');
-(async()=>{ const [page,out]=process.argv.slice(2); const D=__dirname+'/../data/user';
+(async()=>{ const [page,out]=process.argv.slice(2); const D=__dirname+'/data/user';
   const metas=fs.readdirSync(D).filter(f=>/^2.*\.json$/.test(f)).sort().map(f=>({f,m:JSON.parse(fs.readFileSync(D+'/'+f))})).filter(x=>x.m.prompt&&x.m.heard&&x.m.inst==='lead'&&!/^(long-|beat|drums)/.test(x.m.prompt));
   const b=await chromium.launch(); const p=await b.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(e.message));
   await p.goto('http://localhost:8800/'+page); await p.waitForTimeout(900);

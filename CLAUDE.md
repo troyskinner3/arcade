@@ -7,4 +7,4 @@
 - Before committing Noodle changes, run `noodle-ios/sync-web.sh` so the iPhone app's bundled copy (`noodle-ios/NoodleWeb/web`) matches.
 - Pushing `main` deploys the website (GitHub Pages). The takes service (`noodle-api/`) deploys by hand only: see its README.
 - Privacy: `noodle-ios/NoodleWeb/PrivacyInfo.xcprivacy`, `noodle/privacy/` and `noodle-ios/APP_STORE_PRIVACY.md` must match whatever Noodle sends.
-- Tests and the evaluation log: `noodle/eval/` (README has every round).
+- Tests: `bash noodle/eval/run.sh` must end ALL PASS before committing Noodle changes. The evaluation log is `noodle/eval/README.md` (every round).

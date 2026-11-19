@@ -1,6 +1,6 @@
 // takeIsSilence on the owner's real takes (must never say silence) and on background-only clips (should, when steady)
 const {chromium}=require('playwright'); const fs=require('fs');
-(async()=>{ const D=__dirname+'/../data'; const b=await chromium.launch(); const p=await b.newPage(); await p.goto('http://localhost:8800/noodle-s2.html'); await p.waitForTimeout(900);
+(async()=>{ const D=__dirname+'/data'; const b=await chromium.launch(); const p=await b.newPage(); await p.goto('http://localhost:8800/noodle-s2.html'); await p.waitForTimeout(900);
   const takes=fs.readdirSync(D+'/user').filter(f=>/\.wav$/.test(f)); const files=[]; for(const d of fs.readdirSync(D+'/noise')){ const dir=D+'/noise/'+d; if(!fs.statSync(dir).isDirectory()) continue; for(const f of fs.readdirSync(dir).filter(f=>/\.wav$/.test(f)).slice(0,4)) files.push('noise/'+d+'/'+f); }
   const r=await p.evaluate(async([takes,files])=>{ ensureCtx(); const out={real:0,realSil:[],bg:0,bgSil:0,quiet:[]}; const load=async f=>{ const ab=await ctx.decodeAudioData(await (await fetch('/data/'+f)).arrayBuffer()); return [mono(ab),ab.sampleRate]; };
     for(const f of takes){ const [x,sr]=await load('user/'+f); const fd=frameDbs(x,sr); for(const nf of [null, fd[Math.floor((fd.length-1)*0.05)], -75, -60]){ out.real++; if(takeIsSilence(x,sr,nf)) out.realSil.push(f+' nf='+nf); } }

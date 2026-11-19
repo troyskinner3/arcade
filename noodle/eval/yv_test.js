@@ -1,11 +1,11 @@
 // "Your voice": from each real phone take, the moment it picks (found? how steady), pitch when played at other notes, and whether the
 // loop holds steady (largest level jump between 20 ms frames over a 3 s note). Writes a few demos to results/yv/. Usage: node mm/yv_test.js
-const {chromium,devices}=require('playwright'); const fs=require('fs'); const D=__dirname+'/../data/user';
+const {chromium,devices}=require('playwright'); const fs=require('fs'); const D=__dirname+'/data/user';
 const wav=f=>{ const b=fs.readFileSync(f); let o=12, sr=0, ch=1, data=null; while(o<b.length){ const id=b.toString('ascii',o,o+4), n=b.readUInt32LE(o+4); if(id==='fmt '){ ch=b.readUInt16LE(o+10); sr=b.readUInt32LE(o+12); } if(id==='data'){ data=b.subarray(o+8,o+8+n); break; } o+=8+n+(n&1); }
   const N=data.length/2/ch, x=new Array(N); for(let i=0;i<N;i++) x[i]=data.readInt16LE(i*2*ch)/32768; return {x,sr}; };
 (async()=>{ const files=fs.readdirSync(D).filter(f=>/^2.*-(hum|la|da|mm|words|vowels|swell|whistle)-lead\.wav$/.test(f)).sort(); const pick=(process.env.ONLY||'').split(',').filter(Boolean);
   const b=await chromium.launch(); const p=await (await b.newContext({...devices['iPhone 13']})).newPage(); const errs=[]; p.on('pageerror',e=>errs.push(e.message));
-  await p.goto('http://localhost:8800/noodle-s2.html?studio'); await p.waitForTimeout(900); fs.mkdirSync(__dirname+'/../results/yv',{recursive:true});
+  await p.goto('http://localhost:8800/noodle-s2.html?studio'); await p.waitForTimeout(900); fs.mkdirSync(__dirname+'/results/yv',{recursive:true});
   const rows=[];
   for(const f of files){ const {x,sr}=wav(D+'/'+f); const demo=['scale-la','long-vowels','joy-la','scale-hum','mary-hum','ode-whistle'].some(k=>f.includes(k));
     const r=await p.evaluate(async({x,sr,demo})=>{ ensureCtx(); const X=Float32Array.from(x); S.tracks=[]; S.yv=null; S.bpm=90; S.bars=2;
@@ -24,6 +24,6 @@ const wav=f=>{ const b=fs.readFileSync(f); let o=12, sr=0, ch=1, data=null; whil
         out.demo=Array.from(mix,v=>Math.round(clamp(v,-1,1)*32767)); out.demoSr=a.sampleRate; }
       return out; },{x,sr,demo});
     if(r.demo){ const n=r.demo.length, B=Buffer.alloc(44+n*2); B.write('RIFF',0); B.writeUInt32LE(36+n*2,4); B.write('WAVEfmt ',8); B.writeUInt32LE(16,16); B.writeUInt16LE(1,20); B.writeUInt16LE(2,22); B.writeUInt32LE(r.demoSr,24); B.writeUInt32LE(r.demoSr*4,28); B.writeUInt16LE(4,32); B.writeUInt16LE(16,34); B.write('data',36); B.writeUInt32LE(n*2,40); for(let i=0;i<n;i++) B.writeInt16LE(r.demo[i],44+i*2);
-      fs.writeFileSync(__dirname+'/../results/yv/'+f.replace(/^\d+-\d+-/,'').replace('.wav','')+'.wav',B); delete r.demo; delete r.demoSr; }
+      fs.writeFileSync(__dirname+'/results/yv/'+f.replace(/^\d+-\d+-/,'').replace('.wav','')+'.wav',B); delete r.demo; delete r.demoSr; }
     rows.push(r); r.f=f; console.log(f.replace(/^\d+-\d+-/,'').padEnd(26), JSON.stringify(r)); }
   const ok=rows.filter(r=>r.found); const wc=Math.max(...ok.flatMap(r=>r.cents.map(Math.abs))), wj=Math.max(...ok.map(r=>r.jumpDb)); console.log('found', ok.length,'/',rows.length, '| worst cents', wc, '| worst jump dB', wj, '| median wander', ok.map(r=>r.wander).sort((a,b)=>a-b)[ok.length>>1], 'worst', Math.max(...ok.map(r=>r.wander))); const sung=rows.filter((r,i)=>!/whistle/.test(files[i])).length; if(ok.length<sung*0.85||wc>20||wj>8) errs.push('Your voice check out of range'); console.log(errs); await b.close(); })();

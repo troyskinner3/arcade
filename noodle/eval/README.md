@@ -6,6 +6,13 @@ detector (`analyzeTake` in `../index.html`) in headless Chromium and score it wi
 note and is within 50 cents of its pitch ("note F1"; "key-free" also allows the whole melody to be hummed in
 another key).
 
+## Running the tests
+
+`bash noodle/eval/run.sh` runs every app test (about 15 minutes) and ends with `ALL PASS (n scripts)`; `bash noodle/eval/run.sh mfx_test pro_test`
+runs only those. It serves the app with `serve.js` on port 8800 (the scripts' `noodle-*.html` names are the app's `index.html`) and the takes
+service from `noodle-api/` on 8787. The owner's guided takes replay (must stay at 3.88 edits per take) runs when they are in `data/user/`:
+`NOODLE_DROP_URL=… NOODLE_DROP_KEY=… python3 pull_takes.py data/user` (both values stay out of the repo). `data/` is never committed.
+
 ## Data (not in this repo)
 
 - **Vocadito** — 40 solo-singing clips, 15 singers, with note annotations. CC BY 4.0.
@@ -14,7 +21,7 @@ another key).
   or trained on.** https://huggingface.co/datasets/dadinghh2/HumTrans — `remote_zip.py` pulls a subset of the
   test split straight out of the 14.7 GB zip; `all_midi.zip` → `data/humtrans/midi_data/`.
 
-Serve the folder holding `data/` and a link to the app as `noodle.html`: `python3 -m http.server 8800`.
+`node serve.js` serves the app and `data/` on port 8800.
 
 - **VocalSet + Annotated-VocalSet** — 20 trained singers; scales, arpeggios, long tones and songs in many techniques
   (straight, vibrato, breathy, belt, lip trill…) with note labels. CC BY 4.0. https://zenodo.org/records/1193957 and
@@ -332,7 +339,7 @@ Real noise (DEMAND, CC BY 4.0: street traffic, cafeteria, bus, town square, park
   from those elements (`$('key')`, `$('bars')`, `$('recLabel')`, the hidden sliders the Studio's sheets write to), so each needs moving to plain state first.
 
 ### Stage 3 cleanup log (removing the first prototype's page)
-How to work on it: one small step at a time; after each, `tools/suite.sh` from the scratchpad (also in `eval/tools/`) must print ALL PASS (56 scripts, replay 3.88); only then commit and push. `eval/tools/prune.js <file> s2TrimClip` deletes functions nothing names any more.
+How to work on it: one small step at a time; after each, `bash noodle/eval/run.sh` must print ALL PASS (56 scripts, replay 3.88); only then commit and push. `eval/tools/prune.js <file> s2TrimClip` deletes functions nothing names any more.
 - **Batch 1 (done):** removed the old "How it works" card, New song button, the header's back button and brand, the +/− tempo buttons, with their wiring and styles; `newSong` went with them (tests use `projNew`).
 - **Batch 2 (done):** removed the owner's old test-link UI (`guided`, `dropLine`), the `genre`, `quant` and `loops` rows, `keyInfo`, `snapV`, the old calibrate button, with their wiring; `applyStyle` went with them.
 - **Batch 3 (done):** removed the old header (tempo, length, metronome fields), the bottom dock (seek bar, undo/redo, play, record), the song-name field and the old parts container. The Studio's metronome button now calls `toggleMetro`; `syncTransport`, `updatePlayBtn`, `updateDock` and `updateHistBtns` are empty hooks to delete once nothing calls them. `proj_test` and `shell_test` read the title from the Studio.

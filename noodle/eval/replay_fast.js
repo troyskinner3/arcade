@@ -1,6 +1,6 @@
 // Replay the owner's guided recordings through a version of Noodle, in recording order, as guided songs. Prints heard notes per prompt.
-const {chromium}=require('playwright'); const fs=require('fs'); const AL=JSON.parse(fs.readFileSync(__dirname+'/../results/al_known.json','utf8')); const BACK=process.env.BACKING?JSON.parse(fs.readFileSync(__dirname+'/../results/backing.json','utf8')):null;
-(async()=>{ const [page,out]=process.argv.slice(2); const SUB=process.env.DATA||'user'; const D=__dirname+'/../data/'+SUB;
+const {chromium}=require('playwright'); const fs=require('fs'); const AL=JSON.parse(fs.readFileSync(__dirname+'/al_known.json','utf8')); const BACK=process.env.BACKING?JSON.parse(fs.readFileSync(__dirname+'/backing.json','utf8')):null;
+(async()=>{ const [page,out]=process.argv.slice(2); const SUB=process.env.DATA||'user'; const D=__dirname+'/data/'+SUB;
   const metas=fs.readdirSync(D).filter(f=>/^2.*\.json$/.test(f)).sort().map(f=>({f,m:JSON.parse(fs.readFileSync(D+'/'+f))})).filter(x=>x.m.prompt&&x.m.heard&&x.m.inst==='lead'&&!/^(long-|beat|drums)/.test(x.m.prompt));
   const b=await chromium.launch(); const p=await b.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(e.message));
   await p.goto('http://localhost:8800/'+page); await p.waitForTimeout(900);

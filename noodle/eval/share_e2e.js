@@ -4,7 +4,7 @@ const H={Authorization:'Bearer local'}, A='http://localhost:8787/v1/admin/';
 const L=async()=>(await (await fetch(A+'list',{headers:H})).json()).keys, M=async()=>await (await fetch(A+'get?key='+(await L()).find(k=>k.key.endsWith('meta.json')).key,{headers:H})).json();
 (async()=>{ const b=await chromium.launch(); const p=await b.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(e.message));
   await p.goto('http://localhost:8800/noodle-share.html?share=http://localhost:8787&age13=1'); await p.waitForTimeout(1200);
-  const wav=fs.readdirSync(__dirname+'/../data/user').filter(f=>/buns-words-lead\.wav$/.test(f)).sort().pop();
+  const wav=fs.readdirSync(__dirname+'/data/user').filter(f=>/buns-words-lead\.wav$/.test(f)).sort().pop();
   const d0=await p.evaluate(async(wav)=>{ ensureCtx(); const ab=await ctx.decodeAudioData(await (await fetch('/data/user/'+wav)).arrayBuffer());
     const tr=S.tracks.find(t=>INST[t.inst].kind==='pitched')||mkTrack('lead',{id:S.nextId++}); if(!S.tracks.includes(tr)) S.tracks.push(tr); S.target=tr.id; S.activeId=tr.id;
     await addTake(mono(ab),ab.sampleRate,'lead',{align:0.08,notch:true,live:true}); S.target=null; await new Promise(q=>setTimeout(q,2500)); return {api:drop.api, installLen:drop.install.length, guidedHidden:$('guided').hidden}; },wav);
