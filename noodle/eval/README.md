@@ -1,7 +1,7 @@
 # Noodle melody-detection evaluation
 
 Scripts used to measure and tune how well recorded humming / singing turns into notes. They run the app's own
-detector (`analyzeTake` in `../index.html`) in headless Chromium and score it with
+detector (`analyzeTake` in `../js/reader.js`) in headless Chromium and score it with
 [mir_eval](https://github.com/craffel/mir_eval): a note counts as correct when it starts within 50 ms of the true
 note and is within 50 cents of its pitch ("note F1"; "key-free" also allows the whole melody to be hummed in
 another key).
@@ -339,7 +339,7 @@ Real noise (DEMAND, CC BY 4.0: street traffic, cafeteria, bus, town square, park
   from those elements (`$('key')`, `$('bars')`, `$('recLabel')`, the hidden sliders the Studio's sheets write to), so each needs moving to plain state first.
 
 ### Stage 3 cleanup log (removing the first prototype's page)
-How to work on it: one small step at a time; after each, `bash noodle/eval/run.sh` must print ALL PASS (56 scripts, replay 3.88); only then commit and push. `eval/tools/prune.js <file> s2TrimClip` deletes functions nothing names any more.
+How to work on it: one small step at a time; after each, `bash noodle/eval/run.sh` must print ALL PASS (56 scripts, replay 3.88); only then commit and push. (`eval/tools/prune.js` predates the split into `js/` files and works on a single-file copy only.)
 - **Batch 1 (done):** removed the old "How it works" card, New song button, the header's back button and brand, the +/− tempo buttons, with their wiring and styles; `newSong` went with them (tests use `projNew`).
 - **Batch 2 (done):** removed the owner's old test-link UI (`guided`, `dropLine`), the `genre`, `quant` and `loops` rows, `keyInfo`, `snapV`, the old calibrate button, with their wiring; `applyStyle` went with them.
 - **Batch 3 (done):** removed the old header (tempo, length, metronome fields), the bottom dock (seek bar, undo/redo, play, record), the song-name field and the old parts container. The Studio's metronome button now calls `toggleMetro`; `syncTransport`, `updatePlayBtn`, `updateDock` and `updateHistBtns` are empty hooks to delete once nothing calls them. `proj_test` and `shell_test` read the title from the Studio.
@@ -480,3 +480,15 @@ How to work on it: one small step at a time; after each, `bash noodle/eval/run.s
   `fx_ab_test.js`: the prototype's noise made repeatable; Washout and Reverse swell judged against the prototype's own spread across seeded runs (half-second windows: Washout 6.6 dB vs its own 11.1, Reverse swell 0.7 vs 0.8).
 - **Review round 3, UI (Nov 19):** `uisweep.js` opens every screen, sheet and editor on iPhone SE, 13 and 15 Pro Max (light and dark), flags clipped text, sideways scrolling and off-screen controls, and screenshots each. Fixed: "Sound FX" was shortened in its track header; on the SE the clip bar's label was squeezed to nothing (hidden there now) and the editor toolbar scrolled sideways (compact under 360 px); the track sheet's title is now its name field (the name was shown twice); the section loop has its own bracketed icon (it matched the whole-song loop); drum rows grow to the room; Share copy shortened; long sound lists grouped (Synths / Recorded / Your voice). Left as is: a very long song title ends in "…".
   Measured: startup 0.36 s at 4x CPU slowdown; reading an 11 s take takes 2.3 s on the main thread (the screen freezes): the next speed item (a worker, same code, same notes).
+
+## Round 4 (19 Nov 2026): modules, background reading
+
+- **Tests run from the repo:** `bash noodle/eval/run.sh` (57 scripts + the replay). Nothing depends on scratch folders any more; the owner's takes stay out of git (`data/`).
+- **Noodle is split into files:** `index.html` (markup), `app.css`, and `js/` (classic scripts loaded in order, sharing one global scope):
+  `reader.js` (the take reader, nothing touching the page), `core.js`, `studio.js`, `dsp.js`, `key.js`, `engine.js`, `instruments.js`,
+  `record.js`, `takes.js`, `ui.js`, `export.js`. `stamp.sh` (run by `noodle-ios/sync-web.sh`) stamps each file's URL with a hash of its
+  contents, so a browser or the offline copy never mixes a new page with old scripts.
+- **Takes are read in the background** (`js/reader-worker.js` loads the same `reader.js`): the page no longer freezes after a take.
+  At 4x CPU slowdown an 11 s take had frozen the screen for 1.9 s (notes) + 2.0 s (learned reader). `worker_test.js`: the worker's result is
+  identical to reading on the page, field for field, on 14 of the owner's takes × 2 instruments × 2 detail settings (56 checks), and timers keep
+  running while it reads. If a worker can't start, takes are read on the page as before. A new recording waits until the last take is read.
