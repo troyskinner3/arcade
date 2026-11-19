@@ -107,6 +107,10 @@ struct NoodleWeb: UIViewRepresentable {
     cfg.applicationNameForUserAgent = "NoodleApp/1"          // lets the web app know it runs inside the app
     cfg.setURLSchemeHandler(BundleSchemeHandler(), forURLScheme: "noodle")
     cfg.userContentController.add(ProStore.shared, name: "noodlePro")   // the page asks to buy / restore Noodle Pro
+    #if DEBUG
+    // builds run from Xcode: More shows "Test as: Free / Pro / App Store", to try both versions without buying
+    cfg.userContentController.addUserScript(WKUserScript(source: "window.NOODLE_DEV = true", injectionTime: .atDocumentStart, forMainFrameOnly: true))
+    #endif
     let web = WKWebView(frame: .zero, configuration: cfg)
     web.uiDelegate = context.coordinator
     web.navigationDelegate = context.coordinator

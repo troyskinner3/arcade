@@ -497,6 +497,7 @@ input[type=range]::-moz-range-thumb{width:10px;height:18px;border-radius:1px;bac
 <section class="nx-view" id="nxMore" hidden>
   <div class="nx-g nx-top"><h1>More</h1></div>
   <div class="nx-list"><div class="nx-g">
+    <div class="nx-item" id="nxDev" hidden><span>Test as<small>Only in builds run from Xcode</small></span><div class="s2-opts" style="flex-wrap:nowrap"><button data-dv="free">Free</button><button data-dv="pro">Pro</button><button data-dv="">App Store</button></div></div>
     <button class="nx-item" id="nxPro" style="width:100%;background:none;border:0;border-bottom:1px solid var(--line);text-align:left"><span>Noodle Pro<small id="nxProS"></small></span><svg class="nx-ico" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
     <button class="nx-train" id="nxTrainCard"><b>Teach Noodle your voice</b><span>Sing a few short tunes back and Noodle gets better at reading you.</span><div class="nx-bar"><i id="nxTrP"></i></div><small id="nxTrS"></small></button>
     <div class="nx-grp">Help Noodle get better</div>
@@ -869,7 +870,9 @@ function nxOnboard(done){ const O=$('nxOb'), I=$('nxObIn'), A=$('nxObActs'); O.h
     else { I.innerHTML=`<h1>Want news?</h1><p class="sub">${NX_EMAIL_TEXT}</p><input class="nx-txt" id="obEm" type="email" inputmode="email" autocomplete="email" placeholder="you@example.com" aria-label="Email address">`; A.innerHTML=`<button class="nx-primary" id="obE">Sign me up</button><button class="nx-ghost" id="obK">Skip</button>`;
       $('obK').onclick=finish; $('obE').onclick=async()=>{ const v=$('obEm').value.trim(); if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v)){ toast('That doesn’t look like an email address.'); return; } $('obE').disabled=true; const ok=await emailSignup(v,NX_EMAIL_TEXT); if(ok){ try{ localStorage.setItem('noodle.email',v); }catch(e){} finish(); } else { $('obE').disabled=false; toast('That didn’t go through. You can sign up later in More.'); } }; } };
   show(); }
-function nxInit(){ $('nxPro').onclick=()=>proSheet(); nxProSync(); if(proBridge()) try{ window.webkit.messageHandlers.noodlePro.postMessage('state'); }catch(e){}
+function nxInit(){ $('nxPro').onclick=()=>proSheet(); nxProSync();
+  if(window.NOODLE_DEV){ const dv=$('nxDev'), sync=()=>dv.querySelectorAll('[data-dv]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.dv===devAs()))); dv.hidden=false; sync();
+    dv.onclick=e=>{ const b=e.target.closest('[data-dv]'); if(!b) return; try{ localStorage.setItem('noodle.devAs',b.dataset.dv); }catch(err){} sync(); nxProSync(); try{ renderTracks(); if(s2.edId!=null) s2EdMount(); }catch(err){} toast(b.dataset.dv?'Testing as '+(b.dataset.dv==='pro'?'Pro':'Free'):'Using your real App Store purchase'); }; } if(proBridge()) try{ window.webkit.messageHandlers.noodlePro.postMessage('state'); }catch(e){}
   { const sw=$('nxCrSw'); sw.setAttribute('aria-checked',String(crashOn())); sw.onclick=()=>{ const on=!crashOn(); try{ localStorage.setItem(CRASH_KEY,on?'1':'0'); }catch(e){} sw.setAttribute('aria-checked',String(on)); }; }
   $('nxTrainCard').onclick=()=>nxTrain(); $('nxShSw').onclick=nxShareSheet; $('nxEmail').onclick=nxEmailSheet; nxMoreSync(); $('nxTabP').onclick=()=>nxGo('projects'); $('nxTabM').onclick=()=>nxGo('more'); $('nxPlus').onclick=nxNew;
   $('nxQ').oninput=nxRenderProjects; $('nxScrim').onclick=e=>{ if(e.target===$('nxScrim')) nxClose(); }; nxSheetSwipe();
@@ -2089,7 +2092,9 @@ function driveCurve(amt){ if(amt<=0.01) return null; const k=amt*14, n=2048, c=n
 /* What Pro unlocks: noodle/PRO.md (keep both in step). A one-time purchase in the iPhone app, kept for life; the app checks it with the App Store
    on every launch and tells the page (window.noodlePro). The last answer is remembered so Pro works offline. */
 const PRO={owned:false, price:''}; try{ PRO.owned=localStorage.getItem('noodle.pro')==='1'; }catch(e){}
-const isPro=()=>PRO.owned;
+/* Builds run from Xcode (DEBUG) set NOODLE_DEV: More then has "Test as: Free / Pro / App Store" to try both versions; App Store and TestFlight builds don't */
+const devAs=()=>{ if(!window.NOODLE_DEV) return ''; try{ return localStorage.getItem('noodle.devAs')||''; }catch(e){ return ''; } };
+const isPro=()=>devAs()?devAs()==='pro':PRO.owned;
 const PRO_SOUNDS=new Set(['Marimba','Glockenspiel','Flute','Horns','Your voice','Glass','Chip','Theremin','Vowel pad','Digital pad','Growl','Acid','Wobble','String pluck','Chorus pad','Pump pad']);
 const proLocked=snd=>!isPro()&&PRO_SOUNDS.has(snd);
 const PRO_LOCK='<svg class="nx-ico" viewBox="0 0 24 24" style="width:13px;height:13px;margin-left:4px;vertical-align:-2px"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/></svg>';
@@ -2104,7 +2109,7 @@ function proSheet(why){ nxSheet(`<h2>Noodle Pro</h2><p style="color:var(--muted)
   if(!isPro()){ $('proBuy').onclick=()=>proBuy(); $('proRestore').onclick=()=>proRestore(); } }
 function proBuy(){ if(!proBridge()){ toast('Noodle Pro is in the Noodle iPhone app.'); return; } if(PRO.busy) return; PRO.busy=true; try{ window.webkit.messageHandlers.noodlePro.postMessage('buy'); }catch(e){ PRO.busy=false; } setTimeout(()=>{ PRO.busy=false; },60000); }
 function proRestore(){ if(!proBridge()){ toast('Noodle Pro is in the Noodle iPhone app.'); return; } try{ window.webkit.messageHandlers.noodlePro.postMessage('restore'); }catch(e){} toast('Checking with the App Store…'); }
-function nxProSync(){ const e=$('nxProS'); if(e) e.textContent=isPro()?'You have Pro':'More sounds, mix effects, DAW pack'+(PRO.price?' · '+PRO.price:''); }
+function nxProSync(){ const e=$('nxProS'); if(!e) return; e.textContent=(devAs()?'Testing: ':'')+(isPro()?'You have Pro':'More sounds, mix effects, DAW pack'+(PRO.price?' · '+PRO.price:'')); }
 /* ---- Mix FX editor ---- */
 function mfxEdMount(tr, host){ const pro=isPro(), cfg=()=>MFX[tr.mfx.k], dur=()=>pSteps(tr)*stepDur(), w=document.createElement('div'); w.className='mfxe'; host.appendChild(w);
   const lock='<svg class="nx-ico" viewBox="0 0 24 24" style="width:13px;height:13px;margin-left:4px;vertical-align:-2px"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/></svg>';

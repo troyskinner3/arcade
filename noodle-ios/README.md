@@ -43,6 +43,7 @@ Owner setup, once:
 4. Test before release: App Store Connect → **Users and Access → Sandbox** → add a tester (any email you control). On the iPhone: Settings → App Store → **Sandbox Account** → sign in with it.
    Build from Xcode, open More → Noodle Pro → Unlock: the purchase sheet says [Environment: Sandbox] and nothing is charged. TestFlight builds also buy for free.
 5. The first time, the In-App Purchase is reviewed together with an app version: on the version page, under **In-App Purchases**, add Noodle Pro before you submit.
+Trying both versions: in builds run from Xcode, More → **Test as** switches between Free, Pro and your real App Store purchase (not in TestFlight or App Store builds).
 Adding a yearly plan later: create it in App Store Connect and add its product id to `ProStore.ids`; anyone with the one-time purchase keeps Pro.
 
 ### TestFlight
