@@ -31,6 +31,11 @@ The Xcode project is in the repo (`NoodleWeb/Noodle.xcodeproj`): nothing to crea
 To update later: `cd ~/arcade && git pull`, then ▶ again. (`sync-web.sh` copies `../noodle` into `NoodleWeb/web`; it is run before each commit, so the folder in the repo is already current.)
 The App Store build should use Tuttii Inc.'s team and bundle identifier (it cannot be changed after release).
 
+### Lock screen and haptics
+The app shows what's playing on the lock screen and in Control Center (play/pause work there) and taps lightly when you place notes, move parts
+or start recording (`NativeBridge` in `NoodleWebApp.swift`). For playback to keep going while the phone is locked: Xcode → target **Noodle** →
+**Signing & Capabilities** → **+ Capability** → **Background Modes** → tick **Audio, AirPlay, and Picture in Picture**.
+
 ### Noodle Pro (in-app purchase)
 The app sells one thing: **Noodle Pro**, a one-time purchase (Non-Consumable) with product ID `io.tuttii.Noodle.pro`, kept for life.
 The code is `ProStore` in `NoodleWebApp.swift` (StoreKit 2); what Pro unlocks is `noodle/PRO.md` (and `PRO_SOUNDS`/`MFX` in the web app).

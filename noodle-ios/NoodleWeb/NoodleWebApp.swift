@@ -3,12 +3,14 @@
 // so it works offline and each release is a fixed version. If this iOS version doesn't let a bundled page use the
 // microphone, the shell falls back to the live site.
 // Native pieces: the audio session (plays through the silent switch, records with the speaker on), microphone permission
-// without the web prompt each time, saving exported files (WAV, MIDI, video) through the share sheet, and the Noodle Pro purchase (StoreKit 2).
+// without the web prompt each time, saving exported files (WAV, MIDI, video) through the share sheet, the Noodle Pro purchase (StoreKit 2),
+// the lock screen's Now Playing and play/pause, and haptic taps.
 // Next builds move the heavy and live parts (pitch reading, the note reader, live expression) into Swift (see ../NoodleKit).
 import SwiftUI
 import WebKit
 import AVFoundation
 import StoreKit
+import MediaPlayer
 
 let liveURL = URL(string: "https://troyskinner3.github.io/arcade/noodle/")!
 let bundledURL = URL(string: "noodle://app/index.html")!
@@ -85,6 +87,47 @@ final class ProStore: NSObject, WKScriptMessageHandler {
   }
 }
 
+/* The lock screen and Control Center (what's playing, play/pause) and haptic taps, asked for by the page ("noodleNative"). */
+@MainActor
+final class NativeBridge: NSObject, WKScriptMessageHandler {
+  static let shared = NativeBridge()
+  weak var web: WKWebView?
+  private var started = false
+  private let light = UIImpactFeedbackGenerator(style: .light)
+  private let medium = UIImpactFeedbackGenerator(style: .medium)
+  private let done = UINotificationFeedbackGenerator()
+
+  func start() {
+    guard !started else { return }
+    started = true
+    let c = MPRemoteCommandCenter.shared()
+    c.playCommand.addTarget { [weak self] _ in Task { @MainActor in self?.remote("play") }; return .success }
+    c.pauseCommand.addTarget { [weak self] _ in Task { @MainActor in self?.remote("pause") }; return .success }
+    c.togglePlayPauseCommand.addTarget { [weak self] _ in Task { @MainActor in self?.remote("toggle") }; return .success }
+    UIApplication.shared.beginReceivingRemoteControlEvents()
+  }
+  private func remote(_ cmd: String) { web?.evaluateJavaScript("window.noodleRemote && window.noodleRemote('\(cmd)')") }
+  func userContentController(_ c: WKUserContentController, didReceive m: WKScriptMessage) {   // WebKit calls this on the main thread
+    guard let d = m.body as? [String: Any], let type = d["type"] as? String else { return }
+    switch type {
+    case "haptic":
+      switch d["style"] as? String {
+      case "medium": medium.impactOccurred()
+      case "success": done.notificationOccurred(.success)
+      default: light.impactOccurred()
+      }
+    case "now":
+      let playing = d["playing"] as? Bool ?? false
+      var info: [String: Any] = [MPMediaItemPropertyTitle: d["title"] as? String ?? "Noodle", MPMediaItemPropertyArtist: "Noodle",
+                                 MPNowPlayingInfoPropertyPlaybackRate: playing ? 1.0 : 0.0,
+                                 MPNowPlayingInfoPropertyElapsedPlaybackTime: (d["pos"] as? NSNumber)?.doubleValue ?? 0]
+      if let dur = (d["dur"] as? NSNumber)?.doubleValue { info[MPMediaItemPropertyPlaybackDuration] = dur }
+      MPNowPlayingInfoCenter.default().nowPlayingInfo = info
+    default: break
+    }
+  }
+}
+
 @main
 struct NoodleWebApp: App {
   init() {
@@ -107,6 +150,7 @@ struct NoodleWeb: UIViewRepresentable {
     cfg.applicationNameForUserAgent = "NoodleApp/1"          // lets the web app know it runs inside the app
     cfg.setURLSchemeHandler(BundleSchemeHandler(), forURLScheme: "noodle")
     cfg.userContentController.add(ProStore.shared, name: "noodlePro")   // the page asks to buy / restore Noodle Pro
+    cfg.userContentController.add(NativeBridge.shared, name: "noodleNative")   // lock-screen controls, haptic taps
     #if DEBUG
     // builds run from Xcode: More shows "Test as: Free / Pro / App Store", to try both versions without buying
     cfg.userContentController.addUserScript(WKUserScript(source: "window.NOODLE_DEV = true", injectionTime: .atDocumentStart, forMainFrameOnly: true))
@@ -123,6 +167,7 @@ struct NoodleWeb: UIViewRepresentable {
     #endif
     web.load(URLRequest(url: webRoot != nil ? bundledURL : liveURL))
     ProStore.shared.web = web; ProStore.shared.start()
+    NativeBridge.shared.web = web; NativeBridge.shared.start()
     return web
   }
   func updateUIView(_ web: WKWebView, context: Context) {}

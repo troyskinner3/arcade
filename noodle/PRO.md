@@ -38,6 +38,7 @@ Status: **confirmed** (owner agreed) or **proposed** (waiting on the owner).
 | Mix: volume, pan, reverb, drive, punch; Expression (follows your voice) | proposed |
 | Export a mixdown (WAV) and video, with a small "Made with Noodle" tag on video | proposed |
 | Song list, song files (save, back up all, open), sharing takes, email news, crash reports | proposed |
+| Change key moves the whole song (transpose), loop a section, tap tempo, lock-screen controls, haptic taps | confirmed |
 
 ### Pro
 | Feature | Status |
@@ -47,6 +48,7 @@ Status: **confirmed** (owner agreed) or **proposed** (waiting on the owner).
 | Wavetable sounds: Glass, Chip, Theremin, Vowel pad, Digital pad, Growl | proposed |
 | Coded sounds: Acid, Wobble, String pluck, Chorus pad, Pump pad | proposed |
 | MIDI export, stems (each part as its own file), video without the tag | proposed |
+| Copy a part to another song (Paste part in Add track) | confirmed |
 
 ### Planned for Pro (the owner's direction: make Pro really great)
 | Feature | Status |
