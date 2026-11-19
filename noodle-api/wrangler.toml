@@ -5,6 +5,7 @@ account_id = "5649ad1dfbf6102845b7facae8598e7b"
 compatibility_date = "2026-09-01"
 workers_dev = true
 preview_urls = false
+keep_vars = true   # variables set in the Cloudflare dashboard (APPLE_APP_ID, APP_STORE_ID, APP_STORE_URL) survive each deploy
 
 # Free-plan storage (no card): the deploy workflow finds or creates this namespace and fills in its id.
 [[kv_namespaces]]
