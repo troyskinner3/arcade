@@ -570,3 +570,9 @@ Owner's 31 guided takes, edits per 10 notes (today 3.88):
   (no beat strength) and 4.78 (with), against 4.12 for the decoder alone: worse, like the earlier folk judge. A general "what melodies do"
   model doesn't pick the melody this person meant. Large pop melody sets (Lakh MIDI, POP909) are transcriptions of copyrighted songs:
   not used. The way forward is learning from people's own fixes (already logged with shared takes) once there are enough.
+- **Musical mode (testing; a switch in More, only in builds run from Xcode; `musical.js`, `musical_test.js`):** the owner's direction: since
+  Noodle can't know exactly what was meant, make the first version sound better rather than closer to the audio. After a melody take is
+  read: blips go, starts move to the 8th grid, phrases run legato, strong-beat and long notes move (at most 2 semitones) to the chord there,
+  lone octave slips are fixed, phrases end on chord notes and the last note on the home chord, velocity follows the beat. The take as heard is
+  kept; the note editor's "As heard / Musical" button swaps them. Owner's 31 takes (`MUSICAL=1 node replay_fast.js`, `mus_metrics.py`):
+  starts on the 8th grid 79% -> 89%, strong-beat notes on chord notes 74% -> 88%, one-step blips 40 -> 2; edits to the meant tune 3.82 -> 4.04.
