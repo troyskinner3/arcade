@@ -11,7 +11,7 @@ const {chromium,devices}=require('playwright');
   out.drawn=await p.evaluate(()=>{ const tr=S.tracks[0], G=tr._grid; const r=G.rows.find(m=>m%12===9); startNewNote(tr,{s:20,row:r}); tr._drag=null; noteChanged(tr); return pitchOf(tr.notes.find(n=>n.s===20))%12; });
   // drums
   out.addOffers=await p.evaluate(()=>{ s2EdClose(); s2AddSheet(false); return [...document.querySelectorAll('#nxSheet [data-k]')].map(b=>b.dataset.k).filter(k=>['kit','kick','snare','hat','clap'].includes(k)).join(','); });
-  out.oldKick=await p.evaluate(()=>{ nxClose(); const k=mkTrack('kick',{id:S.nextId++,off:0,len:1,lenSet:true,rep:false,hits:[{s:0,d:'kick',v:1}]}); S.tracks.push(k); renderTracks(); s2TrackSheet(s2Lane(s2LaneId(k))); return [...document.querySelectorAll('#s2Ins button')].map(b=>b.dataset.k).join(','); });
+  out.oldKick=await p.evaluate(()=>{ nxClose(); const k=mkTrack('kick',{id:S.nextId++,off:0,len:1,lenSet:true,rep:false,hits:[{s:0,d:'kick',v:1}]}); S.tracks.push(k); renderTracks(); s2PickSheet(s2Lane(s2LaneId(k)),'inst'); return [...document.querySelectorAll('#s2Ins button')].map(b=>b.dataset.k).join(','); });
   const want={key:{n:out.key.n,black:[6]},bar:'Notes in C major',btn:'− Key notes only',drawn:9,addOffers:'kit',oldKick:'kit,kick'};
   for(const [k,v] of Object.entries(want)) if(JSON.stringify(out[k])!==JSON.stringify(v)) errs.push(k+': '+JSON.stringify(out[k]));
   if(out.key.n<10||out.all.n<=out.key.n||!out.all.black.includes(1)) errs.push('rows '+JSON.stringify([out.key,out.all]));

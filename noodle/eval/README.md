@@ -599,3 +599,11 @@ subset + folk tunes, 6.4M melody notes; tunes matching the guides removed). Copy
   songs, 7.2M notes. Weight 2.5 on the 31 takes (Python reference): edits 3.92 (same), surprise 2.33 (was 2.36), strong beats on chord
   notes 92% (was 90%). **Musical mode is now standard for everyone** (no switch); the editor's As heard / Musical button shows on parts
   that have a heard version. `replay_fast.js` measures the reader alone unless `MUSICAL=1`, so the suite's 3.82 is unchanged.
+
+## Round 9: calmer menus (owner: too busy for a beginner)
+- Track menu: Instrument › and Sound › (Style for vocals, Kit for drums) are rows that open a list; the list stays open and the part loops
+  so each tap is heard (Pro sounds tried as before); Done goes back. "Mine" presets live at the top of that list.
+- Sentences under sliders became ⓘ buttons (pitch correction, backing vocals, expression, effects, your kit, key).
+- Add chords, Save as preset (vocal / effects / kit), Duplicate and Delete moved under ••• next to the name.
+- Choices with 2-4 options stay as buttons (fills, chords every bar / half bar). Shorter text on Song FX, chords and beats sheets.
+- Lead menu went from about three screens to one (instrument, sound, volume, More settings).

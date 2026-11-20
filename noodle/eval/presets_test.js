@@ -8,27 +8,27 @@ const {chromium,devices}=require('playwright');
     const v=mkTrack('vox',{id:S.nextId++,off:0,len:2,lenSet:true,rep:false,sound:'Hard tune'}); v.fx=Object.assign({},VOX_PRESETS['Hard tune'],{air:80,harm:30}); S.tracks.push(v); save(); renderTracks(); s2TrackSheet(s2Lane(s2LaneId(v))); });
   await p.waitForTimeout(200); out.basic=await p.evaluate(()=>({tune:!!document.querySelector('#s2Fx_tune'), harm:!!document.querySelector('#s2Fx_harm'), vol:!!document.querySelector('#s2Vol'), airHidden:!!document.querySelector('.nx-adv[hidden] #s2Fx_air'), revHidden:!!document.querySelector('.nx-adv[hidden] #s2Rev')}));
   await p.tap('[data-more]'); out.moreOpen=await p.evaluate(()=>!document.querySelector('.nx-adv').hidden&&localStorage.getItem('noodle.more')==='1'); await p.tap('[data-more]');
-  await p.tap('[data-save="vox"]'); await p.fill('#prName','Radio voice'); await p.tap('#prOk'); await p.waitForTimeout(200);
-  out.saved=await p.evaluate(()=>{ const x=presetsAll().vox[0]; return x&&{name:x.name,sound:x.sound,air:x.fx.air,harm:x.fx.harm}; }); out.chip=await p.evaluate(()=>!!document.querySelector('#s2Snd [data-pre]'));
+  await p.evaluate(()=>document.querySelector('[data-a="save:vox"]').click()); await p.fill('#prName','Radio voice'); await p.tap('#prOk'); await p.waitForTimeout(200);
+  out.saved=await p.evaluate(()=>{ const x=presetsAll().vox[0]; return x&&{name:x.name,sound:x.sound,air:x.fx.air,harm:x.fx.harm}; }); out.chip=await p.evaluate(()=>{ s2PickSheet(s2Lanes().find(L=>L.tracks[0].inst==='vox'),'sound'); return !!document.querySelector('#s2Snd [data-pre]'); });
   // another vocal track: apply it
-  await p.evaluate(()=>{ nxClose(); const w=mkTrack('vox',{id:S.nextId++,off:0,len:2,lenSet:true,rep:false,sound:'Pop'}); S.tracks.push(w); renderTracks(); s2TrackSheet(s2Lane(s2LaneId(w))); });
+  await p.evaluate(()=>{ nxClose(); const w=mkTrack('vox',{id:S.nextId++,off:0,len:2,lenSet:true,rep:false,sound:'Pop'}); S.tracks.push(w); renderTracks(); s2PickSheet(s2Lane(s2LaneId(w)),'sound'); });
   await p.tap('#s2Snd [data-pre]'); await p.waitForTimeout(200); out.applied=await p.evaluate(()=>{ const w=S.tracks[1]; return {sound:w.sound, air:w.fx.air, harm:w.fx.harm, pressed:document.querySelector('#s2Snd [data-pre]').getAttribute('aria-pressed')}; });
   // effects preset
   await p.evaluate(()=>{ nxClose(); const t=mkTrack('lead',{id:S.nextId++,off:0,len:2,lenSet:true,rep:false,notes:[{s:0,l:4,p:60,v:.8}]}); t.tfx={echo:50,chorus:20}; S.tracks.push(t); renderTracks(); s2.more=true; s2TrackSheet(s2Lane(s2LaneId(t))); });
-  await p.tap('[data-save="fx"]'); await p.fill('#prName','Wide'); await p.tap('#prOk'); await p.waitForTimeout(150); out.fxSaved=await p.evaluate(()=>JSON.stringify(presetsAll().fx[0].tfx));
+  await p.evaluate(()=>document.querySelector('[data-a="save:fx"]').click()); await p.fill('#prName','Wide'); await p.tap('#prOk'); await p.waitForTimeout(150); out.fxSaved=await p.evaluate(()=>JSON.stringify(presetsAll().fx[0].tfx));
   // your kit: snare from Brushes, saved
   await p.evaluate(()=>{ nxClose(); const k=mkTrack('kit',{id:S.nextId++,off:0,len:1,lenSet:true,rep:false,sound:'808',hits:[{s:0,d:'kick',v:1},{s:4,d:'snare',v:1}]}); S.tracks.push(k); renderTracks(); s2TrackSheet(s2Lane(s2LaneId(k))); });
   await p.selectOption('#kd_snare','Brushes'); await p.waitForTimeout(200); out.slotKit=await p.evaluate(()=>S.kit.slots.find(x=>x.id==='snare').kit);
   out.brushSnare=await p.evaluate(async()=>{ await loadSmp('brushkit'); const r=async st=>{ const oc=new OfflineAudioContext(1,22050,44100); drumHit(oc,oc.destination,'snare',0.01,1,'808',0.5); const d=(await oc.startRendering()).getChannelData(0); let q=0; for(let i=0;i<d.length;i++) q+=d[i]*d[i]; return q; };
     const a=await r(); const sl=S.kit.slots.find(x=>x.id==='snare'); delete sl.kit; const b2=await r(); sl.kit='Brushes'; return a!==b2; });
-  await p.tap('[data-save="kit"]'); await p.fill('#prName','Night kit'); await p.tap('#prOk'); await p.waitForTimeout(150); out.kitSaved=await p.evaluate(()=>{ const x=presetsAll().kit[0]; return x&&x.sound+':'+x.slots.find(s=>s.id==='snare').kit; });
+  await p.evaluate(()=>document.querySelector('[data-a="save:kit"]').click()); await p.fill('#prName','Night kit'); await p.tap('#prOk'); await p.waitForTimeout(150); out.kitSaved=await p.evaluate(()=>{ const x=presetsAll().kit[0]; return x&&x.sound+':'+x.slots.find(s=>s.id==='snare').kit; });
   // a new song: the kit preset rebuilds the kit
-  await p.evaluate(()=>{ nxClose(); S.kit=defaultKit(); const k2=S.tracks.find(t=>t.inst==='kit'); k2.sound='Rock'; s2TrackSheet(s2Lane(s2LaneId(k2))); }); await p.tap('#s2Snd [data-pre^="kit:"]'); await p.waitForTimeout(150);
+  await p.evaluate(()=>{ nxClose(); S.kit=defaultKit(); const k2=S.tracks.find(t=>t.inst==='kit'); k2.sound='Rock'; s2PickSheet(s2Lane(s2LaneId(k2)),'sound'); }); await p.tap('#s2Snd [data-pre^="kit:"]'); await p.waitForTimeout(150);
   out.kitApplied=await p.evaluate(()=>S.tracks.find(t=>t.inst==='kit').sound+':'+S.kit.slots.find(s=>s.id==='snare').kit);
   // backups carry presets; a fresh phone gets them back
   out.backup=await p.evaluate(async()=>{ const pr=presetsAll(); localStorage.removeItem('noodle.presets'); const f={noodle:'songs',v:1,songs:[],presets:pr}; await songFileOpen(JSON.stringify(f)); const q=presetsAll(); return [q.vox.length,q.fx.length,q.kit.length].join(','); });
   // free user: a preset with Pro parts (backing vocals) is tried, not kept
-  await p.evaluate(()=>{ nxClose(); PRO.owned=false; const w=mkTrack('vox',{id:S.nextId++,off:0,len:2,lenSet:true,rep:false,sound:'Pop'}); S.tracks.push(w); renderTracks(); s2TrackSheet(s2Lane(s2LaneId(w))); });
+  await p.evaluate(()=>{ nxClose(); PRO.owned=false; const w=mkTrack('vox',{id:S.nextId++,off:0,len:2,lenSet:true,rep:false,sound:'Pop'}); S.tracks.push(w); renderTracks(); s2PickSheet(s2Lane(s2LaneId(w)),'sound'); });
   out.freeBadge=await p.evaluate(()=>!!document.querySelector('#s2Snd [data-pre] .pro-b')); await p.tap('#s2Snd [data-pre^="vox:"]'); await p.waitForTimeout(150);
   out.freeTry=await p.evaluate(()=>{ const w=S.tracks[S.tracks.length-1]; flushSave(); const sv=JSON.parse(localStorage.getItem(STORE_KEY)).tracks.find(t=>t.id===w.id); return w.sound+'/'+sv.sound; });
   await p.evaluate(()=>nxClose()); out.freeAfter=await p.evaluate(()=>S.tracks[S.tracks.length-1].sound);

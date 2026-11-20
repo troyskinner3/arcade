@@ -12,15 +12,15 @@ const {chromium,devices}=require('playwright');
   const p=await ctx.newPage(); p.on('pageerror',e=>errs.push(e.message)); await p.goto('http://localhost:8800/noodle-s2.html?studio'); await p.waitForTimeout(1000);
   await p.evaluate(async()=>{ const o=defaultState(); o.bpm=110; o.bars=2; o.pid=projId(); o.tracks=[mkTrack('lead',{id:900,off:0,len:2,rep:false,lenSet:true,sound:'Saw',notes:[{s:0,l:8,p:64,v:.8,x:true}]})]; await projLoadState(o); s2Render(); }); await p.waitForTimeout(300);
   out.price=await p.evaluate(()=>PRO.price); out.askedState=await p.evaluate(()=>window.__msgs.includes('state'));
-  const lane=()=>p.evaluate(()=>s2TrackSheet(s2Lanes()[0]));
-  await lane(); await p.waitForTimeout(200); out.lockShown=await p.evaluate(()=>!!document.querySelector('#s2Snd button[data-x="Glass"] svg')&&!document.querySelector('#s2Snd button[data-x="Square"] svg'));
+  const lane=()=>p.evaluate(()=>s2PickSheet(s2Lanes()[0],'sound'));
+  await lane(); await p.waitForTimeout(200); out.lockShown=await p.evaluate(()=>!!document.querySelector('#s2Snd button[data-x="Glass"] .pro-b')&&!document.querySelector('#s2Snd button[data-x="Square"] .pro-b'));
   await p.click('#s2Snd button[data-x="Glass"]'); await p.waitForTimeout(200); out.proSheet=await p.evaluate(()=>!!document.querySelector('.pv-line')&&S.tracks[0].sound==='Glass');   /* tried, not kept */ out.soundKept=await p.evaluate(()=>{ flushSave(); return JSON.parse(localStorage.getItem(STORE_KEY)).tracks[0].sound; });
   await lane(); await p.waitForTimeout(200); await p.click('#s2Snd button[data-x="Square"]'); await p.waitForTimeout(200); out.freeSound=await p.evaluate(()=>S.tracks[0].sound);
   await p.evaluate(()=>{ nxClose(); s2ShareSheet(); }); await p.waitForTimeout(200); await p.click('#nxSheet [data-k="daw"]'); await p.waitForTimeout(200); out.dawLocked=await p.evaluate(()=>/DAW pack/.test($('nxSheet').textContent)&&!!$('proBuy'));
   await p.evaluate(()=>{ window.__answer='pending'; }); await p.click('#proBuy'); await p.waitForTimeout(300); out.pending={msg:await p.evaluate(()=>lastMsg), pro:await p.evaluate(()=>isPro())};
   await p.evaluate(()=>{ window.__answer='bought'; proSheet(); }); await p.waitForTimeout(150); await p.click('#proBuy'); await p.waitForTimeout(300);
   out.bought={msg:await p.evaluate(()=>lastMsg), pro:await p.evaluate(()=>isPro()), stored:await p.evaluate(()=>localStorage.getItem('noodle.pro'))};
-  await lane(); await p.waitForTimeout(200); out.locksGone=await p.evaluate(()=>!document.querySelector('#s2Snd svg')); await p.click('#s2Snd button[data-x="Glass"]'); await p.waitForTimeout(200); out.proSound=await p.evaluate(()=>S.tracks[0].sound);
+  await lane(); await p.waitForTimeout(200); out.locksGone=await p.evaluate(()=>!document.querySelector('#s2Snd .pro-b')); await p.click('#s2Snd button[data-x="Glass"]'); await p.waitForTimeout(200); out.proSound=await p.evaluate(()=>S.tracks[0].sound);
   await p.reload(); await p.waitForTimeout(1000); out.afterReload=await p.evaluate(()=>isPro());
   await p.evaluate(()=>{ localStorage.removeItem('__owned'); }); await p.reload(); await p.waitForTimeout(1000); out.revoked=await p.evaluate(()=>isPro());   /* the App Store's answer wins over the remembered one */
   await p.evaluate(()=>proRestore()); await p.waitForTimeout(300); out.restoreNone=await p.evaluate(()=>lastMsg);
