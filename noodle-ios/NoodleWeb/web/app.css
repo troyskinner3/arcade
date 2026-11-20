@@ -107,7 +107,7 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .gridbox{position:relative}
 .gridwrap{overflow-x:auto;overflow-y:hidden;border-radius:10px;background:var(--cell);-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;scrollbar-width:thin}
 .glabels{position:absolute;left:0;top:0;bottom:0;pointer-events:none;border-radius:10px 0 0 10px;overflow:hidden}
-.glabels span{position:absolute;left:0;padding-left:5px;display:flex;align-items:center;font:600 9px var(--f-mono);color:var(--ink);opacity:.75;background:var(--cell);text-transform:uppercase;white-space:nowrap;overflow:hidden}
+.glabels span{position:absolute;left:0;padding-left:5px;display:flex;align-items:center;font:600 13px var(--f-display);color:var(--ink);opacity:.8;background:var(--cell);white-space:nowrap;overflow:hidden}
 .zoom{display:flex;gap:4px;margin-left:auto}
 .ovw{position:relative;height:26px;margin-top:6px;border-radius:7px;background:var(--cell);overflow:hidden;touch-action:none;cursor:pointer}
 .ovw canvas{display:block;width:100%;height:100%}
@@ -179,7 +179,7 @@ input[type=range]::-moz-range-thumb{width:10px;height:18px;border-radius:1px;bac
 /* the open part: a detail view under its lane */
 
 .gridwrap{background:var(--cell);box-shadow:inset 0 0 0 1px var(--line)}
-.glabels span{background:var(--hd);font-size:9px;letter-spacing:.04em;border-right:1px solid var(--line)}
+.glabels span{background:var(--hd);border-right:1px solid var(--line)}
 .ph{width:1px;opacity:1}
 .ovw{height:22px;margin-top:4px;background:var(--cell);box-shadow:inset 0 0 0 1px var(--line)}
 .ovw-win{border:1px solid var(--lcd-ink);background:color-mix(in srgb,var(--lcd-ink) 14%,transparent)}
@@ -318,9 +318,8 @@ input[type=range]::-moz-range-thumb{width:10px;height:18px;border-radius:1px;bac
 .s2-nm span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:12.5px;letter-spacing:-0.01em}
 .s2-nm i{width:8px;height:8px;border-radius:2px;flex:none}
 .s2-ct{display:flex;align-items:center;gap:5px}
-.s2-arm{width:30px;height:30px;border-radius:50%!important;border:2px solid var(--rec)!important;display:grid!important;place-items:center;flex:none}
-.s2-arm i{width:12px;height:12px;border-radius:50%;background:var(--rec);opacity:.25}
-.s2-arm[aria-pressed="true"]{background:var(--rec)!important} .s2-arm[aria-pressed="true"] i{background:#fff;opacity:1}
+.s2-arm{width:30px;height:30px;border-radius:6px!important;border:1px solid color-mix(in srgb,var(--rec) 70%,transparent)!important;color:var(--rec)!important;font:700 13px var(--f-mono)!important;display:grid!important;place-items:center;flex:none}
+.s2-arm[aria-pressed="true"]{background:var(--rec)!important;color:#fff!important;border-color:var(--rec)!important}
 .s2-ms{width:30px;height:30px;border-radius:6px!important;border:1px solid var(--s2-line)!important;font:700 11px var(--f-mono)!important;flex:none}
 .s2-ms[aria-pressed="true"]{background:var(--s2-ink)!important;color:var(--s2-bg)!important}
 .s2-ms.so[aria-pressed="true"]{background:var(--s2-amber)!important;color:var(--s2-amber-ink)!important;border-color:var(--s2-amber)!important}
@@ -477,3 +476,33 @@ select.nx-txt{-webkit-appearance:none;appearance:none;height:40px;border-radius:
 .nx-card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:0 14px;margin:0 0 6px}.nx-card>.nx-item:last-child{border-bottom:0!important}.nx-card>.nx-item{background:none!important}
 .nx-item small:empty{display:none}.nx-item span .s2-i{margin-left:8px;vertical-align:2px}
 #nxMore .nx-grp{padding:16px 2px 6px}.nx-foot{margin:14px 0 24px;text-align:center;color:var(--muted);font:500 13px var(--f-display)}
+/* confirm: two real buttons side by side; the destructive one red */
+.nx-pair{display:flex;gap:10px;margin-top:6px}.nx-pair>button{flex:1;width:auto}
+.nx-del{height:48px;border-radius:10px;border:0;background:var(--rec,#e5484d);color:#fff;font:700 16px var(--f-body)}
+.nx-act{flex-direction:column;align-items:flex-start;justify-content:center}.nx-act.danger{align-items:center}
+
+/* note / drum editor: bar ruler above the grid; tap or drag it to move the playhead */
+.edrul{position:relative;height:26px;background:var(--s2-panel,var(--panel));border-bottom:1px solid var(--s2-line,var(--line));touch-action:none;cursor:ew-resize}
+.edrul span{position:absolute;top:0;bottom:0;padding:5px 0 0 5px;border-left:1px solid var(--s2-line,var(--line));font:600 13px var(--f-mono);color:var(--muted);pointer-events:none}
+.edrul-ph{position:absolute;top:0;bottom:-1px;width:2px;margin-left:-1px;background:var(--lcd-ink,#f1c75b);display:none;pointer-events:none;z-index:2}
+.edrul-ph::before{content:"";position:absolute;top:0;left:-6px;border:7px solid transparent;border-top:9px solid var(--lcd-ink,#f1c75b);border-bottom:0}
+.gridbox:has(.edrul) .glabels{top:26px}
+
+/* the big record button names the armed track */
+.s2-recb{position:relative}.s2-recto{position:absolute;left:50%;bottom:calc(100% + 4px);transform:translateX(-50%);max-width:120px;padding:2px 8px;border-radius:9px;background:var(--rec);color:#fff;font:600 12px var(--f-display);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none}
+
+/* marking a section: the bar replacing BPM / KEY / SNAP, the band with handles on the ruler, the rest dimmed */
+.s2-markbar{display:flex;align-items:center;gap:8px;padding:8px 0}.s2-markbar[hidden]{display:none}
+.s2-mkx,.s2-mkok{flex:none;height:36px;padding:0 14px!important;border-radius:8px!important;font:700 15px var(--f-body)!important}
+.s2-mkx{border:1px solid var(--s2-line)!important;background:none!important;color:inherit!important}.s2-mkok{border:0!important;background:var(--s2-amber,#f1c75b)!important;color:#1b1608!important}
+.s2-mkn{flex:1;min-width:0;display:flex;gap:4px;overflow-x:auto;scrollbar-width:none}.s2-mkn::-webkit-scrollbar{display:none}
+.s2-mkn button{flex:none;height:32px;padding:0 10px;border:1px solid var(--s2-line);border-radius:16px;background:none;color:inherit;font:600 14px var(--f-display)}.s2-mkn button[aria-pressed="true"]{background:var(--s2-ink);color:var(--s2-bg);border-color:var(--s2-ink)}
+.s2-mband{position:absolute;top:1px;bottom:1px;z-index:6;border:2px solid var(--s2-amber,#f1c75b);border-radius:6px;background:color-mix(in srgb,var(--s2-amber,#f1c75b) 28%,transparent);touch-action:none;cursor:grab}
+.s2-mband.over{border-color:var(--rec);background:color-mix(in srgb,var(--rec) 25%,transparent)}
+.s2-mband span{position:absolute;left:18px;right:18px;top:0;bottom:0;display:flex;align-items:center;justify-content:center;font:700 12px var(--f-display);white-space:nowrap;overflow:hidden;pointer-events:none}
+.s2-mband .mh{position:absolute;top:-1px;bottom:-1px;width:16px;background:var(--s2-amber,#f1c75b);cursor:ew-resize}.s2-mband.over .mh{background:var(--rec)}
+.s2-mband .mh.l{left:-2px;border-radius:5px 0 0 5px}.s2-mband .mh.r{right:-2px;border-radius:0 5px 5px 0}
+.s2-mband .mh::after{content:"";position:absolute;left:6px;top:7px;bottom:7px;width:4px;border-left:1px solid rgba(0,0,0,.45);border-right:1px solid rgba(0,0,0,.45)}
+.s2-mband .mh::before{content:"";position:absolute;inset:-6px -12px}
+.s2-mdim{position:absolute;top:26px;bottom:0;z-index:1;background:rgba(0,0,0,.45);pointer-events:none}
+.s2-sec b{pointer-events:auto;cursor:pointer}.s2-sec{pointer-events:none}.s2-sec.editing{opacity:.25}

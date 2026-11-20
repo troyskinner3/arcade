@@ -612,3 +612,16 @@ subset + folk tunes, 6.4M melody notes; tunes matching the guides removed). Copy
   segment), for the Instrument / Sound rows and every select. Type: Barlow for the app, Barlow Semi Condensed for titles, labels and
   numbers (tabular figures; no monospace, no tracked uppercase labels); Unbounded stays for the Noodle logo only. More page: grouped
   cards, one line per row, ⓘ for sharing and crash-report details.
+
+## Round 10 (owner review)
+- Songs, not projects, everywhere in the app. "Save song file" is "Back up this song". Deleting asks with two buttons (Keep it, Delete song).
+- Track ••• menu: "Save vocals / effects / kit as a preset"; no "Add chords to this melody" on chord tracks (Keys, Pad, Arp).
+- Key sheet: Key and Scale open lists (common scales first, then More scales; "Chromatic (no snapping)"). Snap strength removed
+  (takes keep snapping fully to the scale; Chromatic covers no snapping).
+- Note and drum editors: a bar ruler above the grid; tap or drag it to set where play starts (marker plus a line through the grid). The
+  bar under the grid is gone, and the bar numbers inside the grid moved to the ruler. Drum row names in plain case.
+- Track headers: R (outlined; red when armed) instead of a second record button. The big record button shows the armed track's name.
+- Sections are marked on the timeline: Mark a section (Sections menu) shows a band with a handle at each end (whole bars), the name chips
+  and Done / Exit in place of BPM / KEY / SNAP; the rest of the song dims; an overlap turns red and Done reads Replace; Done stays in the
+  mode for the next one. Tapping a section's name on the ruler: rename, loop, duplicate, move or resize, remove.
+- Shorter help text in the editors and the Another version sheet.

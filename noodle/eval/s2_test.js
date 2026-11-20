@@ -16,7 +16,7 @@ const {chromium,devices}=require('playwright');
   await p.tap('[data-s]'); await p.waitForTimeout(150); out.solo=await p.evaluate(()=>({solo:S.tracks[0].solo, dim:[...document.querySelectorAll('.s2-trk')].map(e=>e.classList.contains('dim'))})); await p.tap('[data-s]');
   await p.tap('.s2-nm'); await p.waitForTimeout(200); out.trackSheet=await p.$$eval('#s2Snd button',b=>b.map(x=>x.textContent)); await p.screenshot({path:'results/s2d.png'}); await p.evaluate(()=>nxClose());
   await p.tap('#s2Bpm'); await p.waitForTimeout(150); out.len=await p.evaluate(()=>S.bars); await p.evaluate(()=>nxClose());
-  await p.tap('#s2Key'); await p.waitForTimeout(150); out.keyOpts=await p.$$eval('#s2K option',o=>o.length); await p.evaluate(()=>nxClose());
+  await p.tap('#s2Key'); await p.waitForTimeout(150); await p.tap('#nxSheet [data-pick="key"]'); await p.waitForTimeout(100); out.keyOpts=await p.$$eval('#nxSheet .pk-row',o=>o.length); await p.evaluate(()=>nxClose());
   await p.tap('#s2Mix'); await p.waitForTimeout(150); await p.evaluate(()=>{ const e=$('s2Mr'); e.value=70; e.dispatchEvent(new Event('input',{bubbles:true})); }); out.mix=await p.evaluate(()=>S.master.rev); await p.evaluate(()=>nxClose());
   const box=await p.$eval('#s2Marks',e=>{ const r=e.getBoundingClientRect(); return {x:r.left,y:r.top+10}; }); await p.mouse.click(box.x+44*2.5,box.y); await p.waitForTimeout(200); out.seek=await p.$eval('#s2Pos',e=>e.textContent);
   await p.tap('#s2Rew'); await p.waitForTimeout(100); await p.tap('#s2Play'); await p.waitForTimeout(1500); out.playing=await p.evaluate(()=>({playing,pos:$('s2Pos').textContent}));

@@ -52,14 +52,15 @@ function s2Tidy(){ const before=S.tracks.length; const lone=t=>!S.tracks.some(o=
 function s2Render(){ if(!s2On()) return; const el=$('s2'), bars=S.bars, view=Math.max(bars+8, Math.ceil((window.innerWidth||400)/s2.barw));
   el.style.setProperty('--s2-bars',bars); el.style.setProperty('--s2-view',view); el.style.setProperty('--s2-barw',s2.barw+'px');
   if(s2.armId!=null && !s2Lane(s2.armId)) s2.armId=null;
+  { const A=s2.armId!=null&&s2Lane(s2.armId), t=$('s2RecTo'); if(t){ t.textContent=A?s2Name(A):''; t.hidden=!A; } }   /* the big record button says which track it records into */
   $('s2Name').textContent=S.title||'Untitled'; $('s2Undo').disabled=!hist.undo.length; $('s2Redo').disabled=!hist.redo.length;
   const anySolo=S.tracks.some(t=>t.solo);
-  let h=`<div class="s2-ruler"><div class="s2-corner"><button class="s2-secs-b" id="s2Secs">Sections</button></div><div class="s2-marks" id="s2Marks">${(S.secs||[]).filter(x=>x.a<bars).map(x=>`<span class="s2-sec" style="left:calc(${x.a} * var(--s2-barw));width:calc(${Math.min(x.b,bars)-x.a} * var(--s2-barw))"><b>${nxEsc(x.name)}</b></span>`).join('')}${(s2SecValid(),s2.sec)?`<button class="s2-secb" data-secx="1" aria-label="Stop looping this section" style="left:calc(${s2.sec.a/16} * var(--s2-barw));width:calc(${(s2.sec.b-s2.sec.a)/16} * var(--s2-barw))"></button>`:''}${Array.from({length:view},(_,i)=>`<span class="s2-mk${i>=bars?' out':''}" style="left:calc(${i} * var(--s2-barw))">${i+1}</span>`).join('')}<span class="s2-phh" id="s2PhH"></span></div></div><div class="s2-side"></div>`;
+  let h=`<div class="s2-ruler"><div class="s2-corner"><button class="s2-secs-b" id="s2Secs">Sections</button></div><div class="s2-marks" id="s2Marks">${(S.secs||[]).map((x,i)=>[x,i]).filter(([x])=>x.a<bars).map(([x,i])=>`<span class="s2-sec${s2.mark&&s2.mark.edit===i?' editing':''}" style="left:calc(${x.a} * var(--s2-barw));width:calc(${Math.min(x.b,bars)-x.a} * var(--s2-barw))"><b data-seci="${i}">${nxEsc(x.name)}</b></span>`).join('')}${s2.mark?`<div class="s2-mband" id="s2MBand"><i class="mh l" data-mh="l"></i><span id="s2MBandN"></span><i class="mh r" data-mh="r"></i></div>`:''}${(s2SecValid(),s2.sec)?`<button class="s2-secb" data-secx="1" aria-label="Stop looping this section" style="left:calc(${s2.sec.a/16} * var(--s2-barw));width:calc(${(s2.sec.b-s2.sec.a)/16} * var(--s2-barw))"></button>`:''}${Array.from({length:view},(_,i)=>`<span class="s2-mk${i>=bars?' out':''}" style="left:calc(${i} * var(--s2-barw))">${i+1}</span>`).join('')}<span class="s2-phh" id="s2PhH"></span></div></div><div class="s2-side"></div>`;
   const lanes=s2Lanes();
-  lanes.forEach(L=>{ const tr=L.tracks[0], nm=nxEsc(s2Name(L)); h+=`<div class="s2-trk${(tr.mute||(anySolo&&!tr.solo))?' dim':''}"><div class="s2-th"><button class="s2-nm" data-t="${L.id}"><i style="background:${INST[tr.inst].color}"></i><span>${nm}</span><b class="mo" aria-hidden="true"><svg viewBox="0 0 12 12"><circle cx="2" cy="6" r="1.2"/><circle cx="6" cy="6" r="1.2"/><circle cx="10" cy="6" r="1.2"/></svg></b></button><div class="s2-ct">${tr.guide||tr.inst==='mix'?'':`<button class="s2-arm" data-arm="${L.id}" aria-pressed="${String(s2.armId)===String(L.id)}" aria-label="Record into ${nm}"><i></i></button>`}<button class="s2-ms" data-m="${L.id}" aria-pressed="${!!tr.mute}" aria-label="Mute ${nm}">M</button><button class="s2-ms so" data-s="${L.id}" aria-pressed="${!!tr.solo}" aria-label="Solo ${nm}">S</button></div></div><div class="s2-ln" data-ln="${L.id}"><canvas data-cv="${L.id}"></canvas>${s2.empty&&String(s2.empty.lane)===String(L.id)?`<div class="s2-ghost" style="left:calc(${s2.empty.at/16} * var(--s2-barw));width:calc(${newPartLen(L,s2.empty.at)/16} * var(--s2-barw))"></div>`:''}${(()=>{ const t=L.tracks.find(x=>x.id===s2.selId&&hasContent(x)); return t?`<div class="s2-sel${pBars(t)*pLoops(t)*s2.barw<40?' narrow':''}" id="s2Sel" style="left:calc(${(t.off||0)/16} * var(--s2-barw));width:calc(${pBars(t)*pLoops(t)} * var(--s2-barw))">${pLoops(t)>1?'':'<i class="hl"></i><i class="hr"></i>'}</div>`:''; })()}</div></div>`; });
-  if(!S.tracks.length) h+=`<div class="s2-hint"><b>New project</b>Tap record, then pick what you're recording.<button class="nx-ghost" id="s2Beat" style="margin-top:14px">Start from a beat</button></div>`;
-  h+=`<div class="s2-add"><button id="s2Add">+ Add track</button></div><div class="s2-ph" id="s2Ph"></div>`;
-  $('s2In').innerHTML=h; lanes.forEach(L=>{ const cv=$('s2In').querySelector(`canvas[data-cv="${L.id}"]`); if(cv) s2DrawLane(L,cv); });
+  lanes.forEach(L=>{ const tr=L.tracks[0], nm=nxEsc(s2Name(L)); h+=`<div class="s2-trk${(tr.mute||(anySolo&&!tr.solo))?' dim':''}"><div class="s2-th"><button class="s2-nm" data-t="${L.id}"><i style="background:${INST[tr.inst].color}"></i><span>${nm}</span><b class="mo" aria-hidden="true"><svg viewBox="0 0 12 12"><circle cx="2" cy="6" r="1.2"/><circle cx="6" cy="6" r="1.2"/><circle cx="10" cy="6" r="1.2"/></svg></b></button><div class="s2-ct">${tr.guide||tr.inst==='mix'?'':`<button class="s2-arm" data-arm="${L.id}" aria-pressed="${String(s2.armId)===String(L.id)}" aria-label="Arm ${nm} for recording">R</button>`}<button class="s2-ms" data-m="${L.id}" aria-pressed="${!!tr.mute}" aria-label="Mute ${nm}">M</button><button class="s2-ms so" data-s="${L.id}" aria-pressed="${!!tr.solo}" aria-label="Solo ${nm}">S</button></div></div><div class="s2-ln" data-ln="${L.id}"><canvas data-cv="${L.id}"></canvas>${s2.empty&&String(s2.empty.lane)===String(L.id)?`<div class="s2-ghost" style="left:calc(${s2.empty.at/16} * var(--s2-barw));width:calc(${newPartLen(L,s2.empty.at)/16} * var(--s2-barw))"></div>`:''}${(()=>{ const t=L.tracks.find(x=>x.id===s2.selId&&hasContent(x)); return t?`<div class="s2-sel${pBars(t)*pLoops(t)*s2.barw<40?' narrow':''}" id="s2Sel" style="left:calc(${(t.off||0)/16} * var(--s2-barw));width:calc(${pBars(t)*pLoops(t)} * var(--s2-barw))">${pLoops(t)>1?'':'<i class="hl"></i><i class="hr"></i>'}</div>`:''; })()}</div></div>`; });
+  if(!S.tracks.length) h+=`<div class="s2-hint"><b>New song</b>Tap record and pick what you’re recording.<button class="nx-ghost" id="s2Beat" style="margin-top:14px">Start from a beat</button></div>`;
+  h+=`<div class="s2-add"><button id="s2Add">+ Add track</button></div><div class="s2-ph" id="s2Ph"></div>${s2.mark?'<div class="s2-mdim" id="s2MDimL"></div><div class="s2-mdim" id="s2MDimR"></div>':''}`;
+  $('s2In').innerHTML=h; s2MarkDraw(); lanes.forEach(L=>{ const cv=$('s2In').querySelector(`canvas[data-cv="${L.id}"]`); if(cv) s2DrawLane(L,cv); });
   if(s2.selId!=null && !S.tracks.some(t=>t.id===s2.selId&&hasContent(t))) s2.selId=null;
   const tk=takeBar&&!recState; $('s2Take').hidden=!tk; if(s2.selId!=null||tk||recState||(s2.empty&&!s2Lane(s2.empty.lane))) s2.empty=null;
   { const t=S.tracks.find(x=>x.id===s2.selId), show=!!t&&!tk&&!recState, em=!!s2.empty; $('s2Clip').hidden=!show&&!em; $('s2CbNew').hidden=!em; ['s2CbEdit','s2CbDup','s2CbDel'].forEach(id=>{ $(id).hidden=em; });
@@ -99,7 +100,9 @@ function s2Chips(){ { const sp=$('s2Snap').lastElementChild, v=fracTxt(snapBars(
   const m=$('s2Metro'), on=String(!!S.metro); if(m.getAttribute('aria-pressed')!==on) m.setAttribute('aria-pressed',on); }
 /* called every frame: playhead, position readout, recording banner, stop at the end when Loop is off */
 /* the editor's playhead strip: where the playhead is within the part being edited */
-function edSeekDraw(){ const t=S.tracks.find(x=>x.id===s2.edId), d=$('s2EdSeekD'); if(!t||!d) return; const ps=pSteps(t), f=clamp(((s2.cur*16)-(t.off||0))/ps,0,1), v=(f*100).toFixed(2)+'%'; if(d.style.left!==v) d.style.left=v; const bw=(16/ps*100).toFixed(3)+'%'; const T=$('s2EdSeekT'); if(T.style.getPropertyValue('--es-bar')!==bw){ T.style.setProperty('--es-bar',bw); const b0=Math.floor((t.off||0)/16); T.querySelectorAll('span').forEach(x=>x.remove()); for(let k=0;k*16<ps;k++) T.insertAdjacentHTML('beforeend',`<span style="left:${(k*16/ps*100).toFixed(3)}%">${b0+k+1}</span>`); } }
+function edSeekDraw(){ const t=S.tracks.find(x=>x.id===s2.edId); if(!t||!t._grid||!t._cv||!t._cv.isConnected) return; const R=t._cv.parentElement.querySelector('.edrul'); if(!R) return;
+  const G=t._grid, ps=pSteps(t), pos=s2.cur*16-(t.off||0), m=R.querySelector('.edrul-ph'), inside=pos>=0&&pos<ps; m.style.display=inside?'block':'none'; if(inside) m.style.left=(G.gut+pos*G.cw)+'px';
+  if(!playing&&!recState&&t._ph){ t._ph.style.display=inside?'block':'none'; if(inside) t._ph.style.transform=`translate(${G.gut+pos*G.cw}px,0)`; } }
 function s2Tick(frac){ if(!s2On()) return;
   if(s2.edId!=null){ const t=S.tracks.find(x=>x.id===s2.edId); if(t&&t._mfxph&&t._mfxph.el.isConnected){ const P=t._mfxph, st=clamp(frac,0,1)*S.bars*16-(t.off||0), n=pSteps(t), on=(playing||!!recState)&&st>=0&&st<n; P.el.style.display=on?'block':'none'; if(on) P.el.style.transform=`translateX(${P.PL+st/n*(P.W-P.PL-P.PR)}px)`; } } if(s2.edId!=null) edSeekDraw();
   if(s2.edId!=null){ const t=S.tracks.find(x=>x.id===s2.edId); if(t&&t._fxg&&t._fxph&&t._fxph.isConnected){ const st=clamp(frac,0,1)*S.bars*16-(t.off||0), G=t._fxg, on=(playing||!!recState)&&st>=0&&st<G.ps; t._fxph.style.display=on?'block':'none'; if(on) t._fxph.style.transform=`translateX(${G.gut+st*G.cw}px)`; } } const bars=S.bars, live=playing||!!recState; if(live) s2.cur=clamp(frac,0,1)*bars; const pos=live?s2.cur:s2.cur;
@@ -114,7 +117,41 @@ function s2Tick(frac){ if(!s2On()) return;
   const pi=playing?'<path d="M7 5v14M17 5v14" stroke-width="3"/>':'<path d="M7 4l13 8-13 8V4z" fill="currentColor"/>'; if(s2._pi!==playing){ s2._pi=playing; nowPlaying(); $('s2PlayI').innerHTML=pi; $('s2EdPlayI').innerHTML=pi; $('s2Play').setAttribute('aria-label',playing?'Pause':'Play'); }
   s2Chips(); }
 function s2Seek(){ const m=$('s2Marks'); if(!m) return; let drag=false; const set=e=>{ if(recState) return; const r=m.getBoundingClientRect(), bar=clamp((e.clientX-r.left)/s2.barw,0,63.99), L=loopLen(); s2.cur=playing?Math.min(bar,S.bars):bar; playFrom=Math.min(Math.min(bar,S.bars)/S.bars*L, L-0.001); if(playing&&ctx) startAll(ctx.currentTime+0.02, playFrom); };
-  m.onpointerdown=e=>{ drag=true; try{ m.setPointerCapture(e.pointerId); }catch(_){} set(e); }; m.onpointermove=e=>{ if(drag) set(e); }; m.onpointerup=m.onpointercancel=()=>{ drag=false; }; }
+  let mk=null; const barAt=e=>(e.clientX-m.getBoundingClientRect().left)/s2.barw;
+  m.onpointerdown=e=>{ const M=s2.mark, lab=e.target.closest('[data-seci]');
+    if(M){ const h=e.target.closest('[data-mh]'), x=barAt(e); if(h||(x>=M.a&&x<=M.b)){ mk={k:h?h.dataset.mh:'mv', x0:x, a0:M.a, b0:M.b}; try{ m.setPointerCapture(e.pointerId); }catch(_){} return; } }
+    else if(lab&&!recState){ secMenu(+lab.dataset.seci); return; }
+    drag=true; try{ m.setPointerCapture(e.pointerId); }catch(_){} set(e); };
+  m.onpointermove=e=>{ if(mk){ const M=s2.mark, x=barAt(e), n=S.bars; if(mk.k==='l') M.a=clamp(Math.round(x),0,M.b-1); else if(mk.k==='r') M.b=clamp(Math.round(x),M.a+1,n); else { const len=mk.b0-mk.a0; M.a=clamp(mk.a0+Math.round(x-mk.x0),0,n-len); M.b=M.a+len; } s2MarkDraw(); return; } if(drag) set(e); };
+  m.onpointerup=m.onpointercancel=()=>{ drag=false; mk=null; }; }
+/* ---- marking a section on the timeline: a band with a handle at each end (whole bars), a name, Done (stays in the mode for the next one), Exit ---- */
+function secMarkStart(edit){ secsTidy(); const secs=S.secs; let a,b,name;
+  if(edit!=null&&secs[edit]){ ({a,b,name}=secs[edit]); }
+  else { const cur=Math.min(S.bars-1,Math.max(0,Math.floor(s2.cur||0))), free=x=>!secs.some(q=>x>=q.a&&x<q.b); a=free(cur)?cur:(()=>{ for(let x=0;x<S.bars;x++) if(free(x)) return x; return cur; })(); b=Math.min(S.bars,a+4); name=SEC_NAMES[Math.min(secs.length,SEC_NAMES.length-1)]; }
+  nxClose(); s2.mark={a,b,name,edit:edit!=null?edit:null}; $('s2MarkBar').hidden=false; document.querySelector('#s2 .s2-info').hidden=true; s2Render();
+  try{ if(!localStorage.getItem('noodle.markTip')){ localStorage.setItem('noodle.markTip','1'); toast('Drag the edges to cover the bars, then tap Done.',5000); } }catch(e){} }
+function secMarkEnd(){ s2.mark=null; $('s2MarkBar').hidden=true; document.querySelector('#s2 .s2-info').hidden=false; s2Render(); }
+function s2MarkDraw(){ const M=s2.mark; if(!M){ return; } const band=$('s2MBand'); if(!band) return;
+  band.style.left=`calc(${M.a} * var(--s2-barw))`; band.style.width=`calc(${M.b-M.a} * var(--s2-barw))`; $('s2MBandN').textContent=`${M.name} · ${M.b-M.a>1?'bars '+(M.a+1)+'–'+M.b:'bar '+(M.a+1)}`;
+  const L=$('s2MDimL'), R=$('s2MDimR'); if(L){ L.style.left='var(--s2-hdr)'; L.style.width=`calc(${M.a} * var(--s2-barw))`; } if(R){ R.style.left=`calc(var(--s2-hdr) + ${M.b} * var(--s2-barw))`; R.style.right='0'; R.style.width=''; }
+  const over=(S.secs||[]).some((q,i)=>i!==M.edit&&q.a<M.b&&q.b>M.a); band.classList.toggle('over',over);
+  $('s2MkN').innerHTML=SEC_NAMES.map(n=>`<button data-mkn="${n}" aria-pressed="${n===M.name}">${n}</button>`).join('');
+  $('s2MkOk').textContent=over?'Replace':'Done'; }
+function secMarkDone(){ const M=s2.mark; if(!M) return; flushSave(); const keep=(S.secs||[]).filter((q,i)=>i!==M.edit&&(q.b<=M.a||q.a>=M.b));
+  S.secs=keep.concat([{a:M.a,b:M.b,name:M.name}]); secsTidy(); save(); toast(`${M.name}: ${M.b-M.a>1?'bars '+(M.a+1)+'–'+M.b:'bar '+(M.a+1)}`);
+  if(M.edit!=null){ secMarkEnd(); return; }
+  const len=M.b-M.a, a=Math.min(M.b,S.bars-1); s2.mark={a, b:Math.min(S.bars,a+len), name:SEC_NAMES[Math.min(SEC_NAMES.indexOf(M.name)+1,SEC_NAMES.length-1)], edit:null}; s2Render(); }   /* ready for the next one */
+/* tapping a section's name on the ruler */
+function secMenu(i){ secsTidy(); const x=S.secs[i]; if(!x) return;
+  nxSheet(`<h2>${nxEsc(x.name)}</h2><p style="color:var(--muted);margin:-6px 0 6px">${x.b-x.a>1?`Bars ${x.a+1}–${x.b}`:`Bar ${x.a+1}`}</p><div class="nx-grp" style="padding-top:6px">Name</div><div class="s2-opts" id="smN">${SEC_NAMES.map(n=>`<button data-n="${n}" aria-pressed="${n===x.name}">${n}</button>`).join('')}</div>
+    <button class="nx-act" data-a="loop">Loop it</button><button class="nx-act" data-a="dup">Duplicate it</button><button class="nx-act" data-a="move">Move or resize</button><button class="nx-act" data-a="rm">Remove the name</button>`);
+  $('nxSheet').onclick=e=>{ let b;
+    if(b=e.target.closest('#smN button')){ flushSave(); x.name=b.dataset.n; save(); s2Render(); secMenu(i); }
+    else if(b=e.target.closest('[data-a]')){ const k=b.dataset.a;
+      if(k==='loop'){ nxClose(); s2.sec={a:x.a*16,b:x.b*16,id:null}; s2.loop=true; $('s2Loop').setAttribute('aria-pressed','true'); s2Render(); toast('Looping '+x.name+'. Tap the yellow band to stop.'); }
+      else if(k==='dup'){ if(secDuplicate(x)){ nxClose(); toast(x.name+' duplicated: bars '+(x.b+1)+'–'+(2*x.b-x.a)+'.'); } }
+      else if(k==='move') secMarkStart(i);
+      else if(k==='rm'){ flushSave(); S.secs.splice(i,1); save(); nxClose(); s2Render(); } } }; }
 const s2Fld=(id,label,min,max,v,step=1)=>`<div class="s2-fld"><label for="${id}">${label}</label><input type="range" id="${id}" min="${min}" max="${max}" step="${step}" value="${v}" oninput="this.nextElementSibling.value=this.value"><output>${v}</output></div>`;
 async function s2AddSheet(thenRecord){ const mine=thenRecord?s2Lanes().filter(L=>!L.tracks[0].guide&&L.tracks[0].inst!=='mix'):[], clip=!thenRecord&&isPro()?await takeStore.get('clipboard'):null;
   nxSheet(`<h2>${thenRecord?'What are you recording?':'Add a track'}</h2>${clip&&clip.part?`<button class="mfx-btn" id="s2Paste" style="width:100%;margin:0 0 10px;text-align:left">Paste part<small style="display:block;font-weight:400;color:var(--muted);font-size:13px">${nxEsc(clip.part.name||INST[clip.part.inst].label)}${clip.from?' from “'+nxEsc(clip.from)+'”':''}, at the playhead</small></button>`:''}${thenRecord?'':'<button class="nx-rowbtn" id="s2AddBeat">Add a beat<small style="display:block;font-weight:400;color:var(--muted);font-size:13px">Drums, bass and chords to rap or sing over</small></button>'}${mine.length?`<div class="nx-grp" style="padding-top:6px">Your tracks</div><div class="s2-opts">${mine.map(L=>`<button data-lane="${L.id}"><i style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${INST[L.tracks[0].inst].color};margin-right:6px"></i>${nxEsc(s2Name(L))}</button>`).join('')}</div><div class="nx-grp" style="padding-top:0">A new track</div>`:''}${PICK_GROUPS.map(([g,ids])=>[g,ids.filter(k=>!thenRecord||k!=='mix')]).map(([g,ids])=>`<div class="nx-grp" style="padding-top:6px">${g}</div><div class="s2-opts">${ids.map(k=>`<button data-k="${k}"><i style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${INST[k].color};margin-right:6px"></i>${INST[k].label}</button>`).join('')}</div>`).join('')}`);
@@ -187,9 +224,9 @@ function fxGridMount(tr, host){ const ps=pSteps(tr), wrap=document.createElement
     $('fxDel').onclick=()=>{ tr.fxs=tr.fxs.filter(x=>x!==e); tr._fxSel=null; logEdit(tr,{k:'fxdel',s:e.s,kind:e.k}); changed(); panel(); };
     $('fxVol').onchange=ev2=>{ e.v=+ev2.target.value/100; changed(); }; $('fxPan').onchange=ev2=>{ e.pan=+ev2.target.value/100; changed(); }; };
   draw(); panel(); }
-function s2Edit(tr){ { const T=$('s2EdSeekT'); if(T) T.style.removeProperty('--es-bar'); } s2.edId=tr.id; S.activeId=tr.id; $('s2Ed').hidden=false; s2EdMount(); }
+function s2Edit(tr){ s2.edId=tr.id; S.activeId=tr.id; $('s2Ed').hidden=false; s2EdMount(); }
 function s2EdMount(){ if(s2.edId==null) return; const tr=S.tracks.find(t=>t.id===s2.edId); if(!tr||!hasContent(tr)){ s2EdClose(); return; }
-  const host=$('s2EdBody'), kind=INST[tr.inst].kind, avail=Math.max(200,(host.clientHeight||window.innerHeight*0.6)-90);
+  const host=$('s2EdBody'), kind=INST[tr.inst].kind, avail=Math.max(200,(host.clientHeight||window.innerHeight*0.6)-90-26);
   GRID_H=Math.min(520,avail); GRID_RH=30; GRID_DRUM=kind==='pitched'||tr.inst==='fx'||tr.mfx?1:Math.min(60,Math.max(30,(avail-60)/gridRows(tr).rows.length))/gridRows(tr).rh;   /* drum rows as tall as the note editor's rows (a little taller when there's room), so hits read as notes */
   if(tr.mfx){ host.innerHTML=''; tr._cv=null; mfxEdMount(tr,host); }
   else if(tr.inst==='fx'){ const sx=host.querySelector('.fxg')?host.querySelector('.fxg').scrollLeft:0; host.innerHTML=''; tr._cv=null; fxGridMount(tr,host); if(sx) host.querySelector('.fxg').scrollLeft=sx; }
@@ -201,9 +238,9 @@ function s2EdMount(){ if(s2.edId==null) return; const tr=S.tracks.find(t=>t.id==
   $('s2EdT').textContent=s2Name(s2Lane(s2LaneId(tr))); $('s2EdS').textContent=partWhere(tr)+' · '+(tr.mfx?MFX[tr.mfx.k].label:tr.inst==='fx'?(tr.fxs||[]).length+' FX':tr.notes?tr.notes.length+' notes':tr.hits?tr.hits.length+' hits':'audio');
   { const b=$('s2EdMz'), on=kind==='pitched'&&tr.inst!=='arp'&&!!tr.notes&&!!tr.heardNotes; b.hidden=!on; if(on){ b.textContent=tr.mzOn?'Musical':'As heard'; b.setAttribute('aria-pressed',String(!!tr.mzOn)); b.onclick=()=>{ musicalSwap(tr); s2EdMount(); toast(tr.mzOn?'Musical version':'As heard'); }; } }   /* Musical mode: back to the take as heard, or musical again */
   const pit=kind==='pitched'&&tr.inst!=='arp'; $('s2EdVer').hidden=!pit; $('s2EdVerI').hidden=!pit; $('s2EdFill').hidden=!pit; if(pit){ if(tr._vi && verSig(tr)!==tr._verSig) tr._vi=0; verUI(tr); } else $('s2EdMine').hidden=true;
-  $('s2EdHint').textContent=tr.mfx?mfxHint(tr):tr.inst==='fx'?'Tap empty space to add. Tap an effect to select it. Drag to move it or change its kind; drag its right end for length.':kind==='pitched'?'Tap a note to select it, drag to move. Double-tap to split. Hold an empty spot, then drag, to select several.':tr.hits?'Tap empty space to add a hit. Tap a hit to select it, drag to move. Hold an empty spot, then drag, to select several.':'';
+  $('s2EdHint').textContent=tr.mfx?mfxHint(tr):tr.inst==='fx'?'Tap to add an effect. Drag to move it; drag its end to resize.':kind==='pitched'?'Tap a note to select it. Drag to move. Double-tap to split. Hold and drag to select several.':tr.hits?'Tap to add a hit. Drag to move. Hold and drag to select several.':'';
   $('s2EdUndo').disabled=!hist.undo.length; $('s2EdRedo').disabled=!hist.redo.length; }
-const mfxHint=tr=>isPro()||MFX[tr.mfx.k].free?'Tap + to add a point, drag to reshape, tap a point then − to remove it. Drag a line’s middle up or down to bow it.':'Pro effect: shape it and listen. It goes back when you leave, unless you get Pro.';
+const mfxHint=tr=>isPro()||MFX[tr.mfx.k].free?'Tap + to add a point. Drag to reshape. Drag a line’s middle to curve it.':'Pro effect: try it here. It goes back when you leave, unless you get Pro.';
 function s2EdClose(){ try{ pvEnd(); }catch(e){} const tr=S.tracks.find(t=>t.id===s2.edId); if(tr){ tr._cv=null; tr._sel=null; tr._msel=null; try{ learnSqueezeFromFixes(tr); }catch(e){} } s2.edId=null; GRID_H=176; GRID_RH=15; GRID_DRUM=1; $('s2Ed').hidden=true; $('s2EdBody').innerHTML=''; s2Render(); }
 /* Share, inside the Studio. A linear song is exported once through (Loop is only for listening). */
 function s2ShareSheet(){ if(!S.tracks.some(hasContent)){ toast('Record something first'); return; } if(playing) togglePlay();
@@ -290,8 +327,8 @@ function s2TrackSheet(L){ if(L.tracks[0].inst==='mix') return s2MixSheet(L); con
   const fam=pit?PICK_GROUPS[1][1]:I.kind==='audio'||I.kind==='mix'?[]:I.kind==='drum'?['kit',tr.inst]:[],   /* an old single-drum track can become a kit */ hasVoice=all().some(t=>t._raw&&(t._an||t.exprAlign!=null))&&tr.inst!=='arp';
   const dot=k=>`<i style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${INST[k].color};margin-right:6px"></i>`;
   const preName=k=>{ const id=tr[k==='vox'?'vp':'kp'], x=id&&presetsAll()[k].find(y=>y.id===id); return x?x.name:null; };
-  const menu=[(pit||tr.inst==='vox')?['chords','Add chords to this melody']:null, tr.inst==='vox'?['save:vox','Save as my vocal preset']:null, (pit||I.kind==='drums'||I.kind==='drum')?['save:fx','Save these effects']:null,
-    tr.inst==='kit'?['save:kit','Save as my kit']:null, ['dup','Duplicate track'], ['del','Delete track']].filter(Boolean);
+  const menu=[(pit&&!CHORD_ZONE[tr.inst]||tr.inst==='vox')?['chords','Add chords to this melody']:null, tr.inst==='vox'?['save:vox','Save vocals as a preset']:null, (pit||I.kind==='drums'||I.kind==='drum')?['save:fx','Save effects as a preset']:null,
+    tr.inst==='kit'?['save:kit','Save kit as a preset']:null, ['dup','Duplicate track'], ['del','Delete track']].filter(Boolean);
   nxSheet(`<div class="s2-hd"><input class="s2-tn" id="s2Tn" maxlength="32" value="${nxEsc(tr.name||'')}" placeholder="${nxEsc(I.label)}" aria-label="Track name (tap to rename)"><button class="s2-dots" data-a="menu" aria-label="More actions" aria-expanded="false"><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></button></div>
     <div class="s2-menu" id="s2Menu" hidden>${menu.map(([a,l])=>`<button data-a="${a}" class="${a==='del'?'danger':''}">${l}</button>`).join('')}</div>
     ${fam.length>1?`<button class="s2-row" data-pick="inst"><span>Instrument</span><b>${dot(tr.inst)}${nxEsc(I.label)}</b><svg class="nx-ico" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></button>`:''}
@@ -307,7 +344,7 @@ function s2TrackSheet(L){ if(L.tracks[0].inst==='mix') return s2MixSheet(L); con
       ${hasVoice?s2Fld('s2Expr','Expression'+s2Inf('0 plays clean, steady notes. Turn it up to keep the slides, wobbles and swells of your take.'),0,100,tr.expr||0,10):''}`:''}
     <div class="nx-grp" style="padding-top:6px">Mix</div>${s2Fld('s2Rev','Reverb',0,100,tr.send??0)}${s2Fld('s2Pan','Left / right',-100,100,tr.pan??0)}${tr.inst==='vox'||tr.inst==='fx'?'':s2Fld('s2Tone',pit?'Brightness':'Tone',0,100,tr.tone??50)}
     ${(pit||I.kind==='drums'||I.kind==='drum')?`<div class="nx-grp" style="padding-top:6px">Effects${isPro()?'':s2Inf('Free to try: they play while this menu is open.')+PRO_LOCK}</div>${presetChips('fx',tr.fp)}${TFX.map(([k,l])=>s2Fld('s2Tfx_'+k,l,0,100,(tr.tfx&&tr.tfx[k])||0)).join('')}${tr._pvOrig&&'tfx' in tr._pvOrig?pvLine('Trying effects'):''}`:''}
-    ${tr.inst==='kit'?`<div class="nx-grp" style="padding-top:6px">Your kit${s2Inf('Take each drum from any kit, then save it as yours (•••).')}</div>${S.kit.slots.map(sl=>`<div class="s2-fld"><label for="kd_${nxEsc(sl.id)}">${nxEsc(slotLabel(sl.id))}</label><select class="nx-txt" id="kd_${nxEsc(sl.id)}" data-kd="${nxEsc(sl.id)}"><option value="">${nxEsc(tr.sound)} (this kit)</option>${DRUM_SOUNDS.filter(k=>k!==tr.sound).map(k=>`<option value="${k}" ${sl.kit===k?'selected':''}>${k}${proLocked(k)?' ✦':''}</option>`).join('')}</select></div>`).join('')}${S._pvOrig&&'kit' in S._pvOrig?pvLine('Trying drums from another kit'):''}`:''}
+    ${tr.inst==='kit'?`<div class="nx-grp" style="padding-top:6px">Your kit${s2Inf('Take each drum from any kit. Save the result as a preset under •••.')}</div>${S.kit.slots.map(sl=>`<div class="s2-fld"><label for="kd_${nxEsc(sl.id)}">${nxEsc(slotLabel(sl.id))}</label><select class="nx-txt" id="kd_${nxEsc(sl.id)}" data-kd="${nxEsc(sl.id)}"><option value="">${nxEsc(tr.sound)} (this kit)</option>${DRUM_SOUNDS.filter(k=>k!==tr.sound).map(k=>`<option value="${k}" ${sl.kit===k?'selected':''}>${k}${proLocked(k)?' ✦':''}</option>`).join('')}</select></div>`).join('')}${S._pvOrig&&'kit' in S._pvOrig?pvLine('Trying drums from another kit'):''}`:''}
     </div>
     `);
   const each=f=>all().forEach(f), rerender=()=>{ save(); scheduleRender(); };
@@ -345,9 +382,14 @@ function s2TrackSheet(L){ if(L.tracks[0].inst==='mix') return s2MixSheet(L); con
 /* the line under something being tried: what it is, and a way to get Pro */
 /* a small ⓘ that shows its text when tapped (instead of a sentence under every control) */
 const s2Inf=t=>`<button class="s2-i" data-info="${nxEsc(t)}" aria-label="About this" type="button">i</button>`;
+/* a list to pick from (same look as Sound ›): stays open so each choice can be heard; Done or ‹ goes back */
+function nxList(title, groups, cur, pick, back){ const tick='<svg class="nx-ico pk-ok" viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></svg>';
+  nxSheet(`<div class="pk-head"><button class="pk-back" data-done aria-label="Back"><svg class="nx-ico" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button><h2>${nxEsc(title)}</h2><button class="pk-done" data-done>Done</button></div>`
+    +groups.filter(g=>g[1].length).map(([g,xs])=>`${g?`<div class="s2-sg">${nxEsc(g)}</div>`:''}<div class="pk-list">${xs.map(([v,l])=>`<button class="pk-row" data-v="${nxEsc(v)}" aria-pressed="${v===cur}"><span>${nxEsc(l)}</span>${v===cur?tick:''}</button>`).join('')}</div>`).join(''));
+  $('nxSheet').onclick=e=>{ if(e.target.closest('[data-done]')){ back(); return; } const b=e.target.closest('[data-v]'); if(!b) return; const y=$('nxSheet').scrollTop; pick(b.dataset.v); nxList(title,groups,b.dataset.v,pick,back); $('nxSheet').scrollTop=y; }; }
 /* save the lane's vocal style, effects or kit as one of "Mine" */
 function s2SavePreset(L,k){ const all=S.tracks.filter(t=>s2LaneId(t)===L.id), tr=all[0], back=()=>s2TrackSheet(s2Lane(L.id));
-  presetNameSheet(k==='vox'?'Save your vocal preset':k==='fx'?'Save these effects':'Save your kit', presetNextName(k,k==='vox'?'My voice':k==='fx'?'My effects':'My kit'), name=>{
+  presetNameSheet(k==='vox'?'Save vocals as a preset':k==='fx'?'Save effects as a preset':'Save kit as a preset', presetNextName(k,k==='vox'?'My voice':k==='fx'?'My effects':'My kit'), name=>{
     const x=presetPut(k,name,k==='vox'?{sound:tr.sound,fx:copyJ(fxOf(tr))}:k==='fx'?{tfx:copyJ(tr.tfx)}:kitPresetData(tr)); all.forEach(t=>{ t[k==='vox'?'vp':k==='fx'?'fp':'kp']=x.id; }); save(); back(); toast(`Saved “${name}”. It’s under Mine in every song.`); }); }
 /* the list behind "Sound ›" / "Instrument ›": stays open so you can tap through and hear each one on your part (it loops while the list is open) */
 function s2PickSheet(L, kind){ const all=()=>S.tracks.filter(t=>s2LaneId(t)===L.id), tr=all()[0], I=INST[tr.inst], part=all().find(t=>t.id===s2.selId)||all().find(hasContent);
@@ -407,19 +449,11 @@ function addChords(L,style,per,temp){   /* temp: only to try a Pro style (never 
    the rest of the song moves later), loop it, or remove the name. Kept as S.secs [{a,b,name}] in bars (b not included). ---- */
 const SEC_NAMES=['Intro','Verse','Chorus','Bridge','Outro'];
 function secsTidy(){ S.secs=(S.secs||[]).filter(x=>x.a<x.b&&x.a<S.bars).sort((x,y)=>x.a-y.a); }
-function secSheet(){ secsTidy(); const secs=S.secs, cur=Math.min(S.bars-1,Math.max(0,Math.floor(s2.cur||0))), free=b=>!secs.some(x=>b>=x.a&&b<x.b);
-  let at=free(cur)?cur:(()=>{ for(let b=0;b<S.bars;b++) if(free(b)) return b; return cur; })(), len=Math.min(4,S.bars-at), name=SEC_NAMES[Math.min(secs.length,SEC_NAMES.length-1)];
-  const room=a=>{ let n=0; while(a+n<S.bars && (n===0||free(a+n))) n++; return Math.max(1,n); };
-  const draw=()=>{ nxSheet(`<h2>Sections</h2>${secs.length?`<div class="sec-list">${secs.map((x,i)=>`<div class="sec-row"><div><b>${nxEsc(x.name)}</b><small>${x.b-x.a>1?`Bars ${x.a+1}–${x.b}`:`Bar ${x.a+1}`}</small></div><button data-dup="${i}">Duplicate</button><button data-loop="${i}" aria-label="Loop ${nxEsc(x.name)}">Loop</button><button class="del" data-rm="${i}" aria-label="Remove the name ${nxEsc(x.name)}">✕</button></div>`).join('')}</div>`:'<p style="color:var(--muted);font-size:14px;margin:-4px 0 10px">Name parts of your song to loop, find and duplicate them.</p>'}
-    <div class="nx-grp">Name a section</div><div class="s2-opts" id="secNm">${SEC_NAMES.map(n=>`<button data-n="${n}" aria-pressed="${n===name}">${n}</button>`).join('')}</div>
-    <div class="s2-fld"><label for="secAt">From bar</label><select class="nx-txt" id="secAt">${Array.from({length:S.bars},(_,b)=>`<option value="${b}" ${b===at?'selected':''}>${b+1}</option>`).join('')}</select></div>
-    <div class="s2-fld"><label for="secLen">Bars</label><select class="nx-txt" id="secLen">${Array.from({length:room(at)},(_,i)=>i+1).map(n=>`<option value="${n}" ${n===len?'selected':''}>${n}</option>`).join('')}</select></div>
-    <button class="nx-primary" id="secAdd" style="margin-top:14px">Add ${nxEsc(name)}</button>`); };
-  draw();
-  $('nxSheet').onchange=e=>{ if(e.target.id==='secAt'){ at=+e.target.value; len=Math.min(len,room(at)); draw(); } if(e.target.id==='secLen') len=+e.target.value; };
+function secSheet(){ secsTidy(); const secs=S.secs;
+  nxSheet(`<h2>Sections</h2>${secs.length?`<div class="sec-list">${secs.map((x,i)=>`<div class="sec-row"><div><b>${nxEsc(x.name)}</b><small>${x.b-x.a>1?`Bars ${x.a+1}–${x.b}`:`Bar ${x.a+1}`}</small></div><button data-dup="${i}">Duplicate</button><button data-loop="${i}" aria-label="Loop ${nxEsc(x.name)}">Loop</button><button class="del" data-rm="${i}" aria-label="Remove the name ${nxEsc(x.name)}">✕</button></div>`).join('')}</div>`:'<p style="color:var(--muted);font-size:15px;margin:-4px 0 10px">Name parts of your song (Verse, Chorus…) to loop and duplicate them.</p>'}
+    <button class="nx-primary" id="secMark" style="margin-top:12px">Mark a section</button>`);
   $('nxSheet').onclick=e=>{ let b;
-    if(b=e.target.closest('#secNm button')){ name=b.dataset.n; draw(); }
-    else if(e.target.closest('#secAdd')){ flushSave(); S.secs=secs.filter(x=>x.b<=at||x.a>=at+len).concat([{a:at,b:at+len,name}]); secsTidy(); save(); s2Render(); secSheet(); }
+    if(e.target.closest('#secMark')){ secMarkStart(); }
     else if(b=e.target.closest('[data-rm]')){ flushSave(); secs.splice(+b.dataset.rm,1); save(); s2Render(); secSheet(); }
     else if(b=e.target.closest('[data-loop]')){ const x=secs[+b.dataset.loop]; nxClose(); s2.sec={a:x.a*16,b:x.b*16,id:null}; s2.loop=true; $('s2Loop').setAttribute('aria-pressed','true'); s2Render(); toast('Looping '+x.name+'. Tap the yellow band to stop.'); }
     else if(b=e.target.closest('[data-dup]')){ const x=secs[+b.dataset.dup]; if(secDuplicate(x)){ nxClose(); toast(x.name+' duplicated: bars '+(x.b+1)+'–'+(2*x.b-x.a)+'.'); } } }; }
@@ -439,31 +473,32 @@ function s2Sheets(kind){ $('nxSheet').oninput=null;
     { const taps=[]; $('s2Tap').onclick=e=>{ const now=performance.now(); if(taps.length && now-taps[taps.length-1]>2000) taps.length=0; taps.push(now); if(taps.length>8) taps.shift();   /* the last 8 taps; a pause of 2 s starts over */
         if(taps.length<3){ e.currentTarget.textContent=taps.length===1?'Keep tapping…':'One more…'; return; }
         const gaps=taps.slice(1).map((t,i)=>t-taps[i]).sort((a,b)=>a-b), bpm=clamp(Math.round(60000/gaps[gaps.length>>1]),60,180); setTempo(bpm); $('s2T').value=bpm; $('s2T').nextElementSibling.value=bpm; e.currentTarget.textContent=`${bpm} BPM · keep tapping`; }; } $('s2Arp').onchange=e=>{ S.keyRef=e.target.checked; save(); }; $('nxSheet').onclick=null; }
-  if(kind==='key'){ nxSheet(`<h2>Key and snap</h2><div class="s2-fld"><label for="s2K">Key${s2Inf('A new key moves the whole song there. Drums stay as they are.')}</label><select class="nx-txt" id="s2K">${keyOpts()}</select></div><div class="s2-fld"><label for="s2Sc">Snap notes to</label><select class="nx-txt" id="s2Sc">${SCALE_OPTS}</select></div>${s2Fld('s2Sn','Snap strength',0,100,S.snapStr??100,5)}`);
-    $('s2K').value=S.key; $('s2Sc').value=S.scale; $('nxSheet').onclick=e=>{ const b=e.target.closest('[data-info]'); if(b){ e.preventDefault(); toast(b.dataset.info,6000); } }; $('s2K').onchange=e=>setKey(e.target.value); $('s2Sc').onchange=e=>setScale(e.target.value); $('s2Sn').oninput=e=>setSnap(e.target.value); }
+  if(kind==='key'){ const opts=[...SCALE_OPTS.matchAll(/value="([^"]+)">([^<]+)</g)].map(m=>[m[1],m[2]]), scl=v=>(opts.find(o=>o[0]===v)||['',v])[1], kname=v=>v==='auto'?'Auto-detect':NOTE_NAMES[+v];
+    const row=(k,l,v)=>`<button class="s2-row" data-pick="${k}"><span>${l}</span><b>${nxEsc(v)}</b></button>`;
+    nxSheet(`<h2>Key</h2>${row('key','Key',kname(S.key))}${row('scale','Scale',scl(S.scale))}`);
+    $('nxSheet').onclick=e=>{ const b=e.target.closest('[data-pick]'); if(!b) return; const back=()=>s2Sheets('key');
+      if(b.dataset.pick==='key') nxList('Key',[['',[['auto','Auto-detect'],...NOTE_NAMES.map((n,i)=>[String(i),n])]]],String(S.key),v=>{ setKey(v); if(v!=='auto') toast('The whole song moved to '+NOTE_NAMES[+v]+'. Drums stay as they are.'); },back);
+      else nxList('Scale',[['',opts.filter(o=>['auto','major','minor','pent-minor','pent-major','blues'].includes(o[0]))],['More scales',opts.filter(o=>!['auto','major','minor','pent-minor','pent-major','blues'].includes(o[0]))]],S.scale,v=>setScale(v),back); }; }
   if(kind==='mix'){ nxSheet(`<h2>Mix</h2>${s2Fld('s2Mv','Master volume',0,100,S.master.vol)}${s2Fld('s2Mr','Reverb',0,100,S.master.rev)}${s2Fld('s2Md','Drive',0,100,S.master.drive)}${s2Fld('s2Mp','Punch',0,100,S.master.punch)}`);
     [['s2Mv','vol'],['s2Mr','rev'],['s2Md','drive'],['s2Mp','punch']].forEach(([id,k])=>{ $(id).oninput=e=>setMaster(k,e.target.value); }); $('nxSheet').onclick=null; }
-  if(kind==='name'){ nxSheet(`<h2>Rename</h2><input class="nx-txt" id="s2Rn" maxlength="60" value="${nxEsc(S.title||'')}" placeholder="Untitled" aria-label="Project name"><button class="nx-primary" id="s2RnOk">Save</button>`); $('nxSheet').onclick=null;
+  if(kind==='name'){ nxSheet(`<h2>Rename</h2><input class="nx-txt" id="s2Rn" maxlength="60" value="${nxEsc(S.title||'')}" placeholder="Untitled" aria-label="Song name"><button class="nx-primary" id="s2RnOk">Save</button>`); $('nxSheet').onclick=null;
     const ok=()=>{ S.title=$('s2Rn').value.trim(); save(); nxClose(); s2Render(); }; $('s2RnOk').onclick=ok; $('s2Rn').onkeydown=e=>{ if(e.key==='Enter') ok(); }; $('s2Rn').focus(); } }
 function s2Init(){ const _rt=renderTracks; renderTracks=function(){ warmSounds(); if(s2.post && !recState && rs.mode==null){ s2.post=false; try{ s2Tidy(); }catch(e){} }
     /* the old part rows are no longer built (they were never shown) */ if(s2On()){ if(s2.edId!=null) s2EdMount(); else s2Render(); } };
   const _rd=redrawTrack; redrawTrack=function(tr){ _rd.apply(this,arguments); if(s2On()){ const L=s2Lane(s2LaneId(tr)), cv=L&&$('s2In').querySelector(`canvas[data-cv="${L.id}"]`); if(cv) s2DrawLane(L,cv); } };
   $('s2EdBack').onclick=s2EdClose; $('s2EdUndo').onclick=()=>undo(); $('s2EdRedo').onclick=()=>redo(); $('s2EdPlay').onclick=()=>togglePlay();
-  { const T=$('s2EdSeekT'); let drag=false; const at=e=>{ const t=S.tracks.find(x=>x.id===s2.edId); if(!t) return null; const r=T.getBoundingClientRect(), f=clamp((e.clientX-r.left)/r.width,0,0.999), L=loopLen(); return Math.min(((t.off||0)+f*pSteps(t))*stepDur(),L-0.001); };
-    const set=(e,go)=>{ if(recState) return; const a=at(e); if(a==null) return; playFrom=a; s2.cur=a/loopLen()*S.bars; s2.pos=-1; edSeekDraw(); if(go&&playing&&ctx) startAll(ctx.currentTime+0.02,a); };
-    T.parentElement.addEventListener('pointerdown',e=>{ drag=true; try{ T.parentElement.setPointerCapture(e.pointerId); }catch(_){} set(e,false); });
-    T.parentElement.addEventListener('pointermove',e=>{ if(drag) set(e,false); });
-    const up=e=>{ if(!drag) return; drag=false; set(e,true); }; T.parentElement.addEventListener('pointerup',up); T.parentElement.addEventListener('pointercancel',()=>{ drag=false; }); } $('s2EdRew').onclick=()=>{ if(recState) return; const t=S.tracks.find(x=>x.id===s2.edId), L=loopLen(), at=t?Math.min((t.off||0)*stepDur(),L-0.001):0; playFrom=at; s2.cur=at/L*S.bars; if(playing&&ctx) startAll(ctx.currentTime+0.02,at); };
+  $('s2EdRew').onclick=()=>{ if(recState) return; const t=S.tracks.find(x=>x.id===s2.edId), L=loopLen(), at=t?Math.min((t.off||0)*stepDur(),L-0.001):0; playFrom=at; s2.cur=at/L*S.bars; if(playing&&ctx) startAll(ctx.currentTime+0.02,at); };
   $('s2EdFill').onclick=()=>{ const tr=S.tracks.find(t=>t.id===s2.edId); if(tr) fillGaps(tr); };
   $('s2EdVer').onclick=()=>{ const tr=S.tracks.find(t=>t.id===s2.edId); if(!tr) return; verNext(tr); };
   $('s2EdMine').onclick=()=>{ const tr=S.tracks.find(t=>t.id===s2.edId); if(tr) verMine(tr); };
-  $('s2EdVerI').onclick=()=>nxSheet(`<h2>Another version</h2><p style="font-size:15px;margin:0 0 10px">The same recording can be heard more than one way: in a different key, or with bigger jumps between notes. Noodle shows the one it thinks you meant.</p><p style="font-size:15px;margin:0 0 10px">Tap <b>Another version</b> to hear the next most likely one, and keep tapping to go through them. Your recording isn’t changed.</p><p style="font-size:15px;margin:0 0 6px"><b>Mine</b> puts your notes back exactly as they were, including anything you changed by hand.</p>`);
+  $('s2EdVerI').onclick=()=>nxSheet(`<h2>Another version</h2><p style="font-size:15px;margin:0 0 10px">Noodle hears your take more than one way. Each tap plays the next way it could go.</p><p style="font-size:15px;margin:0 0 6px"><b>Mine</b> brings back your notes, with your own edits.</p>`);
   $('s2CbEdit').onclick=()=>{ const t=S.tracks.find(x=>x.id===s2.selId); if(t) s2Edit(t); };
   $('s2CbDup').onclick=()=>{ const t=S.tracks.find(x=>x.id===s2.selId); if(!t) return; const c=s2DupClip(t); if(c){ s2.selId=c.id; renderTracks(); const tl=$('s2Tl'), x0=(c.off/16)*s2.barw, x1=x0+pBars(c)*s2.barw, hw=parseFloat(getComputedStyle($('s2')).getPropertyValue('--s2-hdr')); if(x1>tl.scrollLeft+tl.clientWidth-hw-12) tl.scrollLeft=Math.max(0,x1-(tl.clientWidth-hw)+24); else if(x0<tl.scrollLeft) tl.scrollLeft=Math.max(0,x0-12); } else toast('No room for a copy'); };
   $('s2CbCopy').onclick=()=>{ const t=S.tracks.find(x=>x.id===s2.selId); if(t) partCopy(t); };
   $('s2CbLoop').onclick=()=>{ const t=S.tracks.find(x=>x.id===s2.selId); if(t) s2SecSet(t); };
   $('s2CbNew').onclick=s2NewPart; $('s2CbDel').onclick=()=>{ const t=S.tracks.find(x=>x.id===s2.selId); if(t) s2DeleteClip(t); };
   $('s2Back').onclick=()=>nxGo('projects'); $('s2Name').onclick=()=>s2Sheets('name'); $('s2Undo').onclick=()=>undo(); $('s2Redo').onclick=()=>redo();
+  $('s2MkX').onclick=secMarkEnd; $('s2MkOk').onclick=secMarkDone; $('s2MkN').onclick=e=>{ const b=e.target.closest('[data-mkn]'); if(b&&s2.mark){ s2.mark.name=b.dataset.mkn; s2MarkDraw(); } };
   $('s2Share').onclick=s2ShareSheet; $('s2Bpm').onclick=()=>s2Sheets('tempo'); $('s2Key').onclick=()=>s2Sheets('key'); $('s2Snap').onclick=()=>{ const i=SNAPS.indexOf(snapBars()); S.snap=SNAPS[(i+1)%SNAPS.length]; save(); s2Chips(); toast(`Parts move and trim by ${S.snap===1?'1 bar':fracTxt(S.snap)+' bar'}.`); }; $('s2Mix').onclick=()=>s2Sheets('mix');
   $('s2Play').onclick=()=>togglePlay(); $('s2RecB').onclick=s2Record; $('s2Metro').onclick=toggleMetro;
   $('s2Rew').onclick=()=>{ if(recState) return; playFrom=0; s2.cur=0; $('s2Tl').scrollLeft=0; if(playing&&ctx) startAll(ctx.currentTime+0.02,0); };
@@ -473,7 +508,7 @@ function s2Init(){ const _rt=renderTracks; renderTracks=function(){ warmSounds()
   $('s2TkDel').onclick=async()=>{ const p=takeBar, pb=p.prevBars; gone(p); takeBar=null; await discardTake(p); s2.recPrev=pb||0; s2.recId=null; s2Tidy(); renderTracks(); toast('Take discarded'); };
   $('s2TkRe').onclick=async()=>{ const p=takeBar; gone(p); takeBar=null; flushSave(); const snap=hist.cur; await discardTake(p); const t=S.tracks.find(x=>x.id===p.id); s2.recId=p.id; s2.recPrev=p.prevBars||S.bars; s2.recLen=t&&t.off!=null?t.len:0; s2.post=true; recordInto(p.id,{snap,bar:p}); };
   $('s2In').onclick=e=>{ const g=k=>e.target.closest(`[data-${k}]`), T=id=>S.tracks.find(t=>String(t.id)===id); let b;
-    if(e.target.closest('#s2Secs')){ secSheet(); return; }
+    if(e.target.closest('#s2Secs')){ if(!s2.mark) secSheet(); return; }
     if(e.target.closest('#s2Beat')){ beatSheet(); return; }
     if(g('secx')){ s2SecClear(); return; }
     if(b=g('arm')){ const L=s2Lane(b.dataset.arm); s2.armId=String(s2.armId)===String(L.id)?null:L.id; if(s2.armId!=null){ S.activeId=L.tracks[0].id; } s2Render(); }

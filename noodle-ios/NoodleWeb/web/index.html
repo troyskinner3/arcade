@@ -13,7 +13,7 @@
 <title>Noodle</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="stylesheet" href="vendor/fonts/fonts.css">
-<link rel="stylesheet" href="app.css?v=1b62ff7142">
+<link rel="stylesheet" href="app.css?v=5766d9168e">
 
 
 
@@ -22,7 +22,7 @@
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <section class="s2" id="s2" hidden>
   <div class="s2-top s2-g">
-    <button class="s2-ib" id="s2Back" aria-label="Projects"><svg class="nx-ico" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
+    <button class="s2-ib" id="s2Back" aria-label="Songs"><svg class="nx-ico" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
     <button class="s2-name" id="s2Name"></button>
     <button class="s2-ib" id="s2Undo" aria-label="Undo"><svg class="nx-ico" viewBox="0 0 24 24"><path d="M9 6L4 11l5 5"/><path d="M4 11h10a5 5 0 010 10h-3"/></svg></button>
     <button class="s2-ib" id="s2Redo" aria-label="Redo"><svg class="nx-ico" viewBox="0 0 24 24"><path d="M15 6l5 5-5 5"/><path d="M20 11H10a5 5 0 000 10h3"/></svg></button>
@@ -35,6 +35,7 @@
     <button class="s2-chip" id="s2Snap" aria-label="Snap: how far parts move and trim"><small>SNAP</small><span>1</span></button>
     <button class="s2-mix" id="s2Mix" aria-label="Mix"><svg class="nx-ico" viewBox="0 0 24 24" style="width:18px;height:18px"><path d="M6 3v18M12 3v18M18 3v18"/><path d="M4 8h4M10 15h4M16 10h4" stroke-width="3"/></svg>Mix</button>
   </div>
+  <div class="s2-markbar s2-g" id="s2MarkBar" hidden><button class="s2-mkx" id="s2MkX">Exit</button><div class="s2-mkn" id="s2MkN"></div><button class="s2-mkok" id="s2MkOk">Done</button></div>
   <div class="s2-tl" id="s2Tl"><div class="s2-in" id="s2In"></div></div>
   <div class="s2-ed" id="s2Ed" hidden>
     <div class="s2-top s2-g">
@@ -45,7 +46,6 @@
     </div>
     <div class="s2-edb s2-g" id="s2EdBody"></div>
     <div class="s2-edh s2-g" id="s2EdHint"></div>
-    <div class="s2-edseek s2-g" id="s2EdSeek" aria-label="Playhead: tap or drag to move it"><div class="trk" id="s2EdSeekT"><i id="s2EdSeekD"></i></div></div>
     <div class="s2-edbar s2-g">
       <button class="s2-play s2-rw" id="s2EdRew" aria-label="Back to the start of this part"><svg class="nx-ico" viewBox="0 0 24 24"><path d="M6 5v14M19 5l-10 7 10 7V5z"/></svg></button>
       <button class="s2-play" id="s2EdPlay" aria-label="Play"><svg class="nx-ico" viewBox="0 0 24 24" id="s2EdPlayI"><path d="M7 4l13 8-13 8V4z" fill="currentColor"/></svg></button>
@@ -70,14 +70,14 @@
       <button class="s2-tb" id="s2Metro" aria-pressed="false" aria-label="Metronome"><svg class="nx-ico" viewBox="0 0 24 24"><path d="M8 3h8l3 18H5L8 3zM12 14l5-8"/></svg></button>
       <button class="s2-tb" id="s2Rew" aria-label="Back to start"><svg class="nx-ico" viewBox="0 0 24 24"><path d="M6 5v14M19 5l-9 7 9 7V5z"/></svg></button>
       <button class="s2-tb s2-play" id="s2Play" aria-label="Play"><svg class="nx-ico" viewBox="0 0 24 24" id="s2PlayI"><path d="M7 4l13 8-13 8V4z" fill="currentColor"/></svg></button>
-      <button class="s2-recb" id="s2RecB" aria-label="Record"><i></i></button>
+      <button class="s2-recb" id="s2RecB" aria-label="Record"><i></i><span class="s2-recto" id="s2RecTo" hidden></span></button>
       <button class="s2-tb" id="s2Loop" aria-pressed="false" aria-label="Loop"><svg class="nx-ico" viewBox="0 0 24 24"><path d="M17 2l4 4-4 4M3 11V9a3 3 0 013-3h15M7 22l-4-4 4-4M21 13v2a3 3 0 01-3 3H3"/></svg></button>
     </div>
   </div>
 </section>
 <section class="nx-view" id="nxProjects" hidden>
-  <div class="nx-g nx-top"><h1>Projects</h1></div>
-  <div class="nx-g"><label class="nx-search"><svg class="nx-ico" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><input id="nxQ" type="search" placeholder="Search projects" autocomplete="off" aria-label="Search projects"></label>
+  <div class="nx-g nx-top"><h1>Songs</h1></div>
+  <div class="nx-g"><label class="nx-search"><svg class="nx-ico" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><input id="nxQ" type="search" placeholder="Search songs" autocomplete="off" aria-label="Search songs"></label>
     <div class="nx-sort" id="nxSort" role="group" aria-label="Sort"><button data-s="updatedAt" aria-pressed="true">Recent</button><button data-s="title" aria-pressed="false">Name</button><button data-s="createdAt" aria-pressed="false">Created</button></div></div>
   <div class="nx-list"><div class="nx-g" id="nxList"></div></div>
 </section>
@@ -118,8 +118,8 @@
 </section>
 <section class="nx-ob" id="nxOb" hidden><div class="in nx-g" id="nxObIn"></div><div class="acts nx-g" id="nxObActs"></div></section>
 <nav class="nx-nav" id="nxNav" aria-label="Main" hidden>
-  <button class="nx-tab" id="nxTabP" aria-current="page"><svg class="nx-ico" viewBox="0 0 24 24"><path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/></svg>Projects</button>
-  <button class="nx-plus" id="nxPlus" aria-label="New project"><svg class="nx-ico" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
+  <button class="nx-tab" id="nxTabP" aria-current="page"><svg class="nx-ico" viewBox="0 0 24 24"><path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/></svg>Songs</button>
+  <button class="nx-plus" id="nxPlus" aria-label="New song"><svg class="nx-ico" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
   <button class="nx-tab" id="nxTabM"><svg class="nx-ico" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/></svg>More</button>
 </nav>
 <div class="nx-scrim" id="nxScrim" hidden><div class="nx-sheet" id="nxSheet" role="dialog" aria-modal="true"></div></div>
@@ -150,8 +150,8 @@
 
 <link rel="prefetch" href="js/reader-worker.js?v=dcb343728e" as="script">
 <script src="js/reader.js?v=ae60fa7a6f"></script>
-<script src="js/core.js?v=96d27db3e6"></script>
-<script src="js/studio.js?v=4aa88d362e"></script>
+<script src="js/core.js?v=0000ed98e2"></script>
+<script src="js/studio.js?v=47567d40d8"></script>
 <script src="js/dsp.js?v=692f996663"></script>
 <script src="js/key.js?v=04753a7191"></script>
 <script src="js/engine.js?v=5fc7934915"></script>
@@ -161,7 +161,7 @@
 <script src="js/musical.js?v=94e428cc74"></script>
 <script src="js/beats.js?v=9e9022af52"></script>
 <script src="js/presets.js?v=039945adfe"></script>
-<script src="js/ui.js?v=320475bc65"></script>
+<script src="js/ui.js?v=5e8843376e"></script>
 <script src="js/export.js?v=2f5478c22f"></script>
 
 </body>

@@ -9,5 +9,5 @@ const {chromium,devices}=require('playwright');
     setKey(7,'mixolydian'); r.snapFsharp=N(snap(66.1)); r.label=projKeyLabel()||(NOTE_NAMES[currentKey().tonic]+' '+SCALE_LABEL[currentKey().scale]); r.keysig=keySigBytes().slice(3).join(',');
     setKey(2,'dorian'); r.keysigDdorian=keySigBytes().slice(3).join(','); r.options=(SCALE_OPTS.match(/<option/g)||[]).length; r.chordTypes=Object.values(CHORD_TYPES).join(', '); return r; });
   await p.evaluate(()=>{ S.key='7'; S.scale='mixolydian'; keyCache=null; const t=mkTrack('keys',{id:S.nextId++,off:0,len:1,rep:false,lenSet:true,chordType:'seventh',notes:[{s:0,l:8,p:67,v:.8,x:true},{s:8,l:8,p:65,v:.8,x:true}]}); S.tracks.push(t); S.bars=1; save(); syncAllInputs(); renderTracks(); });
-  await p.tap('#s2Key'); await p.waitForTimeout(200); await p.screenshot({path:'results/modes.png'}); out.sheetScale=await p.$eval('#s2Sc',e=>e.options[e.selectedIndex].textContent); out.chip=await p.$eval('#s2Key span',e=>e.textContent);
+  await p.tap('#s2Key'); await p.waitForTimeout(200); await p.screenshot({path:'results/modes.png'}); out.sheetScale=await p.$eval('#nxSheet [data-pick="scale"] b',e=>e.textContent); out.chip=await p.$eval('#s2Key span',e=>e.textContent);
   console.log(JSON.stringify(out,null,1),errs); await b.close(); })();
