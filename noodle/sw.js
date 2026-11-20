@@ -1,6 +1,6 @@
 /* Noodle works offline: the page and its files are kept on the device. The page itself is fetched fresh when there is a connection (so updates arrive), and from the copy when there isn't. */
-const CACHE = 'noodle-v2';
-const CORE = ['./', 'index.html', 'reader.json', 'vendor/mp4-muxer.min.js', 'vendor/fonts/fonts.css',
+const CACHE = 'noodle-v3';
+const CORE = ['./', 'index.html', 'reader.json', 'musical.json', 'vendor/mp4-muxer.min.js', 'vendor/fonts/fonts.css',
   'vendor/fonts/Unbounded-700-latin.woff2', 'vendor/fonts/Unbounded-700-latin-ext.woff2', 'vendor/fonts/JetBrainsMono-500-latin.woff2', 'vendor/fonts/JetBrainsMono-500-latin-ext.woff2',
   'vendor/fonts/JetBrainsMono-700-latin.woff2', 'vendor/fonts/JetBrainsMono-700-latin-ext.woff2'];
 /* The page's stylesheet and scripts carry a hash of their contents (?v=..., stamp.sh), so a new version is a new URL: kept copies are never stale. */

@@ -576,3 +576,22 @@ Owner's 31 guided takes, edits per 10 notes (today 3.88):
   lone octave slips are fixed, phrases end on chord notes and the last note on the home chord, velocity follows the beat. The take as heard is
   kept; the note editor's "As heard / Musical" button swaps them. Owner's 31 takes (`MUSICAL=1 node replay_fast.js`, `mus_metrics.py`):
   starts on the 8th grid 79% -> 89%, strong-beat notes on chord notes 74% -> 88%, one-step blips 40 -> 2; edits to the meant tune 3.82 -> 4.04.
+
+## Round 8: Musical mode learned from data (`musical_train/`, `musical.json`)
+Owner's direction: "primarily data driven", combined with music-theory rules. ~42,000 public-domain/CC0 songs (PDMX no-license-conflict
+subset + folk tunes, 6.4M melody notes; tunes matching the guides removed). Copyrighted pop sets (Lakh, POP909, Hooktheory) not used.
+- **What the data can and can't do:** a melody model has ~6.9 choices' worth of surprise per note (2.79 bits; more context than 2 notes
+  doesn't help). On held-out songs with the reader's error pattern added (31% of notes off by a step), no setting restores more notes
+  than doing nothing (0.689 noisy, best 0.687). So the data can't recover what was meant; it can make the result sound like real music.
+- **Decoder (shipped in Musical mode):** blips go and starts may move a step to where real melodies start notes; legato phrases (rule);
+  each pitch stays or moves to a key note within 2 semitones or an octave, weighing the reader's error pattern, the interval model, chord
+  fit by beat strength and length, and phrase/last-note degrees (data), keeping the melody's ups and downs (rule). Push weight 2.5.
+- Owner's 31 takes (Python reference / app):
+  | | edits per 10 | surprise bits/note (lower = more like real melodies) | 8th grid | strong beats on chord notes* |
+  |---|---|---|---|---|
+  | as heard | 3.82 | 2.76 | 79% | 74% |
+  | hand rules (round 7) | 4.04 | 2.69 | 89% | 88% |
+  | data, weight 2 | 3.68 | 2.43 | 100% | - |
+  | data, weight 2.5 (app) | 3.92 | 2.45 | 100% | 79% |
+  *`mus_metrics.py`. Real melodies put ~80% of downbeat notes on chord notes (accompanied PDMX scores); the hand rules forced more.
+- Without `musical.json` (offline before it first loaded) the round-7 hand rules run. `musical_test.js` checks both.

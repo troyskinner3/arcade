@@ -253,7 +253,7 @@ async function guidedSetup(id){ const g=GUIDED.find(x=>x[0]===id); if(!g) return
   takeBar=null; await restoreSnap({json:JSON.stringify(o), rt:new Map()}); S.activeId=take.id; S.inst=take.inst; save(); flushSave();
   toast(`${id}: ${how}`); }
 let takeReading=0;   /* a take is read in the background: no new recording starts until it lands */
-async function addTake(x, sr, inst, opt){ takeReading++; let r; try{ r=await addTake0(x, sr, inst, opt); } finally{ takeReading--; } S.tracks.forEach(t=>{ if(t._raw&&t._raw.x===x){ t._versions=null; t._vi=0; t.reading=null; delete t.heardNotes; delete t.mzNotes; delete t.mzOn; try{ musicalPass(t); }catch(e){} if(autoOct(t)){ save(); scheduleRender(); } } }); try{ dropTake(x, sr, inst); }catch(e){} try{ repeatTip(x); }catch(e){} return r; }
+async function addTake(x, sr, inst, opt){ takeReading++; let r; try{ r=await addTake0(x, sr, inst, opt); } finally{ takeReading--; } if(musicalOn()) await loadMusical(); S.tracks.forEach(t=>{ if(t._raw&&t._raw.x===x){ t._versions=null; t._vi=0; t.reading=null; delete t.heardNotes; delete t.mzNotes; delete t.mzOn; try{ musicalPass(t); }catch(e){} if(autoOct(t)){ save(); scheduleRender(); } } }); try{ dropTake(x, sr, inst); }catch(e){} try{ repeatTip(x); }catch(e){} return r; }
 /* once: after the first melody take with a long held note, a tip for repeated notes */
 function repeatTip(x){ if(localStorage.getItem('noodle.tipRepeat')) return;
   const tr=S.tracks.find(t=>(t._raw&&t._raw.x===x)); if(!tr||INST[tr.inst].kind!=='pitched'||!tr.notes) return;

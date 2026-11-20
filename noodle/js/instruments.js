@@ -91,6 +91,7 @@ const SOUND_CREDITS=[   /* shown in More > Sound credits (required by CC BY; CC0
   {sound:'Rock drums', lib:'Big Rusty Drums', by:'Karoryfer Samples', lic:'CC0 (public domain)', url:'https://creativecommons.org/publicdomain/zero/1.0/'},
   {sound:'Brushes drums', lib:'Swirly Drums', by:'Karoryfer Samples', lic:'CC0 (public domain)', url:'https://creativecommons.org/publicdomain/zero/1.0/'},
   {sound:'Guitar', lib:'Emilyguitar', by:'Karoryfer Samples', lic:'CC0 (public domain)', url:'https://creativecommons.org/publicdomain/zero/1.0/'},
+  {sound:'Musical mode (melody statistics)', lib:'PDMX: a public-domain MusicXML dataset', by:'Phillip Long, Zachary Novack, Taylor Berg-Kirkpatrick and Julian McAuley', lic:'CC BY 4.0', url:'https://creativecommons.org/licenses/by/4.0/'},
   {sound:'E-piano', lib:'Wurlitzer EP200 from Greg Sullivan’s E-Pianos', by:'Greg Sullivan', lic:'CC BY 3.0', url:'https://creativecommons.org/licenses/by/3.0/'},
 ];   /* sound name -> folder in samples/ */
 const SMP={};
