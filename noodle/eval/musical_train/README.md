@@ -4,10 +4,10 @@ Offline tools; nothing here runs in the app. Python 3 with `mido` (`pip install 
 
 Data (all public domain or CC0; nothing copyrighted):
 - **PDMX** (Long, Novack, Berg-Kirkpatrick & McAuley, Zenodo record 15571083, dataset CC BY 4.0): `PDMX.csv` + `mid.tar.gz`.
-  Kept: `subset:no_license_conflict` and `subset:deduplicated` and `subset:all_valid`, minus genres whose public-domain status is doubtful
-  (rock, pop, soundtrack, jazz, electronic, R&B, hip hop, country, reggae, metal, blues): 71,016 files, 38,211 with a usable lead line.
+  Kept: `subset:no_license_conflict` and `subset:deduplicated` and `subset:all_valid`, every genre (owner: CC0/public domain, cleared):
+  77,321 files, 41,321 with a usable lead line.
 - The public-domain folk tunes (abc-collection) the reader was trained on (`corpus.json`, from `../corpus_parse.py`): 4,595.
-- Tunes that share three or more 8-note interval runs with a guided-take tune are left out (610), so the owner's takes stay a fair test.
+- Tunes that share three or more 8-note interval runs with a guided-take tune are left out (759), so the owner's takes stay a fair test.
 
 Steps:
 1. `extract_pdmx.py <mid root> <list.txt> <pdmx_mel.jsonl>`: per song the key, meter, lead melody (skyline of the highest part, 16th steps,

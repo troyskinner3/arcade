@@ -595,3 +595,7 @@ subset + folk tunes, 6.4M melody notes; tunes matching the guides removed). Copy
   | data, weight 2.5 (app) | 3.92 | 2.45 | 100% | 79% |
   *`mus_metrics.py`. Real melodies put ~80% of downbeat notes on chord notes (accompanied PDMX scores); the hand rules forced more.
 - Without `musical.json` (offline before it first loaded) the round-7 hand rules run. `musical_test.js` checks both.
+- **Update (owner):** every PDMX genre included (pop, rock, soundtrack etc. are in the CC0/public-domain no-conflict subset): 45,186
+  songs, 7.2M notes. Weight 2.5 on the 31 takes (Python reference): edits 3.92 (same), surprise 2.33 (was 2.36), strong beats on chord
+  notes 92% (was 90%). **Musical mode is now standard for everyone** (no switch); the editor's As heard / Musical button shows on parts
+  that have a heard version. `replay_fast.js` measures the reader alone unless `MUSICAL=1`, so the suite's 3.82 is unchanged.

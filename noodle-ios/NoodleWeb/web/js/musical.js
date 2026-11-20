@@ -1,8 +1,8 @@
 "use strict";
-/* ---- Musical mode (in testing: a switch in builds run from Xcode): after a melody take is read, reshape it toward something that sounds better,
+/* ---- Musical mode (standard for everyone): after a melody take is read, reshape it toward something that sounds better,
    rather than closer to what was sung. Noodle can't know exactly what you meant, so the first version you hear should already sound good.
-   Data plus music-theory rules. The data (noodle/musical.json, loaded on first use) is learned from ~42,000 public-domain and CC0 scores and
-   folk tunes (PDMX's no-license-conflict subset, abc-collection; 6.4M melody notes; tunes like the test guides left out):
+   Data plus music-theory rules. The data (noodle/musical.json, loaded on first use) is learned from ~45,000 public-domain and CC0 scores and
+   folk tunes (PDMX's no-license-conflict subset, abc-collection; 7.2M melody notes; tunes like the test guides left out):
    how melodies move (next interval by scale degree, beat strength and the move before), how often notes are chord notes by beat strength and
    length, which degrees end phrases and songs, and where notes start in a bar. The reader's own mistakes (from the owner's guided takes) say
    how likely each fix is. A decoder picks the whole part at once:
@@ -12,8 +12,8 @@
              how real melodies move, chord fit, and phrase/last-note degrees (data); the melody's ups and downs are kept (rule)
      velocity follows the beat (rule)
    Without the data (offline before it ever loaded) the earlier hand rules run (musicalRules). The reading as heard is kept (tr.heardNotes),
-   and the note editor can swap between the two. Offline tools: noodle/eval/musical_train/. ---- */
-const musicalOn=()=>{ if(!window.NOODLE_DEV) return false; try{ return localStorage.getItem('noodle.musical')==='1'; }catch(e){ return false; } };
+   and the note editor's As heard / Musical button swaps between the two. Offline tools: noodle/eval/musical_train/. ---- */
+const musicalOn=()=>{ try{ return localStorage.getItem('noodle.musical')!=='0'; }catch(e){ return true; } };   /* on for everyone; '0' only for tests that measure the reader itself */
 function musicalRules(tr, notes){
   const K=currentKey(); if(K.none||!notes.length) return notes.map(n=>({...n}));
   const n=pSteps(tr), ink=m=>K.set.includes(((m-K.tonic)%12+12)%12);

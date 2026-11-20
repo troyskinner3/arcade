@@ -48,7 +48,7 @@ Status: **confirmed** (owner agreed) or **proposed** (waiting on the owner).
 | Change key moves the whole song (transpose), loop a section, tap tempo, lock-screen controls, haptic taps | confirmed |
 | Faster fixes: ▼ ▲ on a note, split into 2 / 3 / 4, select several notes and move or delete them together | proposed |
 | Tap along while you hum (catches repeated notes) and learning from your fixes (accuracy for everyone) | proposed |
-| Musical mode (in testing, only in Xcode builds): takes come out more musical, learned from ~42,000 public-domain songs; As heard / Musical swap. Suggest Free: it shapes the first thing every new user hears | proposed |
+| Musical mode: melody takes come out more musical (learned from ~45,000 public-domain and CC0 songs); As heard / Musical swap in the note editor | confirmed |
 | Chords from your melody: Pad and Piano styles, chords every bar or half bar | proposed |
 | Drum fills every 4 or 8 bars (with a crash after each) | proposed |
 | Song sections: name, loop and duplicate Intro / Verse / Chorus / Bridge / Outro | proposed |
