@@ -182,6 +182,7 @@ struct NoodleWeb: UIViewRepresentable {
     web.navigationDelegate = context.coordinator
     web.allowsBackForwardNavigationGestures = false
     web.scrollView.contentInsetAdjustmentBehavior = .never
+    web.scrollView.bounces = false   // an app, not a page: nothing rubber-bands (the timeline frame stays put)
     web.isOpaque = false
     web.backgroundColor = UIColor(red: 0.07, green: 0.08, blue: 0.09, alpha: 1)
     #if DEBUG

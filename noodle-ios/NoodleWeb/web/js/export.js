@@ -175,10 +175,10 @@ function videoPainter(mix){
     g.fillStyle='#121418'; g.fillRect(0,0,W,H);
     const pulse=Math.max(0,1-((tt%beat)/beat)*3); g.fillStyle=`rgba(241,199,91,${0.08+0.12*pulse})`; g.beginPath(); g.arc(W/2,H*0.2,150+40*pulse,0,7); g.fill();
     g.font='700 56px Unbounded, Arial Black, sans-serif'; g.textAlign='left'; const w1=g.measureText('N').width, w2=g.measureText('oo').width, w3=g.measureText('dle').width, tx=(W-w1-w2-w3)/2; g.fillStyle='#eceef2'; g.fillText('N',tx,H*0.2+20); g.fillText('dle',tx+w1+w2,H*0.2+20); g.fillStyle='#f1c75b'; g.fillText('oo',tx+w1,H*0.2+20); g.textAlign='center';
-    g.fillStyle='#9aa1ad'; g.font='500 30px Figtree, sans-serif'; g.fillText(title,W/2,H*0.2+80);
+    g.fillStyle='#9aa1ad'; g.font='500 30px Barlow, sans-serif'; g.fillText(title,W/2,H*0.2+80);
     const top=H*0.36, laneH=Math.min(130,(H*0.52)/Math.max(1,parts.length)), songEnd=S.loops*L, ph=tt>=songEnd?1:((tt%L)+L)%L/L, n=steps(), x0=60, lw=W-120;
     parts.forEach((tr,i)=>{ const y=top+i*laneH, col=INST[tr.inst].color; g.fillStyle='#1b1e24'; g.fillRect(x0,y,lw,laneH-18);
-      g.fillStyle=col; g.textAlign='left'; g.font='700 24px Figtree, sans-serif'; g.fillText(partName(tr),x0,y-6+0);
+      g.fillStyle=col; g.textAlign='left'; g.font='700 24px Barlow, sans-serif'; g.fillText(partName(tr),x0,y-6+0);
       const lit=x=>{ const d=ph*n-x; return d>=0&&d<1.2?1:0.45; };
       if(tr.inst==='vox' && tr._raw){ const {x,sr}=tr._raw, va=tr.va||0, PL=pSteps(tr)*stepDur(); for(let px=0;px<lw;px+=3){ const t1=px/lw*L, rp=Math.floor(t1/PL); if(rp>0&&!pRep(tr)) break; const a=Math.floor((va+t1-rp*PL)*sr); let m=0; for(let k=a;k<a+Math.floor(L*sr/lw*3);k+=8) m=Math.max(m,Math.abs(x[k]||0)); const h=Math.min(laneH-26,m*(laneH-26)*1.6); g.globalAlpha=px/lw<ph?0.95:0.4; g.fillRect(x0+px,y+(laneH-18-h)/2,2,h); } }
       else if(INST[tr.inst].kind==='pitched'){ const ps=tr.notes.map(pitchOf); if(ps.length){ const lo=Math.min(...ps)-1, hi=Math.max(...ps)+1, rh=(laneH-26)/Math.max(6,hi-lo+1); songEvents(tr,tr.notes).forEach(nt=>{ g.globalAlpha=lit(nt.s)>0.5||(ph*n>=nt.s&&ph*n<nt.s+nt.l)?1:0.45; g.fillRect(x0+nt.s/n*lw,y+laneH-22-(pitchOf(nt)-lo+1)*rh,Math.max(4,nt.l/n*lw-3),Math.max(4,rh-2)); }); } }
@@ -186,13 +186,13 @@ function videoPainter(mix){
       g.globalAlpha=1; });
     g.fillStyle='#eceef2'; g.fillRect(x0+ph*lw,top-4,3,parts.length*laneH-14);
     g.fillStyle='#2f343d'; g.fillRect(x0,H-120,lw,6); g.fillStyle='#ef4a3c'; g.fillRect(x0,H-120,lw*Math.min(1,tt/mix.duration),6);
-    if(!isPro()){ g.fillStyle='#5d6470'; g.font='500 24px Figtree, sans-serif'; g.textAlign='center'; g.fillText('made with Noodle',W/2,H-60); }   /* the free version's tag */
+    if(!isPro()){ g.fillStyle='#5d6470'; g.font='500 24px Barlow, sans-serif'; g.textAlign='center'; g.fillText('made with Noodle',W/2,H-60); }   /* the free version's tag */
     if(mix._songEnd!=null && tt>mix._songEnd){ const a=Math.min(1,(tt-mix._songEnd)/0.4); g.globalAlpha=a; g.fillStyle='#121418'; g.fillRect(0,0,W,H);
       g.fillStyle='rgba(241,199,91,0.14)'; g.beginPath(); g.arc(W/2,H*0.42,190,0,7); g.fill();
       g.font='700 104px Unbounded, Arial Black, sans-serif'; g.textAlign='left'; const a1=g.measureText('N').width, a2=g.measureText('oo').width, a3=g.measureText('dle').width, x1=(W-a1-a2-a3)/2, y1=H*0.42+36;
       g.fillStyle='#eceef2'; g.fillText('N',x1,y1); g.fillText('dle',x1+a1+a2,y1); g.fillStyle='#f1c75b'; g.fillText('oo',x1+a1,y1);
-      g.textAlign='center'; g.fillStyle='#c9ced6'; g.font='500 36px Figtree, sans-serif'; g.fillText('Hum it. Get a song.',W/2,H*0.42+120);
-      g.fillStyle='#eceef2'; g.font='700 34px Figtree, sans-serif'; g.fillText('Free on the App Store',W/2,H*0.42+250); g.globalAlpha=1; }   /* the end card (free videos) */
+      g.textAlign='center'; g.fillStyle='#c9ced6'; g.font='500 36px Barlow, sans-serif'; g.fillText('Hum it. Get a song.',W/2,H*0.42+120);
+      g.fillStyle='#eceef2'; g.font='700 34px Barlow, sans-serif'; g.fillText('Free on the App Store',W/2,H*0.42+250); g.globalAlpha=1; }   /* the end card (free videos) */
   };
   return {cv,draw,W,H};
 }

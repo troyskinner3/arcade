@@ -607,3 +607,8 @@ subset + folk tunes, 6.4M melody notes; tunes matching the guides removed). Copy
 - Add chords, Save as preset (vocal / effects / kit), Duplicate and Delete moved under ••• next to the name.
 - Choices with 2-4 options stay as buttons (fills, chords every bar / half bar). Shorter text on Song FX, chords and beats sheets.
 - Lead menu went from about three screens to one (instrument, sound, volume, More settings).
+- **Round 9b (owner feedback):** the timeline no longer rubber-bands (overscroll none; the iPhone shell turns off bounce), so the
+  track headers, top and bottom bars stay put as a frame. Dropdowns look like DAW combo boxes (outlined, inset, value + chevron in its own
+  segment), for the Instrument / Sound rows and every select. Type: Barlow for the app, Barlow Semi Condensed for titles, labels and
+  numbers (tabular figures; no monospace, no tracked uppercase labels); Unbounded stays for the Noodle logo only. More page: grouped
+  cards, one line per row, ⓘ for sharing and crash-report details.

@@ -1,8 +1,8 @@
 /* Noodle works offline: the page and its files are kept on the device. The page itself is fetched fresh when there is a connection (so updates arrive), and from the copy when there isn't. */
-const CACHE = 'noodle-v3';
+const CACHE = 'noodle-v4';
 const CORE = ['./', 'index.html', 'reader.json', 'musical.json', 'vendor/mp4-muxer.min.js', 'vendor/fonts/fonts.css',
-  'vendor/fonts/Unbounded-700-latin.woff2', 'vendor/fonts/Unbounded-700-latin-ext.woff2', 'vendor/fonts/JetBrainsMono-500-latin.woff2', 'vendor/fonts/JetBrainsMono-500-latin-ext.woff2',
-  'vendor/fonts/JetBrainsMono-700-latin.woff2', 'vendor/fonts/JetBrainsMono-700-latin-ext.woff2'];
+  'vendor/fonts/Unbounded-700-latin.woff2', 'vendor/fonts/Unbounded-700-latin-ext.woff2',
+  'vendor/fonts/Barlow-400-latin.woff2', 'vendor/fonts/Barlow-400-latin-ext.woff2', 'vendor/fonts/Barlow-500-latin.woff2', 'vendor/fonts/Barlow-500-latin-ext.woff2', 'vendor/fonts/Barlow-600-latin.woff2', 'vendor/fonts/Barlow-600-latin-ext.woff2', 'vendor/fonts/Barlow-700-latin.woff2', 'vendor/fonts/Barlow-700-latin-ext.woff2', 'vendor/fonts/BarlowSemiCondensed-500-latin.woff2', 'vendor/fonts/BarlowSemiCondensed-500-latin-ext.woff2', 'vendor/fonts/BarlowSemiCondensed-600-latin.woff2', 'vendor/fonts/BarlowSemiCondensed-600-latin-ext.woff2', 'vendor/fonts/BarlowSemiCondensed-700-latin.woff2', 'vendor/fonts/BarlowSemiCondensed-700-latin-ext.woff2'];
 /* The page's stylesheet and scripts carry a hash of their contents (?v=..., stamp.sh), so a new version is a new URL: kept copies are never stale. */
 const pageFiles = () => fetch('index.html', { cache: 'no-store' }).then((r) => r.text()).then((h) => [...h.matchAll(/(?:src|href)="((?:js\/[\w-]+\.js|app\.css)\?v=[0-9a-f]+)"/g)].map((m) => m[1])).catch(() => []);
 self.addEventListener('install', (e) => { e.waitUntil(Promise.all([caches.open(CACHE), pageFiles()]).then(([c, files]) => Promise.all(CORE.concat(files).map((u) => c.add(u).catch(() => {})))).then(() => self.skipWaiting())); });

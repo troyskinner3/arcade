@@ -13,7 +13,7 @@
 <title>Noodle</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="stylesheet" href="vendor/fonts/fonts.css">
-<link rel="stylesheet" href="app.css?v=4dd82f0efd">
+<link rel="stylesheet" href="app.css?v=1b62ff7142">
 
 
 
@@ -85,25 +85,35 @@
   <div class="nx-g nx-top"><h1>More</h1></div>
   <div class="nx-list"><div class="nx-g">
     <div class="nx-item" id="nxDev" hidden><span>Test as<small>Only in builds run from Xcode</small></span><div class="s2-opts" style="flex-wrap:nowrap"><button data-dv="free">Free</button><button data-dv="pro">Pro</button><button data-dv="">App Store</button></div></div>
+    <div class="nx-card">
     <button class="nx-item" id="nxPro" style="width:100%;background:none;border:0;border-bottom:1px solid var(--line);text-align:left"><span>Noodle Pro<small id="nxProS"></small></span><svg class="nx-ico" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
-    <button class="nx-item" id="nxInv" style="width:100%;background:none;border:0;border-bottom:1px solid var(--line);text-align:left"><span>Invite friends<small>Noodle Pro free when 3 friends make a song</small></span><svg class="nx-ico" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
-    <button class="nx-train" id="nxTrainCard"><b>Teach Noodle your voice</b><span>Sing a few short tunes back and Noodle gets better at reading you.</span><div class="nx-bar"><i id="nxTrP"></i></div><small id="nxTrS"></small></button>
+    <button class="nx-item" id="nxInv" style="width:100%;background:none;border:0;border-bottom:1px solid var(--line);text-align:left"><span>Invite friends<small>Get Pro free</small></span><svg class="nx-ico" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
+    </div>
+    <button class="nx-train" id="nxTrainCard"><b>Teach Noodle your voice</b><span>Sing a few tunes back so Noodle reads you better.</span><div class="nx-bar"><i id="nxTrP"></i></div><small id="nxTrS"></small></button>
     <div class="nx-grp">Help Noodle get better</div>
-    <div class="nx-item"><span>Share my takes<small id="nxShS"></small></span><button class="nx-sw" id="nxShSw" role="switch" aria-checked="false" aria-label="Share my takes"></button></div>
-    <button class="nx-item" id="nxEmail" style="width:100%;background:none;border:0;border-bottom:1px solid var(--line);text-align:left"><span>Email news<small id="nxEmS">Hear about Noodle and what we build next</small></span><svg class="nx-ico" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
-    <div class="nx-item"><span>Send crash reports<small>What went wrong and the app version. No recordings or songs.</small></span><button class="nx-sw" id="nxCrSw" role="switch" aria-checked="true" aria-label="Send crash reports"></button></div>
+    <div class="nx-card">
+    <div class="nx-item"><span>Share my takes<button class="s2-i" data-info="Sends your recordings and your fixes so Noodle learns to read people better. For ages 13 and up. Turn it off any time, and delete what you shared." aria-label="About this" type="button">i</button><small id="nxShS"></small></span><button class="nx-sw" id="nxShSw" role="switch" aria-checked="false" aria-label="Share my takes"></button></div>
+    <button class="nx-item" id="nxEmail" style="width:100%;background:none;border:0;border-bottom:1px solid var(--line);text-align:left"><span>Email news<small id="nxEmS"></small></span><svg class="nx-ico" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
+    <div class="nx-item"><span>Send crash reports<button class="s2-i" data-info="What went wrong and the app version. Never recordings or songs." aria-label="About this" type="button">i</button></span><button class="nx-sw" id="nxCrSw" role="switch" aria-checked="true" aria-label="Send crash reports"></button></div>
+    </div>
     <div class="nx-grp">Your songs</div>
-    <button class="nx-item" id="nxBackup" style="width:100%;background:none;border:0;border-bottom:1px solid var(--line);text-align:left"><span>Back up all songs<small>One file with every song and its recordings</small></span><svg class="nx-ico" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
-    <button class="nx-item" id="nxOpenFile" style="width:100%;background:none;border:0;border-bottom:1px solid var(--line);text-align:left"><span>Open a song file<small>Add songs from a Noodle file</small></span><svg class="nx-ico" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
+    <div class="nx-card">
+    <button class="nx-item" id="nxBackup" style="width:100%;background:none;border:0;border-bottom:1px solid var(--line);text-align:left"><span>Back up all songs</span><svg class="nx-ico" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
+    <button class="nx-item" id="nxOpenFile" style="width:100%;background:none;border:0;border-bottom:1px solid var(--line);text-align:left"><span>Open a song file</span><svg class="nx-ico" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
+    </div>
     <input type="file" id="songIn" hidden>
     <div class="nx-grp">Your setup</div>
-    <button class="nx-item" id="nxTiming" style="width:100%;background:none;border:0;border-bottom:1px solid var(--line);text-align:left"><span>Mic and timing<small>Fix notes that land late, and other mic settings</small></span><svg class="nx-ico" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
-    <button class="nx-item" id="nxDrums" style="width:100%;background:none;border:0;border-bottom:1px solid var(--line);text-align:left"><span>Your drum sounds<small>Teach Noodle your own noises for each drum</small></span><svg class="nx-ico" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
+    <div class="nx-card">
+    <button class="nx-item" id="nxTiming" style="width:100%;background:none;border:0;border-bottom:1px solid var(--line);text-align:left"><span>Mic and timing</span><svg class="nx-ico" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
+    <button class="nx-item" id="nxDrums" style="width:100%;background:none;border:0;border-bottom:1px solid var(--line);text-align:left"><span>Your drum sounds</span><svg class="nx-ico" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
+    </div>
     <div class="nx-grp">About</div>
-    <a class="nx-item" href="mailto:info@tuttii.io?subject=Noodle"><span>Help and contact<small>info@tuttii.io</small></span><svg class="nx-ico" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></a>
+    <div class="nx-card">
+    <a class="nx-item" href="mailto:info@tuttii.io?subject=Noodle"><span>Help and contact</span><svg class="nx-ico" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></a>
     <a class="nx-item" href="https://troyskinner3.github.io/arcade/noodle/privacy/" target="_blank" rel="noopener"><span>Privacy</span><svg class="nx-ico" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></a>
-    <button class="nx-item" id="nxCredits" style="width:100%;background:none;border:0;border-bottom:1px solid var(--line);text-align:left"><span>Sound credits<small>The recorded instruments and who made them</small></span><svg class="nx-ico" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
-    <div class="nx-item"><span>Noodle<small>Hum it, sing it, beatbox it. From the makers of Tuttii.</small></span></div>
+    <button class="nx-item" id="nxCredits" style="width:100%;background:none;border:0;border-bottom:1px solid var(--line);text-align:left"><span>Sound credits</span><svg class="nx-ico" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
+    </div>
+    <p class="nx-foot">Noodle · by Tuttii</p>
   </div></div>
 </section>
 <section class="nx-ob" id="nxOb" hidden><div class="in nx-g" id="nxObIn"></div><div class="acts nx-g" id="nxObActs"></div></section>
@@ -140,7 +150,7 @@
 
 <link rel="prefetch" href="js/reader-worker.js?v=dcb343728e" as="script">
 <script src="js/reader.js?v=ae60fa7a6f"></script>
-<script src="js/core.js?v=059953adc6"></script>
+<script src="js/core.js?v=96d27db3e6"></script>
 <script src="js/studio.js?v=4aa88d362e"></script>
 <script src="js/dsp.js?v=692f996663"></script>
 <script src="js/key.js?v=04753a7191"></script>
@@ -152,7 +162,7 @@
 <script src="js/beats.js?v=9e9022af52"></script>
 <script src="js/presets.js?v=039945adfe"></script>
 <script src="js/ui.js?v=320475bc65"></script>
-<script src="js/export.js?v=6cd9b0a58c"></script>
+<script src="js/export.js?v=2f5478c22f"></script>
 
 </body>
 </html>
