@@ -234,9 +234,19 @@ struct NoodleWeb: UIViewRepresentable {
         root.present(share, animated: true)
       }
     }
-    // if the page can't load at all (no bundled copy and no connection), say so instead of showing a blank screen
-    func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
-      webView.loadHTMLString("<meta name='viewport' content='width=device-width'><body style='background:#121417;color:#e9ebef;font:17px -apple-system;padding:48px 24px'><h2>No connection</h2><p>Noodle couldn’t load. Check your connection and open it again.</p></body>", baseURL: nil)
+    // if the page can't load: ignore loads that were only cancelled or replaced; if the live site fails, use the bundled copy;
+    // otherwise say so, with the error code (so a report can be diagnosed) and a Try again link that reloads the bundled app
+    func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) { loadFailed(webView, error) }
+    func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) { loadFailed(webView, error) }
+    private func loadFailed(_ webView: WKWebView, _ error: Error) {
+      let e = error as NSError
+      if e.domain == NSURLErrorDomain && e.code == NSURLErrorCancelled { return }
+      if e.domain == "WebKitErrorDomain" && (e.code == 102 || e.code == 204) { return }   // frame load interrupted (downloads), plug-in handled load
+      let failed = (e.userInfo[NSURLErrorFailingURLErrorKey] as? URL) ?? webView.url
+      if webRoot != nil && failed?.scheme != "noodle" { webView.load(URLRequest(url: bundledURL)); return }
+      let retry = webRoot != nil ? bundledURL.absoluteString : liveURL.absoluteString
+      let msg = webRoot != nil ? "Noodle couldn’t open." : "Noodle couldn’t load. Check your connection."
+      webView.loadHTMLString("<meta name='viewport' content='width=device-width'><body style='background:#121417;color:#e9ebef;font:17px -apple-system;padding:48px 24px'><h2>Something went wrong</h2><p>\(msg)</p><p><a href='\(retry)' style='color:#ffb547'>Try again</a></p><p style='color:#8a9099;font-size:13px'>\(e.domain) \(e.code)</p></body>", baseURL: nil)
     }
     // after a phone call or Siri, get the audio back
     func webViewWebContentProcessDidTerminate(_ webView: WKWebView) { webView.reload() }
