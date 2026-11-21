@@ -48,7 +48,7 @@ function micBlocked(){ micOff=true; $('recBtn').hidden=true; }   /* no live mic 
 // Safari/iOS don't report output delay; real iPhone takes measure about 0.1 s. autoAdj is learned from your own takes.
 const autoLat=()=>(ctx?(ctx.outputLatency?ctx.outputLatency+(ctx.baseLatency||0)+0.012:(ctx.baseLatency||0)+0.09):0.09)+(S.autoAdj||0);
 const latency=()=>S.latAuto?autoLat():S.latMs/1000;
-async function startRecord(calib=false, teach=null){
+async function startRecord(calib=false, teach=null){ if(!calib&&!teach&&feelBeat()) native({type:'metroWarm'});   /* start the phone's vibration engine now, before the count-in */
   ensureCtx();
   if(recState){ cancelRecord(); return; }
   if(takeReading){ toast('Still reading your last take…'); return; }
@@ -71,7 +71,7 @@ async function startRecord(calib=false, teach=null){
   metroGain.gain.value=0.75; metroSrc=startSrc(metroBuf,metroGain,when,0); gateOpen(when);
   if(!calib && !teach && feelBeat()){   /* felt metronome: the count-in clicks and buzzes, then only the buzz (no click in the take) */
     metroGain.gain.setValueAtTime(0.75,ctx.currentTime); metroGain.gain.setValueAtTime(0,when+bar-0.03);
-    const beat=bar/4, lat=(ctx.outputLatency||ctx.baseLatency||0); native({type:'metro', inMs:Math.round((when-ctx.currentTime+lat)*1000), beatMs:beat*1000, beats:Math.ceil((bar+L)/beat), perBar:4}); }
+    const beat=bar/4, lat=Math.min(0.15,ctx.outputLatency||ctx.baseLatency||0); native({type:'metro', inMs:Math.round((when-ctx.currentTime+lat)*1000), beatMs:beat*1000, beats:Math.ceil((bar+L)/beat), perBar:4}); }
   let arp=false; if(S.keyRef && !calib && !teach && INST[S.inst].kind==='pitched'){ const K=keyKnown(), g=S.prompt&&S.tracks.find(t=>t.guide&&t.notes&&t.notes.length), first=g?g.notes.slice().sort((a,b)=>a.s-b.s)[0]:null;
     if(first){ playKeyArp(K, when, bar, pitchOf(first)); arp=true; } else if(K){ playKeyArp(K, when, bar); arp=true; } }   /* a guided tune: the arpeggio starts and ends on its first note */
   recState={arp, calib, teach, taps:[], inst:S.inst, countStart:when, start:when+bar, end:when+bar+L, preroll, poff, along, lat:calib?0:(!teach&&S.inst==='vox'&&S.vocLat!=null?S.vocLat:latency()), chunks:[]};

@@ -102,27 +102,39 @@ final class NativeBridge: NSObject, WKScriptMessageHandler {
      (a stronger tap on each bar's first beat), so the timing doesn't depend on the page's timers. Stopped when recording ends. */
   private var hEngine: CHHapticEngine?
   private var hPlayer: CHHapticPatternPlayer?
-  private func metro(inMs: Double, beatMs: Double, beats: Int, perBar: Int) {
-    guard CHHapticEngine.capabilitiesForHardware().supportsHaptics, beatMs > 50, beats > 0 else { return }
+  private func hapticEngine() -> CHHapticEngine? {
+    guard CHHapticEngine.capabilitiesForHardware().supportsHaptics else { return nil }
+    if hEngine == nil, let e = try? CHHapticEngine() {
+      e.playsHapticsOnly = true; e.isAutoShutdownEnabled = true
+      e.resetHandler = { [weak e] in try? e?.start() }   // the engine restarts itself after an interruption
+      hEngine = e
+    }
+    return hEngine
+  }
+  /* warm up when the record button is pressed, so starting the engine doesn't delay the first beats */
+  private func metroWarm() { try? hapticEngine()?.start() }
+  /* inMs: how long after the page sent the message the count-in's first click is heard. The time spent here before the pattern starts
+     (starting the engine can take a few hundred ms) is measured from when the message arrived and taken off, so the taps land on the
+     clicks; beats whose time has already passed are left out. */
+  private func metro(inMs: Double, beatMs: Double, beats: Int, perBar: Int, arrived: CFTimeInterval) {
+    guard beatMs > 50, beats > 0, let e = hapticEngine() else { return }
     do {
-      if hEngine == nil {
-        let e = try CHHapticEngine(); e.playsHapticsOnly = true; e.isAutoShutdownEnabled = true
-        e.resetHandler = { [weak e] in try? e?.start() }   // the engine restarts itself after an interruption
-        hEngine = e
-      }
-      guard let e = hEngine else { return }
       try e.start()
+      let wait = inMs / 1000 - (CACurrentMediaTime() - arrived)   // seconds from now to the first click
+      let skip = wait < 0 ? Int((-wait / (beatMs / 1000)).rounded(.up)) : 0
       var evs: [CHHapticEvent] = []
-      for i in 0..<min(beats, 4000) {
+      for i in skip..<min(beats, 4000) {
         let first = i % max(1, perBar) == 0
         evs.append(CHHapticEvent(eventType: .hapticTransient, parameters: [
           CHHapticEventParameter(parameterID: .hapticIntensity, value: first ? 1.0 : 0.6),
-          CHHapticEventParameter(parameterID: .hapticSharpness, value: first ? 0.8 : 0.45)], relativeTime: Double(i) * beatMs / 1000))
+          CHHapticEventParameter(parameterID: .hapticSharpness, value: first ? 0.8 : 0.45)], relativeTime: Double(i - skip) * beatMs / 1000))
       }
+      guard !evs.isEmpty else { return }
       try? hPlayer?.stop(atTime: CHHapticTimeImmediate)
       let p = try e.makePlayer(with: CHHapticPattern(events: evs, parameters: []))
       hPlayer = p
-      try p.start(atTime: e.currentTime + max(0, inMs) / 1000)
+      let first = wait + Double(skip) * beatMs / 1000   // >= 0
+      try p.start(atTime: e.currentTime + max(0, first))
     } catch {}
   }
   private func metroStop() { try? hPlayer?.stop(atTime: CHHapticTimeImmediate); hPlayer = nil }
@@ -157,7 +169,8 @@ final class NativeBridge: NSObject, WKScriptMessageHandler {
       }
     case "metro":
       metro(inMs: (d["inMs"] as? NSNumber)?.doubleValue ?? 0, beatMs: (d["beatMs"] as? NSNumber)?.doubleValue ?? 0,
-            beats: (d["beats"] as? NSNumber)?.intValue ?? 0, perBar: (d["perBar"] as? NSNumber)?.intValue ?? 4)
+            beats: (d["beats"] as? NSNumber)?.intValue ?? 0, perBar: (d["perBar"] as? NSNumber)?.intValue ?? 4, arrived: CACurrentMediaTime())
+    case "metroWarm": metroWarm()
     case "metroStop": metroStop()
     case "now":
       let playing = d["playing"] as? Bool ?? false

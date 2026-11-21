@@ -1,7 +1,7 @@
 # Noodle style guide (UI, UX and copy)
 
 The owner's rules, gathered from reviews. Read this before any UI or copy change, and check the result against it with screenshots
-(iPhone 13 size, dark and light). When a review adds a rule, add it here.
+(iPhone 13 size, dark and light). Keep it current: when a review adds, changes or drops a rule, add, edit or delete it here.
 
 ## Words
 - **Name things, don't describe them.** A control's label is a short name for what it is (2-3 words): "Silent metronome", "Tap pad",
@@ -40,6 +40,7 @@ The owner's rules, gathered from reviews. Read this before any UI or copy change
   form with dropdowns.
 - **Hear before you keep:** sounds, presets and Pro features play on your part while a menu is open.
 - **Feedback:** a light haptic for placing things, medium for record start and stop.
+- **Big targets while recording:** anything you touch while singing (the tap pad) is huge and easy to hit without looking.
 
 ## Process
 - Before and after screenshots of every changed screen.

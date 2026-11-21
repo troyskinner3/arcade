@@ -631,3 +631,6 @@ Named **Silent metronome** (Mic and timing, with ⓘ). In the iPhone app, a take
 the click goes silent and only the buzz continues, so no click is recorded. The beats are scheduled ahead on the Taptic Engine (Core
 Haptics) from one message, so timing doesn't depend on the page's timers; the audio session allows haptics while recording. A switch in
 Mic and timing (on by default, shown only in the app). The web keeps the audible click.
+- **Fix (owner: buzz about a beat late):** starting the phone's vibration engine took time that wasn't counted, so every buzz landed
+  late by the start-up time. Now the engine starts when record is pressed (metroWarm), and the iPhone app measures the time since the
+  message arrived and takes it off (beats already past are skipped). Audio output delay added to the buzz is capped at 0.15 s.
