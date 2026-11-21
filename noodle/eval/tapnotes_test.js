@@ -1,6 +1,7 @@
 // Tap notes (testing, Xcode builds): the owner's rules on a made-up take. A tap splits a held C (new attack); the C-D-E run with no taps
 // joins (legato) on Lead; a loudness dip inside a held G ("da-da") starts a new note; a tap in silence makes nothing. Joined notes play
-// as one sound (no dip between them); on Keys they don't join. The note editor's test button flips a take between today and tap notes.
+// as one sound; on Keys they don't join. In the note editor a joined note shows a line to the note before and Join / Joined toggles it;
+// moving it away breaks the join. The note editor's test button flips a take between today and tap notes.
 const {chromium,devices}=require('playwright');
 (async()=>{ const b=await chromium.launch(); const errs=[], out={};
   const c=await b.newContext({...devices['iPhone 13']}); const p=await c.newPage(); p.on('pageerror',e=>errs.push(e.message));
@@ -22,6 +23,10 @@ const {chromium,devices}=require('playwright');
     t._an={notes:A, altNotes:B, tapNew:false, align:0, onsets:[]}; quantizeTrack(t); renderTracks(); s2Edit(t);
     const bt=document.getElementById('s2EdTap'), r={shown:!bt.hidden, label:bt.textContent, n:t.notes.length}; bt.click();
     r.label2=document.getElementById('s2EdTap').textContent; r.n2=S.tracks[0].notes.length; r.lg=S.tracks[0].notes.some(n=>n.lg); r.tp=S.tracks[0].notes.filter(n=>n.tp).length; return r; });
+  out.join=await p.evaluate(async()=>{ const t=S.tracks[0]; s2Edit(t); await new Promise(q=>setTimeout(q,300)); const j=t.notes.find(n=>n.lg); t._sel=j; renderNoteBar(t);
+    const b=t._selbar.querySelector('.sb-join'), r={shown:!b.hidden, label:b.textContent.trim()}; b.click(); r.after=!!j.lg; r.label2=t._selbar.querySelector('.sb-join').textContent.trim(); t._selbar.querySelector('.sb-join').click(); r.again=!!j.lg;
+    const first=t.notes[0]; t._sel=first; renderNoteBar(t); r.firstHidden=t._selbar.querySelector('.sb-join').hidden;   /* nothing before it to join */
+    j.s+=1; drawGrid(t); r.gapBreaks=!j.lg; return r; });
   out.devSwitch=await p.evaluate(()=>!document.getElementById('nxDevTap').hidden);
   out.pad=await p.evaluate(()=>document.getElementById('s2TapPad').textContent.trim());
   await c.close();
@@ -29,5 +34,6 @@ const {chromium,devices}=require('playwright');
   if(out.rules.lead!==want.lead) errs.push('lead rules '+out.rules.lead); if(out.rules.keys!==want.keys) errs.push('keys rules '+out.rules.keys);
   if(!(out.legato.attack===2&&out.legato.joined===1)) errs.push('legato '+JSON.stringify(out.legato));
   const s=out.swap; if(!s.shown||s.label!=='Today'||s.label2!=='Tap notes'||s.n2!==3||!s.lg||s.tp<2) errs.push('swap '+JSON.stringify(s));
+  { const j=out.join; if(!j.shown||j.label!=='Joined'||j.after||j.label2!=='Join'||!j.again||!j.firstHidden||!j.gapBreaks) errs.push('join '+JSON.stringify(j)); }
   if(!out.devSwitch) errs.push('no test switch'); if(out.pad!=='Tap for a new note') errs.push('pad '+out.pad);
   console.log(JSON.stringify({...out,errs})); await b.close(); })();

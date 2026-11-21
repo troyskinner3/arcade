@@ -88,12 +88,12 @@ function buildCard(tr){
     const d=INST[tr.inst];
     const el=document.createElement('article'); el.className='track'; el.style.setProperty('--c',d.color); tr._el=el;
     const pitched=d.kind==='pitched';
-    el.innerHTML=`<div class="gridbox"><div class="gridwrap"><div class="gridin">${tr.inst==="vox"?"":`<div class="edrul" aria-label="Bar numbers: tap or drag to move the playhead"><i class="edrul-ph"></i></div>`}<canvas></canvas><div class="ph"></div><div class="nsel" hidden></div></div></div><div class="glabels"></div></div><div class="selbar" hidden><span class="sb-n"></span><span class="sb-mv"><button class="btn sb-l" aria-label="Earlier"><svg class="nx-ico" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><button class="btn sb-r" aria-label="Later"><svg class="nx-ico" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button></span><span class="sb-pt"><button class="btn sb-dn" aria-label="Lower"><svg class="nx-ico" viewBox="0 0 24 24"><path d="M5 9l7 7 7-7"/></svg></button><button class="btn sb-up" aria-label="Higher"><svg class="nx-ico" viewBox="0 0 24 24"><path d="M5 15l7-7 7 7"/></svg></button></span><button class="btn sb-split" title="Split into repeats (or double-tap the note)">Split</button><span class="sb-sp" hidden>Into <button class="btn" data-n="2">2</button><button class="btn" data-n="3">3</button><button class="btn" data-n="4">4</button></span><button class="btn sb-del">Delete</button><label class="sb-vel"><span>Velocity</span><input type="range" min="5" max="100" step="1" aria-label="Velocity: how hard this note or hit is played"><output></output></label></div><div class="ovrow"><div class="ovw" hidden aria-hidden="true"><canvas></canvas><div class="ovw-win"></div></div></div>`;
+    el.innerHTML=`<div class="gridbox"><div class="gridwrap"><div class="gridin">${tr.inst==="vox"?"":`<div class="edrul" aria-label="Bar numbers: tap or drag to move the playhead"><i class="edrul-ph"></i></div>`}<canvas></canvas><div class="ph"></div><div class="nsel" hidden></div></div></div><div class="glabels"></div></div><div class="selbar" hidden><span class="sb-n"></span><span class="sb-mv"><button class="btn sb-l" aria-label="Earlier"><svg class="nx-ico" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><button class="btn sb-r" aria-label="Later"><svg class="nx-ico" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button></span><span class="sb-pt"><button class="btn sb-dn" aria-label="Lower"><svg class="nx-ico" viewBox="0 0 24 24"><path d="M5 9l7 7 7-7"/></svg></button><button class="btn sb-up" aria-label="Higher"><svg class="nx-ico" viewBox="0 0 24 24"><path d="M5 15l7-7 7 7"/></svg></button></span><button class="btn sb-split" title="Split into repeats (or double-tap the note)">Split</button><button class="btn sb-join" hidden aria-pressed="false"><svg class="nx-ico" viewBox="0 0 24 24"><path d="M10 14a4 4 0 005.7 0l3-3a4 4 0 00-5.7-5.7l-1 1M14 10a4 4 0 00-5.7 0l-3 3a4 4 0 005.7 5.7l1-1"/></svg><span>Join</span></button><span class="sb-sp" hidden>Into <button class="btn" data-n="2">2</button><button class="btn" data-n="3">3</button><button class="btn" data-n="4">4</button></span><button class="btn sb-del">Delete</button><label class="sb-vel"><span>Velocity</span><input type="range" min="5" max="100" step="1" aria-label="Velocity: how hard this note or hit is played"><output></output></label></div><div class="ovrow"><div class="ovw" hidden aria-hidden="true"><canvas></canvas><div class="ovw-win"></div></div></div>`;
     if(tr._sel && !evs(tr).includes(tr._sel)) tr._sel=null;
     const cv=el.querySelector('canvas');
     const hs=el.querySelector('.nsel'); tr._nsel=hs; 
     tr._selbar=el.querySelector('.selbar'); tr._ndel=null; tr._nsplit=null;
-    if(tr._selbar){ const sb=tr._selbar; sb.querySelector('.sb-del').onclick=()=>tr._msel&&tr._msel.length?deleteGroup(tr):deleteSelNote(tr); sb.querySelector('.sb-split').onclick=()=>splitAsk(tr);
+    if(tr._selbar){ const sb=tr._selbar; sb.querySelector('.sb-del').onclick=()=>tr._msel&&tr._msel.length?deleteGroup(tr):deleteSelNote(tr); sb.querySelector('.sb-split').onclick=()=>splitAsk(tr); sb.querySelector('.sb-join').onclick=()=>joinToggle(tr);
       sb.querySelector('.sb-sp').onclick=e=>{ const b=e.target.closest('[data-n]'); if(b) splitInto(tr,+b.dataset.n); };
       sb.querySelector('.sb-up').onclick=()=>nudge(tr,0,1); sb.querySelector('.sb-dn').onclick=()=>nudge(tr,0,-1); sb.querySelector('.sb-l').onclick=()=>nudge(tr,-1,0); sb.querySelector('.sb-r').onclick=()=>nudge(tr,1,0);
       const vs=tr._selbar.querySelector('.sb-vel input'), vo=tr._selbar.querySelector('.sb-vel output');   /* velocity of the selected note or hit: how hard it is played (louder; brighter for some sounds) */
@@ -190,9 +190,12 @@ function drawGrid(tr){
     placeHandle(tr);
   } else {
     rawTicks(tr,g,X,Y,cw,lineH,n,sPL,gut,lines,gapH);
-    const selN=tr._sel;
+    const selN=tr._sel; (tr.notes||[]).forEach(nt=>{ if(nt.lg&&!joinPrev(tr,nt)) delete nt.lg; });   /* a gap breaks a join */
     VN.forEach(nt=>{ const i=rows.indexOf(pitchOf(nt)); if(i<0) return; g.globalAlpha=nt===selN?1:0.45+0.55*nt.v; g.fillStyle=col;
       let s=nt.s, left=Math.min(nt.l,n-nt.s); while(left>0){ const room=sPL-(s%sPL), seg=Math.min(left,room); rr(g,X(s)+1,Y(s)+1+i*rh+0.5,Math.max(cw*seg-2,3),rh-1,1.5); g.fill(); s=(s+seg)%n; left-=seg; } });
+    /* joined notes: a thin line from where one note ends to where the joined note starts */
+    if(TAP_MONO.has(tr.inst)){ g.strokeStyle=cssVar('--ink'); g.globalAlpha=0.85; g.lineWidth=1.5; g.setLineDash([3,2]); VN.forEach(nt=>{ if(!nt.lg) return; const pv=joinPrev(tr,nt), i=rows.indexOf(pitchOf(nt)), j=pv?rows.indexOf(pitchOf(pv)):-1; if(i<0||j<0) return;
+      const x=X(nt.s), y0=Y(nt.s)+1+j*rh+rh/2, y1=Y(nt.s)+1+i*rh+rh/2; g.beginPath(); g.moveTo(x-Math.min(6,cw/2),y0); g.lineTo(x,y0); g.lineTo(x,y1); g.lineTo(x+Math.min(6,cw/2),y1); g.stroke(); }); g.setLineDash([]); g.globalAlpha=1; }
     /* split hints: a faint seam where a held note may be two notes (tap it to split) */
     g.globalAlpha=0.55; g.fillStyle=cCell; VN.forEach(nt=>{ if(!nt.hs) return; const i=rows.indexOf(pitchOf(nt)); if(i<0) return;
       nt.hs.forEach(o=>{ if(o<=0||o>=nt.l) return; const s=(nt.s+o)%n; g.fillRect(X(s)-1,Y(s)+1+i*rh+2,2,Math.max(2,rh-5)); }); });
@@ -372,13 +375,19 @@ function splitInto(tr,k){ const n=tr._sel, q=qStep(); if(!n||!tr.notes.includes(
   const len=n.l, cuts=[]; for(let i=1;i<k;i++) cuts.push(n.s+Math.round(len*i/k/q)*q); const parts=[];
   let start=n.s; [...cuts,n.s+len].forEach((e,i)=>{ if(i===0){ n.l=e-n.s; delete n.hs; parts.push(n); } else { const b={...n, s:start, l:e-start}; delete b.g; delete b.hs; tr.notes.push(b); parts.push(b); } start=e; });
   tr._sel=parts[0]; haptic('light'); keyCache=null; noteChanged(tr); }
+/* joined notes (legato, testing in Xcode builds): a note that starts where the one before it ends can be joined to it (one sound that
+   changes pitch, no new attack) or broken apart. Moving it away so there's a gap breaks the join on its own. */
+const joinPrev=(tr,n)=>(tr.notes||[]).find(o=>o!==n&&o.s+o.l===n.s&&o.s<n.s);
+const joinable=(tr,n)=>!!window.NOODLE_DEV&&TAP_MONO.has(tr.inst)&&!!n&&!!joinPrev(tr,n);
+function joinToggle(tr){ const n=tr._sel; if(!n||!joinable(tr,n)) return; if(n.lg) delete n.lg; else n.lg=1; haptic('light'); noteChanged(tr); renderNoteBar(tr); toast(n.lg?'Joined to the note before':'Its own note again'); }
 function renderNoteBar(tr){
   const sb=tr._selbar; if(sb){ const n=tr._sel, ms=(tr._msel||[]).filter(x=>evs(tr).includes(x)), many=ms.length>1, on=many||!!(n&&evs(tr).includes(n)); sb.hidden=!on;
     if(on){ sb.querySelector('.sb-mv').hidden=!many; sb.querySelector('.sb-pt').hidden=!isPitchedTr(tr)&&!many; sb.querySelector('.sb-sp').hidden=true; sb.querySelector('.sb-del').hidden=false; }
     if(many){ const vs=sb.querySelector('.sb-vel input'); sb.querySelector('.sb-n').textContent=ms.length+(isPitchedTr(tr)?' notes':' hits'); sb.querySelector('.sb-split').hidden=true; if(vs&&document.activeElement!==vs){ vs.value=Math.round(ms.reduce((a,x)=>a+(x.v??0.85),0)/ms.length*100); sb.querySelector('.sb-vel output').textContent=vs.value; } }
     else
     if(on){ const vs=sb.querySelector('.sb-vel input'); if(vs && document.activeElement!==vs){ vs.value=Math.round((n.v??0.85)*100); sb.querySelector('.sb-vel output').textContent=vs.value; } if(!isPitchedTr(tr)){ sb.querySelector('.sb-n').textContent=slotLabel(n.d)+' · step '+(n.s+1); sb.querySelector('.sb-split').hidden=true; }
-      else { const nm=m=>NOTE_NAMES[((m%12)+12)%12]+(Math.floor(m/12)-1); sb.querySelector('.sb-n').textContent=nm(pitchOf(n)+12*(tr.oct||0)); sb.querySelector('.sb-split').hidden=n.l<2*(S.quant==8?2:1); } } }
+      else { const nm=m=>NOTE_NAMES[((m%12)+12)%12]+(Math.floor(m/12)-1); sb.querySelector('.sb-n').textContent=nm(pitchOf(n)+12*(tr.oct||0)); sb.querySelector('.sb-split').hidden=n.l<2*(S.quant==8?2:1); } }
+    const jb=sb.querySelector('.sb-join'), jn=on&&!many&&isPitchedTr(tr)&&joinable(tr,n); jb.hidden=!jn; if(jn){ jb.setAttribute('aria-pressed',String(!!n.lg)); jb.querySelector('span').textContent=n.lg?'Joined':'Join'; } }
   const bar=tr._el&&tr._el.querySelector('.notebar'); if(!bar||!isPitchedTr(tr)) return; const n=tr._sel;
   if(!n || !tr.notes.includes(n)){ bar.hidden=true; tr._sel=null; return; }
   bar.hidden=false; const nm=m=>NOTE_NAMES[((m%12)+12)%12]+(Math.floor(m/12)-1);

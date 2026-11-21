@@ -646,3 +646,6 @@ to the grid). Exported MIDI overlaps joined notes slightly so a DAW's legato mod
 A/B: every melody take keeps both readings while the song is open; More > Tap notes (test) (Xcode builds) picks which new takes use, and
 the note editor's Today / Tap notes button flips one take between them. The finger's tap sound: the reader only makes notes from voiced
 (pitched) sound, and a tap's thud isn't pitched, so it doesn't make notes or change pitch; no extra filtering added.
+- **Joined notes in the note editor (testing):** a thin dashed line runs from where a note ends to the start of the note joined to it.
+  Selecting a note that touches the one before shows Join / Joined (link icon) in the note bar to join it or break it; moving a joined
+  note so a gap opens breaks the join. Lead and Bass, Xcode builds.

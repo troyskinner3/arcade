@@ -510,3 +510,6 @@ select.nx-txt{-webkit-appearance:none;appearance:none;height:40px;border-radius:
 /* the tap pad: huge while recording a melody, so it can be hit without looking */
 .s2-tap{height:min(48vh,440px)!important;border:2px solid var(--s2-amber,#f1c75b)!important;color:var(--s2-amber,#f1c75b)!important;background:color-mix(in srgb,var(--s2-amber,#f1c75b) 9%,var(--s2-bg,#121418))!important;font:700 24px var(--f-display)!important;touch-action:manipulation;user-select:none;-webkit-user-select:none}
 .s2-tap.hit{background:color-mix(in srgb,var(--s2-amber,#f1c75b) 32%,var(--s2-bg,#121418))!important}
+/* the Join button on a selected note: link icon, filled when joined */
+.s2 .selbar .sb-join{display:inline-flex;align-items:center;gap:6px}.s2 .selbar .sb-join .nx-ico{width:18px;height:18px}.s2 .selbar .sb-join[hidden]{display:none}
+.s2 .selbar .sb-join[aria-pressed="true"]{background:var(--s2-ink)!important;color:var(--s2-bg)!important;border-color:var(--s2-ink)!important}
