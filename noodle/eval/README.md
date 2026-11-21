@@ -661,3 +661,13 @@ the note editor's Today / Tap notes button flips one take between them. The fing
 - Help and contact (and other email, phone and App Store links) open their own app; before, the iPhone app tried to load the email
   link itself, failed, and reopened on a blank song. Privacy and other new-window links to our own site now open in Safari
   (the app used to ignore them).
+
+## Round 12 (owner review in TestFlight)
+- Noodle Pro sheet: Unlock Pro and "One-time purchase" are pinned to the bottom of the sheet, so the buy button shows straight away
+  and stays put while the cards scroll under it. Restore purchase (outlined) moved to the end of the scrolling part.
+- More: Email news joined the top group (Pro, invites). The "Help Noodle get better" heading now sits above Teach Noodle your voice.
+- Mic sensitivity has an ⓘ: how quiet a sound can be and still count as a note or hit.
+- Example song uses the owner's settings: Bass Pluck (volume 72, octave -2, reverb 15), Lead Bell (37, +1, 43), Keys Piano (54,
+  triad chords, octave 0, reverb 32).
+- Invite friends said "Couldn't reach Noodle's server": the live takes service is older than the invite code (`/v1/invites/mine` is 404).
+  Fixed by deploying `noodle-api/` (see its README); no app change needed.
