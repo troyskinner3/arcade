@@ -1,6 +1,8 @@
 // Your voice in the app: pick it for a part with a take; it plays from the take (not Choir), "Try another moment" moves to the next one and
 // re-renders, the instrument is kept in the song (survives a reload of the saved state), and with no take it says so and plays Choir.
 const {chromium,devices}=require('playwright'); const fs=require('fs'); const D=__dirname+'/data/user';
+/* needs the owner's guided takes (pull_takes.py into data/user; never in git): without them, skip like run.sh's replay does */
+if(!fs.existsSync(D) || !fs.readdirSync(D).some(f=>/long-vowels-lead\.wav$/.test(f))){ console.log(JSON.stringify({skipped:'no takes in noodle/eval/data/user (see pull_takes.py)'}),[]); process.exit(0); }
 const wav=f=>{ const b=fs.readFileSync(f); let o=12, data=null, sr=0, ch=1; while(o<b.length){ const id=b.toString('ascii',o,o+4), n=b.readUInt32LE(o+4); if(id==='fmt '){ ch=b.readUInt16LE(o+10); sr=b.readUInt32LE(o+12);} if(id==='data'){ data=b.subarray(o+8,o+8+n); break; } o+=8+n+(n&1); } const N=data.length/2/ch, x=new Array(N); for(let i=0;i<N;i++) x[i]=data.readInt16LE(i*2*ch)/32768; return {x,sr}; };
 (async()=>{ const b=await chromium.launch(); const p=await (await b.newContext({...devices['iPhone 13']})).newPage(); const errs=[]; p.on('pageerror',e=>errs.push(e.message));
   await p.goto('http://localhost:8800/noodle-s2.html?studio'); await p.waitForTimeout(900);

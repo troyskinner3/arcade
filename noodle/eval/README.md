@@ -671,3 +671,5 @@ the note editor's Today / Tap notes button flips one take between them. The fing
   triad chords, octave 0, reverb 32).
 - Invite friends said "Couldn't reach Noodle's server": the live takes service is older than the invite code (`/v1/invites/mine` is 404).
   Fixed by deploying `noodle-api/` (see its README); no app change needed.
+- `yv_ui_test.js` skips (passes with a "skipped" line) when the owner's guided takes aren't in `data/user`, like the replay does; it used
+  to crash, which failed the whole suite in any fresh cloud session.
