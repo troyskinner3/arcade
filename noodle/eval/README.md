@@ -627,7 +627,7 @@ subset + folk tunes, 6.4M melody notes; tunes matching the guides removed). Copy
 - Shorter help text in the editors and the Another version sheet.
 
 ## Felt metronome (`haptic_test.js`)
-In the iPhone app, a take's count-in clicks and the phone buzzes every beat (stronger on each bar's first beat); when recording starts
+Named **Silent metronome** (Mic and timing, with ⓘ). In the iPhone app, a take's count-in clicks and the phone buzzes every beat (stronger on each bar's first beat); when recording starts
 the click goes silent and only the buzz continues, so no click is recorded. The beats are scheduled ahead on the Taptic Engine (Core
 Haptics) from one message, so timing doesn't depend on the page's timers; the audio session allows haptics while recording. A switch in
 Mic and timing (on by default, shown only in the app). The web keeps the audible click.

@@ -1,6 +1,8 @@
 # arcade (Noodle and small games)
 
 ## Noodle (`noodle/`, iPhone shell `noodle-ios/`)
+- **UI, UX and copy:** follow `noodle/STYLE.md` (the owner's rules: name things plainly with ⓘ for explanations, buttons look like
+  buttons, outlined dropdowns, progressive disclosure, no AI-sounding copy or look). Add new rules from reviews there.
 - **Free vs Pro:** `noodle/PRO.md` is the list of what is free and what Noodle Pro unlocks. Every time a feature is added or changed, add it
   there and suggest to the owner whether it should be free or Pro (ask when unsure); mark it "proposed" until the owner confirms.
   The code that enforces it (`PRO_SOUNDS`, `MFX[...].free`, `isPro()` checks) must match the list.

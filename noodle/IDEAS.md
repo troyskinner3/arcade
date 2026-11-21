@@ -23,4 +23,4 @@ Tabled ideas, kept for later. Not planned or built. Each says what it is and wha
   for a kick; Play pads in the drum editor to add hits over a looping beat. Waiting for the owner's OK on the plan.
 
 ## Built
-- Felt metronome (iPhone app): the count-in clicks and buzzes, then only the buzz while recording.
+- Silent metronome (iPhone app): the count-in clicks and buzzes, then only the buzz while recording.
