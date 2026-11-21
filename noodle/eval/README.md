@@ -634,3 +634,15 @@ Mic and timing (on by default, shown only in the app). The web keeps the audible
 - **Fix (owner: buzz about a beat late):** starting the phone's vibration engine took time that wasn't counted, so every buzz landed
   late by the start-up time. Now the engine starts when record is pressed (metroWarm), and the iPhone app measures the time since the
   message arrived and takes it off (beats already past are skipped). Audio output delay added to the buzz is capped at 0.15 s.
+
+## Tap notes (A/B test, `tapnotes_test.js`)
+The owner's rules (mock-up: claude.ai artifact "Noodle Tap Notes"): a tap starts a new note with a new attack, even on a held pitch (a tap
+within 0.12 s of a note's start is its start; taps in silence are ignored; your usual lateness is learned once there are 3+ taps); your
+voice stopping, or a loudness dip of 8 dB+ inside a sung stretch ("da-da-da"), starts a new note; pitch moving while you keep singing
+with no tap and no dip joins notes (legato: one sound changing pitch, no new attack) on Lead and Bass, while Keys, Pad and Arp keep an
+attack per note; a note ends when the voice stops or at the next start. Musical mode never drops or merges a tapped note (it may move it
+to the grid). Exported MIDI overlaps joined notes slightly so a DAW's legato mode ties them. Taps don't buzz. The tap pad is huge
+(about half the screen) and says "Tap for a new note".
+A/B: every melody take keeps both readings while the song is open; More > Tap notes (test) (Xcode builds) picks which new takes use, and
+the note editor's Today / Tap notes button flips one take between them. The finger's tap sound: the reader only makes notes from voiced
+(pitched) sound, and a tap's thud isn't pitched, so it doesn't make notes or change pitch; no extra filtering added.

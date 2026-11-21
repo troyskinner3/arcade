@@ -287,7 +287,7 @@ async function addTake0(x, sr, inst, opt){
     an.align=fitAlign(takeTimes(an,inst), preFit); if(!opt.live) an.align=Math.min(an.align, first+0.02);
     // learn this phone's real delay from how far the take sat from the grid (only while not calibrated); it settles over a few takes
     if(opt.live && kind==='pitched'){ try{ await readerSplit(an, x, sr); }catch(e){} }   /* repeats hummed as one sound */
-    if(kind==='pitched' && opt.taps && opt.taps.length){ try{ an.tapped=tapSplit(an, opt.taps); }catch(e){} }   /* you tapped each note: one note per tap */
+    if(kind==='pitched'){ try{ tapRead(an, opt.taps||[], inst); }catch(e){} }   /* your taps: today's split, or tap notes (in testing); both kept for A/B */
     if(opt.live && S.latAuto){ const d=an.align-preFit; S.autoAdj=clamp(0.6*(S.autoAdj||0)+0.4*(d+(S.autoAdj||0)), -0.06, 0.2); }
     if(unCal && guessFix==null && kind!=='pitched'){   // drums only: a hummed note's soft start is too vague to anchor beat one
       // not calibrated yet: if the first sound lands 1–3 steps after the downbeat, it was most likely meant for beat one.

@@ -506,3 +506,7 @@ select.nx-txt{-webkit-appearance:none;appearance:none;height:40px;border-radius:
 .s2-mband .mh::before{content:"";position:absolute;inset:-6px -12px}
 .s2-mdim{position:absolute;top:26px;bottom:0;z-index:1;background:rgba(0,0,0,.45);pointer-events:none}
 .s2-sec b{pointer-events:auto;cursor:pointer}.s2-sec{pointer-events:none}.s2-sec.editing{opacity:.25}
+
+/* the tap pad: huge while recording a melody, so it can be hit without looking */
+.s2-tap{height:min(48vh,440px)!important;border:2px solid var(--s2-amber,#f1c75b)!important;color:var(--s2-amber,#f1c75b)!important;background:color-mix(in srgb,var(--s2-amber,#f1c75b) 9%,var(--s2-bg,#121418))!important;font:700 24px var(--f-display)!important;touch-action:manipulation;user-select:none;-webkit-user-select:none}
+.s2-tap.hit{background:color-mix(in srgb,var(--s2-amber,#f1c75b) 32%,var(--s2-bg,#121418))!important}

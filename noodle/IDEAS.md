@@ -14,13 +14,13 @@ Tabled ideas, kept for later. Not planned or built. Each says what it is and wha
 - **Tilt for expression:** tilt the phone for pitch bend or vibrato on a lead. Easy to trigger by accident while singing: opt-in.
 - **Nod for tempo:** the camera or motion sensors catch head bobbing before recording and set the tempo (tap tempo covers this today).
 
-- **Hold to sing (owner unsure: may over-complicate things):** finger down starts a note, lifting ends it; a slide while the finger
-  stays down glides as one note with no new attack (needs a "joined to the previous note" flag and gliding playback). Today the tap pad
-  only splits notes the mic heard as one.
+- **Hold to sing (dropped for now):** finger down starts a note, lifting ends it. Replaced by Tap notes (below).
+- **Slides between joined notes:** joined notes change pitch with no slide for now; gliding between them could come later.
 
 ## Being discussed
 - Beat pads: Voice or Pads when recording drums; six pads (Kick, Snare, Hat, Open hat, Clap, Tom); optional shake for a shaker and knock
   for a kick; Play pads in the drum editor to add hits over a looping beat. Waiting for the owner's OK on the plan.
 
 ## Built
+- Tap notes (A/B test in Xcode builds): a tap starts a new note; runs sung without taps join (legato) on Lead and Bass.
 - Silent metronome (iPhone app): the count-in clicks and buzzes, then only the buzz while recording.

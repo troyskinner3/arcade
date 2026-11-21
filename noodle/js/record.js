@@ -124,7 +124,7 @@ function afterTake(){ setTimeout(()=>{ try{ inviteSend(false); }catch(e){} },150
 }
 /* Tap along: while a melody records into a part, a pad under the timeline takes one tap per note (optional; More > Timing & mic turns it off) */
 function tapPadOn(){ const r=recState; return !!(r && !r.calib && !r.teach && INST[r.inst].kind==='pitched' && takeMode() && S.tapPad!==false); }
-$('s2TapPad').addEventListener('pointerdown',e=>{ e.preventDefault(); const r=recState; if(!r||!ctx) return; r.taps.push(ctx.currentTime); haptic('light'); const b=$('s2TapPad'); b.classList.remove('hit'); void b.offsetWidth; b.classList.add('hit'); });
+$('s2TapPad').addEventListener('pointerdown',e=>{ e.preventDefault(); const r=recState; if(!r||!ctx) return; r.taps.push(ctx.currentTime);   /* no buzz: the Silent metronome's beat stays clear */ const b=$('s2TapPad'); b.classList.remove('hit'); void b.offsetWidth; b.classList.add('hit'); });
 /* the felt metronome runs only in the iPhone app (the web can't buzz an iPhone) */
 const feelBeat=()=>S.feelBeat!==false&&!!(window.webkit&&window.webkit.messageHandlers&&window.webkit.messageHandlers.noodleNative);
 function setRecUI(on){ if(!on) native({type:'metroStop'});

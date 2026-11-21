@@ -20,8 +20,8 @@ function musicalRules(tr, notes){
   let ns=notes.filter(x=>x.s>=0&&x.s<n).map(x=>({...x, p:pitchOf(x)})).sort((a,b)=>a.s-b.s), stat={};
   // 1. blips
   const medV=median(ns.map(x=>x.v??0.8)); stat.dropped=0; stat.joined=0;
-  ns=ns.filter(x=>!(x.l<=1&&(x.v??0.8)<medV*0.8&&(stat.dropped++,true)));
-  for(let i=1;i<ns.length;i++){ const a=ns[i-1], b=ns[i]; if(b.l<=1&&b.s-(a.s+a.l)<=1){ a.l=b.s+b.l-a.s; ns.splice(i,1); i--; stat.joined++; } }
+  ns=ns.filter(x=>x.tp||!(x.l<=1&&(x.v??0.8)<medV*0.8&&(stat.dropped++,true)));   /* a note you tapped is never dropped or merged */
+  for(let i=1;i<ns.length;i++){ const a=ns[i-1], b=ns[i]; if(b.l<=1&&!b.tp&&b.s-(a.s+a.l)<=1){ a.l=b.s+b.l-a.s; ns.splice(i,1); i--; stat.joined++; } }
   // 2. 8th grid, when most notes already sit on it
   stat.moved=0; if(ns.filter(x=>x.s%2===0).length>=ns.length*0.6) ns.forEach((x,i)=>{ if(x.s%2){ const pv=ns[i-1], dn=x.s-1, up=x.s+1, nx=ns[i+1];
       const to=(!pv||pv.s<dn)?dn:(!nx||nx.s>up)&&up<n?up:null; if(to!=null){ x.l+=x.s-to; x.s=to; stat.moved++; } } });
@@ -73,8 +73,8 @@ function musicalize(tr, notes){
   let ns=notes.filter(x=>x.s>=0&&x.s<n).map(x=>({...x, p:pitchOf(x)})).sort((a,b)=>a.s-b.s), stat={};
   // blips go; one-step notes join the note before
   const medV=median(ns.map(x=>x.v??0.8)); stat.dropped=0; stat.joined=0;
-  ns=ns.filter(x=>!(x.l<=1&&(x.v??0.8)<medV*0.8&&(stat.dropped++,true)));
-  for(let i=1;i<ns.length;i++){ const a=ns[i-1], b=ns[i]; if(b.l<=1&&b.s-(a.s+a.l)<=1){ a.l=b.s+b.l-a.s; ns.splice(i,1); i--; stat.joined++; } }
+  ns=ns.filter(x=>x.tp||!(x.l<=1&&(x.v??0.8)<medV*0.8&&(stat.dropped++,true)));   /* a note you tapped is never dropped or merged */
+  for(let i=1;i<ns.length;i++){ const a=ns[i-1], b=ns[i]; if(b.l<=1&&!b.tp&&b.s-(a.s+a.l)<=1){ a.l=b.s+b.l-a.s; ns.splice(i,1); i--; stat.joined++; } }
   if(!ns.length) return ns;
   // starts: each may move a step toward where real melodies start notes (Viterbi over -1/0/+1)
   { const N=ns.length, V=[]; for(let i=0;i<N;i++){ V.push(new Map());

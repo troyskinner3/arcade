@@ -48,6 +48,7 @@ Status: **confirmed** (owner agreed) or **proposed** (waiting on the owner).
 | Change key moves the whole song (transpose), loop a section, tap tempo, lock-screen controls, haptic taps | confirmed |
 | Faster fixes: ▼ ▲ on a note, split into 2 / 3 / 4, select several notes and move or delete them together | proposed |
 | Silent metronome (iPhone app): the count-in clicks and buzzes, then only the phone's buzz while recording, so no click gets into the take. Suggest Free | proposed |
+| Tap notes (testing, Xcode builds only): a tap starts a new note; runs sung without taps join on Lead and Bass; a huge tap pad while recording. Suggest Free | proposed |
 | Tap along while you hum (catches repeated notes) and learning from your fixes (accuracy for everyone) | proposed |
 | Musical mode: melody takes come out more musical (learned from ~45,000 public-domain and CC0 songs); As heard / Musical swap in the note editor | confirmed |
 | Chords from your melody: Pad and Piano styles, chords every bar or half bar | proposed |

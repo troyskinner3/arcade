@@ -307,8 +307,15 @@ async function renderStem(tr){
      otherwise be worked through for the whole song, so a long part took notes x length (a 72 s pad: 45 s). Same sound either way. */
   const jobs=[], envK=ENV_OVR, at=(t,f)=>{ if(window.RENDER_EAGER) f(); else jobs.push({t,f}); }, done=[], job=f=>()=>{ ENV_OVR=envK; VOICE_INST=tr.inst; VOICE_DONE=window.RENDER_EAGER?null:done; try{ f(); } finally{ ENV_OVR=null; EXPR_DET=null; VOICE_DONE=null; } };
   if(d.kind==='pitched' && tr.inst==='arp'){ for(const e of (FULL?songEvents(tr,arpEvents(tr)):inWin(arpEvents(tr),PN)).filter(e=>keep(e.x)).map(e=>SP.length?spotClip(e,SP,'x'):e)){ const t=tAt(e.x)+0.002; at(t,job(()=>voice(oc,out,tr.sound,t,Math.max(0.03,e.l*stepDur()),e.p+12*tr.oct,e.v,T))); } }
-  else if(d.kind==='pitched'){ for(const nt of NL){ const ts=stepTime(nt.s), dur=Math.max(0.05,nt.l*stepDur()-0.012); const ps=notePitches(tr,nt); const pv=slidesOn(tr)&&nt.g ? NL.find(o=>o!==nt && o.s+o.l===nt.s) : null; const pps=pv?notePitches(tr,pv):null;
-    const X=tr.expr>0 && !nt.x ? exprCurves(tr,nt,dur,pitchOf(nt)) : null; at(ts-0.03,job(()=>{ let nout=out;
+  else if(d.kind==='pitched'){
+    /* joined notes (lg, from tap notes): one sound that changes pitch, no new attack; on Lead and Bass */
+    const chain=new Map(), inChain=new Set(); if(TAP_MONO.has(tr.inst)) for(const a0 of NL){ if(inChain.has(a0)) continue; const ch=[a0]; let cur=a0;
+      for(;;){ const nx=NL.find(o=>o.lg && o!==cur && o.s===cur.s+cur.l && !inChain.has(o)); if(!nx) break; ch.push(nx); inChain.add(nx); cur=nx; } if(ch.length>1) chain.set(a0,ch); }
+    for(const nt of NL){ if(inChain.has(nt)) continue; const ch=chain.get(nt);
+    const ts=stepTime(nt.s), dur=Math.max(0.05,(ch?ch[ch.length-1].s+ch[ch.length-1].l-nt.s:nt.l)*stepDur()-0.012); const ps=notePitches(tr,nt); const pv=!ch&&slidesOn(tr)&&nt.g ? NL.find(o=>o!==nt && o.s+o.l===nt.s) : null; const pps=pv?notePitches(tr,pv):null;
+    const X=!ch && tr.expr>0 && !nt.x ? exprCurves(tr,nt,dur,pitchOf(nt)) : null; at(ts-0.03,job(()=>{ let nout=out;
+    if(ch){ const p0=ps[0], cs=oc.createConstantSource(); cs.offset.setValueAtTime(0,ts); for(const q of ch.slice(1)){ const tq=stepTime(q.s), c=100*(notePitches(tr,q)[0]-p0); cs.offset.setValueAtTime(cs._last??0,tq-0.012); cs.offset.linearRampToValueAtTime(c,tq); cs._last=c; }
+      cs.start(ts); cs.stop(ts+dur+1); EXPR_DET=cs; }
     if(X){ const g=oc.createGain(), lpf=oc.createBiquadFilter(); lpf.type='lowpass'; lpf.Q.value=0.8; g.connect(lpf); lpf.connect(out);
       g.gain.setValueCurveAtTime(X.gain,ts+0.002,dur); lpf.frequency.setValueCurveAtTime(X.cut,ts+0.002,dur);
       const cs=oc.createConstantSource(); cs.offset.value=0; cs.offset.setValueCurveAtTime(X.bend,ts+0.002,dur); cs.start(ts); cs.stop(ts+dur+1); EXPR_DET=cs; nout=g; if(VOICE_DONE) VOICE_DONE.push({n:lpf,end:ts+dur+1}); }

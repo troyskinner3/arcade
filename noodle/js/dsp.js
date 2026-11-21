@@ -87,6 +87,45 @@ async function readerSplit(an, x, sr){
       if(seg.length>=4){ const q=Math.floor(seg.length/4), mid=seg.slice(q,Math.max(q+1,Math.floor(3*seg.length/4))).sort((a,c)=>a-c), h=mid.length>>1; p=(mid.length%2?mid[h]:(mid[h-1]+mid[h])/2)-tune; }
       out.push({...nt,t0:b[k],t1:b[k+1],p,g:k===0?nt.g:0}); } }
   const keep={whistled:an.notes.whistled,tune:an.notes.tune,frames:fr}; an.notes.length=0; an.notes.push(...out); Object.assign(an.notes,keep); }
+/* Both readings of a take's taps are kept while the take is open, so the test switch's editor button can flip one take between them:
+   an.notes is the one in use, an.altNotes the other, an.tapNew which rules an.notes follows. */
+const TAP_MONO=new Set(['lead','bass']);
+const tapNotesOn=()=>{ if(!window.NOODLE_DEV) return false; try{ return localStorage.getItem('noodle.tapnotes')==='1'; }catch(e){ return false; } };
+function tapRead(an, taps, inst){ const clone=()=>{ const c=an.notes.map(n=>({...n})); Object.assign(c,{whistled:an.notes.whistled,tune:an.notes.tune,frames:an.notes.frames}); return c; };
+  const B={notes:clone()}; tapNotes(B, taps, TAP_MONO.has(inst));
+  if(taps.length>=2) an.tapped=tapSplit(an, taps);
+  if(tapNotesOn()){ an.altNotes=an.notes; an.notes=B.notes; an.tapNew=true; } else { an.altNotes=B.notes; an.tapNew=false; } }
+function tapSwap(tr){ const an=tr._an; if(!an||!an.altNotes) return false; [an.notes,an.altNotes]=[an.altNotes,an.notes]; an.tapNew=!an.tapNew;
+  delete tr.heardNotes; delete tr.mzNotes; delete tr.mzOn; quantizeTrack(tr); try{ musicalPass(tr); }catch(e){} tr._dirty=true; keyCache=null; save(); scheduleRender(); return true; }
+/* Tap notes (in testing; the owner's rules): your voice gives the pitch, a tap says where a new note starts.
+   1. your voice stops and starts again: a new note (the reader already does this)
+   2. a tap: a new note with a new attack, even on the pitch you're holding; a tap within 0.12 s of a note's start is that note's start;
+      taps in silence are ignored (a note needs sound for its pitch)
+   3. "da-da-da": a clear dip in loudness inside a sung stretch (a consonant restarting the sound) is a new note too
+   4. pitch moving while you keep singing, with no tap and no dip: joined notes (legato: lg, no new attack), on one-note-at-a-time
+      instruments only; others keep a new attack per note
+   5. a note ends when your voice stops or at the next note's start.
+   Notes started by a tap carry tp (Musical mode never merges or drops them). How late your taps sit is learned from the take. */
+function tapNotes(an, taps, mono){ const ns=an.notes; if(!ns||!ns.length) return 0;
+  const fr=ns.frames||[], tune=ns.tune||0, d=[]; taps=(taps||[]).slice().sort((a,b)=>a-b);
+  for(const n of ns){ let b=null; for(const t of taps) if(b===null||Math.abs(t-n.t0)<Math.abs(b-n.t0)) b=t; if(b!=null&&Math.abs(b-n.t0)<0.15) d.push(n.t0-b); }
+  const off=d.length>=3?median(d):0, T=taps.map(t=>t+off);   /* your usual lateness, once there are a few taps to learn it from */
+  const dbAt=(a,b)=>{ const xs=fr.filter(f=>f.t>=a&&f.t<b).map(f=>f.db); return xs.length?xs:null; };
+  const pitchIn=(a,b,dflt)=>{ const seg=fr.filter(f=>f.t>=a+0.03&&f.t<b-0.03&&f.conf<0.25).map(f=>f.m).sort((x,y)=>x-y); if(seg.length<4) return dflt; const sp=seg[seg.length>>1]-tune; return Math.abs(sp-dflt)<0.75?dflt:sp; };
+  // consonant dips: inside a note, loudness drops 8 dB below both sides for 20-120 ms and comes back
+  const dips=n=>{ const out=[]; const xs=fr.filter(f=>f.t>n.t0+0.08&&f.t<n.t1-0.08); for(let i=2;i<xs.length-2;i++){ const t=xs[i].t;
+      const L=dbAt(t-0.12,t-0.04), R=dbAt(t+0.04,t+0.12), M=dbAt(t-0.02,t+0.02); if(!L||!R||!M) continue;
+      const lvl=Math.min(median(L),median(R)), mn=Math.min(...M); if(lvl-mn>=8 && xs[i].db===mn && (!out.length||t-out[out.length-1]>0.1)) out.push(t); } return out; };
+  const out=[]; let added=0;
+  for(const nt of ns){ const cuts=[...new Set([...T.filter(t=>t>=nt.t0+0.08&&t<=nt.t1-0.08).map(t=>+t.toFixed(3)), ...dips(nt).map(t=>+t.toFixed(3))])].sort((a,b)=>a-b)
+      .filter((t,i,a)=>!i||t-a[i-1]>=0.08);
+    const tapStart=T.some(t=>Math.abs(t-nt.t0)<=0.12), b=[nt.t0,...cuts,nt.t1];
+    for(let k=0;k<b.length-1;k++){ const piece={...nt,t0:b[k],t1:b[k+1],p:k?pitchIn(b[k],b[k+1],nt.p):nt.p};
+      if(k){ piece.g=0; added++; if(T.some(t=>Math.abs(t-b[k])<0.02)) piece.tp=1; } else if(tapStart){ piece.tp=1; piece.g=0; }
+      out.push(piece); } }
+  // joins with no tap and no dip: legato on one-note-at-a-time instruments
+  for(let i=1;i<out.length;i++){ const n=out[i]; if(n.g&&!n.tp){ if(mono) n.lg=1; } }
+  const keep={whistled:ns.whistled,tune:ns.tune,frames:fr}; ns.length=0; ns.push(...out); Object.assign(ns,keep); return added; }
 /* Tap along (optional): one tap per note while you hum. A held note with taps inside it becomes one note per tap, each with the pitch
    sung there, which fixes repeats hummed as one sound. Taps are in the take's seconds; how late your taps sit against what was heard is
    worked out from the take itself (the median gap between note starts and their nearest tap). Returns how many notes were added. */
@@ -138,7 +177,7 @@ function quantizeTrack(tr){
   } else {
     let ns=[];
     for(const nt of an.notes){ const r=raw(nt.t0); if(r<-0.5*q && raw(nt.t1)<1.5*q) continue; /* a note begun a moment before bar 1 keeps its part from bar 1 */ const s=Math.max(0,Math.round(r/q)*q); if(s>=n) continue;
-      const e=Math.round(raw(nt.t1)/q+0.3)*q; ns.push({s,l:clamp(e-s,q,n-s),p:+nt.p.toFixed(2),v:+nt.v.toFixed(2),...(nt.g?{g:1}:{})}); }
+      const e=Math.round(raw(nt.t1)/q+0.3)*q; ns.push({s,l:clamp(e-s,q,n-s),p:+nt.p.toFixed(2),v:+nt.v.toFixed(2),...(nt.g?{g:1}:{}),...(nt.lg?{lg:1}:{}),...(nt.tp?{tp:1}:{})}); }
     ns.sort((a,b)=>a.s-b.s||b.l-a.l);
     const out=[]; for(const nt of ns){ const last=out[out.length-1]; if(last&&last.s===nt.s) continue; if(last&&last.s+last.l>nt.s) last.l=nt.s-last.s; out.push(nt); }
     // two back-to-back notes of one phrase that land on the same key (a held note that drifted) are one held note
