@@ -9,18 +9,20 @@ Drafts to paste into App Store Connect (and tweak). Character limits are Apple's
 | Product ID | io.tuttii.Noodle.pro |
 | Display name (30) | Noodle Pro [10] |
 | Description (45) | Every sound, effect and export, for life [40] |
-| Price | $6.99 suggested (owner to decide; $4.99–$9.99) |
-| Review screenshot | More → Noodle Pro, with Test as → App Store |
+| Price | $4.99 (set by the owner) |
+| Review screenshot | `noodle-ios/app-store/noodle-pro-review.png` (the Pro sheet scrolled to Unlock Pro and Restore purchase) |
+| Family Sharing | Off (owner's choice) |
+| App Store Promotion | Off until the app handles purchases started on the App Store (StoreKit PurchaseIntent); then add the 1024 × 1024 image |
 
 Review notes:
-> Non-consumable, one-time purchase (More → Noodle Pro → Buy; Restore in the same sheet). Pro options carry a small amber sparkle. Without Pro, people can try any Pro sound or effect on their own song: it plays while the menu is open and goes back when it closes, with a note offering Pro. With Pro it is kept. Pro unlocks: more recorded instruments and synths, Vocoder and Talkbox, backing vocals, echo/chorus/drive on any track, 9 more song effects, Pulse and Arp chords, the DAW pack and MIDI, copying parts between songs, and videos without the Noodle tag.
+> Non-consumable, one-time purchase (More → Noodle Pro → Unlock Pro; Restore purchase in the same sheet). Pro options carry a small amber sparkle. Without Pro, people can try any Pro sound or effect on their own song: it plays while the menu is open and goes back when it closes, with a note offering Pro. With Pro it is kept. Pro unlocks: more recorded instruments and synths, Vocoder and Talkbox, backing vocals, echo/chorus/drive on any track, 9 more song effects, Pulse and Arp chords, the DAW pack and MIDI, copying parts between songs, and videos without the Noodle tag.
 
 Offer codes: reference name "Invite reward - Noodle Pro", one-time use codes.
 
 ## Listing
-- Name (30): Noodle: Hum to Song [19] (fallback: Noodle – Hum to Music)
-- Subtitle (30): Beatbox, sing & make music [26]
-- Keywords (100): melody,maker,voice,midi,recorder,beat,producer,loop,drum,chords,vocal,harmony,songwriting,idea,hook [99]
+- Name (30): Noodle: Music & Beat Maker [26] (app created with this name)
+- Subtitle (30): Idea to song, with your voice [29] (owner's pick pending; alternatives: From idea to song, by voice [27])
+- Keywords (100): hum,beatbox,sing,midi,melody,producer,studio,recorder,loop,drum,chords,vocal,songwriting,rap,demo [97] (no words from the name or subtitle)
 - Promotional text (170): Hum a melody and Noodle writes the chords. Try every Pro sound and effect on your own song before you buy. Free, no account, no ads. [132]
 - Category: Music (primary), Entertainment (secondary)
 - Copyright: © 2026 Tuttii Inc.
