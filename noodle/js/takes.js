@@ -242,7 +242,7 @@ const GUIDED=[
 let guidedDone=new Set(); try{ guidedDone=new Set(JSON.parse(localStorage.getItem('noodle.guided')||'[]')); }catch(e){}
 async function guidedSetup(id){ const g=GUIDED.find(x=>x[0]===id); if(!g) return; const [,mel,how,inst0,bpm]=g, kit=inst0==='kit';
   flushSave(); await projSaveCurrent(); if(playing){ stopAll(); playing=false; }
-  const keepKeys=['kit','calibrated','latAuto','latMs','ec','sens','snapStr','detailBias','vocLat','mergeDrums','replaceTonal','mig2','mig3','sq','keyRef','playAlong','tapPad'];
+  const keepKeys=['feelBeat','kit','calibrated','latAuto','latMs','ec','sens','snapStr','detailBias','vocLat','mergeDrums','replaceTonal','mig2','mig3','sq','keyRef','playAlong','tapPad'];
   const o=defaultState(); keepKeys.forEach(k=>{ if(k in S) o[k]=S[k]; });
   o.title=id; o.prompt=id; o.bpm=bpm||110; o.bars=4; o.loops=2; let nid=S.nextId;
   let guide, take;

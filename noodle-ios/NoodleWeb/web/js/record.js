@@ -69,6 +69,9 @@ async function startRecord(calib=false, teach=null){
   if(guideAlong && !calib && !teach) S.tracks.forEach(tr=>{ if(tr._buf && tr.guide){ ensureNodes(tr); tr._src=startSrc(tr._buf,tr._g,when+bar,P); } });   /* hum-along screens: the tune under your take */
   if(!metroGain){ metroGain=ctx.createGain(); metroGain.connect(ctx.destination); }
   metroGain.gain.value=0.75; metroSrc=startSrc(metroBuf,metroGain,when,0); gateOpen(when);
+  if(!calib && !teach && feelBeat()){   /* felt metronome: the count-in clicks and buzzes, then only the buzz (no click in the take) */
+    metroGain.gain.setValueAtTime(0.75,ctx.currentTime); metroGain.gain.setValueAtTime(0,when+bar-0.03);
+    const beat=bar/4, lat=(ctx.outputLatency||ctx.baseLatency||0); native({type:'metro', inMs:Math.round((when-ctx.currentTime+lat)*1000), beatMs:beat*1000, beats:Math.ceil((bar+L)/beat), perBar:4}); }
   let arp=false; if(S.keyRef && !calib && !teach && INST[S.inst].kind==='pitched'){ const K=keyKnown(), g=S.prompt&&S.tracks.find(t=>t.guide&&t.notes&&t.notes.length), first=g?g.notes.slice().sort((a,b)=>a.s-b.s)[0]:null;
     if(first){ playKeyArp(K, when, bar, pitchOf(first)); arp=true; } else if(K){ playKeyArp(K, when, bar); arp=true; } }   /* a guided tune: the arpeggio starts and ends on its first note */
   recState={arp, calib, teach, taps:[], inst:S.inst, countStart:when, start:when+bar, end:when+bar+L, preroll, poff, along, lat:calib?0:(!teach&&S.inst==='vox'&&S.vocLat!=null?S.vocLat:latency()), chunks:[]};
@@ -122,7 +125,9 @@ function afterTake(){ setTimeout(()=>{ try{ inviteSend(false); }catch(e){} },150
 /* Tap along: while a melody records into a part, a pad under the timeline takes one tap per note (optional; More > Timing & mic turns it off) */
 function tapPadOn(){ const r=recState; return !!(r && !r.calib && !r.teach && INST[r.inst].kind==='pitched' && takeMode() && S.tapPad!==false); }
 $('s2TapPad').addEventListener('pointerdown',e=>{ e.preventDefault(); const r=recState; if(!r||!ctx) return; r.taps.push(ctx.currentTime); haptic('light'); const b=$('s2TapPad'); b.classList.remove('hit'); void b.offsetWidth; b.classList.add('hit'); });
-function setRecUI(on){
+/* the felt metronome runs only in the iPhone app (the web can't buzz an iPhone) */
+const feelBeat=()=>S.feelBeat!==false&&!!(window.webkit&&window.webkit.messageHandlers&&window.webkit.messageHandlers.noodleNative);
+function setRecUI(on){ if(!on) native({type:'metroStop'});
  $('s2TapPad').hidden=!(on&&tapPadOn());
  RSE.hidden=!on; $('recBtn').classList.toggle('live',on); $('recTxt').textContent=on?'Stop':'Start recording';
  }

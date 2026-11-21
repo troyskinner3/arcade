@@ -74,7 +74,7 @@ function mkTrack(inst, o={}){
 }
 function S0sens(){ return (typeof S!=='undefined' && S) ? S.sens : 55; }
 function defaultState(){
-  return {v:1,bpm:94,bars:4,swing:14,key:'auto',scale:'auto',quant:16,metro:false,playAlong:false,tapPad:true,ec:false,calibrated:false,mergeDrums:true,replaceTonal:true,kit:null,latAuto:true,latMs:80,sens:55,loops:4,
+  return {v:1,bpm:94,bars:4,swing:14,key:'auto',scale:'auto',quant:16,metro:false,playAlong:false,tapPad:true,feelBeat:true,ec:false,calibrated:false,mergeDrums:true,replaceTonal:true,kit:null,latAuto:true,latMs:80,sens:55,loops:4,
     master:{vol:80,rev:45,drive:20,punch:50}, inst:'kit', nextId:10, tracks:null};
 }
 let S = defaultState();
@@ -136,7 +136,7 @@ const takeStore={ db:null,
   async del(k){ const db=await this.open(); if(!db) return; try{ db.transaction('takes','readwrite').objectStore('takes').delete(k); }catch(e){} } };
 /* ---- Saved projects: every song you make is kept on this device (IndexedDB) and can be reopened, renamed, duplicated or deleted.
    A project is the song only; your setup (taught drum sounds, mic timing, learned preferences) is shared by all of them. ---- */
-const SETUP_KEYS=['kit','calibrated','latAuto','latMs','ec','sens','snapStr','detailBias','vocLat','mergeDrums','replaceTonal','mig2','mig3','sq','keyRef','voxTop'];
+const SETUP_KEYS=['feelBeat','kit','calibrated','latAuto','latMs','ec','sens','snapStr','detailBias','vocLat','mergeDrums','replaceTonal','mig2','mig3','sq','keyRef','voxTop'];
 const projDb={
   async req(mode,fn){ const db=await takeStore.open(); if(!db) return null; return new Promise(res=>{ try{ const q=fn(db.transaction('projects',mode).objectStore('projects')); q.onsuccess=()=>res(q.result??null); q.onerror=()=>res(null); }catch(e){ res(null); } }); },
   get(id){ return this.req('readonly',st=>st.get(id)); }, all(){ return this.req('readonly',st=>st.getAll()); },

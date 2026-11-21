@@ -625,3 +625,9 @@ subset + folk tunes, 6.4M melody notes; tunes matching the guides removed). Copy
   and Done / Exit in place of BPM / KEY / SNAP; the rest of the song dims; an overlap turns red and Done reads Replace; Done stays in the
   mode for the next one. Tapping a section's name on the ruler: rename, loop, duplicate, move or resize, remove.
 - Shorter help text in the editors and the Another version sheet.
+
+## Felt metronome (`haptic_test.js`)
+In the iPhone app, a take's count-in clicks and the phone buzzes every beat (stronger on each bar's first beat); when recording starts
+the click goes silent and only the buzz continues, so no click is recorded. The beats are scheduled ahead on the Taptic Engine (Core
+Haptics) from one message, so timing doesn't depend on the page's timers; the audio session allows haptics while recording. A switch in
+Mic and timing (on by default, shown only in the app). The web keeps the audible click.

@@ -12,6 +12,7 @@ import AVFoundation
 import StoreKit
 import MediaPlayer
 import DeviceCheck
+import CoreHaptics
 
 let liveURL = URL(string: "https://troyskinner3.github.io/arcade/noodle/")!
 let bundledURL = URL(string: "noodle://app/index.html")!
@@ -97,6 +98,34 @@ final class NativeBridge: NSObject, WKScriptMessageHandler {
   private let light = UIImpactFeedbackGenerator(style: .light)
   private let medium = UIImpactFeedbackGenerator(style: .medium)
   private let done = UINotificationFeedbackGenerator()
+  /* Felt metronome: the page sends when the count-in starts and the beat length; every beat is scheduled ahead on the Taptic Engine
+     (a stronger tap on each bar's first beat), so the timing doesn't depend on the page's timers. Stopped when recording ends. */
+  private var hEngine: CHHapticEngine?
+  private var hPlayer: CHHapticPatternPlayer?
+  private func metro(inMs: Double, beatMs: Double, beats: Int, perBar: Int) {
+    guard CHHapticEngine.capabilitiesForHardware().supportsHaptics, beatMs > 50, beats > 0 else { return }
+    do {
+      if hEngine == nil {
+        let e = try CHHapticEngine(); e.playsHapticsOnly = true; e.isAutoShutdownEnabled = true
+        e.resetHandler = { [weak e] in try? e?.start() }   // the engine restarts itself after an interruption
+        hEngine = e
+      }
+      guard let e = hEngine else { return }
+      try e.start()
+      var evs: [CHHapticEvent] = []
+      for i in 0..<min(beats, 4000) {
+        let first = i % max(1, perBar) == 0
+        evs.append(CHHapticEvent(eventType: .hapticTransient, parameters: [
+          CHHapticEventParameter(parameterID: .hapticIntensity, value: first ? 1.0 : 0.6),
+          CHHapticEventParameter(parameterID: .hapticSharpness, value: first ? 0.8 : 0.45)], relativeTime: Double(i) * beatMs / 1000))
+      }
+      try? hPlayer?.stop(atTime: CHHapticTimeImmediate)
+      let p = try e.makePlayer(with: CHHapticPattern(events: evs, parameters: []))
+      hPlayer = p
+      try p.start(atTime: e.currentTime + max(0, inMs) / 1000)
+    } catch {}
+  }
+  private func metroStop() { try? hPlayer?.stop(atTime: CHHapticTimeImmediate); hPlayer = nil }
 
   func start() {
     guard !started else { return }
@@ -126,6 +155,10 @@ final class NativeBridge: NSObject, WKScriptMessageHandler {
       case "success": done.notificationOccurred(.success)
       default: light.impactOccurred()
       }
+    case "metro":
+      metro(inMs: (d["inMs"] as? NSNumber)?.doubleValue ?? 0, beatMs: (d["beatMs"] as? NSNumber)?.doubleValue ?? 0,
+            beats: (d["beats"] as? NSNumber)?.intValue ?? 0, perBar: (d["perBar"] as? NSNumber)?.intValue ?? 4)
+    case "metroStop": metroStop()
     case "now":
       let playing = d["playing"] as? Bool ?? false
       var info: [String: Any] = [MPMediaItemPropertyTitle: d["title"] as? String ?? "Noodle", MPMediaItemPropertyArtist: "Noodle",
@@ -154,6 +187,7 @@ struct NoodleWebApp: App {
   init() {
     let s = AVAudioSession.sharedInstance()
     try? s.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker, .allowBluetoothA2DP])
+    try? s.setAllowHapticsAndSystemSoundsDuringRecording(true)   // the felt metronome buzzes while the mic records
     try? s.setActive(true)
   }
   var body: some Scene {
