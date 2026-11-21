@@ -260,7 +260,10 @@ struct NoodleWeb: UIViewRepresentable {
     // exports: links with a download attribute (WAV, MIDI, video) become downloads, then go to the share sheet
     func webView(_ webView: WKWebView, decidePolicyFor action: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
       if action.shouldPerformDownload { decisionHandler(.download); return }
-      if let u = action.request.url, action.targetFrame == nil, u.scheme != "noodle", u.host != liveURL.host { UIApplication.shared.open(u); decisionHandler(.cancel); return }
+      // email, phone, App Store and other app links (Help and contact, Redeem in the App Store) open in their own app, never inside Noodle
+      if let u = action.request.url, let sch = u.scheme?.lowercased(), !["http", "https", "noodle", "about", "blob", "data"].contains(sch) {
+        UIApplication.shared.open(u); decisionHandler(.cancel); return }
+      if let u = action.request.url, action.targetFrame == nil, u.scheme != "noodle" { UIApplication.shared.open(u); decisionHandler(.cancel); return }   // new-window links (Privacy, the App Store) open in Safari, including our own site
       decisionHandler(.allow)
     }
     func webView(_ webView: WKWebView, decidePolicyFor response: WKNavigationResponse, decisionHandler: @escaping (WKNavigationResponsePolicy) -> Void) {
@@ -291,6 +294,7 @@ struct NoodleWeb: UIViewRepresentable {
       if e.domain == NSURLErrorDomain && e.code == NSURLErrorCancelled { return }
       if e.domain == "WebKitErrorDomain" && (e.code == 102 || e.code == 204) { return }   // frame load interrupted (downloads), plug-in handled load
       let failed = (e.userInfo[NSURLErrorFailingURLErrorKey] as? URL) ?? webView.url
+      if let sch = failed?.scheme?.lowercased(), !["http", "https", "noodle"].contains(sch) { return }   // a link meant for another app: nothing to reload
       if webRoot != nil && failed?.scheme != "noodle" { webView.load(URLRequest(url: bundledURL)); return }
       let retry = webRoot != nil ? bundledURL.absoluteString : liveURL.absoluteString
       let msg = webRoot != nil ? "Noodle couldn’t open." : "Noodle couldn’t load. Check your connection."

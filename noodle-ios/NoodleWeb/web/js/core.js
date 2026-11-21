@@ -234,17 +234,18 @@ async function inviteSend(say){ let code=null; try{ code=localStorage.getItem('n
   let st=0; try{ st=(await fetch(`${NOODLE_API}/v1/invites/${code}/join`,{method:'PUT',headers:H})).status; }catch(e){ return; }   /* offline: try again later */
   if(st===200||st===404||st===409||st===400||st===403){ try{ localStorage.removeItem('noodle.inviteBy'); }catch(e){} }
   if(say||st===200) toast(st===200?'Invite counted. Thanks for joining Noodle!':st===409?'That invite can’t be used from this phone (your own code, or this iPhone already joined one).':st===403?'Invites count from the Noodle iPhone app.':st===404?'That invite code wasn’t found.':'The invite didn’t go through.',5000); }
-async function inviteSheet(){ nxSheet(`<h2>Invite friends</h2><p style="color:var(--muted);font-size:14px;margin:-4px 0 12px">When 3 friends make their first song with your invite, you get Noodle Pro free.</p><div id="invBody" style="color:var(--muted)">Loading…</div>
-    <div class="nx-grp">Have an invite code?</div><div style="display:flex;gap:8px"><input class="nx-txt" id="invCode" maxlength="6" autocapitalize="characters" autocomplete="off" placeholder="6 letters" style="flex:1;text-transform:uppercase"><button class="nx-ghost" id="invUse" style="width:auto;padding:0 18px">Use</button></div>`);
-  $('invUse').onclick=()=>{ if(inviteUse($('invCode').value)) $('invCode').value=''; };
+/* someone else's invite: opening their link does this on its own; typing the code is the fallback (for example after installing from it) */
+function inviteCodeSheet(){ nxSheet(`<h2>Enter an invite code</h2><p style="color:var(--muted);margin:-4px 0 12px">From a friend’s invite. Opening their invite link fills it in for you.</p><input class="nx-txt" id="invCode" maxlength="6" autocapitalize="characters" autocomplete="off" placeholder="6 letters and numbers" style="text-transform:uppercase"><button class="nx-primary" id="invUse">Use code</button>`);
+  $('nxSheet').onclick=null; $('invUse').onclick=()=>{ if(inviteUse($('invCode').value)) nxClose(); }; }
+async function inviteSheet(){ nxSheet(`<h2>Invite friends</h2><p style="color:var(--muted);margin:-4px 0 12px">When 3 friends make their first song from your invite, you get Noodle Pro free.</p><div id="invBody" style="color:var(--muted)">Loading…</div>`);
   const me=await inviteMine(), body=$('invBody'); if(!body) return;
   if(!me){ body.textContent='Couldn’t reach Noodle’s server. Try again with a connection.'; return; }
   const redeem=me.reward?(APP_STORE_ID?`https://apps.apple.com/redeem?ctx=offercodes&id=${APP_STORE_ID}&code=${encodeURIComponent(me.reward)}`:'https://apps.apple.com/redeem'):null;
   body.innerHTML=`${me.reward?`<p style="color:var(--ink);font-weight:600">You earned Noodle Pro! Your code: <b style="letter-spacing:.1em">${nxEsc(me.reward)}</b></p><a class="nx-primary" href="${nxEsc(redeem)}" target="_blank" style="display:flex;align-items:center;justify-content:center;text-decoration:none;margin-bottom:12px">Redeem in the App Store</a>`:
       `<div class="nx-bar" style="margin:4px 0 6px"><i style="width:${Math.min(100,me.joined/me.need*100)}%"></i></div><p>${isPro()?'You have Pro already. Friends still get Noodle.':`${me.joined} of ${me.need} friends so far.`}${me.joined>=me.need&&!me.reward?' Your Pro code is on its way: check back soon.':''}</p>`}
-    <p>Your code: <b style="color:var(--ink);letter-spacing:.12em">${nxEsc(me.code)}</b></p><button class="nx-primary" id="invShare">Send your invite</button>`;
-  $('invShare').onclick=async()=>{ const text=`Make songs by humming with Noodle. Use my invite code ${me.code}:`; try{ if(navigator.share) await navigator.share({title:'Noodle', text, url:me.url}); else { await navigator.clipboard.writeText(text+' '+me.url); toast('Invite copied'); } }catch(e){} }; }
-document.getElementById('nxInv').onclick=()=>inviteSheet();   /* ($ is defined in a later file) */
+    <button class="nx-primary" id="invShare">Share your invite</button><p style="text-align:center;margin:8px 0 0;font-size:14px">Your code: <b style="color:var(--ink);letter-spacing:.12em">${nxEsc(me.code)}</b></p>`;
+  $('invShare').onclick=async()=>{ const text=`Hum a tune and Noodle turns it into a song. Here’s my invite:`; try{ if(navigator.share) await navigator.share({title:'Noodle', text, url:me.url}); else { await navigator.clipboard.writeText(text+' '+me.url); toast('Invite copied'); } }catch(e){} }; }
+document.getElementById('nxInv').onclick=()=>inviteSheet(); document.getElementById('nxInvCode').onclick=()=>inviteCodeSheet();   /* ($ is defined in a later file) */
 /* ---- App shell ---- */
 /* ---- App shell ---- */
 const nxEsc=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -259,14 +260,14 @@ async function nxRenderProjects(){ const q=$('nxQ').value.trim().toLowerCase(); 
   const ex=$('nxExample'); if(ex) ex.onclick=()=>nxExample(); }
 /* a small finished song to poke at: play it, open a part, re-record over it */
 async function nxExample(stay){ await projNew(); S.title='Example song'; S.bpm=94; S.bars=2; S.tracks=exampleTracks().map(t=>{ t.id=S.nextId++; delete t.ex; t.off=0; t.len=2; t.lenSet=true; t.rep=false; t._dirty=true; return t; }); keyCache=null; save(); flushSave(); await projSaveCurrent(); if(stay){ await nxGo('projects'); return; } await nxGo('studio'); renderTracks(); scheduleRender(); }
-async function nxGo(v){ if(v!=='studio'){ flushSave(); if(recState) cancelRecord(); if(playing){ stopAll(); playing=false; } await projSaveCurrent().catch(()=>{}); }
+async function nxGo(v){ document.querySelectorAll('.info-pop').forEach(x=>x.remove()); if(v!=='studio'){ flushSave(); if(recState) cancelRecord(); if(playing){ stopAll(); playing=false; } await projSaveCurrent().catch(()=>{}); }
   nxAt=v; $('nxProjects').hidden=v!=='projects'; $('nxMore').hidden=v!=='more'; $('nxNav').hidden=v==='studio'; document.body.classList.toggle('nx-on',v!=='studio'); document.body.style.overflow=v==='studio'?'':'hidden';
   if(v==='studio' && s2Use()) s2Show(true); else if(v==='studio') s2Show(false); else { $('s2').hidden=true; document.body.classList.remove('s2-on'); }
   $('nxTabP').toggleAttribute('aria-current',false); $('nxTabM').toggleAttribute('aria-current',false); if(v==='projects') $('nxTabP').setAttribute('aria-current','page'); if(v==='more') $('nxTabM').setAttribute('aria-current','page');
   if(v==='projects') await nxRenderProjects(); if(v==='studio') window.scrollTo({top:0}); }
 const nxSongEmpty=()=>!S.title && !S.prompt && !S.tracks.some(t=>!t.ex&&!t.guide);
 async function nxNew(){ if(!nxSongEmpty() || S.tracks.length) await projNew(); await nxGo('studio'); }
-function nxSheet(html){ $('toast').classList.remove('on'); $('nxSheet').onchange=null; $('nxSheet').innerHTML='<button class="nx-x" id="nxX" aria-label="Close"><svg viewBox="0 0 14 14"><path d="M2 2l10 10M12 2L2 12"/></svg></button><div class="nx-g"><div class="nx-grab"></div>'+html+'</div>'; $('nxSheet').style.transform=''; $('nxSheet').scrollTop=0; sheetAboveTransport(); $('nxScrim').hidden=false; $('nxX').onclick=e=>{ e.stopPropagation(); nxClose(); }; }
+function nxSheet(html){ document.querySelectorAll('.info-pop').forEach(x=>x.remove()); $('toast').classList.remove('on'); $('nxSheet').onchange=null; $('nxSheet').innerHTML='<button class="nx-x" id="nxX" aria-label="Close"><svg viewBox="0 0 14 14"><path d="M2 2l10 10M12 2L2 12"/></svg></button><div class="nx-g"><div class="nx-grab"></div>'+html+'</div>'; $('nxSheet').style.transform=''; $('nxSheet').scrollTop=0; sheetAboveTransport(); $('nxScrim').hidden=false; $('nxX').onclick=e=>{ e.stopPropagation(); nxClose(); }; }
 /* a sheet follows the finger down and closes past a third of the way (not while a slider or a scrolled list is being used) */
 function nxSheetSwipe(){ const sh=$('nxSheet'); let y0=null, dy=0;
   sh.addEventListener('touchstart',e=>{ y0=null; if(e.touches.length!==1||sh.scrollTop>0||e.target.closest('input,select,textarea')) return; y0=e.touches[0].clientY; dy=0; },{passive:true});
@@ -379,7 +380,7 @@ function nxOnboard(done){ const O=$('nxOb'), I=$('nxObIn'), A=$('nxObActs'); O.h
     else { I.innerHTML=`<h1>Want news?</h1><p class="sub">${NX_EMAIL_TEXT}</p><input class="nx-txt" id="obEm" type="email" inputmode="email" autocomplete="email" placeholder="you@example.com" aria-label="Email address">`; A.innerHTML=`<button class="nx-primary" id="obE">Sign me up</button><button class="nx-ghost" id="obK">Skip</button>`;
       $('obK').onclick=finish; $('obE').onclick=async()=>{ const v=$('obEm').value.trim(); if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v)){ toast('That doesn’t look like an email address.'); return; } $('obE').disabled=true; const ok=await emailSignup(v,NX_EMAIL_TEXT); if(ok){ try{ localStorage.setItem('noodle.email',v); }catch(e){} finish(); } else { $('obE').disabled=false; toast('That didn’t go through. You can sign up later in More.'); } }; } };
   show(); }
-function nxInit(){ $('nxPro').onclick=()=>proSheet(); nxProSync(); $('nxMore').addEventListener('click',e=>{ const b=e.target.closest('[data-info]'); if(b){ e.preventDefault(); e.stopPropagation(); toast(b.dataset.info,6000); } },true);
+function nxInit(){ $('nxPro').onclick=()=>proSheet(); nxProSync(); $('nxMore').addEventListener('click',e=>{ const b=e.target.closest('[data-info]'); if(b){ e.preventDefault(); e.stopPropagation(); infoPop(b); } },true);
   setTimeout(()=>{ try{ if(musicalOn()) loadMusical(); }catch(e){} },2500);
   if(window.NOODLE_DEV){ const r=$('nxDevTap'), sw=$('nxTapSw'); r.hidden=false; sw.setAttribute('aria-checked',String(tapNotesOn())); sw.onclick=()=>{ const on=!tapNotesOn(); try{ localStorage.setItem('noodle.tapnotes',on?'1':''); }catch(e){} sw.setAttribute('aria-checked',String(on)); toast(on?'Tap notes on for new takes':'Tap notes off for new takes'); }; }   /* testing: the owner's tap note rules */   /* Musical mode's tables, ready before the first take */
   if(window.NOODLE_DEV){ const dv=$('nxDev'), sync=()=>dv.querySelectorAll('[data-dv]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.dv===devAs()))); dv.hidden=false; sync();

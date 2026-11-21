@@ -8,7 +8,7 @@ const {chromium,devices}=require('playwright');
   for(let i=0;i<3;i++){ const f=await open();
     if(i===0){ await f.evaluate(c=>{ inviteUse(c); },code); await f.waitForTimeout(400); out.waits=await f.evaluate(()=>localStorage.getItem('noodle.inviteBy'));
       await f.evaluate(()=>{ S.tracks.push(mkTrack('lead',{id:S.nextId++,notes:[{s:0,l:4,p:60,v:.8}]})); save(); afterTake(); }); await f.waitForTimeout(2200); out.sentLater=await f.evaluate(()=>localStorage.getItem('noodle.inviteBy')); }
-    else { await f.evaluate(()=>{ S.tracks.push(mkTrack('lead',{id:S.nextId++,notes:[{s:0,l:4,p:60,v:.8}]})); save(); }); await f.evaluate(()=>{ nxGo('more'); }); await f.tap('#nxInv'); await f.waitForTimeout(300); await f.fill('#invCode',code.toLowerCase()); await f.tap('#invUse'); await f.waitForTimeout(500); }
+    else { await f.evaluate(()=>{ S.tracks.push(mkTrack('lead',{id:S.nextId++,notes:[{s:0,l:4,p:60,v:.8}]})); save(); }); await f.evaluate(()=>{ nxGo('more'); }); await f.tap('#nxInvCode'); await f.waitForTimeout(300); await f.fill('#invCode',code.toLowerCase()); await f.tap('#invUse'); await f.waitForTimeout(500); }
     await f.context().close(); }
   await fetch('http://localhost:8787/v1/admin/codes',{method:'PUT',headers:{Authorization:'Bearer local'},body:JSON.stringify(['NOODLEPRO1'])});
   await a.evaluate(()=>nxClose()); await a.tap('#nxInv'); await a.waitForTimeout(700); const t=await a.textContent('#invBody'); out.reward=t.includes('NOODLEPRO1'); out.redeem=await a.getAttribute('#invBody a','href');

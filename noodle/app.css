@@ -513,3 +513,24 @@ select.nx-txt{-webkit-appearance:none;appearance:none;height:40px;border-radius:
 /* the Join button on a selected note: link icon, filled when joined */
 .s2 .selbar .sb-join{display:inline-flex;align-items:center;gap:6px}.s2 .selbar .sb-join .nx-ico{width:18px;height:18px}.s2 .selbar .sb-join[hidden]{display:none}
 .s2 .selbar .sb-join[aria-pressed="true"]{background:var(--s2-ink)!important;color:var(--s2-bg)!important;border-color:var(--s2-ink)!important}
+
+/* the Pro sheet: a card per group, chips of examples */
+.pro-sub{color:var(--muted);margin:-4px 0 12px}
+.pro-cards{display:flex;flex-direction:column;gap:10px}
+.pro-card{display:flex;gap:12px;align-items:flex-start;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--panel)}
+.pro-ic{flex:none;width:40px;height:40px;border-radius:10px;display:grid;place-items:center;background:color-mix(in srgb,#f1c75b 18%,transparent);color:#f1c75b}.pro-ic .nx-ico{width:22px;height:22px}
+.pro-tx{flex:1;min-width:0}.pro-tx b{display:block;font:700 17px var(--f-display)}.pro-tx small{display:block;color:var(--muted);font-size:14px;margin:1px 0 8px}
+.pro-chips{display:flex;flex-wrap:wrap;gap:5px}.pro-chips span{padding:3px 9px;border:1px solid var(--line);border-radius:12px;font:600 13px var(--f-display);color:var(--ink)}
+.pro-ok{flex:none;width:22px;height:22px;color:#55c27a;stroke-width:2.4}
+.pro-try{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:14px;margin:14px 0 0}.pro-try .pro-b{margin:0}
+.pro-once{text-align:center;color:var(--muted);font-size:13px;margin:6px 0 8px}
+
+/* ⓘ text: a bubble next to the button, with a small pointer */
+.info-pop{position:fixed;z-index:200;padding:10px 12px;border-radius:10px;background:var(--ink);color:var(--bg);font:500 14px/1.4 var(--f-body);box-shadow:0 6px 24px rgba(0,0,0,.35)}
+.info-pop::before{content:"";position:absolute;left:calc(var(--ax) - 7px);border:7px solid transparent}
+.info-pop.below::before{top:-14px;border-bottom-color:var(--ink)}.info-pop.above::before{bottom:-14px;border-top-color:var(--ink)}
+/* buttons look like buttons: menu actions are outlined rows; the Sections button and Edit links get an edge */
+.nx-act{border:1px solid var(--line)!important;border-radius:10px;padding:12px 14px!important;margin-top:8px;background:var(--panel)!important}
+.nx-act.danger{background:none!important;border-color:var(--rec)!important}
+.s2-secs-b{width:calc(100% - 16px)!important;height:calc(100% - 6px)!important;margin:3px 8px!important;border:1px solid var(--s2-line)!important;border-radius:6px!important;background:var(--s2-raise)!important;color:var(--s2-ink)!important;font:600 13px var(--f-display)!important;padding:0 10px!important;text-align:center}
+.pr-edit{text-decoration:none!important;border:1px solid var(--line)!important;border-radius:6px;padding:2px 10px!important;color:var(--ink)!important}

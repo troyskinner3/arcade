@@ -6,7 +6,8 @@ The owner's rules, gathered from reviews. Read this before any UI or copy change
 ## Words
 - **Name things, don't describe them.** A control's label is a short name for what it is (2-3 words): "Silent metronome", "Tap pad",
   "Echo cancellation". Not a sentence ("Feel the beat while recording: ..."), not a colon or a parenthetical in a label.
-- **Explanations go behind an ⓘ** next to the name, never as a sentence under every control. Most people shouldn't need it.
+- **Explanations go behind an ⓘ** next to the name, never as a sentence under every control. Most people shouldn't need it. Tapping
+  ⓘ opens a small bubble pointing at it (not a message at the top of the screen); a tap anywhere closes it.
 - **Plain, specific words a beginner knows.** Avoid jargon ("haptic", "quantize", "envelope") in labels; avoid AI-sounding copy:
   no "Let's...", "magic", "seamlessly", "effortlessly", exclamation marks, emoji, or chatty asides.
 - **The same word for the same thing everywhere:** song (never project), track, part, note, hit, section, preset, take.
@@ -15,8 +16,8 @@ The owner's rules, gathered from reviews. Read this before any UI or copy change
 - **Short help text.** Editor tips are one line ("Tap to add a hit. Drag to move."). Toasts are one or two short sentences.
 
 ## Look
-- **Buttons look like buttons:** filled (primary, one per screen) or outlined (secondary). Never bare text for an action. Rows that
-  open something have a chevron.
+- **Buttons look like buttons:** filled (primary, one per screen) or outlined (secondary). Never bare text for an action (not even
+  "Restore purchase" or "Edit"). Menu actions are outlined rows. Rows that open something have a chevron.
 - **Every interactive element has a visible edge:** outlined inputs, outlined dropdowns, outlined chips.
 - **Dropdowns look like DAW combo boxes:** an outlined, slightly sunken box with the value and a chevron in its own segment. Picking
   opens a list (the same list sheet as Sound ›), not the plain iPhone picker.
@@ -29,6 +30,8 @@ The owner's rules, gathered from reviews. Read this before any UI or copy change
 - **Different actions look different:** two things that do different jobs must not look alike (the track's arm button is an "R",
   not a second red record button).
 
+- **Selling Pro:** show what you get, grouped by what it's for (cards with example chips), not a bullet list; plain copy, no slogans.
+
 ## Layout and behaviour
 - **Progressive disclosure:** the basics a beginner needs are on the first screen; the rest is under More settings or •••.
   Pitch correction stays visible on vocals.
@@ -38,6 +41,8 @@ The owner's rules, gathered from reviews. Read this before any UI or copy change
 - **Fixed frame:** top bar, track headers and bottom bar never move; only the content scrolls. No rubber-band overscroll.
 - **Do it where you see it:** editing that involves the timeline (sections, the playhead) happens on the timeline itself, not in a
   form with dropdowns.
+- **Don't bury things:** an action goes where people look for it (entering someone's invite code is its own row, not inside
+  Invite friends).
 - **Hear before you keep:** sounds, presets and Pro features play on your part while a menu is open.
 - **Feedback:** a light haptic for placing things, medium for record start and stop.
 - **Big targets while recording:** anything you touch while singing (the tap pad) is huge and easy to hit without looking.

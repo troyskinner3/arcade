@@ -649,3 +649,15 @@ the note editor's Today / Tap notes button flips one take between them. The fing
 - **Joined notes in the note editor (testing):** a thin dashed line runs from where a note ends to the start of the note joined to it.
   Selecting a note that touches the one before shows Join / Joined (link icon) in the note bar to join it or break it; moving a joined
   note so a gap opens breaks the join. Lead and Bass, Xcode builds.
+
+## Round 11 (owner review of More)
+- Invites: Invite friends is for sharing your own invite (one Share button, native share sheet); someone else's code has its own row,
+  Enter an invite code. Opening a friend's invite link fills the code in on its own; typing it is the fallback.
+- Noodle Pro sheet: five cards (Sounds, Your voice, Effects, Beats and chords, Export and share) with example chips, then Unlock Pro,
+  "One-time purchase" and an outlined Restore purchase button. "Pay once, keep it" removed.
+- ⓘ: a bubble pointing at the button instead of a message at the top of the screen.
+- Text-only buttons fixed: Restore purchase, menu actions (Rename, Duplicate, Back up this song, the section menu) are outlined rows,
+  the Sections button in the ruler and the presets' Edit have edges.
+- Help and contact (and other email, phone and App Store links) open their own app; before, the iPhone app tried to load the email
+  link itself, failed, and reopened on a blank song. Privacy and other new-window links to our own site now open in Safari
+  (the app used to ignore them).

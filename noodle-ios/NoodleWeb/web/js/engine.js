@@ -104,12 +104,26 @@ window.noodlePro=(owned, price)=>{ const was=PRO.owned; PRO.owned=!!owned; if(pr
   nxProSync(); if(was!==PRO.owned){ if(PRO.owned) pvCommitAll(); try{ renderTracks(); if(s2.edId!=null) s2EdMount(); }catch(e){} } };
 window.noodleProResult=r=>{ PRO.busy=false; const m={bought:'Pro unlocked. Thank you!', restored:'Pro restored.', none:'No Pro purchase found for this Apple ID.', pending:'Waiting for approval. Pro unlocks as soon as it’s approved.', failed:'The purchase didn’t go through. Nothing was charged.', unavailable:'The App Store isn’t reachable right now. Try again in a moment.'}[r];
   if(r==='bought'||r==='restored'){ nxClose(); haptic('success'); } if(m) toast(m,5200); nxProSync(); };
-function proSheet(why){ nxSheet(`<h2>Noodle Pro</h2><p style="color:var(--muted);margin:0 0 10px">${nxEsc(why||'Everything Noodle can do.')}</p><ul style="margin:0 0 14px;padding-left:20px;line-height:1.5"><li>More instruments: Marimba, Glockenspiel, Flute, Horns, and 11 more sounds</li><li>Your voice: an instrument made from your singing</li><li>11 song effects with shapes you draw</li><li>DAW pack (every track as audio and MIDI), videos without the tag</li><li>Everything we add to Pro later. Pay once, keep it.</li></ul>
-    ${isPro()?`<p style="margin:0">You have Pro. Thank you!</p>`:`<button class="nx-primary" id="proBuy">Unlock Pro${PRO.price?' · '+nxEsc(PRO.price):''}</button><button class="nx-act" id="proRestore" style="justify-content:center">Restore purchase</button>`}`);
-  if(!isPro()){ $('proBuy').onclick=()=>proBuy(); $('proRestore').onclick=()=>proRestore(); } }
+/* the Pro sheet: what Pro adds, grouped by what it's for (keep in step with PRO.md and PRO_SOUNDS / MFX / BEATS / CHORD_STYLES) */
+const PRO_CARDS=[
+  {t:'Sounds', d:'22 more instruments and a recorded brush kit', ic:'<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>',
+   x:['Trumpet','Flute','Horns','Marimba','Clarinet','Glockenspiel','Xylophone','Glass','Theremin','Acid','Wobble','Brushes drums','+ 10 more']},
+  {t:'Your voice', d:'Instruments and harmonies made from your singing', ic:'<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3"/>',
+   x:['Your voice','Backing vocals','Vocoder','Talkbox']},
+  {t:'Effects', d:'On one track or across the whole song', ic:'<circle cx="12" cy="12" r="8"/><path d="M12 12l4-4"/><path d="M12 4v2M4 12h2M18 12h2"/>',
+   x:['Echo','Chorus','Drive','Phaser','Washout','Echo throw','Tremolo','Auto-pan','Bitcrusher','Vinyl brake','Reverse swell','Ring mod']},
+  {t:'Beats and chords', d:'6 more beats to sing over, 2 more chord styles', ic:'<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
+   x:['Glacier','Corner Store','Paper Plane','Cold Front','Weekend','Lagos Sun','Pulse chords','Arp chords']},
+  {t:'Export and share', d:'Take your song anywhere', ic:'<path d="M12 15V3M7 8l5-5 5 5M5 14v5a2 2 0 002 2h10a2 2 0 002-2v-5"/>',
+   x:['MIDI','Stems for your DAW','Videos without the tag','Copy parts between songs']}];
+function proSheet(why){ const have=isPro();
+  nxSheet(`<h2>Noodle Pro</h2><p class="pro-sub">${nxEsc(why||(have?'You have every sound, effect and export.':'Every sound, effect and export in Noodle.'))}</p>
+    <div class="pro-cards">${PRO_CARDS.map(c=>`<div class="pro-card"><div class="pro-ic"><svg class="nx-ico" viewBox="0 0 24 24">${c.ic}</svg></div><div class="pro-tx"><b>${c.t}</b><small>${c.d}</small><div class="pro-chips">${c.x.map(v=>`<span>${nxEsc(v)}</span>`).join('')}</div></div>${have?'<svg class="nx-ico pro-ok" viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></svg>':''}</div>`).join('')}</div>
+    ${have?'':`<p class="pro-try">${PRO_LOCK} Try anything marked like this on your own song first.</p><button class="nx-primary" id="proBuy">Unlock Pro${PRO.price?' · '+nxEsc(PRO.price):''}</button><p class="pro-once">One-time purchase</p><button class="nx-ghost" id="proRestore">Restore purchase</button>`}`);
+  if(!have){ $('proBuy').onclick=()=>proBuy(); $('proRestore').onclick=()=>proRestore(); } }
 function proBuy(){ if(!proBridge()){ toast('Noodle Pro is in the Noodle iPhone app.'); return; } if(PRO.busy) return; PRO.busy=true; try{ window.webkit.messageHandlers.noodlePro.postMessage('buy'); }catch(e){ PRO.busy=false; } setTimeout(()=>{ PRO.busy=false; },60000); }
 function proRestore(){ if(!proBridge()){ toast('Noodle Pro is in the Noodle iPhone app.'); return; } try{ window.webkit.messageHandlers.noodlePro.postMessage('restore'); }catch(e){} toast('Checking with the App Store…'); }
-function nxProSync(){ const e=$('nxProS'); if(!e) return; e.textContent=(devAs()?'Testing: ':'')+(isPro()?'You have Pro':'More sounds, song effects, DAW pack'+(PRO.price?' · '+PRO.price:'')); }
+function nxProSync(){ const e=$('nxProS'); if(!e) return; e.textContent=(devAs()?'Testing: ':'')+(isPro()?'You have Pro':'More sounds, effects and exports'+(PRO.price?' · '+PRO.price:'')); }
 /* ---- Mix FX editor ---- */
 /* The Song FX editor, as in the Tuttii FX prototype: pick the effect; its curve over the region (x: bars of the region, so it scales with it;
    y: the cutoff in Hz on a log scale for High pass / Low pass, how much of the effect is mixed in for the rest); + adds a point in the widest gap,

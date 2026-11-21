@@ -351,7 +351,7 @@ function s2TrackSheet(L){ if(L.tracks[0].inst==='mix') return s2MixSheet(L); con
   const each=f=>all().forEach(f), rerender=()=>{ save(); scheduleRender(); };
   $('s2Tn').onchange=e=>{ const v=e.target.value.trim().slice(0,32)||undefined; each(t=>{ t.name=v; }); save(); renderTracks(); };
   $('nxSheet').onclick=e=>{ let b;
-    if(b=e.target.closest('[data-info]')){ e.preventDefault(); toast(b.dataset.info,6000); }
+    if(b=e.target.closest('[data-info]')){ e.preventDefault(); infoPop(b); }
     else if(e.target.closest('[data-a="menu"]')){ const m=$('s2Menu'); m.hidden=!m.hidden; e.target.closest('[data-a="menu"]').setAttribute('aria-expanded',String(!m.hidden)); }
     else if(b=e.target.closest('[data-pick]')){ s2PickSheet(L,b.dataset.pick); }
     else if((b=e.target.closest('[data-a]'))&&b.dataset.a.startsWith('save:')){ if(b.dataset.a==='save:fx'&&!tfxOn(tr)) toast('Turn on an effect first (More settings, Effects).'); else s2SavePreset(L,b.dataset.a.slice(5)); }
@@ -381,6 +381,11 @@ function s2TrackSheet(L){ if(L.tracks[0].inst==='mix') return s2MixSheet(L); con
     if(id==='s2Chd'){ each(t=>{ t.chordType=v; delete t.chords; t._dirty=true; }); if(autoOct(tr)) $('s2Oct').textContent=(tr.oct>0?'+':'')+tr.oct; rerender(); renderTracks(); }
     if(id==='s2Expr'){ each(t=>{ t.expr=+v; if(t.expr>0&&t._raw){ if(t._an) t.exprAlign=t._an.align; storeVox(t); } t._dirty=true; }); rerender(); } }; }
 /* the line under something being tried: what it is, and a way to get Pro */
+/* the ⓘ's text pops out next to it (below, or above when near the bottom); a tap anywhere closes it */
+function infoPop(btn){ document.querySelectorAll('.info-pop').forEach(x=>x.remove()); const r=btn.getBoundingClientRect(), d=document.createElement('div'); d.className='info-pop'; d.setAttribute('role','tooltip'); d.textContent=btn.dataset.info;
+  document.body.appendChild(d); const W=Math.min(300,window.innerWidth-24), h=(d.style.width=W+'px',d.offsetHeight), below=r.bottom+10+h<window.innerHeight-90, left=Math.max(12,Math.min(window.innerWidth-W-12,r.left+r.width/2-W/2));
+  d.style.left=left+'px'; d.style.top=(below?r.bottom+10:r.top-10-h)+'px'; d.classList.add(below?'below':'above'); d.style.setProperty('--ax',(r.left+r.width/2-left)+'px');
+  const close=e=>{ if(e&&e.target===btn) return; d.remove(); document.removeEventListener('pointerdown',close,true); }; setTimeout(()=>document.addEventListener('pointerdown',close,true),0); setTimeout(close,9000); }
 /* a small ⓘ that shows its text when tapped (instead of a sentence under every control) */
 const s2Inf=t=>`<button class="s2-i" data-info="${nxEsc(t)}" aria-label="About this" type="button">i</button>`;
 /* a list to pick from (same look as Sound ›): stays open so each choice can be heard; Done or ‹ goes back */
@@ -548,7 +553,7 @@ function s2Init(){ const _rt=renderTracks; renderTracks=function(){ warmSounds()
   const chk=(id,label,src,info)=>`<label class="nx-chk" style="font-weight:500;font-size:16px;align-items:center"><input type="checkbox" id="${id}" ${S[src]?'checked':''}> <span>${label}${info?s2Inf(info):''}</span></label>`;
   $('nxTiming').onclick=()=>{ nxSheet(`<h2>Mic and timing</h2><button class="nx-primary" id="nxCal" style="margin:0 0 10px">Fix late notes</button>
       ${s2Fld('nxSens','Mic sensitivity',0,100,S.sens??55)}${chk('nxLa','Auto mic delay','latAuto','Measures how late the mic hears you on each take and corrects it. If notes still land late, use Fix late notes: clap along for one loop. Wired headphones give the best timing; Bluetooth adds delay.')}${window.webkit&&window.webkit.messageHandlers&&window.webkit.messageHandlers.noodleNative?chk('nxFb','Silent metronome','feelBeat','The count-in clicks. Then, while you record, the phone vibrates on each beat instead, so no click ends up in your take.'):''}${chk('nxPa','Hear the song while recording','playAlong','Your other tracks play while you record. Wear headphones so the mic doesn’t pick them up.')}${chk('nxTp','Tap pad','tapPad','A pad on screen while you record a melody. Tap it on each note to catch repeated notes the mic hears as one.')}${chk('nxEc','Echo cancellation','ec','For drum and melody takes recorded without headphones. It can swallow beatbox hits.')}`);
-    $('nxSheet').onclick=e=>{ const b=e.target.closest('[data-info]'); if(b){ e.preventDefault(); toast(b.dataset.info,7000); } }; $('nxCal').onclick=()=>{ nxClose(); ensureCtx(); openRec('calib'); startRecord(true); };
+    $('nxSheet').onclick=e=>{ const b=e.target.closest('[data-info]'); if(b){ e.preventDefault(); infoPop(b); } }; $('nxCal').onclick=()=>{ nxClose(); ensureCtx(); openRec('calib'); startRecord(true); };
     $('nxTp').onchange=e=>{ S.tapPad=e.target.checked; save(); }; if($('nxFb')) $('nxFb').onchange=e=>{ S.feelBeat=e.target.checked; save(); };
     [['nxLa','latAuto'],['nxPa','playAlong'],['nxEc','ec']].forEach(([a,b])=>{ $(a).onchange=e=>{ S[b]=e.target.checked; save(); if(b==='ec') dropMic(); }; });
     $('nxSens').onchange=e=>{ S.sens=+e.target.value; save(); }; };
