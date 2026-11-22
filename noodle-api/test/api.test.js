@@ -187,3 +187,17 @@ test('usage events: known names only, labels checked, no id kept, at most 50 a r
   assert.equal((await post({ ev: 'x' })).status, 400);
   assert.equal((await call({ TAKES: bucket() }, 'POST', '/v1/events', JSON.stringify({ ev: [{ e: 'open' }] }))).status, 200);   // no dataset bound: accepted, dropped
 });
+test('usage stats: owner only; reads Analytics Engine with the token; says what is missing', async () => {
+  const env = { TAKES: bucket(), ADMIN_KEY: 'k' }, A = { Authorization: 'Bearer k' };
+  assert.equal((await call(env, 'GET', '/v1/admin/stats')).status, 401);
+  assert.match((await (await call(env, 'GET', '/v1/admin/stats', null, A)).json()).error, /ANALYTICS_TOKEN/);
+  const seen = [], real = globalThis.fetch;
+  globalThis.fetch = async (u, o) => { seen.push({ u, o }); const sql = o.body;
+    const data = sql.includes('GROUP BY e, p') ? [{ e: 'take', p: 'lead', n: '3', v: '0' }] : sql.includes('AS day') ? [{ day: '2026-11-22', e: 'open', n: '5' }] : sql.includes('AS d,') ? [{ d: '0', n: '4' }, { d: '1', n: '2' }] : [{ app: 'ios', plan: 'free', n: '5' }];
+    return new Response(JSON.stringify({ data })); };
+  try {
+    const r = await (await call({ ...env, ANALYTICS_TOKEN: 't', CF_ACCOUNT_ID: 'acc' }, 'GET', '/v1/admin/stats?days=7', null, A)).json();
+    assert.equal(seen.length, 4); assert.ok(seen.every((s) => s.u.includes('/accounts/acc/analytics_engine/sql') && s.o.headers.Authorization === 'Bearer t' && s.o.body.includes("INTERVAL '7' DAY")));
+    assert.deepEqual(r.totals[0], { e: 'take', p: 'lead', n: 3, v: 0 }); assert.equal(r.opens[1].n, 2); assert.equal(r.days, 7);
+  } finally { globalThis.fetch = real; }
+});

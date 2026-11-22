@@ -56,3 +56,5 @@ Each point: index and blob 1 = the event name, blob 2 = a short label, blob 3 = 
 double 1 = a number (e.g. parts in a song), double 2 = days since that phone first opened Noodle. Allowed names: `EVENTS` in `src/index.js`.
 Reading them needs the SQL API (`https://api.cloudflare.com/client/v4/accounts/<account_id>/analytics_engine/sql`) and a token with
 Account → Account Analytics → Read, e.g. `SELECT blob1 AS e, SUM(_sample_interval) AS n FROM noodle_events GROUP BY e`.
+The owner's dashboard reads them through `GET /v1/admin/stats?days=30` (Authorization: Bearer ADMIN_KEY), which runs the SQL queries with the
+`ANALYTICS_TOKEN` secret (set in the dashboard: Workers & Pages → noodle-takes → Settings → Variables and Secrets) and `CF_ACCOUNT_ID` from `wrangler.toml`.

@@ -36,6 +36,8 @@
 // uploads (PUT /v1/admin/codes, a JSON list); INVITES_FOR_PRO friends earn one; at most REWARDS_PER_DAY are handed out a day.
 //   GET    /v1/admin/list?prefix=&cursor=   owner only (Authorization: Bearer ADMIN_KEY)
 //   GET    /v1/admin/get?key=               owner only
+//   GET    /v1/admin/stats?days=30          owner only: usage counts from Analytics Engine (needs the ANALYTICS_TOKEN secret,
+//                                           a Cloudflare token with Account Analytics: Read; CF_ACCOUNT_ID in wrangler.toml)
 const ORIGINS = ['noodle://app', 'https://troyskinner3.github.io'];
 const KEEP_DAYS = 3 * 365, MAX_SIGNUPS_PER_DAY = 400, ERROR_DAYS = 90, MAX_ERRORS_PER_DAY = 150;
 const MAX_AUDIO = 3 * 1024 * 1024, MAX_META = 256 * 1024, MAX_TAKES_PER_DAY = 300;
@@ -109,6 +111,29 @@ async function underDailyCap(bucket, install, take) {
   if (seen.includes(take)) return true;
   if (seen.length >= MAX_TAKES_PER_DAY) return false;
   seen.push(take); await bucket.put(key, JSON.stringify(seen), { expiresAt: Date.now() + 3 * 864e5 }); return true;
+}
+
+// Usage counts for the owner's dashboard, read with Analytics Engine's SQL API. SUM(_sample_interval) counts events even when
+// Cloudflare samples at high volume. Four small queries: totals by event and label, events a day, opens by days since first open, app and plan.
+async function usageStats(env, daysArg) {
+  const days = Math.max(1, Math.min(90, parseInt(daysArg, 10) || 30));
+  if (!env.ANALYTICS_TOKEN || !env.CF_ACCOUNT_ID) return { error: 'ANALYTICS_TOKEN or CF_ACCOUNT_ID is not set', days };
+  const since = `timestamp > NOW() - INTERVAL '${days}' DAY`;
+  const q = async (sql) => {
+    const r = await fetch(`https://api.cloudflare.com/client/v4/accounts/${env.CF_ACCOUNT_ID}/analytics_engine/sql`, { method: 'POST', headers: { Authorization: `Bearer ${env.ANALYTICS_TOKEN}` }, body: sql + ' FORMAT JSON' });
+    const t = await r.text(); if (!r.ok) throw new Error(`stats query ${r.status}: ${t.slice(0, 200)}`);
+    return JSON.parse(t).data || [];
+  };
+  try {
+    const [totals, daily, opens, split] = await Promise.all([
+      q(`SELECT blob1 AS e, blob2 AS p, SUM(_sample_interval) AS n, SUM(_sample_interval * double1) AS v FROM noodle_events WHERE ${since} GROUP BY e, p ORDER BY n DESC LIMIT 2000`),
+      q(`SELECT formatDateTime(toStartOfDay(timestamp), '%Y-%m-%d') AS day, blob1 AS e, SUM(_sample_interval) AS n FROM noodle_events WHERE ${since} GROUP BY day, e ORDER BY day`),
+      q(`SELECT double2 AS d, SUM(_sample_interval) AS n FROM noodle_events WHERE ${since} AND blob1 = 'open' AND double2 <= 60 GROUP BY d ORDER BY d`),
+      q(`SELECT blob3 AS app, blob5 AS plan, SUM(_sample_interval) AS n FROM noodle_events WHERE ${since} AND blob1 = 'open' GROUP BY app, plan`),
+    ]);
+    const num = (rows, ks) => rows.map((r) => { for (const k of ks) r[k] = Number(r[k]) || 0; return r; });
+    return { days, at: new Date().toISOString(), totals: num(totals, ['n', 'v']), daily: num(daily, ['n']), opens: num(opens, ['d', 'n']), split: num(split, ['n']) };
+  } catch (e) { return { error: String(e.message || e), days }; }
 }
 
 export default {
@@ -200,6 +225,7 @@ async function handle(req, env) {
         const page = await B.list({ prefix: url.searchParams.get('prefix') || 'takes/', cursor: url.searchParams.get('cursor') || undefined, limit: 1000 });
         return json(req, 200, { keys: page.objects.map((o) => ({ key: o.key, size: o.size, uploaded: o.uploaded })), cursor: page.truncated ? page.cursor : null });
       }
+      if (p[2] === 'stats') return json(req, 200, await usageStats(env, url.searchParams.get('days')));
       if (p[2] === 'get') {
         const key = url.searchParams.get('key') || ''; if (!/^(takes|signups|errors|songs|invites|rewards)\//.test(key)) return json(req, 400, { error: 'key' });
         const o = await B.get(key); if (!o) return json(req, 404, { error: 'not found' });

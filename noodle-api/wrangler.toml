@@ -11,6 +11,9 @@ keep_vars = true   # variables set in the Cloudflare dashboard (APPLE_APP_ID, AP
 [[kv_namespaces]]
 binding = "TAKES_KV"
 id = "KV_NAMESPACE_ID"
+[vars]
+CF_ACCOUNT_ID = "5649ad1dfbf6102845b7facae8598e7b"   # for reading usage counts (GET /v1/admin/stats); the token is the ANALYTICS_TOKEN secret
+
 # Usage counts (POST /v1/events): Workers Analytics Engine, free plan 100,000 points a day, kept 3 months. Created on the first write.
 [[analytics_engine_datasets]]
 binding = "EVENTS"
