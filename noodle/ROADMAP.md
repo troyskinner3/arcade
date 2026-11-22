@@ -12,7 +12,10 @@ Today Noodle sends no usage analytics: only crash reports, opt-in shared takes, 
 - [x] Anonymous: no install ID, no song content, no IP. More → Send usage stats turns it off (on by default, like crash reports).
 - [x] All three privacy files updated (Product Interaction, not linked, Analytics).
 - [x] Takes service deployed with `/v1/events` (Analytics Engine enabled on the Cloudflare account).
-- [ ] Dashboard (owner asked for one): needs a Cloudflare API token with Account Analytics: Read to query the numbers.
+- [x] Dashboard: "Noodle Usage" (private claude.ai page), refreshed daily at 04:13 UTC by a scheduled task, or on request
+      (steps in `noodle-api/README.md`). Reads `GET /v1/admin/stats` (token: `ANALYTICS_TOKEN` secret on the takes service).
+- [ ] New iPhone build (Xcode / TestFlight): the app runs its bundled copy of the web app, so iPhone usage is only counted
+      from the first build made after the usage stats change.
 
 ## 2. Final UI deep dive
 - [ ] Screen-by-screen review against `noodle/STYLE.md`: first open, recording, note editor, drum editor, track menus, mix, More,
