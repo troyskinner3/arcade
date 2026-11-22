@@ -11,7 +11,7 @@ Today Noodle sends no usage analytics: only crash reports, opt-in shared takes, 
       exports by kind, song links, parts and sounds in finished songs, session totals, Pro sheet, Pro tries, buy, purchase result, restore.
 - [x] Anonymous: no install ID, no song content, no IP. More → Send usage stats turns it off (on by default, like crash reports).
 - [x] All three privacy files updated (Product Interaction, not linked, Analytics).
-- [ ] Deploy the takes service so `/v1/events` is live (Actions → Noodle takes service), then check events arrive.
+- [x] Takes service deployed with `/v1/events` (Analytics Engine enabled on the Cloudflare account).
 - [ ] Dashboard (owner asked for one): needs a Cloudflare API token with Account Analytics: Read to query the numbers.
 
 ## 2. Final UI deep dive
