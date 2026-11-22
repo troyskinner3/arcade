@@ -45,6 +45,7 @@ Status: **confirmed** (owner agreed) or **proposed** (waiting on the owner).
 | Mix: volume, pan, reverb, drive, punch; Expression (follows your voice) | proposed |
 | Export a mixdown (WAV) and video, with a small "Made with Noodle" tag on video | proposed |
 | Song list, song files (save, back up all, open), sharing takes, email news, crash reports | proposed |
+| Usage stats (anonymous counts; More → Send usage stats turns them off). Suggest Free: not a feature people pay for | proposed |
 | Change key moves the whole song (transpose), loop a section, tap tempo, lock-screen controls, haptic taps | confirmed |
 | Faster fixes: ▼ ▲ on a note, split into 2 / 3 / 4, select several notes and move or delete them together | proposed |
 | Silent metronome (iPhone app): the count-in clicks and buzzes, then only the phone's buzz while recording, so no click gets into the take. Suggest Free | proposed |

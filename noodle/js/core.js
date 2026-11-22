@@ -94,7 +94,7 @@ function histUI(){ const u=!hist.undo.length&&!saveTimer, r=!hist.redo.length; [
 const hist={undo:[],redo:[],cur:null,busy:false};
 function snapNow(){ const json=JSON.stringify(S,function(k,v){ if(this===S && (k==='ui'||k==='inst')) return undefined; return pvKeep.call(this,k,v); });   /* Pro previews are not part of the song (pvKeep) */ const rt=new Map(); S.tracks.forEach(t=>rt.set(t.id,{_raw:t._raw,_an:t._an,_takes:t._takes,_range:t._range})); return {json,rt}; }
 function histCommit(){ if(hist.busy) return; const sn=snapNow(); if(!hist.cur){ hist.cur=sn; return; } if(sn.json===hist.cur.json){ hist.cur.rt=sn.rt; return; }
-  hist.undo.push(hist.cur); if(hist.undo.length>80) hist.undo.shift(); hist.redo=[]; hist.cur=sn; histUI(); }
+  hist.undo.push(hist.cur); if(hist.undo.length>80) hist.undo.shift(); hist.redo=[]; hist.cur=sn; histUI(); try{ statsSess.edits++; }catch(e){} }
 function flushSave(){ if(saveTimer){ clearTimeout(saveTimer); saveTimer=0; persist(); histCommit(); } }
 /* the Studio draws its own undo/redo state */
 async function restoreSnap(sn){
@@ -204,7 +204,7 @@ async function songLinkShare(onStep){ pvEnd(true); const owner=ownerId(); if(!ow
   const id=(S.link&&S.link.id)||linkId(), H={'Content-Type':'application/json','X-Owner':owner};
   onStep&&onStep('Uploading your song…'); const body=JSON.stringify({noodle:'songs', v:1, build:NOODLE_BUILD, savedAt:new Date().toISOString(), songs});
   let r=await fetch(`${NOODLE_API}/v1/songs/${id}`,{method:'PUT',headers:H,body}); if(r.status===413) throw new Error('this song is too big to share by link (8 MB at most)'); if(!r.ok) throw new Error('the upload didn’t go through ('+r.status+')');
-  const url=(await r.json()).url; S.link={id, url, at:new Date().toISOString()}; save(); await projSaveCurrent();
+  const url=(await r.json()).url; S.link={id, url, at:new Date().toISOString()}; save(); await projSaveCurrent(); track('share_link'); trackOnce('first_share','link'); statsParts();
   onStep&&onStep('Making a preview…'); try{ const mix=await renderMix(1,true); await fetch(`${NOODLE_API}/v1/songs/${id}/preview`,{method:'PUT',headers:{'Content-Type':'audio/wav','X-Owner':owner},body:previewWav(mix)}); }catch(e){}   /* the link works without it */
   return url; }
 async function songLinkDelete(){ const L=S.link; if(!L) return true; let ok=false; try{ ok=(await fetch(`${NOODLE_API}/v1/songs/${L.id}`,{method:'DELETE',headers:{'X-Owner':ownerId()}})).ok; }catch(e){}
@@ -385,6 +385,7 @@ function nxInit(){ $('nxPro').onclick=()=>proSheet(); nxProSync(); $('nxMore').a
   if(window.NOODLE_DEV){ const r=$('nxDevTap'), sw=$('nxTapSw'); r.hidden=false; sw.setAttribute('aria-checked',String(tapNotesOn())); sw.onclick=()=>{ const on=!tapNotesOn(); try{ localStorage.setItem('noodle.tapnotes',on?'1':''); }catch(e){} sw.setAttribute('aria-checked',String(on)); toast(on?'Tap notes on for new takes':'Tap notes off for new takes'); }; }   /* testing: the owner's tap note rules */   /* Musical mode's tables, ready before the first take */
   if(window.NOODLE_DEV){ const dv=$('nxDev'), sync=()=>dv.querySelectorAll('[data-dv]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.dv===devAs()))); dv.hidden=false; sync();
     dv.onclick=e=>{ const b=e.target.closest('[data-dv]'); if(!b) return; try{ localStorage.setItem('noodle.devAs',b.dataset.dv); }catch(err){} sync(); nxProSync(); try{ renderTracks(); if(s2.edId!=null) s2EdMount(); }catch(err){} toast(b.dataset.dv?'Testing as '+(b.dataset.dv==='pro'?'Pro':'Free'):'Using your real App Store purchase'); }; } if(proBridge()) try{ window.webkit.messageHandlers.noodlePro.postMessage('state'); }catch(e){}
+  { const sw=$('nxStSw'); sw.setAttribute('aria-checked',String(statsOn())); sw.onclick=()=>{ const on=!statsOn(); if(!on){ statsQ.length=0; } try{ localStorage.setItem(STATS_KEY,on?'1':'0'); }catch(e){} sw.setAttribute('aria-checked',String(on)); }; }
   { const sw=$('nxCrSw'); sw.setAttribute('aria-checked',String(crashOn())); sw.onclick=()=>{ const on=!crashOn(); try{ localStorage.setItem(CRASH_KEY,on?'1':'0'); }catch(e){} sw.setAttribute('aria-checked',String(on)); }; }
   $('nxTrainCard').onclick=()=>nxTrain(); $('nxShSw').onclick=nxShareSheet; $('nxEmail').onclick=nxEmailSheet; nxMoreSync(); $('nxTabP').onclick=()=>nxGo('projects'); $('nxTabM').onclick=()=>nxGo('more'); $('nxPlus').onclick=nxNew;
   $('nxQ').oninput=nxRenderProjects; $('nxScrim').onclick=e=>{ if(e.target===$('nxScrim')) nxClose(); }; nxSheetSwipe();

@@ -77,7 +77,7 @@ async function exportZip(){ pvEnd(true);
       if(INST[tr.inst].kind!=='audio') midiFiles.push({name:`${top}MIDI/${num} ${nm}.mid`,data:midiBytes([tr])}); });
     if(midiFiles.length) files.push({name:top+'MIDI/All parts.mid',data:midiBytes()},...midiFiles);
     files.push({name:top+'READ ME - how to import.txt',data:new TextEncoder().encode(packReadme(parts,K))});
-    await offerFile(fileSafe(songTitle())+'.zip', zip(files));
+    await offerFile(fileSafe(songTitle())+'.zip', zip(files)); track('export','daw'); trackOnce('first_export','daw'); statsParts();
   } catch(e){ toast('Export failed: '+(e&&e.message||e)); }
   finally{}
 }
@@ -126,12 +126,15 @@ async function prepareShare(kind,onProg){
     const mix=await renderMix(S.loops,true), base=fileSafe(songTitle());
     if(kind==='audio'){ shareFile=new File([wavBytes(mix,16)], base+'.wav', {type:'audio/wav'}); }
     else { const blob=await recordVideo(mix, sec=>{ if(onProg) onProg(sec); }); const ext=blob.type.includes('mp4')?'mp4':'webm'; shareFile=new File([blob], base+'.'+ext, {type:blob.type}); }
+    track('export',kind); trackOnce('first_export',kind); statsParts();
     const canShare=!!(navigator.canShare && navigator.canShare({files:[shareFile]}));
     shareCan=canShare; shareMsg=`Your ${kind==='audio'?'audio':'video'} is ready (${(shareFile.size/1048576).toFixed(1)} MB, ${Math.round(mix.duration)} s). `+(canShare?(kind==='video'?'Tap Share to save it to Photos or send it to Messages, CapCut, TikTok and more.':'Tap Share to send it to Messages, CapCut, TikTok and more.'):'Save it, then add it to any app.');
   } catch(e){ toast((kind==='video'?'Video export':'Export')+' didn’t work here: '+(e&&e.message||e)); }
 }
 /* After a song is shared (a happy moment), the iPhone app may ask for a rating with Apple's own prompt: at most once every 120 days from here,
    and Apple shows it at most 3 times a year. Never on the web. */
+/* a finished song (exported or shared): which part types and sounds it uses, and how many parts */
+function statsParts(){ const ps=S.tracks.filter(t=>hasContent(t)&&!t.guide&&!t.mfx&&!t._pvTemp); track('song_parts','',ps.length); ps.slice(0,12).forEach(t=>track('part_used',t.inst+' '+(t.sound||''))); }
 function askRating(){ try{ if(!(window.webkit&&window.webkit.messageHandlers&&window.webkit.messageHandlers.noodleNative)) return; const k='noodle.rateAt', last=+localStorage.getItem(k)||0;
   if(Date.now()-last<120*864e5) return; localStorage.setItem(k,String(Date.now())); setTimeout(()=>native({type:'rate'}),1200); }catch(e){} }
 async function shareNow(){ if(shareUrl){ try{ await navigator.share({url:shareUrl, title:songTitle(), text:'I made this with Noodle. Open it to add your own part:'}); askRating(); }catch(e){} return; } if(!shareFile) return; try{ await navigator.share({files:[shareFile], title:songTitle(), text:'Made with Noodle'}); askRating(); } catch(e){ if(e&&e.name!=='AbortError') toast('Sharing didn’t open. Tap Save to Files instead.'); } }

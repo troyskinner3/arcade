@@ -121,6 +121,7 @@ function afterTake(){ setTimeout(()=>{ try{ inviteSend(false); }catch(e){} },150
   if(changed && S.tracks.some(t=>t.id===S.activeId&&hasContent(t))){ takeBar={id:S.activeId, pre:rs.pre, histLen:rs.histLen, hint:bleedHint, prevBars:s2.recPrev}; } bleedHint=false;
   S.target=null; rs.mode=null; renderTracks();
   const tr=S.tracks.find(t=>t.id===S.activeId);
+  if(changed && tr && hasContent(tr)){ statsSess.takes++; track('take',tr.inst); trackOnce('first_take',tr.inst); const n=S.tracks.filter(t=>hasContent(t)&&!t.guide&&!t.mfx).length; if(n>=2) trackOnce('first_song','',n); }
 }
 /* Tap along: while a melody records into a part, a pad under the timeline takes one tap per note (optional; More > Timing & mic turns it off) */
 function tapPadOn(){ const r=recState; return !!(r && !r.calib && !r.teach && INST[r.inst].kind==='pitched' && takeMode() && S.tapPad!==false); }

@@ -13,6 +13,7 @@ If what Noodle sends ever changes, update all three together.
 | Other User Content (what Noodle heard, edits, song name and settings; a song shared by link) | "Share my takes" is on, or Share → Link to remix | No | No | Analytics; App Functionality |
 | Device ID (a random ID made on the phone, so shared takes and song links can be deleted and invites counted; stored hashed for links and invites; invites also use Apple DeviceCheck to count each iPhone once) | "Share my takes" is on, a song is shared by link, or invites are used | No | No | App Functionality |
 | Email Address | Someone signs up for email news | Yes | No | Developer's Advertising or Marketing |
+| Product Interaction (anonymous counts: a part recorded, a song exported or shared, sounds a finished song uses, Pro page opened or a Pro sound tried, days since first open; no ID) | Always, unless "Send usage stats" is off in More | No | No | Analytics |
 | Crash Data | Something goes wrong (on unless turned off in More) | No | No | App Functionality |
 
 Not collected: name, contacts, location, photos, browsing history, purchases, health, advertising ID, IP addresses (not stored).

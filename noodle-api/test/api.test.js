@@ -174,3 +174,16 @@ test('invites with DeviceCheck: a join needs a real device token, and an iPhone 
     assert.match(seen[0].u, /^https:\/\/api\.devicecheck\.apple\.com\//);
   } finally { globalThis.fetch = real; }
 });
+test('usage events: known names only, labels checked, no id kept, at most 50 a request', async () => {
+  const pts = [], env = { TAKES: bucket(), EVENTS: { writeDataPoint: (d) => pts.push(d) } };
+  const post = (b) => call(env, 'POST', '/v1/events', JSON.stringify(b), { 'Content-Type': 'application/json' });
+  const r = await post({ app: 'ios', build: 'b1', plan: 'pro', owner: I, ev: [{ e: 'take', p: 'lead', v: 1, d: 3 }, { e: 'nope' }, { e: 'pro_try', p: '<script>' }, { e: 'open', d: -4 }] });
+  assert.equal(r.status, 200); assert.equal((await r.json()).n, 2);
+  assert.deepEqual(pts[0], { indexes: ['take'], blobs: ['take', 'lead', 'ios', 'b1', 'pro'], doubles: [1, 3] });
+  assert.deepEqual(pts[1].doubles, [0, 0]); assert.ok(!JSON.stringify(pts).includes(I));
+  assert.equal(env.TAKES.m.size, 0);
+  pts.length = 0; await post({ ev: Array.from({ length: 80 }, () => ({ e: 'session', v: 2 })) }); assert.equal(pts.length, 50);
+  assert.equal(pts[0].blobs[2], 'web'); assert.equal(pts[0].blobs[4], 'free');
+  assert.equal((await post({ ev: 'x' })).status, 400);
+  assert.equal((await call({ TAKES: bucket() }, 'POST', '/v1/events', JSON.stringify({ ev: [{ e: 'open' }] }))).status, 200);   // no dataset bound: accepted, dropped
+});
