@@ -681,3 +681,11 @@ the note editor's Today / Tap notes button flips one take between them. The fing
   No install id, no song content. Batched every 30 s or when the app goes to the background, at most 300 a day from one phone.
 - More: Send usage stats (ⓘ), on by default like crash reports; turning it off drops anything waiting.
 - `stats_test.js`: nothing leaves localhost; first-time events count once; no song name or install id in what is sent; the switch stops sending.
+
+## Round 14 (usage-stats ID)
+- Each usage-stats batch carries a random ID made on the phone only for stats (`statsId()` in `js/takes.js`), separate from the takes,
+  song-link and invite ID. Turning Send usage stats off deletes it; turning it on again makes a new one. ⓘ text says so.
+- Takes service: the ID is blob 6 (only if well formed); `PUT/GET /v1/admin/stats-exclude` keeps the owner's phones out of every number;
+  the stats route adds each phone's events (first and last seen) for per-phone paths. Dashboard: a Phones tile and table.
+- Privacy policy (effective 22 November 2026), privacy manifest (Device ID: Analytics added) and App Store answers updated together.
+- `stats_test.js`: the ID is sent, is one per phone, isn't the takes/links ID, and is deleted when the switch is turned off.

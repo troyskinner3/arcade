@@ -12,7 +12,8 @@
 // Shared takes are kept for 3 years at most (KEEP_DAYS), counted from when the take first arrived; storage removes them on its own.
 //   PUT    /v1/errors                       body = {msg, stack, build, app, where}  an anonymous error report (no recordings, no song content)
 //                                           stored once per distinct error per day, kept 90 days, at most MAX_ERRORS_PER_DAY a day
-//   POST   /v1/events                       body = {app, build, plan, ev: [{e, p, v, d}]}  anonymous usage counts (no id, no song content)
+//   POST   /v1/events                       body = {app, build, plan, id, ev: [{e, p, v, d}]}  usage counts (no song content); id = the phone's
+//                                           random usage-stats ID (not its takes/links/invites ID), so one phone's path can be followed
 //                                           e = an event name from EVENTS, p = a short label (a part type, a sound), v = a number,
 //                                           d = days since this phone first opened Noodle. Written to Workers Analytics Engine (binding
 //                                           EVENTS, kept 3 months by Cloudflare), never to storage; at most MAX_EVENTS per request.
@@ -36,6 +37,7 @@
 // uploads (PUT /v1/admin/codes, a JSON list); INVITES_FOR_PRO friends earn one; at most REWARDS_PER_DAY are handed out a day.
 //   GET    /v1/admin/list?prefix=&cursor=   owner only (Authorization: Bearer ADMIN_KEY)
 //   GET    /v1/admin/get?key=               owner only
+//   GET/PUT /v1/admin/stats-exclude          owner only: usage-stats IDs left out of the stats (the owner's own phones), body = [ids]
 //   GET    /v1/admin/stats?days=30          owner only: usage counts from Analytics Engine (needs the ANALYTICS_TOKEN secret,
 //                                           a Cloudflare token with Account Analytics: Read; CF_ACCOUNT_ID in wrangler.toml)
 const ORIGINS = ['noodle://app', 'https://troyskinner3.github.io'];
@@ -45,7 +47,7 @@ const ID = /^[A-Za-z0-9_-]{22,64}$/, TAKE = /^[A-Za-z0-9_-]{6,96}$/;
 const INVITE = /^[A-Z2-9]{6}$/, INVITES_FOR_PRO = 3, REWARDS_PER_DAY = 25;
 const EVENTS = new Set(['first_open', 'first_take', 'first_song', 'first_export', 'first_share', 'open', 'take', 'song_parts', 'export',
   'share_link', 'part_used', 'session', 'pro_sheet', 'pro_try', 'pro_buy', 'pro_result', 'restore']);
-const MAX_EVENTS = 50, LABEL = /^[A-Za-z0-9 _.+\-]{0,40}$/;
+const STATS_ID = /^[A-Za-z0-9_-]{16,40}$/, MAX_EVENTS = 50, LABEL = /^[A-Za-z0-9 _.+\-]{0,40}$/;
 const SONG = /^[A-Za-z0-9_-]{10,32}$/, SONG_DAYS = 2 * 365, MAX_SONG = 8 * 1024 * 1024, MAX_PREVIEW = 3 * 1024 * 1024, MAX_SONGS_PER_DAY = 250, REPORTS_TO_HIDE = 3;
 const sha = async (t) => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t)))].map((x) => x.toString(16).padStart(2, '0')).join('');
 const esc = (t) => String(t).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -115,24 +117,28 @@ async function underDailyCap(bucket, install, take) {
 
 // Usage counts for the owner's dashboard, read with Analytics Engine's SQL API. SUM(_sample_interval) counts events even when
 // Cloudflare samples at high volume. Four small queries: totals by event and label, events a day, opens by days since first open, app and plan.
-async function usageStats(env, daysArg) {
+async function usageStats(env, daysArg, exclude = []) {
   const days = Math.max(1, Math.min(90, parseInt(daysArg, 10) || 30));
   if (!env.ANALYTICS_TOKEN || !env.CF_ACCOUNT_ID) return { error: 'ANALYTICS_TOKEN or CF_ACCOUNT_ID is not set', days };
-  const since = `timestamp > NOW() - INTERVAL '${days}' DAY`;
+  // Left-out phones (the owner's): IDs are checked against STATS_ID, so they are safe to write into the query.
+  const out = exclude.filter((x) => STATS_ID.test(x));
+  const since = `timestamp > NOW() - INTERVAL '${days}' DAY` + (out.length ? ` AND blob6 NOT IN (${out.map((x) => `'${x}'`).join(', ')})` : '');
   const q = async (sql) => {
     const r = await fetch(`https://api.cloudflare.com/client/v4/accounts/${env.CF_ACCOUNT_ID}/analytics_engine/sql`, { method: 'POST', headers: { Authorization: `Bearer ${env.ANALYTICS_TOKEN}` }, body: sql + ' FORMAT JSON' });
     const t = await r.text(); if (!r.ok) throw new Error(`stats query ${r.status}: ${t.slice(0, 200)}`);
     return JSON.parse(t).data || [];
   };
   try {
-    const [totals, daily, opens, split] = await Promise.all([
+    const [totals, daily, opens, split, phones] = await Promise.all([
       q(`SELECT blob1 AS e, blob2 AS p, SUM(_sample_interval) AS n, SUM(_sample_interval * double1) AS v FROM noodle_events WHERE ${since} GROUP BY e, p ORDER BY n DESC LIMIT 2000`),
       q(`SELECT formatDateTime(toStartOfDay(timestamp), '%Y-%m-%d') AS day, blob1 AS e, SUM(_sample_interval) AS n FROM noodle_events WHERE ${since} GROUP BY day, e ORDER BY day`),
       q(`SELECT double2 AS d, SUM(_sample_interval) AS n FROM noodle_events WHERE ${since} AND blob1 = 'open' AND double2 <= 60 GROUP BY d ORDER BY d`),
       q(`SELECT blob3 AS app, blob5 AS plan, SUM(_sample_interval) AS n FROM noodle_events WHERE ${since} AND blob1 = 'open' GROUP BY app, plan`),
+      // Each phone (by its usage-stats ID): every event it sent, with when it first and last did, for per-phone paths.
+      q(`SELECT blob6 AS id, blob3 AS app, blob1 AS e, SUM(_sample_interval) AS n, MIN(timestamp) AS first, MAX(timestamp) AS last FROM noodle_events WHERE ${since} AND blob6 != '' GROUP BY id, app, e ORDER BY id LIMIT 20000`),
     ]);
     const num = (rows, ks) => rows.map((r) => { for (const k of ks) r[k] = Number(r[k]) || 0; return r; });
-    return { days, at: new Date().toISOString(), totals: num(totals, ['n', 'v']), daily: num(daily, ['n']), opens: num(opens, ['d', 'n']), split: num(split, ['n']) };
+    return { days, at: new Date().toISOString(), excluded: out.length, totals: num(totals, ['n', 'v']), daily: num(daily, ['n']), opens: num(opens, ['d', 'n']), split: num(split, ['n']), phones: num(phones, ['n']) };
   } catch (e) { return { error: String(e.message || e), days }; }
 }
 
@@ -214,6 +220,11 @@ async function handle(req, env) {
     if (p[1] === 'admin') {
       const auth = req.headers.get('Authorization') || '';
       if (!env.ADMIN_KEY || auth !== `Bearer ${env.ADMIN_KEY}`) return json(req, 401, { error: 'unauthorized' });
+      if (p[2] === 'stats-exclude' && req.method === 'PUT') {
+        const buf = await readLimited(req, 16384); let ids; try { ids = JSON.parse(new TextDecoder().decode(buf)); } catch { return json(req, 400, { error: 'json' }); }
+        if (!Array.isArray(ids) || !ids.every((x) => typeof x === 'string' && STATS_ID.test(x))) return json(req, 400, { error: 'ids' });
+        await B.put('stats/exclude.json', JSON.stringify([...new Set(ids)])); return json(req, 200, { excluded: new Set(ids).size });
+      }
       if (p[2] === 'codes' && req.method === 'PUT') {   // a list of unused Noodle Pro offer codes, added to the pool
         const buf = await readLimited(req, 256 * 1024); let codes; try { codes = JSON.parse(new TextDecoder().decode(buf)); } catch { return json(req, 400, { error: 'json' }); }
         if (!Array.isArray(codes)) return json(req, 400, { error: 'list' }); const cur = await B.get('rewards/pool.json'), pool = cur ? await cur.json() : [];
@@ -225,7 +236,8 @@ async function handle(req, env) {
         const page = await B.list({ prefix: url.searchParams.get('prefix') || 'takes/', cursor: url.searchParams.get('cursor') || undefined, limit: 1000 });
         return json(req, 200, { keys: page.objects.map((o) => ({ key: o.key, size: o.size, uploaded: o.uploaded })), cursor: page.truncated ? page.cursor : null });
       }
-      if (p[2] === 'stats') return json(req, 200, await usageStats(env, url.searchParams.get('days')));
+      if (p[2] === 'stats-exclude') { const o = await B.get('stats/exclude.json'); return json(req, 200, o ? await o.json() : []); }
+      if (p[2] === 'stats') { const o = await B.get('stats/exclude.json'); return json(req, 200, await usageStats(env, url.searchParams.get('days'), o ? await o.json() : [])); }
       if (p[2] === 'get') {
         const key = url.searchParams.get('key') || ''; if (!/^(takes|signups|errors|songs|invites|rewards)\//.test(key)) return json(req, 400, { error: 'key' });
         const o = await B.get(key); if (!o) return json(req, 404, { error: 'not found' });
@@ -255,11 +267,11 @@ async function handle(req, env) {
       let m; try { m = JSON.parse(new TextDecoder().decode(buf)); } catch { return json(req, 400, { error: 'json' }); }
       const ev = m && Array.isArray(m.ev) ? m.ev.slice(0, MAX_EVENTS) : null; if (!ev) return json(req, 400, { error: 'ev' });
       const str = (v, n) => String(v == null ? '' : v).slice(0, n), num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
-      const app = m.app === 'ios' ? 'ios' : 'web', build = str(m.build, 40), plan = m.plan === 'pro' ? 'pro' : 'free';
+      const app = m.app === 'ios' ? 'ios' : 'web', build = str(m.build, 40), plan = m.plan === 'pro' ? 'pro' : 'free', sid = typeof m.id === 'string' && STATS_ID.test(m.id) ? m.id : '';
       let n = 0;
       for (const x of ev) {
         if (!x || !EVENTS.has(x.e)) continue; const label = str(x.p, 40); if (!LABEL.test(label)) continue;
-        if (env.EVENTS) env.EVENTS.writeDataPoint({ indexes: [x.e], blobs: [x.e, label, app, build, plan], doubles: [num(x.v), Math.max(0, Math.min(3650, Math.floor(num(x.d))))] });
+        if (env.EVENTS) env.EVENTS.writeDataPoint({ indexes: [x.e], blobs: [x.e, label, app, build, plan, sid], doubles: [num(x.v), Math.max(0, Math.min(3650, Math.floor(num(x.d))))] });
         n++;
       }
       return json(req, 200, { ok: true, n });

@@ -1,5 +1,6 @@
 // Usage stats: nothing leaves localhost; with the eval flag, events go to /v1/events in batches with no install id and no song content;
-// the first-time events count once per phone; opens count once a day; the switch in More turns them off and drops what was waiting.
+// the first-time events count once per phone; opens count once a day; each batch carries the phone's random usage-stats ID (not its
+// takes/links/invites ID); the switch in More turns them off, drops what was waiting and deletes the ID.
 const {chromium,devices}=require('playwright');
 (async()=>{ const b=await chromium.launch(); const p=await (await b.newContext({...devices['iPhone 13']})).newPage(); const sent=[]; const errs=[];
   await p.route('**/v1/events',r=>{ sent.push(JSON.parse(r.request().postData())); r.fulfill({status:200,body:'{"ok":true}',headers:{'Access-Control-Allow-Origin':'*'}}); });
@@ -12,8 +13,10 @@ const {chromium,devices}=require('playwright');
   const evs=sent.flatMap(x=>x.ev), names=evs.map(x=>x.e);
   await p.evaluate(()=>{ nxGo('more'); }); await p.waitForTimeout(200); await p.click('#nxStSw'); const sw=await p.getAttribute('#nxStSw','aria-checked');
   const before=sent.length; await p.evaluate(()=>{ track('take','bass'); statsFlush(); }); await p.waitForTimeout(250); const off=sent.length-before;
+  const idGone=await p.evaluate(()=>localStorage.getItem('noodle.statsId')===null);
   const body=JSON.stringify(sent), leaks=body.includes('Secret song name')||body.includes(r.owner);
-  const out={local, names, opens:names.filter(x=>x==='open').length, firstTake:names.filter(x=>x==='first_take').length, fields:sent[0]&&Object.keys(sent[0]), switch:sw, off, leaks};
+  const ids=new Set(sent.map(x=>x.id)), idOk=ids.size===1&&/^[A-Za-z0-9_-]{22,40}$/.test([...ids][0])&&![...ids].includes(r.owner);
+  const out={idOk, idGone, local, names, opens:names.filter(x=>x==='open').length, firstTake:names.filter(x=>x==='first_take').length, fields:sent[0]&&Object.keys(sent[0]), switch:sw, off, leaks};
   if(!local.includes('first_open')||!local.includes('open')||out.opens!==0||out.firstTake!==1||!names.includes('take')||!names.includes('pro_sheet')||!names.includes('song_parts')||!names.includes('session')
-     ||String(out.fields)!=='app,build,plan,ev'||sw!=='false'||off!==0||leaks) errs.push('usage stats check failed');
+     ||String(out.fields)!=='app,build,plan,id,ev'||!idOk||!idGone||sw!=='false'||off!==0||leaks) errs.push('usage stats check failed');
   console.log(JSON.stringify(out),errs); await b.close(); })();

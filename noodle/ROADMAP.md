@@ -9,13 +9,16 @@ Today Noodle sends no usage analytics: only crash reports, opt-in shared takes, 
 - [x] How: Cloudflare Workers Analytics Engine behind the takes service (`POST /v1/events`), no outside company. Free plan: 100,000 events a day, kept 3 months.
 - [x] Events in the app (`noodle/js/takes.js`, `track()`): first open / take / 2-part song / export / share, daily open, takes by part type,
       exports by kind, song links, parts and sounds in finished songs, session totals, Pro sheet, Pro tries, buy, purchase result, restore.
-- [x] Anonymous: no install ID, no song content, no IP. More → Send usage stats turns it off (on by default, like crash reports).
+- [x] Private by design: no song content, no IP, no name or email. A random usage-stats ID (separate from the takes/links/invites ID)
+      lets one phone's path be followed and the owner's phones be left out. More → Send usage stats turns it off and deletes the ID.
 - [x] All three privacy files updated (Product Interaction, not linked, Analytics).
 - [x] Takes service deployed with `/v1/events` (Analytics Engine enabled on the Cloudflare account).
 - [x] Dashboard: "Noodle Usage" (private claude.ai page), refreshed daily at 04:13 UTC by a scheduled task, or on request
       (steps in `noodle-api/README.md`). Reads `GET /v1/admin/stats` (token: `ANALYTICS_TOKEN` secret on the takes service).
 - [ ] New iPhone build (Xcode / TestFlight): the app runs its bundled copy of the web app, so iPhone usage is only counted
       from the first build made after the usage stats change.
+- [ ] After that build: find the owner's usage-stats ID and add it to the leave-out list (`PUT /v1/admin/stats-exclude`).
+- [ ] App Store Connect privacy answers: enter them from `noodle-ios/APP_STORE_PRIVACY.md` (Device ID now also for Analytics; Product Interaction).
 
 ## 2. Final UI deep dive
 - [ ] Screen-by-screen review against `noodle/STYLE.md`: first open, recording, note editor, drum editor, track menus, mix, More,

@@ -114,8 +114,9 @@ function crashReport(msg, stack){ try{ if(!crashOn() || crashSeen.size>=10 || (/
   fetch(NOODLE_API+'/v1/errors',{method:'PUT',headers:{'Content-Type':'application/json'},keepalive:true,body:JSON.stringify({msg:m, stack:st, build:NOODLE_BUILD, app:/NoodleApp/.test(navigator.userAgent)?'ios':'web', where:typeof nxAt==='string'?nxAt:''})}).catch(()=>{}); }catch(e){} }
 window.addEventListener('error',e=>crashReport(e.message, e.error&&e.error.stack));
 window.addEventListener('unhandledrejection',e=>{ const r=e.reason; crashReport(r&&r.message||String(r), r&&r.stack); });
-/* ---- Usage stats: anonymous counts (no id, no song content) so we can see where people get stuck and what they use; More > Send usage stats
-   turns it off. The event names are noodle-api's EVENTS. Each carries d = days since this phone first opened Noodle (return rates on day 1, 7, 30),
+/* ---- Usage stats: counts (no song content) so we can see where people get stuck and what they use; More > Send usage stats
+   turns it off. Each batch carries a random ID made on this phone only for stats (statsId: not the takes/links/invites ID, never sent with
+   an email or a purchase), so one phone's path can be followed and the owner's own phone left out; turning stats off deletes it. The event names are noodle-api's EVENTS. Each carries d = days since this phone first opened Noodle (return rates on day 1, 7, 30),
    batched and sent every 30 s or when the app goes to the background; at most 300 a day from one phone. ---- */
 const STATS_KEY='noodle.stats', statsOn=()=>{ try{ return localStorage.getItem(STATS_KEY)!=='0'; }catch(e){ return false; } };
 const statsQ=[], statsSess={takes:0, edits:0, at:Date.now()}; let statsT=0;
@@ -126,9 +127,10 @@ function track(e,p,v){ try{ if(!statsOn()) return; const day=new Date().toISOStr
   if(statsQ.length>=20) statsFlush(); else if(!statsT) statsT=setTimeout(statsFlush,30000); }catch(err){} }
 /* the first time something happens on this phone (the new-person funnel) */
 function trackOnce(e,p,v){ try{ if(!statsOn()) return; const k='noodle.ev.'+e; if(localStorage.getItem(k)) return; localStorage.setItem(k,'1'); }catch(err){ return; } track(e,p,v); }
+function statsId(){ try{ let s=localStorage.getItem('noodle.statsId'); if(!s){ const b=crypto.getRandomValues(new Uint8Array(18)); s=btoa(String.fromCharCode(...b)).replace(/\+/g,'-').replace(/\//g,'_'); localStorage.setItem('noodle.statsId',s); } return s; }catch(e){ return ''; } }
 function statsFlush(){ clearTimeout(statsT); statsT=0; if(!statsQ.length) return; const ev=statsQ.splice(0,50);
   if(/^(localhost|127\.0\.0\.1)$/.test(location.hostname) && !window.STATS_TEST){ window.statsSent=(window.statsSent||[]).concat(ev); return; }   /* tests: kept here, not sent */
-  try{ fetch(NOODLE_API+'/v1/events',{method:'POST',headers:{'Content-Type':'text/plain'},keepalive:true,body:JSON.stringify({app:/NoodleApp/.test(navigator.userAgent)?'ios':'web', build:NOODLE_BUILD, plan:isPro()?'pro':'free', ev})}).catch(()=>{}); }catch(e){} }
+  try{ fetch(NOODLE_API+'/v1/events',{method:'POST',headers:{'Content-Type':'text/plain'},keepalive:true,body:JSON.stringify({app:/NoodleApp/.test(navigator.userAgent)?'ios':'web', build:NOODLE_BUILD, plan:isPro()?'pro':'free', id:statsId(), ev})}).catch(()=>{}); }catch(e){} }
 /* once a day: an open (return rates), and a session's totals when the app goes to the background */
 function statsOpen(){ try{ const day=new Date().toISOString().slice(0,10); if(localStorage.getItem('noodle.ev.open')===day) return; trackOnce('first_open'); localStorage.setItem('noodle.ev.open',day); }catch(e){ return; } track('open'); }
 function statsSessionEnd(){ const s=statsSess; if(s.takes||s.edits){ track('session','takes',s.takes); track('session','edits',s.edits); track('session','minutes',Math.round((Date.now()-s.at)/6e4)); } s.takes=0; s.edits=0; s.at=Date.now(); }

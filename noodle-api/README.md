@@ -52,7 +52,8 @@ Local testing: `node dev/local-server.mjs` runs the service on localhost:8787 wi
 ## Usage stats (`POST /v1/events`)
 Anonymous counts from the app go to Workers Analytics Engine (binding `EVENTS`, dataset `noodle_events`, in `wrangler.toml`), not to KV.
 The dataset is created on the first write. Free plan: 100,000 data points written and 10,000 read queries a day; data is kept 3 months.
-Each point: index and blob 1 = the event name, blob 2 = a short label, blob 3 = ios/web, blob 4 = build, blob 5 = free/pro;
+Each point: index and blob 1 = the event name, blob 2 = a short label, blob 3 = ios/web, blob 4 = build, blob 5 = free/pro,
+blob 6 = the phone's random usage-stats ID (made in the app only for stats, deleted when stats are turned off; empty from older builds);
 double 1 = a number (e.g. parts in a song), double 2 = days since that phone first opened Noodle. Allowed names: `EVENTS` in `src/index.js`.
 Reading them needs the SQL API (`https://api.cloudflare.com/client/v4/accounts/<account_id>/analytics_engine/sql`) and a token with
 Account → Account Analytics → Read, e.g. `SELECT blob1 AS e, SUM(_sample_interval) AS n FROM noodle_events GROUP BY e`.
@@ -61,11 +62,15 @@ The owner's dashboard reads them through `GET /v1/admin/stats?days=30` (Authoriz
 
 ## Refreshing the Noodle Usage dashboard
 The owner's dashboard is a private claude.ai artifact, "Noodle Usage" (https://claude.ai/artifact/CXDKybVBgjdcEJ4smrxRxZ). Its four datasets
-(`events`, `daily`, `opens`, `split`) are JSON files made by `dev/stats-files.mjs`. A scheduled task ("Noodle Usage dashboard refresh",
+(`events`, `daily`, `opens`, `split`, `phones`) are JSON files made by `dev/stats-files.mjs`. A scheduled task ("Noodle Usage dashboard refresh",
 04:13 UTC daily) refreshes them; the owner can also ask Claude for a refresh at any time. In a Claude Code cloud session (which adds the
 admin key to requests to the takes service):
 1. `NODE_USE_ENV_PROXY=1 node noodle-api/dev/stats-files.mjs <scratch>/stats 30`
-2. Upload the four files to the artifact as assets (Artifact tool: publish, `asset: true`).
+2. Upload the five files to the artifact as assets (Artifact tool: publish, `asset: true`).
 3. Read `datasets/<id>` for each and, in one ArtifactData batch pinned to those versions, update `source.url` to the new `/_blob/...`
    and `updated: {at, by}`. Change nothing else.
-4. Delete the four old assets (the id after `/_blob/` in each old `source.url`).
+4. Delete the five old assets (the id after `/_blob/` in each old `source.url`).
+
+The owner's own phones are left out of every number: `PUT /v1/admin/stats-exclude` with a JSON list of usage-stats IDs (replaces the
+list; `GET` shows it). To find a phone's ID: it is the `id` of its rows in `GET /v1/admin/stats` (`phones`), e.g. the only `ios` phone
+while TestFlight has one tester.

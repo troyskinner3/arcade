@@ -179,7 +179,7 @@ test('usage events: known names only, labels checked, no id kept, at most 50 a r
   const post = (b) => call(env, 'POST', '/v1/events', JSON.stringify(b), { 'Content-Type': 'application/json' });
   const r = await post({ app: 'ios', build: 'b1', plan: 'pro', owner: I, ev: [{ e: 'take', p: 'lead', v: 1, d: 3 }, { e: 'nope' }, { e: 'pro_try', p: '<script>' }, { e: 'open', d: -4 }] });
   assert.equal(r.status, 200); assert.equal((await r.json()).n, 2);
-  assert.deepEqual(pts[0], { indexes: ['take'], blobs: ['take', 'lead', 'ios', 'b1', 'pro'], doubles: [1, 3] });
+  assert.deepEqual(pts[0], { indexes: ['take'], blobs: ['take', 'lead', 'ios', 'b1', 'pro', ''], doubles: [1, 3] });
   assert.deepEqual(pts[1].doubles, [0, 0]); assert.ok(!JSON.stringify(pts).includes(I));
   assert.equal(env.TAKES.m.size, 0);
   pts.length = 0; await post({ ev: Array.from({ length: 80 }, () => ({ e: 'session', v: 2 })) }); assert.equal(pts.length, 50);
@@ -197,7 +197,23 @@ test('usage stats: owner only; reads Analytics Engine with the token; says what 
     return new Response(JSON.stringify({ data })); };
   try {
     const r = await (await call({ ...env, ANALYTICS_TOKEN: 't', CF_ACCOUNT_ID: 'acc' }, 'GET', '/v1/admin/stats?days=7', null, A)).json();
-    assert.equal(seen.length, 4); assert.ok(seen.every((s) => s.u.includes('/accounts/acc/analytics_engine/sql') && s.o.headers.Authorization === 'Bearer t' && s.o.body.includes("INTERVAL '7' DAY")));
+    assert.equal(seen.length, 5); assert.ok(seen.every((s) => s.u.includes('/accounts/acc/analytics_engine/sql') && s.o.headers.Authorization === 'Bearer t' && s.o.body.includes("INTERVAL '7' DAY")));
     assert.deepEqual(r.totals[0], { e: 'take', p: 'lead', n: 3, v: 0 }); assert.equal(r.opens[1].n, 2); assert.equal(r.days, 7);
+  } finally { globalThis.fetch = real; }
+});
+test('usage events: the stats ID is kept when well formed; the owner can leave phones out of the stats', async () => {
+  const pts = [], env = { TAKES: bucket(), ADMIN_KEY: 'k', EVENTS: { writeDataPoint: (d) => pts.push(d) } }, A = { Authorization: 'Bearer k' }, SID = 'Abc_def-0123456789xyzQ';
+  await call(env, 'POST', '/v1/events', JSON.stringify({ id: SID, ev: [{ e: 'open' }] }));
+  await call(env, 'POST', '/v1/events', JSON.stringify({ id: "x' OR 1=1", ev: [{ e: 'open' }] }));
+  assert.equal(pts[0].blobs[5], SID); assert.equal(pts[1].blobs[5], '');
+  assert.equal((await call(env, 'PUT', '/v1/admin/stats-exclude', JSON.stringify([SID]))).status, 401);
+  assert.equal((await call(env, 'PUT', '/v1/admin/stats-exclude', JSON.stringify(["x'"]), A)).status, 400);
+  assert.equal((await (await call(env, 'PUT', '/v1/admin/stats-exclude', JSON.stringify([SID, SID]), A)).json()).excluded, 1);
+  assert.deepEqual(await (await call(env, 'GET', '/v1/admin/stats-exclude', null, A)).json(), [SID]);
+  const seen = [], real = globalThis.fetch;
+  globalThis.fetch = async (u, o) => { seen.push(o.body); return new Response(JSON.stringify({ data: o.body.includes('blob6 AS id') ? [{ id: SID, app: 'ios', e: 'open', n: '2', first: '2026-11-22 10:00:00', last: '2026-11-22 11:00:00' }] : [] })); };
+  try {
+    const r = await (await call({ ...env, ANALYTICS_TOKEN: 't', CF_ACCOUNT_ID: 'acc' }, 'GET', '/v1/admin/stats', null, A)).json();
+    assert.ok(seen.every((b) => b.includes(`blob6 NOT IN ('${SID}')`))); assert.equal(r.excluded, 1); assert.equal(r.phones[0].n, 2);
   } finally { globalThis.fetch = real; }
 });

@@ -4,7 +4,8 @@
      Audio, user content and the random device ID: only with "Share my takes" (opt-in, 13+), not linked to the person.
      Email address: only if someone signs up for news (linked: an address identifies its owner; used for Tuttii's own news).
      Crash data: error reports with the app build and device type, no recordings or song content, not linked.
-     Product interaction: anonymous usage counts (a part recorded, a song exported, a Pro sound tried), no ID, not linked; off in More. -->
+     Product interaction: usage counts (a part recorded, a song exported, a Pro sound tried) with a random ID made only for usage stats
+     (Device ID, purpose Analytics); not linked: no accounts, never joined with email or purchases; off in More (deletes the ID). -->
 <plist version="1.0">
 <dict>
 	<key>NSPrivacyTracking</key>
@@ -49,6 +50,7 @@
 			<key>NSPrivacyCollectedDataTypePurposes</key>
 			<array>
 				<string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+				<string>NSPrivacyCollectedDataTypePurposeAnalytics</string>
 			</array>
 		</dict>
 		<dict>
