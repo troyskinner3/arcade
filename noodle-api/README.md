@@ -58,3 +58,14 @@ Reading them needs the SQL API (`https://api.cloudflare.com/client/v4/accounts/<
 Account → Account Analytics → Read, e.g. `SELECT blob1 AS e, SUM(_sample_interval) AS n FROM noodle_events GROUP BY e`.
 The owner's dashboard reads them through `GET /v1/admin/stats?days=30` (Authorization: Bearer ADMIN_KEY), which runs the SQL queries with the
 `ANALYTICS_TOKEN` secret (set in the dashboard: Workers & Pages → noodle-takes → Settings → Variables and Secrets) and `CF_ACCOUNT_ID` from `wrangler.toml`.
+
+## Refreshing the Noodle Usage dashboard
+The owner's dashboard is a private claude.ai artifact, "Noodle Usage" (https://claude.ai/artifact/CXDKybVBgjdcEJ4smrxRxZ). Its four datasets
+(`events`, `daily`, `opens`, `split`) are JSON files made by `dev/stats-files.mjs`. A scheduled task ("Noodle Usage dashboard refresh",
+04:13 UTC daily) refreshes them; the owner can also ask Claude for a refresh at any time. In a Claude Code cloud session (which adds the
+admin key to requests to the takes service):
+1. `NODE_USE_ENV_PROXY=1 node noodle-api/dev/stats-files.mjs <scratch>/stats 30`
+2. Upload the four files to the artifact as assets (Artifact tool: publish, `asset: true`).
+3. Read `datasets/<id>` for each and, in one ArtifactData batch pinned to those versions, update `source.url` to the new `/_blob/...`
+   and `updated: {at, by}`. Change nothing else.
+4. Delete the four old assets (the id after `/_blob/` in each old `source.url`).
