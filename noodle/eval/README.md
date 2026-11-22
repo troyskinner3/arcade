@@ -673,3 +673,11 @@ the note editor's Today / Tap notes button flips one take between them. The fing
   Fixed by deploying `noodle-api/` (see its README); no app change needed.
 - `yv_ui_test.js` skips (passes with a "skipped" line) when the owner's guided takes aren't in `data/user`, like the replay does; it used
   to crash, which failed the whole suite in any fresh cloud session.
+
+## Round 13 (usage stats)
+- Anonymous usage counts (`track()` in `js/takes.js`) to the takes service's `POST /v1/events` (Workers Analytics Engine): first open, first
+  take, first song with 2+ parts, first export and share; a daily open with days since first open (return rates); takes by part type; exports
+  by kind; song links; part types and sounds in finished songs; session totals (takes, edits, minutes); Pro sheet, Pro tries, buy, result, restore.
+  No install id, no song content. Batched every 30 s or when the app goes to the background, at most 300 a day from one phone.
+- More: Send usage stats (ⓘ), on by default like crash reports; turning it off drops anything waiting.
+- `stats_test.js`: nothing leaves localhost; first-time events count once; no song name or install id in what is sent; the switch stops sending.

@@ -5,13 +5,14 @@ come up, and keep one line of status per item. `[ ]` to do, `[~]` started, `[x]`
 
 ## 1. Analytics
 Today Noodle sends no usage analytics: only crash reports, opt-in shared takes, song links, invites and email sign-ups.
-- [ ] **Owner:** pick the questions analytics must answer (for example: how many people finish a first song, where they drop off,
-      which Pro sounds get tried, how many try one and then buy).
-- [ ] Choose how: our own counters on the takes service (no third party, fits "no tracking") or an outside tool. Suggest our own.
-- [ ] Short list of events (first open, first take, first song with 2+ parts, export, share link, Pro sheet opened, Pro try, purchase).
-- [ ] Anonymous only: no device ID linked to a person, no IP stored.
-- [ ] Update all three privacy files together: `PrivacyInfo.xcprivacy`, `noodle/privacy/`, `APP_STORE_PRIVACY.md` (adds "Usage Data").
-- [ ] A simple page or script to read the numbers.
+- [x] **Owner:** questions picked: first-song funnel, Pro funnel, feature use, return rates (day 1 / 7 / 30).
+- [x] How: Cloudflare Workers Analytics Engine behind the takes service (`POST /v1/events`), no outside company. Free plan: 100,000 events a day, kept 3 months.
+- [x] Events in the app (`noodle/js/takes.js`, `track()`): first open / take / 2-part song / export / share, daily open, takes by part type,
+      exports by kind, song links, parts and sounds in finished songs, session totals, Pro sheet, Pro tries, buy, purchase result, restore.
+- [x] Anonymous: no install ID, no song content, no IP. More → Send usage stats turns it off (on by default, like crash reports).
+- [x] All three privacy files updated (Product Interaction, not linked, Analytics).
+- [ ] Deploy the takes service so `/v1/events` is live (Actions → Noodle takes service), then check events arrive.
+- [ ] Dashboard (owner asked for one): needs a Cloudflare API token with Account Analytics: Read to query the numbers.
 
 ## 2. Final UI deep dive
 - [ ] Screen-by-screen review against `noodle/STYLE.md`: first open, recording, note editor, drum editor, track menus, mix, More,

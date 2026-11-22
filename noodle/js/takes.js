@@ -114,6 +114,26 @@ function crashReport(msg, stack){ try{ if(!crashOn() || crashSeen.size>=10 || (/
   fetch(NOODLE_API+'/v1/errors',{method:'PUT',headers:{'Content-Type':'application/json'},keepalive:true,body:JSON.stringify({msg:m, stack:st, build:NOODLE_BUILD, app:/NoodleApp/.test(navigator.userAgent)?'ios':'web', where:typeof nxAt==='string'?nxAt:''})}).catch(()=>{}); }catch(e){} }
 window.addEventListener('error',e=>crashReport(e.message, e.error&&e.error.stack));
 window.addEventListener('unhandledrejection',e=>{ const r=e.reason; crashReport(r&&r.message||String(r), r&&r.stack); });
+/* ---- Usage stats: anonymous counts (no id, no song content) so we can see where people get stuck and what they use; More > Send usage stats
+   turns it off. The event names are noodle-api's EVENTS. Each carries d = days since this phone first opened Noodle (return rates on day 1, 7, 30),
+   batched and sent every 30 s or when the app goes to the background; at most 300 a day from one phone. ---- */
+const STATS_KEY='noodle.stats', statsOn=()=>{ try{ return localStorage.getItem(STATS_KEY)!=='0'; }catch(e){ return false; } };
+const statsQ=[], statsSess={takes:0, edits:0, at:Date.now()}; let statsT=0;
+function statsDay(){ try{ let f=+localStorage.getItem('noodle.first')||0; if(!f){ f=Date.now(); localStorage.setItem('noodle.first',String(f)); } return Math.max(0,Math.floor((Date.now()-f)/864e5)); }catch(e){ return 0; } }
+function track(e,p,v){ try{ if(!statsOn()) return; const day=new Date().toISOString().slice(0,10), c=localStorage.getItem('noodle.statsN')||'', n=c.startsWith(day+'|')?+c.split('|')[1]||0:0;
+  if(n>=300) return; localStorage.setItem('noodle.statsN',day+'|'+(n+1));
+  statsQ.push({e, p:p==null?'':String(p).replace(/[^A-Za-z0-9 _.+-]/g,'').slice(0,40), v:typeof v==='number'&&isFinite(v)?v:0, d:statsDay()});
+  if(statsQ.length>=20) statsFlush(); else if(!statsT) statsT=setTimeout(statsFlush,30000); }catch(err){} }
+/* the first time something happens on this phone (the new-person funnel) */
+function trackOnce(e,p,v){ try{ if(!statsOn()) return; const k='noodle.ev.'+e; if(localStorage.getItem(k)) return; localStorage.setItem(k,'1'); }catch(err){ return; } track(e,p,v); }
+function statsFlush(){ clearTimeout(statsT); statsT=0; if(!statsQ.length) return; const ev=statsQ.splice(0,50);
+  if(/^(localhost|127\.0\.0\.1)$/.test(location.hostname) && !window.STATS_TEST){ window.statsSent=(window.statsSent||[]).concat(ev); return; }   /* tests: kept here, not sent */
+  try{ fetch(NOODLE_API+'/v1/events',{method:'POST',headers:{'Content-Type':'text/plain'},keepalive:true,body:JSON.stringify({app:/NoodleApp/.test(navigator.userAgent)?'ios':'web', build:NOODLE_BUILD, plan:isPro()?'pro':'free', ev})}).catch(()=>{}); }catch(e){} }
+/* once a day: an open (return rates), and a session's totals when the app goes to the background */
+function statsOpen(){ try{ const day=new Date().toISOString().slice(0,10); if(localStorage.getItem('noodle.ev.open')===day) return; trackOnce('first_open'); localStorage.setItem('noodle.ev.open',day); }catch(e){ return; } track('open'); }
+function statsSessionEnd(){ const s=statsSess; if(s.takes||s.edits){ track('session','takes',s.takes); track('session','edits',s.edits); track('session','minutes',Math.round((Date.now()-s.at)/6e4)); } s.takes=0; s.edits=0; s.at=Date.now(); }
+document.addEventListener('visibilitychange',()=>{ if(document.hidden){ statsSessionEnd(); statsFlush(); } else statsOpen(); });
+statsOpen();
 const NOODLE_API=(()=>{ try{ return localStorage.getItem('noodle.api')||'https://noodle-takes.cracked.workers.dev'; }catch(e){ return 'https://noodle-takes.cracked.workers.dev'; } })();   /* 'noodle.api' is for tests */
 /* Optional email list (news about Noodle and what comes next): separate from sharing takes, with its own consent. `text` is the wording the person agreed to. */
 async function emailSignup(email, text){ try{ const r=await fetch(NOODLE_API+'/v1/signups',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({email, consent:{v:1, text}})}); return r.ok; }catch(e){ return false; } }

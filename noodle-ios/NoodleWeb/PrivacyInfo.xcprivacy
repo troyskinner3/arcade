@@ -3,7 +3,8 @@
 <!-- Noodle's privacy manifest. Matches the privacy policy (noodle/privacy/) and the App Store privacy answers. Nothing is used for tracking.
      Audio, user content and the random device ID: only with "Share my takes" (opt-in, 13+), not linked to the person.
      Email address: only if someone signs up for news (linked: an address identifies its owner; used for Tuttii's own news).
-     Crash data: error reports with the app build and device type, no recordings or song content, not linked. -->
+     Crash data: error reports with the app build and device type, no recordings or song content, not linked.
+     Product interaction: anonymous usage counts (a part recorded, a song exported, a Pro sound tried), no ID, not linked; off in More. -->
 <plist version="1.0">
 <dict>
 	<key>NSPrivacyTracking</key>
@@ -72,6 +73,18 @@
 			<key>NSPrivacyCollectedDataTypePurposes</key>
 			<array>
 				<string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+			</array>
+		</dict>
+		<dict>
+			<key>NSPrivacyCollectedDataType</key>
+			<string>NSPrivacyCollectedDataTypeProductInteraction</string>
+			<key>NSPrivacyCollectedDataTypeLinked</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypeTracking</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypePurposes</key>
+			<array>
+				<string>NSPrivacyCollectedDataTypePurposeAnalytics</string>
 			</array>
 		</dict>
 	</array>

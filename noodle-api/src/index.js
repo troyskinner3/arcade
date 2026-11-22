@@ -12,6 +12,10 @@
 // Shared takes are kept for 3 years at most (KEEP_DAYS), counted from when the take first arrived; storage removes them on its own.
 //   PUT    /v1/errors                       body = {msg, stack, build, app, where}  an anonymous error report (no recordings, no song content)
 //                                           stored once per distinct error per day, kept 90 days, at most MAX_ERRORS_PER_DAY a day
+//   POST   /v1/events                       body = {app, build, plan, ev: [{e, p, v, d}]}  anonymous usage counts (no id, no song content)
+//                                           e = an event name from EVENTS, p = a short label (a part type, a sound), v = a number,
+//                                           d = days since this phone first opened Noodle. Written to Workers Analytics Engine (binding
+//                                           EVENTS, kept 3 months by Cloudflare), never to storage; at most MAX_EVENTS per request.
 // Song links (someone chose to share a song by link: anyone with the link can listen and copy it into their own Noodle to remix it):
 //   PUT    /v1/songs/:id                    body = the song file (JSON, a Noodle song file with one song), header X-Owner = the sharer's install id
 //   PUT    /v1/songs/:id/preview            body = WAV, the start of the song for the listen page (X-Owner)
@@ -37,6 +41,9 @@ const KEEP_DAYS = 3 * 365, MAX_SIGNUPS_PER_DAY = 400, ERROR_DAYS = 90, MAX_ERROR
 const MAX_AUDIO = 3 * 1024 * 1024, MAX_META = 256 * 1024, MAX_TAKES_PER_DAY = 300;
 const ID = /^[A-Za-z0-9_-]{22,64}$/, TAKE = /^[A-Za-z0-9_-]{6,96}$/;
 const INVITE = /^[A-Z2-9]{6}$/, INVITES_FOR_PRO = 3, REWARDS_PER_DAY = 25;
+const EVENTS = new Set(['first_open', 'first_take', 'first_song', 'first_export', 'first_share', 'open', 'take', 'song_parts', 'export',
+  'share_link', 'part_used', 'session', 'pro_sheet', 'pro_try', 'pro_buy', 'pro_result', 'restore']);
+const MAX_EVENTS = 50, LABEL = /^[A-Za-z0-9 _.+\-]{0,40}$/;
 const SONG = /^[A-Za-z0-9_-]{10,32}$/, SONG_DAYS = 2 * 365, MAX_SONG = 8 * 1024 * 1024, MAX_PREVIEW = 3 * 1024 * 1024, MAX_SONGS_PER_DAY = 250, REPORTS_TO_HIDE = 3;
 const sha = async (t) => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t)))].map((x) => x.toString(16).padStart(2, '0')).join('');
 const esc = (t) => String(t).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -216,6 +223,20 @@ async function handle(req, env) {
       await B.put(ck, JSON.stringify({ n: n + 1 }), { expiresAt: Date.now() + 3 * 864e5 });
       await B.put('signups/' + h + '.json', JSON.stringify({ email, at: new Date().toISOString(), source: 'noodle', consent: { v: m.consent.v, text: m.consent.text.slice(0, 300) } }), { httpMetadata: { contentType: 'application/json' } });
       return json(req, 200, { ok: true });
+    }
+    if (p[1] === 'events' && p.length === 2 && req.method === 'POST') {
+      const buf = await readLimited(req, 16384); if (!buf) return json(req, 413, { error: 'too large' });
+      let m; try { m = JSON.parse(new TextDecoder().decode(buf)); } catch { return json(req, 400, { error: 'json' }); }
+      const ev = m && Array.isArray(m.ev) ? m.ev.slice(0, MAX_EVENTS) : null; if (!ev) return json(req, 400, { error: 'ev' });
+      const str = (v, n) => String(v == null ? '' : v).slice(0, n), num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
+      const app = m.app === 'ios' ? 'ios' : 'web', build = str(m.build, 40), plan = m.plan === 'pro' ? 'pro' : 'free';
+      let n = 0;
+      for (const x of ev) {
+        if (!x || !EVENTS.has(x.e)) continue; const label = str(x.p, 40); if (!LABEL.test(label)) continue;
+        if (env.EVENTS) env.EVENTS.writeDataPoint({ indexes: [x.e], blobs: [x.e, label, app, build, plan], doubles: [num(x.v), Math.max(0, Math.min(3650, Math.floor(num(x.d))))] });
+        n++;
+      }
+      return json(req, 200, { ok: true, n });
     }
     if (p[1] === 'errors' && p.length === 2 && req.method === 'PUT') {
       const buf = await readLimited(req, 8192); if (!buf) return json(req, 413, { error: 'too large' });

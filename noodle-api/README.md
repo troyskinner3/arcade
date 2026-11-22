@@ -48,3 +48,11 @@ branch and deploys `noodle-api/` with that token. Chosen so the owner had no new
   (any long random text; keep it private). Without it, the owner-only read endpoints refuse everyone.
 
 Local testing: `node dev/local-server.mjs` runs the service on localhost:8787 with in-memory storage (admin key `local`).
+
+## Usage stats (`POST /v1/events`)
+Anonymous counts from the app go to Workers Analytics Engine (binding `EVENTS`, dataset `noodle_events`, in `wrangler.toml`), not to KV.
+The dataset is created on the first write. Free plan: 100,000 data points written and 10,000 read queries a day; data is kept 3 months.
+Each point: index and blob 1 = the event name, blob 2 = a short label, blob 3 = ios/web, blob 4 = build, blob 5 = free/pro;
+double 1 = a number (e.g. parts in a song), double 2 = days since that phone first opened Noodle. Allowed names: `EVENTS` in `src/index.js`.
+Reading them needs the SQL API (`https://api.cloudflare.com/client/v4/accounts/<account_id>/analytics_engine/sql`) and a token with
+Account → Account Analytics → Read, e.g. `SELECT blob1 AS e, SUM(_sample_interval) AS n FROM noodle_events GROUP BY e`.

@@ -81,7 +81,7 @@ const pvCopy=v=>v===undefined?undefined:JSON.parse(JSON.stringify(v));
 function pvTry(tr, fields, label, part){ for(const k in fields){ if(!tr._pvOrig) tr._pvOrig={}; if(!(k in tr._pvOrig)) tr._pvOrig[k]=pvCopy(tr[k]); tr[k]=fields[k]; }
   pvOpen(label, part||tr); tr._dirty=true; tr._tuned=null; tr._harm=null; scheduleRender(); }
 /* the start of a preview: the part plays, looping, so you hear it at once */
-function pvOpen(label, part){ if(!proPv) proPv={labels:[]}; proPv.labels=proPv.labels.filter(x=>x!==label).concat([label]); if(part) pvPlay(part); }
+function pvOpen(label, part){ if(!proPv) proPv={labels:[]}; if(!proPv.labels.includes(label)) track('pro_try',label); proPv.labels=proPv.labels.filter(x=>x!==label).concat([label]); if(part) pvPlay(part); }
 function pvPlay(t){ const p=proPv; if(!p||p.started!=null||recState) return; p.sec=s2.sec; p.loop=s2.loop; p.started=!playing;
   try{ if(hasContent(t)&&!t.guide) s2SecSet(t); }catch(e){} if(!playing) togglePlay(); }
 /* a free choice made while previewing (say Piano after trying Trumpet) becomes the real value */
@@ -102,7 +102,7 @@ const proBridge=()=>!!(window.webkit&&window.webkit.messageHandlers&&window.webk
 /* from the app: whether Pro is owned, and its price in the App Store's own words (e.g. "$6.99") */
 window.noodlePro=(owned, price)=>{ const was=PRO.owned; PRO.owned=!!owned; if(price) PRO.price=price; try{ localStorage.setItem('noodle.pro',PRO.owned?'1':'0'); }catch(e){}
   nxProSync(); if(was!==PRO.owned){ if(PRO.owned) pvCommitAll(); try{ renderTracks(); if(s2.edId!=null) s2EdMount(); }catch(e){} } };
-window.noodleProResult=r=>{ PRO.busy=false; const m={bought:'Pro unlocked. Thank you!', restored:'Pro restored.', none:'No Pro purchase found for this Apple ID.', pending:'Waiting for approval. Pro unlocks as soon as it’s approved.', failed:'The purchase didn’t go through. Nothing was charged.', unavailable:'The App Store isn’t reachable right now. Try again in a moment.'}[r];
+window.noodleProResult=r=>{ PRO.busy=false; track('pro_result',r); statsFlush(); const m={bought:'Pro unlocked. Thank you!', restored:'Pro restored.', none:'No Pro purchase found for this Apple ID.', pending:'Waiting for approval. Pro unlocks as soon as it’s approved.', failed:'The purchase didn’t go through. Nothing was charged.', unavailable:'The App Store isn’t reachable right now. Try again in a moment.'}[r];
   if(r==='bought'||r==='restored'){ nxClose(); haptic('success'); } if(m) toast(m,5200); nxProSync(); };
 /* the Pro sheet: what Pro adds, grouped by what it's for (keep in step with PRO.md and PRO_SOUNDS / MFX / BEATS / CHORD_STYLES) */
 const PRO_CARDS=[
@@ -116,13 +116,13 @@ const PRO_CARDS=[
    x:['Glacier','Corner Store','Paper Plane','Cold Front','Weekend','Lagos Sun','Pulse chords','Arp chords']},
   {t:'Export and share', d:'Take your song anywhere', ic:'<path d="M12 15V3M7 8l5-5 5 5M5 14v5a2 2 0 002 2h10a2 2 0 002-2v-5"/>',
    x:['MIDI','Stems for your DAW','Videos without the tag','Copy parts between songs']}];
-function proSheet(why){ const have=isPro();
+function proSheet(why){ const have=isPro(); if(!have) track('pro_sheet',why?'prompt':'menu');
   nxSheet(`<h2>Noodle Pro</h2><p class="pro-sub">${nxEsc(why||(have?'You have every sound, effect and export.':'Every sound, effect and export in Noodle.'))}</p>
     <div class="pro-cards">${PRO_CARDS.map(c=>`<div class="pro-card"><div class="pro-ic"><svg class="nx-ico" viewBox="0 0 24 24">${c.ic}</svg></div><div class="pro-tx"><b>${c.t}</b><small>${c.d}</small><div class="pro-chips">${c.x.map(v=>`<span>${nxEsc(v)}</span>`).join('')}</div></div>${have?'<svg class="nx-ico pro-ok" viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></svg>':''}</div>`).join('')}</div>
     ${have?'':`<p class="pro-try">${PRO_LOCK} Try anything marked like this on your own song first.</p><button class="nx-ghost pro-rst" id="proRestore">Restore purchase</button><div class="pro-foot"><button class="nx-primary" id="proBuy">Unlock Pro${PRO.price?' · '+nxEsc(PRO.price):''}</button><p class="pro-once">One-time purchase</p></div>`}`);
   if(!have){ $('proBuy').onclick=()=>proBuy(); $('proRestore').onclick=()=>proRestore(); } }
-function proBuy(){ if(!proBridge()){ toast('Noodle Pro is in the Noodle iPhone app.'); return; } if(PRO.busy) return; PRO.busy=true; try{ window.webkit.messageHandlers.noodlePro.postMessage('buy'); }catch(e){ PRO.busy=false; } setTimeout(()=>{ PRO.busy=false; },60000); }
-function proRestore(){ if(!proBridge()){ toast('Noodle Pro is in the Noodle iPhone app.'); return; } try{ window.webkit.messageHandlers.noodlePro.postMessage('restore'); }catch(e){} toast('Checking with the App Store…'); }
+function proBuy(){ if(!proBridge()){ toast('Noodle Pro is in the Noodle iPhone app.'); return; } if(PRO.busy) return; track('pro_buy'); PRO.busy=true; try{ window.webkit.messageHandlers.noodlePro.postMessage('buy'); }catch(e){ PRO.busy=false; } setTimeout(()=>{ PRO.busy=false; },60000); }
+function proRestore(){ if(!proBridge()){ toast('Noodle Pro is in the Noodle iPhone app.'); return; } track('restore'); try{ window.webkit.messageHandlers.noodlePro.postMessage('restore'); }catch(e){} toast('Checking with the App Store…'); }
 function nxProSync(){ const e=$('nxProS'); if(!e) return; e.textContent=(devAs()?'Testing: ':'')+(isPro()?'You have Pro':'More sounds, effects and exports'+(PRO.price?' · '+PRO.price:'')); }
 /* ---- Mix FX editor ---- */
 /* The Song FX editor, as in the Tuttii FX prototype: pick the effect; its curve over the region (x: bars of the region, so it scales with it;
