@@ -61,9 +61,9 @@ function exampleTracks(){
   const lead=[[2,2,69],[4,2,72],[6,4,76],[12,2,74],[14,2,72],[18,2,69],[20,2,72],[22,2,74],[24,6,71]].map(([s,l,p])=>({s,l,p:p+0.1,v:0.75}));
   return [
     mkTrack('kit',{id:1,hits,ex:true,sound:'Punchy'}),
-    mkTrack('bass',{id:2,notes:bass,ex:true,sound:'Reese',vol:72}),
-    mkTrack('lead',{id:3,notes:lead,ex:true,sound:'Saw',vol:52,send:35}),
-    mkTrack('keys',{id:4,notes:keys,ex:true,sound:'E-piano',vol:44,send:30}),   /* chords: Am, G, Am, Dm, C */
+    mkTrack('bass',{id:2,notes:bass,ex:true,sound:'Pluck',vol:72,oct:-2,send:15}),
+    mkTrack('lead',{id:3,notes:lead,ex:true,sound:'Bell',vol:37,oct:1,send:43}),
+    mkTrack('keys',{id:4,notes:keys,ex:true,sound:'Piano',vol:54,oct:0,send:32,chordType:'triad'}),   /* chords: Am, G, Am, Dm, C */
     Object.assign(mkTrack('fx',{id:5,ex:true}),{fxs:[{...fxNew('sweepDown',0,32),v:0.7},{...fxNew('riser',16,32),v:0.6}]}),   /* a noise sweep down out of the downbeat, and a riser back into the loop */
   ];
 }

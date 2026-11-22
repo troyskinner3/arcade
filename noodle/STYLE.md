@@ -30,12 +30,15 @@ The owner's rules, gathered from reviews. Read this before any UI or copy change
 - **Different actions look different:** two things that do different jobs must not look alike (the track's arm button is an "R",
   not a second red record button).
 
-- **Selling Pro:** show what you get, grouped by what it's for (cards with example chips), not a bullet list; plain copy, no slogans.
+- **Selling Pro:** show what you get, grouped by what it's for (cards with example chips), not a bullet list; plain copy, no slogans. The
+  buy button is visible as soon as the sheet opens: pinned to the bottom while the cards scroll under it.
 
 ## Layout and behaviour
 - **Progressive disclosure:** the basics a beginner needs are on the first screen; the rest is under More settings or •••.
   Pitch correction stays visible on vocals.
 - **One control per job on a screen:** no two buttons that do the same thing.
+- **Every setting a beginner might not understand has an ⓘ** (sliders too, like Mic sensitivity).
+- **A group heading sits above everything in its group**, cards included.
 - **Choices:** 2-4 options are a row of buttons (segmented); more than that opens a list. Lists stay open so you can tap through
   and hear each option, with Done to go back.
 - **Fixed frame:** top bar, track headers and bottom bar never move; only the content scrolls. No rubber-band overscroll.
