@@ -113,14 +113,17 @@ final class NativeBridge: NSObject, WKScriptMessageHandler {
   }
   /* warm up when the record button is pressed, so starting the engine doesn't delay the first beats */
   private func metroWarm() { try? hapticEngine()?.start() }
-  /* inMs: how long after the page sent the message the count-in's first click is heard. The time spent here before the pattern starts
-     (starting the engine can take a few hundred ms) is measured from when the message arrived and taken off, so the taps land on the
-     clicks; beats whose time has already passed are left out. */
-  private func metro(inMs: Double, beatMs: Double, beats: Int, perBar: Int, arrived: CFTimeInterval) {
+  /* inMs: how long after sentMs (the page's clock time, ms) the count-in's first click is heard. Everything since then, the trip to
+     the app and starting the engine (a few hundred ms at worst), is taken off, so the taps land on the clicks; beats whose time has
+     already passed are left out. Without sentMs (an older page) it counts from when the message arrived. */
+  /* the Taptic Engine takes a moment to move after it is told to, so each tap is sent this much early */
+  private static let tapLead = 0.015
+  private func metro(inMs: Double, sentMs: Double, beatMs: Double, beats: Int, perBar: Int, arrived: CFTimeInterval) {
     guard beatMs > 50, beats > 0, let e = hapticEngine() else { return }
     do {
       try e.start()
-      let wait = inMs / 1000 - (CACurrentMediaTime() - arrived)   // seconds from now to the first click
+      let spent = sentMs > 0 ? max(0, Date().timeIntervalSince1970 - sentMs / 1000) : CACurrentMediaTime() - arrived   // since the page worked it out (the trip here included)
+      let wait = inMs / 1000 - min(spent, 2) - Self.tapLead   // seconds from now to the first click
       let skip = wait < 0 ? Int((-wait / (beatMs / 1000)).rounded(.up)) : 0
       var evs: [CHHapticEvent] = []
       for i in skip..<min(beats, 4000) {
@@ -168,7 +171,7 @@ final class NativeBridge: NSObject, WKScriptMessageHandler {
       default: light.impactOccurred()
       }
     case "metro":
-      metro(inMs: (d["inMs"] as? NSNumber)?.doubleValue ?? 0, beatMs: (d["beatMs"] as? NSNumber)?.doubleValue ?? 0,
+      metro(inMs: (d["inMs"] as? NSNumber)?.doubleValue ?? 0, sentMs: (d["sentMs"] as? NSNumber)?.doubleValue ?? 0, beatMs: (d["beatMs"] as? NSNumber)?.doubleValue ?? 0,
             beats: (d["beats"] as? NSNumber)?.intValue ?? 0, perBar: (d["perBar"] as? NSNumber)?.intValue ?? 4, arrived: CACurrentMediaTime())
     case "metroWarm": metroWarm()
     case "metroStop": metroStop()

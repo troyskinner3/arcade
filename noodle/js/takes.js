@@ -27,7 +27,7 @@ function fxAnalyze(x, sr, align){
   const sd=stepDur(), out=[], med=v=>{ const b=v.slice().sort((p,q)=>p-q); return b.length?b[b.length>>1]:0; };
   for(const [i0,i1] of merged){ const t0=fr[i0].t, t1=fr[i1].t+0.01, dur=t1-t0; if(dur<0.09) continue;   /* shorter than that is a click or a pop */
     const F=fr.slice(i0,i1+1), Z=zc.slice(i0,i1+1), q=Math.max(1,Math.floor(F.length/4)), tonal=F.filter(f=>f.conf<0.3&&f.m>28&&f.m<100), tf=tonal.length/F.length;
-    const loud=F.map(f=>f.db), l0=med(loud.slice(0,q)), l1=med(loud.slice(-q)), pk=Math.max(...loud), v=clamp((pk-(top-30))/30,0.35,1);
+    const loud=F.map(f=>f.db), l0=med(loud.slice(0,q)), l1=med(loud.slice(-q)), pk=Math.max(...loud), v=0.5*clamp((pk-(top-30))/30,0.35,1);   /* recorded effects sit in the background too: louder takes up to 50, like a new one at 40 */
     let k, cur;
     if(dur<0.28){ k='impact'; cur=F.map(()=>0); }
     else if(tf>=0.5){ const ms=tonal.map(f=>f.m), qq=Math.max(1,Math.floor(ms.length/4)), rise=med(ms.slice(-qq))-med(ms.slice(0,qq)); k = rise>=2 ? 'riser' : rise<=-2 ? 'down' : (l1-l0<=-8?'down':'riser');   /* a held note fades a little on its own: only a clear fade reads as a downlifter */
@@ -264,7 +264,7 @@ const GUIDED=[
 let guidedDone=new Set(); try{ guidedDone=new Set(JSON.parse(localStorage.getItem('noodle.guided')||'[]')); }catch(e){}
 async function guidedSetup(id){ const g=GUIDED.find(x=>x[0]===id); if(!g) return; const [,mel,how,inst0,bpm]=g, kit=inst0==='kit';
   flushSave(); await projSaveCurrent(); if(playing){ stopAll(); playing=false; }
-  const keepKeys=['feelBeat','kit','calibrated','latAuto','latMs','ec','sens','snapStr','detailBias','vocLat','mergeDrums','replaceTonal','mig2','mig3','sq','keyRef','playAlong','tapPad'];
+  const keepKeys=['feelBeat','buzzMs','kit','calibrated','latAuto','latMs','ec','sens','snapStr','detailBias','vocLat','mergeDrums','replaceTonal','mig2','mig3','sq','keyRef','playAlong','tapPad'];
   const o=defaultState(); keepKeys.forEach(k=>{ if(k in S) o[k]=S[k]; });
   o.title=id; o.prompt=id; o.bpm=bpm||110; o.bars=4; o.loops=2; let nid=S.nextId;
   let guide, take;

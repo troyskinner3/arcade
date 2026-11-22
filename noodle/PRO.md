@@ -46,14 +46,14 @@ Status: **confirmed** (owner agreed) or **proposed** (waiting on the owner).
 | Export a mixdown (WAV) and video, with a small "Made with Noodle" tag on video | proposed |
 | Song list, song files (save, back up all, open), sharing takes, email news, crash reports | proposed |
 | Usage stats (anonymous counts; More → Send usage stats turns them off). Suggest Free: not a feature people pay for | proposed |
-| Change key moves the whole song (transpose), loop a section, tap tempo, lock-screen controls, haptic taps | confirmed |
+| Change key moves the whole song (transpose), loop a section (one Loop button: the selected part, or the whole song), tap tempo, lock-screen controls, haptic taps | confirmed |
 | Faster fixes: ▼ ▲ on a note, split into 2 / 3 / 4, select several notes and move or delete them together | proposed |
-| Silent metronome (iPhone app): the count-in clicks and buzzes, then only the phone's buzz while recording, so no click gets into the take. Suggest Free | proposed |
+| Silent metronome (iPhone app): the count-in clicks and buzzes, then only the phone's buzz while recording, so no click gets into the take. Buzz timing slider (Mic and timing) to move the buzz earlier or later. Suggest Free | proposed |
 | Tap notes (testing, Xcode builds only): a tap starts a new note; runs sung without taps join on Lead and Bass (shown joined in the note editor, Join / Joined to change); a huge tap pad while recording. Suggest Free | proposed |
 | Tap along while you hum (catches repeated notes) and learning from your fixes (accuracy for everyone) | proposed |
 | Musical mode: melody takes come out more musical (learned from ~45,000 public-domain and CC0 songs); As heard / Musical swap in the note editor | confirmed |
 | Chords from your melody: Pad and Piano styles, chords every bar or half bar | proposed |
-| Drum fills every 4 or 8 bars (with a crash after each) | proposed |
+| Drum fills every 4 or 8 bars (with a crash after each), set per part in the drum editor | proposed |
 | Song sections: name, loop and duplicate Intro / Verse / Chorus / Bridge / Outro | proposed |
 | Your presets: vocal presets, track-effect presets, your own drum kits (any drum from any kit + your taught noises), saved on the phone and in backups (a preset with Pro parts is tried) | confirmed |
 | Beats: one per style (Night Drive trap, Dusty Steps boom bap, Rainy Window lo-fi, Night Bus drill, Sunny Side pop, Velvet R&B) | confirmed |

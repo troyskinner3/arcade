@@ -46,7 +46,14 @@ The owner's rules, gathered from reviews. Read this before any UI or copy change
   form with dropdowns.
 - **Don't bury things:** an action goes where people look for it (entering someone's invite code is its own row, not inside
   Invite friends).
-- **Hear before you keep:** sounds, presets and Pro features play on your part while a menu is open.
+- **Hear before you keep:** sounds, presets and Pro features play on your part while a menu is open. The line under a Pro
+  preview says what it is and how to keep it: "Previewing Horns. Add to your song with Pro." (not "Trying ... It plays while ...").
+- **Common actions stay in sight:** Delete track is a red trash button next to •••, not hidden in the menu (Undo brings it back).
+- **Tapping empty space deselects:** a tap on the empty area under the tracks clears the selected part or empty spot.
+- **One Loop button:** with a part selected it loops that part, with nothing selected the whole song. Whatever loops shows as
+  the yellow band on the ruler; tapping the band stops it.
+- **Settings for one part live in that part's editor** (drum fills in the drum editor), not in the track's sheet.
+- **Effects sit in the background:** a new Sound FX effect starts at volume 40.
 - **Feedback:** a light haptic for placing things, medium for record start and stop.
 - **Big targets while recording:** anything you touch while singing (the tap pad) is huge and easy to hit without looking.
 

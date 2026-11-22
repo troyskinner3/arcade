@@ -71,7 +71,7 @@ async function startRecord(calib=false, teach=null){ if(!calib&&!teach&&feelBeat
   metroGain.gain.value=0.75; metroSrc=startSrc(metroBuf,metroGain,when,0); gateOpen(when);
   if(!calib && !teach && feelBeat()){   /* felt metronome: the count-in clicks and buzzes, then only the buzz (no click in the take) */
     metroGain.gain.setValueAtTime(0.75,ctx.currentTime); metroGain.gain.setValueAtTime(0,when+bar-0.03);
-    const beat=bar/4, lat=Math.min(0.15,ctx.outputLatency||ctx.baseLatency||0); native({type:'metro', inMs:Math.round((when-ctx.currentTime+lat)*1000), beatMs:beat*1000, beats:Math.ceil((bar+L)/beat), perBar:4}); }
+    native({type:'metro', ...metroAt(when), beatMs:bar/4*1000, beats:Math.ceil((bar+L)/(bar/4)), perBar:4}); }
   let arp=false; if(S.keyRef && !calib && !teach && INST[S.inst].kind==='pitched'){ const K=keyKnown(), g=S.prompt&&S.tracks.find(t=>t.guide&&t.notes&&t.notes.length), first=g?g.notes.slice().sort((a,b)=>a.s-b.s)[0]:null;
     if(first){ playKeyArp(K, when, bar, pitchOf(first)); arp=true; } else if(K){ playKeyArp(K, when, bar); arp=true; } }   /* a guided tune: the arpeggio starts and ends on its first note */
   recState={arp, calib, teach, taps:[], inst:S.inst, countStart:when, start:when+bar, end:when+bar+L, preroll, poff, along, lat:calib?0:(!teach&&S.inst==='vox'&&S.vocLat!=null?S.vocLat:latency()), chunks:[]};
@@ -126,6 +126,14 @@ function afterTake(){ setTimeout(()=>{ try{ inviteSend(false); }catch(e){} },150
 /* Tap along: while a melody records into a part, a pad under the timeline takes one tap per note (optional; More > Timing & mic turns it off) */
 function tapPadOn(){ const r=recState; return !!(r && !r.calib && !r.teach && INST[r.inst].kind==='pitched' && takeMode() && S.tapPad!==false); }
 $('s2TapPad').addEventListener('pointerdown',e=>{ e.preventDefault(); const r=recState; if(!r||!ctx) return; r.taps.push(ctx.currentTime);   /* no buzz: the Silent metronome's beat stays clear */ const b=$('s2TapPad'); b.classList.remove('hit'); void b.offsetWidth; b.classList.add('hit'); });
+/* When the first count-in click (audio time `when`) is actually heard, for the phone's buzz: inMs from now, sentMs = the clock time it was
+   worked out. The app takes off everything since sentMs, including the trip to the app (it used to count only from when the message
+   arrived, and the trip is slow right as recording starts, so every buzz landed late). getOutputTimestamp says when audio is really
+   heard (output delay included); older WebKit falls back to outputLatency. buzzMs: the owner's nudge (Mic and timing, Buzz timing). */
+function metroAt(when){ const now=performance.now(); let heardIn;
+  try{ const ts=ctx.getOutputTimestamp&&ctx.getOutputTimestamp(); if(ts&&ts.contextTime>0&&ts.performanceTime>0&&Math.abs(now-ts.performanceTime)<1000) heardIn=ts.performanceTime+(when-ts.contextTime)*1000-now; }catch(e){}
+  if(heardIn==null) heardIn=(when-ctx.currentTime+Math.min(0.15,ctx.outputLatency||ctx.baseLatency||0))*1000;
+  return {inMs:Math.round(heardIn+(+S.buzzMs||0)), sentMs:Date.now()}; }
 /* the felt metronome runs only in the iPhone app (the web can't buzz an iPhone) */
 const feelBeat=()=>S.feelBeat!==false&&!!(window.webkit&&window.webkit.messageHandlers&&window.webkit.messageHandlers.noodleNative);
 function setRecUI(on){ if(!on) native({type:'metroStop'});

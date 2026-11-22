@@ -689,3 +689,25 @@ the note editor's Today / Tap notes button flips one take between them. The fing
   the stats route adds each phone's events (first and last seen) for per-phone paths. Dashboard: a Phones tile and table.
 - Privacy policy (effective 22 November 2026), privacy manifest (Device ID: Analytics added) and App Store answers updated together.
 - `stats_test.js`: the ID is sent, is one per phone, isn't the takes/links ID, and is deleted when the switch is turned off.
+
+## Round 15 (owner review, 22 November)
+- **Pro sheet kept opening (Edit, opening a song, Rename, More not scrolling):** after a Pro preview, the "… is Pro. Get Pro to keep it."
+  note faded out but still caught taps (`.toast.act` kept `pointer-events:auto`), so an invisible box over the timeline or song list
+  opened the Pro sheet. Any other note (Duplicate's) cleared it. Now a hidden note never takes taps (`toastOff`), and tapping the
+  visible one still opens the sheet.
+- Pro preview text: "Previewing Horns. Add to your song with Pro." ⓘ texts say "Free to preview while this menu is open."
+- Sound FX: a new effect starts at volume 40 (was 80); recorded ones top out at 50; the example song's Sweep down is 40, its Riser 25.
+- Tapping the empty space under the tracks deselects the part or the empty spot (the dotted new-part outline).
+- One Loop button: with a part selected it loops that part (again: loop off); with nothing selected the whole song. The clip bar's
+  own Loop button is gone. Looping the whole song shows the yellow band over all of it; tapping a part's band goes back to the whole
+  song, tapping the whole song's band stops looping.
+- Delete track: a red trash button next to ••• in the track sheet (Undo brings it back); removed from the ••• menu.
+- Drum fills moved from the track sheet to the drum editor, per part (Off / Every 4 bars / Every 8 bars; the options a part is too
+  short for are greyed out). Fills were already stored per part; the sheet used to set all of a track's parts at once.
+- **Metronome buzz late (again):** the app counted from when the message arrived, but the trip from the page to the app is slow right
+  as recording starts (the audio switches to recording then), so every buzz was late by that trip. The page now sends its clock time
+  (`sentMs`) and when the click is really heard (`getOutputTimestamp`, output delay included); the app takes off everything since then
+  and sends each tap 15 ms early for the Taptic Engine's own delay. Buzz timing (Mic and timing, iPhone app only) moves it by
+  -150 to +150 ms if it is still off. Not checked on a phone here: needs a new iPhone build.
+- Tests: `section_test` (one Loop button, whole-song band, tap empty space), `fills_test` (fills in the drum editor, per part),
+  `haptic_test` (sentMs, Buzz timing).

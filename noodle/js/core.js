@@ -64,7 +64,7 @@ function exampleTracks(){
     mkTrack('bass',{id:2,notes:bass,ex:true,sound:'Pluck',vol:72,oct:-2,send:15}),
     mkTrack('lead',{id:3,notes:lead,ex:true,sound:'Bell',vol:37,oct:1,send:43}),
     mkTrack('keys',{id:4,notes:keys,ex:true,sound:'Piano',vol:54,oct:0,send:32,chordType:'triad'}),   /* chords: Am, G, Am, Dm, C */
-    Object.assign(mkTrack('fx',{id:5,ex:true}),{fxs:[{...fxNew('sweepDown',0,32),v:0.7},{...fxNew('riser',16,32),v:0.6}]}),   /* a noise sweep down out of the downbeat, and a riser back into the loop */
+    Object.assign(mkTrack('fx',{id:5,ex:true}),{fxs:[{...fxNew('sweepDown',0,32),v:0.4},{...fxNew('riser',16,32),v:0.25}]}),   /* a noise sweep down out of the downbeat, and a riser back into the loop */
   ];
 }
 function mkTrack(inst, o={}){
@@ -136,7 +136,7 @@ const takeStore={ db:null,
   async del(k){ const db=await this.open(); if(!db) return; try{ db.transaction('takes','readwrite').objectStore('takes').delete(k); }catch(e){} } };
 /* ---- Saved projects: every song you make is kept on this device (IndexedDB) and can be reopened, renamed, duplicated or deleted.
    A project is the song only; your setup (taught drum sounds, mic timing, learned preferences) is shared by all of them. ---- */
-const SETUP_KEYS=['feelBeat','kit','calibrated','latAuto','latMs','ec','sens','snapStr','detailBias','vocLat','mergeDrums','replaceTonal','mig2','mig3','sq','keyRef','voxTop'];
+const SETUP_KEYS=['feelBeat','buzzMs','kit','calibrated','latAuto','latMs','ec','sens','snapStr','detailBias','vocLat','mergeDrums','replaceTonal','mig2','mig3','sq','keyRef','voxTop'];
 const projDb={
   async req(mode,fn){ const db=await takeStore.open(); if(!db) return null; return new Promise(res=>{ try{ const q=fn(db.transaction('projects',mode).objectStore('projects')); q.onsuccess=()=>res(q.result??null); q.onerror=()=>res(null); }catch(e){ res(null); } }); },
   get(id){ return this.req('readonly',st=>st.get(id)); }, all(){ return this.req('readonly',st=>st.getAll()); },

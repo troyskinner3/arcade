@@ -79,7 +79,7 @@ function beatUse(){ S.tracks.forEach(t=>{ delete t._pvTemp; }); delete S._pvOrig
 function beatSheet(){ let cur=null; const styles=[...new Set(BEATS.map(b=>b.style))];
   const draw=()=>{ nxSheet(`<h2>Beats</h2><p style="color:var(--muted);font-size:14px;margin:-4px 0 10px">Tap one to hear it.</p>
     ${styles.map(st=>`<div class="s2-sg">${nxEsc(st)}</div><div class="bt-grid">${BEATS.filter(b=>b.style===st).map(b=>`<button class="bt" data-beat="${b.id}" aria-pressed="${cur===b.id}"><b>${nxEsc(b.name)}</b><small>${b.bpm} BPM</small>${b.pro&&!isPro()?PRO_LOCK:''}</button>`).join('')}</div>`).join('')}
-    ${cur&&beatPro(BEATS.find(b=>b.id===cur))?pvLine('Trying '+BEATS.find(b=>b.id===cur).name):''}<button class="nx-primary" id="btUse" ${cur?'':'disabled'}>Use this beat</button>`); };
+    ${cur&&beatPro(BEATS.find(b=>b.id===cur))?pvLine('Previewing '+BEATS.find(b=>b.id===cur).name):''}<button class="nx-primary" id="btUse" ${cur?'':'disabled'}>Use this beat</button>`); };
   draw();
   $('nxSheet').onclick=e=>{ let x;
     if(e.target.closest('[data-a="pvpro"]')){ proSheet(); return; }

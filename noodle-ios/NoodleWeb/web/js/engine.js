@@ -97,7 +97,7 @@ function pvEnd(quiet){ const p=proPv; let back=false;
   return back; }
 /* someone bought Pro while trying something: keep it */
 function pvCommitAll(){ delete S._pvOrig; S.tracks.forEach(t=>{ delete t._pvOrig; delete t._pvTemp; }); if(proPv){ proPv=null; save(); } }
-function proNote(ls){ toast((ls.length>1?ls.join(' and ')+' are':ls[0]+' is')+' Pro. Get Pro to keep '+(ls.length>1?'them':'it')+'.',5000); const t=$('toast'); t.classList.add('act'); t.onclick=()=>{ t.classList.remove('on'); proSheet(); }; }
+function proNote(ls){ toast((ls.length>1?ls.join(' and ')+' are':ls[0]+' is')+' Pro. Get Pro to keep '+(ls.length>1?'them':'it')+'.',5000); const t=$('toast'); t.classList.add('act'); t.onclick=()=>{ toastOff(t); proSheet(); }; }
 const proBridge=()=>!!(window.webkit&&window.webkit.messageHandlers&&window.webkit.messageHandlers.noodlePro);
 /* from the app: whether Pro is owned, and its price in the App Store's own words (e.g. "$6.99") */
 window.noodlePro=(owned, price)=>{ const was=PRO.owned; PRO.owned=!!owned; if(price) PRO.price=price; try{ localStorage.setItem('noodle.pro',PRO.owned?'1':'0'); }catch(e){}
