@@ -258,7 +258,7 @@ function finishCalib(x,sr,pre){
   const beat=60/S.bpm, lo=-0.12*beat;
   // claps always come after the click they answer, so measure each one in a window from just before a click to most of a beat after
   const dev=ons.map(o=>{ const t=o.t-pre; return ((((t-lo)%beat)+beat)%beat)+lo; });
-  if(dev.length<4){ toast('I heard '+dev.length+' claps. Clap louder on every click and try again.'); return; }
+  if(dev.length<4){ toast('Noodle heard '+dev.length+' claps. Clap louder on every click and try again.'); return; }
   const md=median(dev), spread=median(dev.map(d=>Math.abs(d-md)));
   if(md<0.015){ toast('That measured almost no delay, which usually means the mic heard the click instead of your claps. Wear headphones and calibrate again.'); return; }
   if(spread>0.06){ toast('Those claps were too uneven to measure. Try again, clapping right on each click.'); return; }
