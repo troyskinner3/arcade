@@ -59,11 +59,11 @@ function exampleTracks(){
   const bass=[[0,3,57],[3,1,57],[6,2,60],[8,4,55],[14,2,57],[16,3,57],[19,1,57],[22,2,64],[24,3,62],[28,4,60]].map(([s,l,p])=>({s,l,p,v:0.85}));
   const keys=[[0,8,57],[8,8,55],[16,8,57],[24,4,62],[28,4,60]].map(([s,l,p])=>({s,l,p,v:0.7}));
   const lead=[[2,2,69],[4,2,72],[6,4,76],[12,2,74],[14,2,72],[18,2,69],[20,2,72],[22,2,74],[24,6,71]].map(([s,l,p])=>({s,l,p:p+0.1,v:0.75}));
-  return [
-    mkTrack('kit',{id:1,hits,ex:true,sound:'Punchy'}),
-    mkTrack('bass',{id:2,notes:bass,ex:true,sound:'Pluck',vol:72,oct:-2,send:15}),
-    mkTrack('lead',{id:3,notes:lead,ex:true,sound:'Bell',vol:37,oct:1,send:43}),
-    mkTrack('keys',{id:4,notes:keys,ex:true,sound:'Piano',vol:54,oct:0,send:32,chordType:'triad'}),   /* chords: Am, G, Am, Dm, C */
+  return [   /* picked: the tracks are named after their sounds (Punchy kit, Pluck, Bell, Piano; owner, Nov 2026) */
+    mkTrack('kit',{id:1,hits,ex:true,sound:'Punchy',picked:true}),
+    mkTrack('bass',{id:2,notes:bass,ex:true,picked:true,sound:'Pluck',vol:72,oct:-2,send:15}),
+    mkTrack('lead',{id:3,notes:lead,ex:true,picked:true,sound:'Bell',vol:37,oct:1,send:43}),
+    mkTrack('keys',{id:4,notes:keys,ex:true,picked:true,sound:'Piano',vol:54,oct:0,send:32,chordType:'triad'}),   /* chords: Am, G, Am, Dm, C */
     Object.assign(mkTrack('fx',{id:5,ex:true}),{fxs:[{...fxNew('sweepDown',0,32),v:0.4},{...fxNew('riser',16,32),v:0.25},{...fxNew('sweepUp',16,32),v:0.3}]}),   /* a noise sweep down out of the downbeat; a riser and a noise sweep up back into the loop */
   ];
 }

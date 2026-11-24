@@ -9,7 +9,7 @@ Drafts to paste into App Store Connect (and tweak). Character limits are Apple's
 | Product ID | io.tuttii.Noodle.pro |
 | Display name (30) | Noodle Pro [10] |
 | Description (45) | Every sound, effect and export, for life [40] |
-| Price | $6.99 suggested (owner to decide; $4.99–$9.99) |
+| Price | $4.99 one-time Noodle Pro (set in App Store Connect) |
 | Review screenshot | More → Noodle Pro, with Test as → App Store |
 
 Review notes:

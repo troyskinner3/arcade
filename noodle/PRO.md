@@ -4,7 +4,7 @@ The one list of what is free and what Noodle Pro unlocks. Update it with every n
 **proposed** until the owner confirms it.
 
 ## How Pro is sold
-- **Noodle Pro, one-time purchase** at launch (confirmed) (about $5–10; a short free trial is optional).
+- **Noodle Pro, one-time purchase** at launch (confirmed) ($4.99, set in App Store Connect; a short free trial is optional).
 - **If a yearly plan comes later (confirmed):** everyone who bought the one-time Pro keeps Pro for life, including features added later (early adopters
   are rewarded, never asked to pay again). The yearly plan is then simply the way new people get Pro. Only something with real running
   costs (for example cloud sync) might be subscription-only, and even then lifetime buyers should be considered for it.
