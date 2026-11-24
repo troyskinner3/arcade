@@ -21,7 +21,7 @@ function ensureCtx(){
   playThroughSilentSwitch();
   if(!ctx){
     const AC=window.AudioContext||window.webkitAudioContext; ctx=new AC({latencyHint:'interactive'});
-    chain=buildChain(ctx, true); applyMaster();
+    chain=buildChain(ctx, true); applyMaster(); fxWorklet(ctx);
     S.tracks.forEach(t=>{ t._dirty=true; });
   }
   if(ctx.state!=='running') ctx.resume();
@@ -125,7 +125,7 @@ function proBuy(){ if(!proBridge()){ toast('Noodle Pro is in the Noodle iPhone a
 function proRestore(){ if(!proBridge()){ toast('Noodle Pro is in the Noodle iPhone app.'); return; } track('restore'); try{ window.webkit.messageHandlers.noodlePro.postMessage('restore'); }catch(e){} toast('Checking with the App Store…'); }
 function nxProSync(){ const e=$('nxProS'); if(!e) return; e.textContent=(devAs()?'Testing: ':'')+(isPro()?'You have Pro':'More sounds, effects and exports'+(PRO.price?' · '+PRO.price:'')); }
 /* ---- Mix FX editor ---- */
-/* The Song FX editor, as in the Tuttii FX prototype: pick the effect; its curve over the region (x: bars of the region, so it scales with it;
+/* The Mix effects editor, as in the Tuttii FX prototype: pick the effect; its curve over the region (x: bars of the region, so it scales with it;
    y: the cutoff in Hz on a log scale for High pass / Low pass, how much of the effect is mixed in for the rest); + adds a point in the widest gap,
    tap a point then − to remove it, drag points to reshape, drag a line's middle up or down to bow it, Reset; then the effect's own settings. */
 function mfxEdMount(tr, host){ const pro=true,   /* everyone shapes curves; the 9 Pro effects are previews for free users (mfxTry) */ cfg=()=>MFX[tr.mfx.k], dur=()=>pSteps(tr)*stepDur(), w=document.createElement('div'); w.className='mfxe'; host.appendChild(w);
@@ -151,15 +151,15 @@ function mfxEdMount(tr, host){ const pro=true,   /* everyone shapes curves; the 
     g.strokeStyle=c('--s2-line'); g.lineWidth=1;
     const ticks=isF()?[[20,'20'],[100,'100'],[1000,'1k'],[10000,'10k'],[20000,'20k']].map(([hz,t])=>[Math.log(hz/20)/LOGR,t]):[[0.25,'25%'],[0.5,'50%'],[0.75,'75%']];
     ticks.forEach(([d,t])=>{ const y=Math.round(Y(d))+0.5; g.beginPath(); g.moveTo(X(0),y); g.lineTo(X(1),y); g.stroke(); g.beginPath(); g.moveTo(X(0)-6,y); g.lineTo(X(0)-1,y); g.stroke(); lbl(t,X(0)-9,y,'right','middle'); });
-    const bars=pBars(tr), step=bars<=4?1:bars<=8?2:bars<=16?4:8;   /* bars of the region */
-    for(let b=step;b<bars-1e-9;b+=step){ const x=Math.round(X(b/bars))+0.5; g.beginPath(); g.moveTo(x,Y(1)); g.lineTo(x,Y(0)+5); g.stroke(); lbl(String(b),x,Y(0)+8,'center','top'); }
+    const bars=pBars(tr), step=bars<=4?1:bars<=8?2:bars<=16?4:8, b0=Math.floor((tr.off||0)/16);   /* the song's bar numbers, as on the timeline and in the other editors */
+    for(let b=0;b<bars-1e-9;b+=step){ const x=Math.round(X(b/bars))+0.5; if(b){ g.beginPath(); g.moveTo(x,Y(1)); g.lineTo(x,Y(0)+5); g.stroke(); } lbl(String(b0+b+1),x+(b?0:4),Y(0)+8,b?'center':'left','top'); }
     lbl('Bars',(X(0)+X(1))/2,H-2,'center','bottom'); g.save(); g.translate(12,(Y(0)+Y(1))/2); g.rotate(-Math.PI/2); lbl(isF()?'Frequency (Hz)':'Mix',0,0,'center','middle'); g.restore();
     const ns=nodes(), cvv=tr.mfx.curve&&tr.mfx.curve.curves, N=240, at=t=>Y(disp(clamp(mfxValAt(ns,t,cvv),0,1)));
     g.beginPath(); for(let i=0;i<=N;i++){ const t=i/N; i?g.lineTo(X(t),at(t)):g.moveTo(X(t),at(t)); } g.strokeStyle=col; g.lineWidth=2.5; g.stroke();
     for(let i=0;i<ns.length-1;i++){ const m=(ns[i].t+ns[i+1].t)/2; g.fillStyle=ink; g.globalAlpha=0.45; g.beginPath(); g.arc(X(m),at(m),3,0,7); g.fill(); g.globalAlpha=1; }   /* drag a line's middle to bow it */
     ns.forEach((n,i)=>{ const end=i===0||i===ns.length-1; g.beginPath(); g.arc(X(n.t),Y(disp(n.v)),end?4:6.5,0,7); g.fillStyle=end?c('--s2-line'):col; g.fill(); if(i===sel){ g.lineWidth=2.5; g.strokeStyle=ink; g.stroke(); } });
     const db=w.querySelector('[data-a="del"]'); if(db) db.disabled=!(sel>0&&sel<nodes().length-1); };
-  const changed=()=>{ if(!free()) pvOpen(MFX[tr.mfx.k].label,tr); save(); draw(); const L=s2Lane(s2LaneId(tr)), lc=L&&$('s2In').querySelector(`canvas[data-cv="${L.id}"]`); if(lc) s2DrawLane(L,lc); $('s2EdS').textContent=partWhere(tr)+' · '+MFX[tr.mfx.k].label; };
+  const changed=()=>{ if(!free()) pvOpen(MFX[tr.mfx.k].label,tr); save(); draw(); const L=s2Lane(s2LaneId(tr)), lc=L&&$('s2In').querySelector(`canvas[data-cv="${L.id}"]`); if(lc) s2DrawLane(L,lc); $('s2EdS').textContent=partWhere(tr)+' · '+MFX[tr.mfx.k].label; if(L) $('s2EdT').textContent=s2Name(L); };
   const pt=ev=>{ const R=cv.getBoundingClientRect(); return {x:ev.clientX-R.left, y:ev.clientY-R.top}; };
   cv.style.touchAction=pro?'none':'pan-y';
   cv.addEventListener('pointerdown',ev=>{ if(!pro){ proSheet('Draw your own shape for each effect, and get 9 more effects.'); return; } const q=pt(ev), ns=nodes(), cvv=tr.mfx.curve&&tr.mfx.curve.curves; flushSave();
@@ -176,13 +176,13 @@ function mfxEdMount(tr, host){ const pro=true,   /* everyone shapes curves; the 
     if(!d.moved) sel = d.kind==='node' ? (sel===d.i?-1:d.i) : -1;   /* a tap selects a point (again, or elsewhere, to let go) */
     draw(); };
   cv.addEventListener('pointerup',up); cv.addEventListener('pointercancel',up);
-  const fmt=(v,pm)=>(+v).toFixed(2)+(pm.unit?' '+pm.unit:'');
+  const fmt=(v,pm)=>(+v).toFixed(pm.step>=1?0:pm.step>=0.1?1:2)+(pm.unit?' '+pm.unit:'');   /* whole-number settings show whole numbers ("4 bit", not "4.00 bit") */
   const params=()=>{ const box=w.querySelector('.mfx-par'); if(!box) return; const c=cfg(); box.innerHTML=(c.params||[]).map(pm=>{ const v=mfxParam(tr,c,pm.key);
       if(pm.type==='steps') return `<div class="mfx-st"><span>${pm.label}</span><div class="s2-opts mfx-steps">${pm.options.map(([x,l])=>`<button data-pk="${pm.key}" data-pv="${x}" aria-pressed="${x===v}">${l}</button>`).join('')}</div></div>`;
       return `<label class="mfx-sl"><span>${pm.label}</span><input type="range" data-pk="${pm.key}" min="${pm.min}" max="${pm.max}" step="${pm.step}" value="${v}"><b>${fmt(v,pm)}</b></label>`; }).join(''); };
   w.addEventListener('click',ev=>{ const b=ev.target.closest('button'); if(!b) return;
     if(b.dataset.k){ const k=b.dataset.k; if(!isPro()){ if(MFX[k].free){ pvForget(tr,['mfx']); } else if(!tr._pvOrig||!('mfx' in tr._pvOrig)){ tr._pvOrig=tr._pvOrig||{}; tr._pvOrig.mfx=pvCopy(tr.mfx); } }   /* a free effect is kept; a Pro one is tried */
-      tr.mfx.k=k; tr.mfx.params={}; try{ $('s2EdHint').textContent=mfxHint(tr); }catch(e){} w.querySelectorAll('.mfx-k button').forEach(x=>x.setAttribute('aria-pressed',String(x.dataset.k===k))); params(); changed(); return; }
+      tr.mfx.k=k; tr.mfx.params={}; tr.picked=true;   /* the track is named after its effect (s2Auto) */ try{ $('s2EdHint').textContent=mfxHint(tr); }catch(e){} w.querySelectorAll('.mfx-k button').forEach(x=>x.setAttribute('aria-pressed',String(x.dataset.k===k))); params(); changed(); return; }
     if(b.dataset.pk){ tr.mfx.params[b.dataset.pk]=+b.dataset.pv; params(); changed(); return; }
     const a=b.dataset.a; if(a==='pro') proSheet('Draw your own shape for each effect, and get 9 more effects.');
     else if(a==='add'){ flushSave(); const C=own(); let i=0, gap=-1; for(let j=0;j<C.nodes.length-1;j++){ const gj=C.nodes[j+1].t-C.nodes[j].t; if(gj>gap){ gap=gj; i=j; } } if(gap<0.02) return;   /* in the widest gap, on the curve as it is */
@@ -201,8 +201,8 @@ const MFX={
   echo:{label:'Echo throw', kind:'echo', div:0.5, feedback:0.45, params:[{key:'div',label:'Delay Time',type:'steps',options:[[0.25,'1/16'],[0.5,'1/8'],[0.75,'1/8.'],[1,'1/4'],[1.5,'1/4.'],[2,'1/2']]},{key:'feedback',label:'Feedback',min:0,max:0.85,step:0.01}]},
   tremolo:{label:'Tremolo', kind:'tremolo', lfoRateHz:5, params:[{key:'lfoRateHz',label:'LFO Rate',unit:'Hz',min:0.5,max:20,step:0.1}]},
   autopan:{label:'Auto-pan', kind:'autopan', lfoRateHz:1, params:[{key:'lfoRateHz',label:'LFO Rate',unit:'Hz',min:0.1,max:10,step:0.1}]},
-  crush:{label:'Bitcrusher', kind:'crush', bitDepth:4, params:[{key:'bitDepth',label:'Bit Depth',unit:'bit',min:1,max:16,step:1}]},
-  brake:{label:'Vinyl brake', kind:'brake', maxDelaySec:0.35, minHz:700, minGain:0.2},
+  crush:{label:'Bitcrusher', kind:'crush', bitDepth:4, rateHz:6000, params:[{key:'bitDepth',label:'Bit depth',unit:'bit',min:2,max:8,step:1},{key:'rateHz',label:'Sample rate',unit:'Hz',min:1000,max:12000,step:250}]},   /* 2-8 bits: every step is heard (above 8 the steps are too fine to hear on a mix) */
+  brake:{label:'Vinyl brake', kind:'brake', minHz:300},   /* the curve is how far the record has slowed: 100% = stopped */
   swell:{label:'Reverse swell', kind:'swell', fromHz:150, toHz:9000},
   ring:{label:'Ring mod', kind:'ring', carrierHz:250, params:[{key:'carrierHz',label:'Frequency',unit:'Hz',min:20,max:2000,step:5}]} };
 const MFX_GAP=0.002, MFX_DROP=0.02, MFX_BOW=12;
@@ -221,6 +221,17 @@ function mfxPoints(p,dur,off){ const nodes=mfxNodes(p,dur), cv=p.mfx.curve&&p.mf
 function mfxSweep(par,from,to,p,at,off,dur){ const hz=f=>from*Math.pow(to/from,f); par.setValueAtTime(hz(mfxFrac(p,dur,dur>0?off/dur:1)),at); mfxPoints(p,dur,off).forEach(q=>par.exponentialRampToValueAtTime(hz(q.f),at+q.s-off)); }
 function mfxWet(dry,wet,p,at,off,dur){ const w0=mfxFrac(p,dur,dur>0?off/dur:1); wet.gain.setValueAtTime(w0,at); dry.gain.setValueAtTime(1-w0,at); mfxPoints(p,dur,off).forEach(q=>{ wet.gain.linearRampToValueAtTime(q.f,at+q.s-off); dry.gain.linearRampToValueAtTime(1-q.f,at+q.s-off); }); }
 function mfxDepth(p,off,dur){ return [{s:off,f:mfxFrac(p,dur,dur>0?off/dur:1)}].concat(mfxPoints(p,dur,off)); }
+/* the Bitcrusher's worklet: rounds each sample to 2^bits steps and holds it for `hold` samples (a lower sample rate). Loaded from a Blob like the
+   recorder's (works offline); live contexts load it in ensureCtx, a mix render before its effects (fxWorklet). Without it: steps only. */
+const CRUSH_WORKLET=`class C extends AudioWorkletProcessor{ static get parameterDescriptors(){ return [{name:'bits',defaultValue:4,minValue:1,maxValue:16,automationRate:'k-rate'},{name:'hold',defaultValue:8,minValue:1,maxValue:256,automationRate:'k-rate'}]; }
+  constructor(){ super(); this.ph=[0,0]; this.v=[0,0]; }
+  process(ins,outs,p){ const i=ins[0], o=outs[0]; if(!i||!i.length) return false; const st=Math.pow(2,p.bits[0]), h=p.hold[0];
+    for(let c=0;c<o.length;c++){ const x=i[Math.min(c,i.length-1)], y=o[c]; let ph=this.ph[c]||0, v=this.v[c]||0; for(let n=0;n<y.length;n++){ ph+=1; if(ph>=h){ ph-=h; v=Math.round(x[n]*st)/st; } y[n]=v; } this.ph[c]=ph; this.v[c]=v; } return true; } }
+registerProcessor('nd-crush',C);`;
+let crushUrl=null;
+function fxWorklet(c){ if(c._ndCrushP) return c._ndCrushP; if(!c.audioWorklet||typeof AudioWorkletNode==='undefined') return Promise.resolve(false);
+  try{ crushUrl=crushUrl||URL.createObjectURL(new Blob([CRUSH_WORKLET],{type:'application/javascript'})); }catch(e){ return Promise.resolve(false); }
+  return c._ndCrushP=c.audioWorklet.addModule(crushUrl).then(()=>{ c._ndCrush=true; if(c===ctx&&mfxLive&&playing){ try{ mfxStart(ctx.currentTime+0.03,(((ctx.currentTime+0.03-mfxLive.T0)%mfxLive.L)+mfxLive.L)%mfxLive.L); }catch(e){} } return true; },()=>false); }
 const MFX_CRUSH={}; function mfxCrushCurve(b){ return MFX_CRUSH[b]||(MFX_CRUSH[b]=(()=>{ const st=Math.pow(2,b), c=new Float32Array(1024); for(let i=0;i<1024;i++){ const x=i/1023*2-1; c[i]=Math.round(x*st)/st; } return c; })()); }
 const MFX_NOISE=new WeakMap(), MFX_WASH=new WeakMap();
 const mfxRand=seed=>{ let st=seed>>>0; return ()=>{ st^=st<<13; st^=st>>>17; st^=st<<5; return ((st>>>0)/4294967296)*2-1; }; };
@@ -239,9 +250,24 @@ function mfxUnit(c,p,keep){ const cfg=MFX[p.mfx.k], K=n=>keep(n), G=v=>{ const g
     case 'echo': { const u=dryWet(), dl=K(c.createDelay(2)), fb=G(mfxParam(p,cfg,'feedback')); dl.delayTime.value=mfxParam(p,cfg,'div')*60/S.bpm; u.i.connect(dl); dl.connect(fb); fb.connect(dl); dl.connect(u.wet); return {p,input:u.i,output:u.o,automate:(at,off,dur)=>mfxWet(u.dry,u.wet,p,at,off,dur)}; }
     case 'tremolo': { const g=G(1), l=lfo(mfxParam(p,cfg,'lfoRateHz')), d=G(0); l.connect(d); d.connect(g.gain); return {p,input:g,output:g,automate:(at,off,dur)=>mfxDepth(p,off,dur).forEach((q,i)=>{ const m=i?'linearRampToValueAtTime':'setValueAtTime', t=at+q.s-off; g.gain[m](1-q.f/2,t); d.gain[m](q.f/2,t); })}; }
     case 'autopan': { const pn=K(c.createStereoPanner()), l=lfo(mfxParam(p,cfg,'lfoRateHz')), d=G(0); l.connect(d); d.connect(pn.pan); return {p,input:pn,output:pn,automate:(at,off,dur)=>mfxDepth(p,off,dur).forEach((q,i)=>d.gain[i?'linearRampToValueAtTime':'setValueAtTime'](q.f,at+q.s-off))}; }
-    case 'crush': { const u=dryWet(), sh=K(c.createWaveShaper()); sh.curve=mfxCrushCurve(mfxParam(p,cfg,'bitDepth')); u.i.connect(sh); sh.connect(u.wet); return {p,input:u.i,output:u.o,automate:(at,off,dur)=>mfxWet(u.dry,u.wet,p,at,off,dur)}; }
-    case 'brake': { const dl=K(c.createDelay(1)), f=K(c.createBiquadFilter()), g=G(1); dl.delayTime.value=0.002; f.type='lowpass'; f.frequency.value=Math.min(20000,c.sampleRate/2-100); dl.connect(f); f.connect(g);
-      const top=Math.min(20000,c.sampleRate/2-100); return {p,input:dl,output:g,automate:(at,off,dur)=>mfxDepth(p,off,dur).forEach((q,i)=>{ const m=i?'linearRampToValueAtTime':'setValueAtTime', t=at+q.s-off; dl.delayTime[m](0.002+q.f*cfg.maxDelaySec,t); f.frequency[m](top-q.f*(top-cfg.minHz),t); g.gain[m](1-q.f*(1-cfg.minGain),t); })}; }
+    case 'crush': { const u=dryWet(), bits=clamp(mfxParam(p,cfg,'bitDepth'),2,8); let cr=null;   /* fewer loudness steps AND a lower sample rate (the lo-fi grit), when the worklet is there */
+      if(c._ndCrush){ try{ cr=K(new AudioWorkletNode(c,'nd-crush',{parameterData:{bits, hold:Math.max(1,c.sampleRate/clamp(mfxParam(p,cfg,'rateHz')||6000,500,c.sampleRate))}})); }catch(e){ cr=null; } }
+      if(!cr){ cr=K(c.createWaveShaper()); cr.curve=mfxCrushCurve(bits); }   /* fallback: loudness steps only */
+      u.i.connect(cr); cr.connect(u.wet); return {p,input:u.i,output:u.o,automate:(at,off,dur)=>mfxWet(u.dry,u.wet,p,at,off,dur)}; }
+    case 'brake': {   /* a record slowing down (owner, Nov 2026; the prototype's only slowed while its curve was rising, and only ~7%).
+        The curve is the slowdown f (0 = normal, 1 = stopped). A delay that grows by f seconds every second plays the song at speed 1-f
+        (pitch and tempo drop together), so the lag is the running total of f; the sound gets darker and quieter as it slows, and is silent
+        when stopped. In seconds of the song, so it follows the tempo. At the end of the region the lag is dropped (a 20 ms dip in
+        volume), so the song is always back on the beat after it. */
+      const cap=Math.min(60,mfxSpan(p).d)+0.1, dl=K(c.createDelay(cap)), f=K(c.createBiquadFilter()), g=G(1), top=Math.min(20000,c.sampleRate/2-100); dl.delayTime.value=0;
+      f.type='lowpass'; f.frequency.value=top; dl.connect(f); f.connect(g);
+      return {p,input:dl,output:g,automate:(at,off,dur)=>{ const N=Math.max(16,Math.ceil(dur*60)), dt=dur/N, pts=[]; let lag=0, fp=0;
+        for(let i=0;i<=N;i++){ const fi=mfxFrac(p,dur,i/N); if(i) lag=Math.min(cap-0.1, lag+(fi+fp)/2*dt); fp=fi; pts.push({s:i*dt,f:fi,lag}); }
+        const snap=lag>0.004, fade=Math.min(0.03,dur/4), te=at+dur-off;
+        const val=q=>({d:q.lag, hz:cfg.minHz+(top-cfg.minHz)*Math.pow(1-q.f,2), g:(snap&&q.s>dur-fade)?0:Math.pow(1-q.f,0.6)});
+        let first=true; pts.forEach((q,i)=>{ const nx=pts[i+1]; if(nx&&nx.s<=off) return; const v=val(q), t=Math.max(at,at+q.s-off), m=first?'setValueAtTime':'linearRampToValueAtTime'; first=false;
+          dl.delayTime[m](v.d,t); f.frequency[m](v.hz,t); g.gain[m](v.g,t); });
+        if(snap){ dl.delayTime.setValueAtTime(0,te); f.frequency.setValueAtTime(top,te); g.gain.setValueAtTime(0,te); g.gain.linearRampToValueAtTime(1,te+0.02); } }}; }
     case 'swell': { const u=dryWet(), nz=K(c.createBufferSource()), f=K(c.createBiquadFilter()); nz.buffer=mfxNoise(c); nz.loop=true; f.type='bandpass'; f.Q.value=1.2; f.frequency.value=cfg.fromHz; nz.connect(f); f.connect(u.wet); nz.start();   /* as the prototype: rising filtered noise, crossfaded against the mix */
       return {p,input:u.i,output:u.o,automate:(at,off,dur)=>{ mfxWet(u.dry,u.wet,p,at,off,dur); mfxSweep(f.frequency,cfg.fromHz,cfg.toHz,p,at,off,dur); }}; }
     case 'ring': { const u=dryWet(), rg=G(0), car=lfo(mfxParam(p,cfg,'carrierHz')); car.connect(rg.gain); u.i.connect(rg); rg.connect(u.wet); return {p,input:u.i,output:u.o,automate:(at,off,dur)=>mfxWet(u.dry,u.wet,p,at,off,dur)}; } } }
@@ -263,7 +289,7 @@ function mfxOffline(oc, ch, K){ const parts=mfxParts(); if(!parts.length) return
 function buildChain(c, live){
   const input=c.createGain(), shaper=c.createWaveShaper(), comp=c.createDynamicsCompressor(), out=c.createGain(), revIn=c.createGain(), conv=c.createConvolver(), revRet=c.createGain();
   // master: trim (auto gain staging) → drive → glue compressor → volume → limiter → safety clipper
-  const lim=c.createDynamicsCompressor(), safe=c.createWaveShaper();   /* Song FX go between the volume and this limiter (mfxWire) */ lim.threshold.value=-2; lim.knee.value=0; lim.ratio.value=20; lim.attack.value=0.001; lim.release.value=0.12; safe.curve=SAFE_CURVE; safe.oversample='2x';
+  const lim=c.createDynamicsCompressor(), safe=c.createWaveShaper();   /* Mix effects go between the volume and this limiter (mfxWire) */ lim.threshold.value=-2; lim.knee.value=0; lim.ratio.value=20; lim.attack.value=0.001; lim.release.value=0.12; safe.curve=SAFE_CURVE; safe.oversample='2x';
   input.connect(shaper); shaper.connect(comp); comp.connect(out); out.connect(lim); lim.connect(safe);
   let gate=null; if(live){ gate=c.createGain(); safe.connect(gate); gate.connect(c.destination); } else safe.connect(c.destination);
   revIn.connect(conv); conv.connect(revRet); revRet.connect(input);

@@ -12,7 +12,7 @@ The one list of what is free and what Noodle Pro unlocks. Update it with every n
 
 ## In the app
 Enforced in `noodle/js/` (mostly `engine.js`, `studio.js`, `export.js`): `PRO_SOUNDS` (Pro sounds, including Vocoder and Talkbox), `CHORD_STYLES[...].pro`, `isPro()` for track effects and backing vocals, `MFX[...].free` (free mix effects), the DAW pack and the video tag in Share, curve drawing in
-the Song FX editor. The purchase is `ProStore` in `noodle-ios/NoodleWeb/NoodleWebApp.swift` (product `io.tuttii.Noodle.pro`). Keep this list and the code in step.
+the Mix effects editor. The purchase is `ProStore` in `noodle-ios/NoodleWeb/NoodleWebApp.swift` (product `io.tuttii.Noodle.pro`). Keep this list and the code in step.
 **How free users see Pro (confirmed):** every Pro option carries a small amber sparkle (`PRO_LOCK`), gone once Pro is owned. Free users can *try*
 Pro sounds, the 9 Pro song effects, track effects, backing vocals and the Pulse / Arp chord styles: the part plays, looping, with the Pro thing
 on it, but a try is never saved, undone, shared or exported (`pvKeep` writes the song without it), and it goes back when the menu or editor
@@ -54,6 +54,9 @@ Status: **confirmed** (owner agreed) or **proposed** (waiting on the owner).
 | Musical mode: melody takes come out more musical (learned from ~45,000 public-domain and CC0 songs); As heard / Musical swap in the note editor | confirmed |
 | Chords from your melody: Pad and Piano styles, chords every bar or half bar | proposed |
 | Drum fills every 4 or 8 bars (with a crash after each), set per part in the drum editor | proposed |
+| Track names follow the sound or effect you pick ("Bell", "Phaser", "Punchy kit") until you type one. Suggest Free | proposed |
+| New part: drag the dotted outline's handles to set its start and length before New part. Suggest Free | proposed |
+| Transitions (were "Sound FX"): Octave on risers and downlifters. Suggest Free | proposed |
 | Song sections: name, loop and duplicate Intro / Verse / Chorus / Bridge / Outro | proposed |
 | Your presets: vocal presets, track-effect presets, your own drum kits (any drum from any kit + your taught noises), saved on the phone and in backups (a preset with Pro parts is tried) | confirmed |
 | Beats: one per style (Night Drive trap, Dusty Steps boom bap, Rainy Window lo-fi, Night Bus drill, Sunny Side pop, Velvet R&B) | confirmed |
@@ -85,7 +88,7 @@ Status: **confirmed** (owner agreed) or **proposed** (waiting on the owner).
 |---|---|
 | More instruments than today (recorded and synth) | confirmed direction |
 | Premium FX with automation curves you draw over time, reusing the mechanics of the Tuttii prototype (feedback from both apps) | confirmed direction |
-| Song FX (mix effects) from the prototype (`troyskinner3/tuttii-fx-prototype`): free gets High pass and Low pass **with full control** (draw and bow the curve, controls, Reset); Pro gets the other 9 (Phaser, Washout, Echo throw, Tremolo, Auto-pan, Bitcrusher, Vinyl brake, Reverse swell, Ring mod), which free users can try | confirmed |
+| Mix effects (were "Song FX") from the prototype (`troyskinner3/tuttii-fx-prototype`): free gets High pass and Low pass **with full control** (draw and bow the curve, controls, Reset); Pro gets the other 9 (Phaser, Washout, Echo throw, Tremolo, Auto-pan, Bitcrusher (bit depth and sample rate), Vinyl brake (slows to a real stop), Reverse swell, Ring mod), which free users can try | confirmed |
 
 ### Limits on free
 - None at launch (confirmed): no caps on song length, parts or number of songs. Pro sells depth (sounds, FX, exports, no tag), not walls. Adding limits later would take away what people had, so start without them.

@@ -53,7 +53,13 @@ The owner's rules, gathered from reviews. Read this before any UI or copy change
 - **One Loop button:** with a part selected it loops that part, with nothing selected the whole song. Whatever loops shows as
   the yellow band on the ruler; tapping the band stops it.
 - **Settings for one part live in that part's editor** (drum fills in the drum editor), not in the track's sheet.
-- **Effects sit in the background:** a new Sound FX effect starts at volume 40.
+- **Effects sit in the background:** a new Transitions effect starts at volume 40.
+- **Names say what something is for:** Transitions (risers, sweeps, impacts you make with your mouth) and Mix effects (filters and effects
+  across the whole song), under the FX heading in Add track. Not "Sound FX" / "Song FX" (too alike), not "Ear candy".
+- **Track names follow the pick:** a track is named after the sound or effect chosen ("Bell", "Phaser", "Punchy kit", "Pop vocals") until
+  someone types a name, which is never changed. Until a pick, or when its parts differ, it shows the type ("Lead", "Mix effects").
+- **Every part editor has bar numbers on top** (the song's bars), tap or drag them to move the playhead.
+- **Whole-number settings show whole numbers** ("4 bit", not "4.00 bit").
 - **Feedback:** a light haptic for placing things, medium for record start and stop.
 - **Big targets while recording:** anything you touch while singing (the tap pad) is huge and easy to hit without looking.
 

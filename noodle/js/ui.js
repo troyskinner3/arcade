@@ -9,7 +9,7 @@ function toastPlace(t){ t.style.bottom=''; try{ if(s2On()){ const r=($('s2Ed').h
 document.addEventListener('pointerdown',e=>{ const t=$('toast'); if(t&&t.classList.contains('on')&&!t._busy&&!(t.classList.contains('act')&&t.contains(e.target))){ clearTimeout(t._h); toastOff(t); } },{capture:true,passive:true});   /* any tap puts the message away (a tap on its Get Pro opens the sheet) */
 function showBusy(msg){ if(toastQuiet) return ()=>{}; const t=$('toast'); t.textContent=msg; t.classList.remove('act'); t.onclick=null; toastPlace(t); t._busy=true; t.classList.add('on'); clearTimeout(t._h); return ()=>{ t._busy=false; }; }
 /* instrument picker: grouped, with the mouth sounds and a one-line description */
-const PICK_GROUPS=[['Percussion',['kit']],   /* one drum track type (the kit); older songs' single Kick / Snare / Hi-hat / Clap tracks still play and edit */['Melodic',['bass','lead','keys','pad','arp']],['Vocals',['vox']],['Ear candy',['fx','mix']]];
+const PICK_GROUPS=[['Percussion',['kit']],   /* one drum track type (the kit); older songs' single Kick / Snare / Hi-hat / Clap tracks still play and edit */['Melodic',['bass','lead','keys','pad','arp']],['Vocals',['vox']],['FX',['fx','mix']]];
 /* ---- spotlight ruler (vocals): drag to create, drag edges to resize, drag the middle to move, tap to select then ✕ to remove ---- */
 // (renderTracks keeps tr._spotSel, so a new region stays selected)
 /* ---- envelope designer: attack, decay/sustain and release points on a graph ---- */
@@ -35,7 +35,7 @@ function changeInst(tr,k){ if(tr.inst===k) return; const from=INST[tr.inst], to=
   const was=partName(tr); tr.inst=k; if(!to.sounds.includes(tr.sound)) tr.sound=mkTrack(k).sound; if(from.kind==='pitched') tr.oct=to.oct||0; autoOct(tr);
   tr._dirty=true; keyCache=null; keyChanged(); save(); renderTracks(); scheduleRender(); toast(`${was} now plays ${to.label}`); }
 const pct=v=>v+'%';
-function partName(tr){ if(tr.name) return tr.name; const same=S.tracks.filter(t=>t.inst===tr.inst); return INST[tr.inst].label+(same.length>1?' '+(same.indexOf(tr)+1):''); }
+function partName(tr){ if(tr.name) return tr.name; try{ const L=s2Lane(s2LaneId(tr)); if(L) return s2Name(L); }catch(e){} const same=S.tracks.filter(t=>t.inst===tr.inst); return INST[tr.inst].label+(same.length>1?' '+(same.indexOf(tr)+1):''); }
 let gridCW=16; try{ const z=+localStorage.getItem('noodle.zoom'); if(isFinite(z)&&z>0) gridCW=z; }catch(e){}
 const zoomCW=()=>isFinite(gridCW)&&gridCW>0?gridCW:16;
 function setZoom(tr,cw,anchorX){ const G=tr._grid, wrap=tr._cv&&tr._cv.parentElement.parentElement; if(!G||!wrap) return;
@@ -148,8 +148,8 @@ function drawVox(tr){
   if(fxOf(tr).tune>0) line((f,i)=>f.ms+corr[i], cssVar('--ink'), 2);
 }
 const EDRUL_H=26;   /* the editor's bar ruler above the grid (tap or drag it to move the playhead) */
-function edRulerWire(tr,R){ if(R._wired) return; R._wired=true; let drag=false;
-  const at=e=>{ const G=tr._grid; if(!G) return null; const x=e.clientX-R.getBoundingClientRect().left-G.gut, s=clamp(x/G.cw,0,pSteps(tr)-0.001), L=loopLen(); return Math.min(((tr.off||0)+s)*stepDur(),L-0.001); };
+function edRulerWire(tr,R,grid){ if(R._wired) return; R._wired=true; let drag=false;   /* grid: where the bars are (the note grid's by default; the Transitions editor passes its own) */
+  const at=e=>{ const G=grid?grid():tr._grid; if(!G) return null; const x=e.clientX-R.getBoundingClientRect().left-G.gut, s=clamp(x/G.cw,0,pSteps(tr)-0.001), L=loopLen(); return Math.min(((tr.off||0)+s)*stepDur(),L-0.001); };
   const set=(e,go)=>{ if(recState) return; const a=at(e); if(a==null) return; playFrom=a; s2.cur=a/loopLen()*S.bars; s2.pos=-1; edSeekDraw(); if(go&&playing&&ctx) startAll(ctx.currentTime+0.02,a); };
   R.addEventListener('pointerdown',e=>{ e.stopPropagation(); drag=true; try{ R.setPointerCapture(e.pointerId); }catch(_){} set(e,false); });
   R.addEventListener('pointermove',e=>{ if(drag){ e.stopPropagation(); set(e,false); } });

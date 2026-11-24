@@ -711,3 +711,31 @@ the note editor's Today / Tap notes button flips one take between them. The fing
   -150 to +150 ms if it is still off. Not checked on a phone here: needs a new iPhone build.
 - Tests: `section_test` (one Loop button, whole-song band, tap empty space), `fills_test` (fills in the drum editor, per part),
   `haptic_test` (sentMs, Buzz timing).
+
+## Round 16 (owner review, 24 Nov)
+- Example song: opens with Loop on (the song carries `loopOn`; other songs open with Loop off) and has a noise sweep up in bar 2 at 30, with the
+  riser. An example made before this keeps its old setup; make a new one from the Songs list to see it.
+- Risers and downlifters sit an octave higher (every song, old ones too, as the owner chose) and have an Octave stepper (−2 to +2) in the
+  Transitions editor when one is selected.
+- Bar numbers: the Transitions editor has the note and drum editors' ruler (the song's bars; tap or drag to move the playhead). The Mix
+  effects editor's labels count the song's bars too (they counted from the region's start). Vocals have no editor, so nothing to add.
+- The dotted outline for a new part has handles (as a selected part has): drag the right one for length, the left one for the start,
+  stopping at the parts on either side and snapping like everything else. New part uses that size.
+- Names: Sound FX → Transitions, Song FX → Mix effects, Add track's "Ear candy" → "FX".
+- Track names follow the pick (`s2Auto`): picking a sound, kit, vocal style or preset, or a Mix effect, marks the track `picked`; it then
+  shows "Bell", "Phaser", "Punchy kit", "Pop vocals". A typed name wins and is never changed; a track whose parts differ shows its type
+  ("Mix effects"); two with the same name are numbered. Older songs keep type names until something is picked. The example's tracks keep
+  type names (nothing was picked).
+- **Bitcrusher:** it did reach every track (everything goes through the main mix before Mix effects), but it only rounded loudness: at
+  low bit depths quiet parts fell to silence while loud ones fuzzed, and above about 8 bits nothing changed (the right half of the
+  slider). Now an AudioWorklet also lowers the sample rate (the lo-fi grit; loaded from a Blob like the recorder, so it works offline,
+  and before a mix render); Bit depth runs 2–8 and Sample rate 1,000–12,000 Hz. Without worklets it falls back to the old rounding.
+- **Vinyl brake:** the prototype's design only lowered the pitch while its curve was rising (about 7% for a full rise over 2 bars), played
+  at normal speed while flat (just muffled, quieter and a third of a second late), sped up while falling, and depended on seconds rather
+  than bars. Now the curve is how far the record has slowed (100% = stopped): a delay that grows by the curve's value every second plays
+  the song at 1 − that speed, so flat at 50% is half speed throughout and 100% is a stop (silent); darker and quieter as it slows; in step
+  with the tempo. At the region's end the built-up lag is dropped behind a 20 ms dip, so the song is always back on the beat.
+- Settings with whole-number steps show whole numbers ("4 bit").
+- Tests: `round16_test.js` (names, handles, Octave, example song, ruler, renames), `mfx_brake_test.js` (half speed at 50%, silent when
+  stopped, back on pitch and in time after the region; the crusher holds samples at the set rate). `fx_ab_test.js` no longer compares
+  Bitcrusher and Vinyl brake with the prototype (changed on purpose).

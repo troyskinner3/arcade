@@ -2,13 +2,14 @@
 // srv/proto_fx.js): each effect, default curve, a 4-bar region at 120 BPM, the same test signal (a chord and clicks) through both.
 // Compared: waveform correlation, and the largest loudness difference between 50 ms windows. The two effects built on random noise
 // (Washout's reverb, Reverse swell's noise) can only match in loudness: in half-second windows, Noodle must stay within the prototype's own
-// spread across three seeded runs (+1 dB).
+// spread across three seeded runs (+1 dB). Bitcrusher and Vinyl brake were changed on purpose (round 16: a lower sample rate; a brake
+// that really stops), so they're checked in mfx_brake_test.js instead.
 const {chromium}=require('playwright');
 (async()=>{ const b=await chromium.launch(); const p=await b.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(e.message));
   await p.goto('http://localhost:8800/noodle-s2.html?studio'); await p.waitForTimeout(900); await p.addScriptTag({url:'/proto_fx.js'});
   const r=await p.evaluate(async()=>{ ensureCtx(); S.bpm=120; const sr=48000, N=sr*9, out={};
     const sig=new Float32Array(N); for(let i=0;i<N;i++){ const t=i/sr; sig[i]=0.15*(((t*220)%1)*2-1)+0.12*(((t*277.2)%1)*2-1)+0.1*(((t*329.6)%1)*2-1)+(i%12000<200?0.5*Math.exp(-(i%12000)/40):0); }
-    const ids={hp:'highpass',lp:'lowpass',phaser:'phaser',washout:'washout',echo:'echo-throw',tremolo:'tremolo',autopan:'autopan',crush:'bitcrush',brake:'vinylbrake',swell:'reverse-swell',ring:'ringmod'};
+    const ids={hp:'highpass',lp:'lowpass',phaser:'phaser',washout:'washout',echo:'echo-throw',tremolo:'tremolo',autopan:'autopan',swell:'reverse-swell',ring:'ringmod'};
     const run=async(build)=>{ const oc=new OfflineAudioContext(2,N,sr), b=oc.createBuffer(1,N,sr); b.getChannelData(0).set(sig); const src=oc.createBufferSource(); src.buffer=b; const u=build(oc); src.connect(u.input); u.output.connect(oc.destination); src.start(0); u.go(); return await oc.startRendering(); };
     for(const [k,pid] of Object.entries(ids)){
       const mr=Math.random; let st=12345; Math.random=()=>{ st=(st*1103515245+12345)>>>0; return st/4294967296; };   /* the prototype's noise, made repeatable for the test */
