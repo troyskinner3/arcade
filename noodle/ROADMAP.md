@@ -25,7 +25,7 @@ Today Noodle sends no usage analytics: only crash reports, opt-in shared takes, 
       Pro sheet, export, song links.
 - [ ] First-run flow: a new person gets from opening the app to hearing their own song quickly, with no explanations needed.
   Done so far: the share-takes question moved to after the first kept take. Still before the first song: email news and the voice check.
-- [ ] Empty, error and offline states (no mic permission, server unreachable, nothing heard).
+- [x] Empty, error and offline states: mic refused (a sheet with Open Settings and Import), song link offline vs. deleted, nothing heard (already explained).
 - [ ] Small and large iPhones, Dynamic Type, VoiceOver labels on the main buttons. (Light mode is now a real light theme; owner to check.)
 - [ ] Copy pass: no AI-sounding words, plain names, ⓘ for explanations.
 - [ ] New rules from the review go into `STYLE.md`.

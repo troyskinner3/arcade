@@ -189,6 +189,8 @@ final class NativeBridge: NSObject, WKScriptMessageHandler {
         let t = data?.base64EncodedString() ?? ""
         Task { @MainActor in self.web?.evaluateJavaScript("window.noodleDeviceToken && window.noodleDeviceToken(\(t.isEmpty ? "null" : "'\(t)'"))") }
       }
+    case "settings":   // the microphone was refused: open Noodle's page in Settings so it can be turned on
+      if let u = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(u) }
     case "rate":   // a happy moment (a song just shared): Apple decides whether the rating prompt shows (at most 3 times a year)
       if let scene = UIApplication.shared.connectedScenes.first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene {
         AppStore.requestReview(in: scene)   // StoreKit, iOS 16+

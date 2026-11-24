@@ -64,6 +64,10 @@ The owner's rules, gathered from reviews. Read this before any UI or copy change
   in light mode except readouts that are meant to look like a display (the position counter). The strip behind the status bar follows the theme.
 - **Ask for trust after value:** the share-takes question comes after the first kept take, not on first open.
 - **Noodle speaks as "Noodle"**, never "I".
+- **Errors say what to do next:** "Noodle can't hear you" with Open Settings and Import a recording, not a toast that hides the way out.
+  Offline is not "gone": say to check the connection.
+- **Checkbox and switch labels are names too** ("Count-in chord" with ⓘ, not "Play the home chord during the count-in").
+- **Outlined buttons stay outlined everywhere**, in the Studio and in sheets ("Start from a beat", "Tap the beat").
 - **Feedback:** a light haptic for placing things, medium for record start and stop.
 - **Big targets while recording:** anything you touch while singing (the tap pad) is huge and easy to hit without looking.
 
