@@ -44,7 +44,7 @@ function fxAnalyze(x, sr, align){
 async function addFxTake(x, sr, opt){
   const busy=showBusy('Listening to your take…'); await new Promise(r=>setTimeout(r,30));
   try{ const ev=fxAnalyze(x, sr, opt.align!=null?opt.align:0);
-    if(!ev.length){ toast('I couldn’t hear an effect there. Try a long rising “woooop”, a “shhh”, or a short “pshh”, a little louder.'); return; }
+    if(!ev.length){ toast('Noodle couldn’t hear an effect there. Try a long rising “woooop”, a “shhh”, or a short “pshh”, a little louder.'); return; }
     let tr=S.tracks.find(t=>t.id===S.target&&t.inst==='fx'); if(!tr){ tr=mkTrack('fx',{id:S.nextId++}); S.tracks.push(tr); }
     const n=pSteps(tr); tr.fxs=ev.filter(e=>e.s<n).map(e=>({...e,l:Math.min(e.l,n-e.s)})); tr._fxx=x; tr._dirty=true; S.activeId=tr.id; save(); renderTracks();
     const cnt={}; tr.fxs.forEach(e=>{ cnt[e.k]=(cnt[e.k]||0)+1; }); toast('FX: '+Object.entries(cnt).map(([k,c])=>c+' '+FX_KINDS[k].toLowerCase()+(c>1?'s':'')).join(', ')+'. Tap the part to change any of them.');
@@ -78,7 +78,7 @@ async function renderFx(tr){ await fxLoadPack(tr.sound);
   return b; }
 async function addVocalTake(x, sr, opt){
   let pk=0; for(let i=0;i<x.length;i++) pk=Math.max(pk,Math.abs(x[i]));
-  if(pk<0.003){ toast('I couldn’t hear any singing. Move closer to the mic and try again.'); return; }
+  if(pk<0.003){ toast('Noodle couldn’t hear any singing. Move closer to the mic and try again.'); return; }
   let va=opt.align; if(va==null){ const ons=detectOnsets(biquad(x,'hp',80,0.707,sr),sr,55,0.09); va=ons.length?Math.max(0,ons[0].t-0.02):0; }
   const tg=S.tracks.find(t=>t.id===S.target && t.inst==='vox');
   if(opt.first) dropExamples(tg);
@@ -293,7 +293,7 @@ async function addTake0(x, sr, inst, opt){
     const tgD=S.tracks.find(t=>t.id===S.target); const an=await analyzeTakeBg(x,sr,inst,tr.sens,opt.notch,partDetail(tgD)); const wmsg=fitWhistle(an,inst);
     const kind=INST[inst].kind;
     let first = kind==='pitched' ? (an.notes[0]&&an.notes[0].t0) : (an.onsets[0]&&an.onsets[0].t);
-    if(first===undefined){ toast(kind==='pitched'?'I couldn’t hear clear notes. Hum a little louder, or raise Mic sensitivity in More.':'I couldn’t hear any hits. Try a little louder, or raise Mic sensitivity in More.'); return; }
+    if(first===undefined){ toast(kind==='pitched'?'Noodle couldn’t hear clear notes. Hum a little louder, or raise Mic sensitivity in More.':'Noodle couldn’t hear any hits. Try a little louder, or raise Mic sensitivity in More.'); return; }
     an.align = opt.align!=null ? opt.align : Math.max(0,first-0.004); an.live=!!opt.live; an.notchUsed=!!opt.notch; an.base=an.align;
     let msg='', detBars=0;
     if(!opt.live && opt.first){

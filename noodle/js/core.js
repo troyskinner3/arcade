@@ -234,7 +234,7 @@ async function inviteSend(say){ let code=null; try{ code=localStorage.getItem('n
   const dev=await deviceToken(), H={'X-Owner':ownerId()}; if(dev) H['X-Device']=dev;
   let st=0; try{ st=(await fetch(`${NOODLE_API}/v1/invites/${code}/join`,{method:'PUT',headers:H})).status; }catch(e){ return; }   /* offline: try again later */
   if(st===200||st===404||st===409||st===400||st===403){ try{ localStorage.removeItem('noodle.inviteBy'); }catch(e){} }
-  if(say||st===200) toast(st===200?'Invite counted. Thanks for joining Noodle!':st===409?'That invite can’t be used from this phone (your own code, or this iPhone already joined one).':st===403?'Invites count from the Noodle iPhone app.':st===404?'That invite code wasn’t found.':'The invite didn’t go through.',5000); }
+  if(say||st===200) toast(st===200?'Invite counted. Thanks for joining Noodle.':st===409?'That invite can’t be used from this phone (your own code, or this iPhone already joined one).':st===403?'Invites count from the Noodle iPhone app.':st===404?'That invite code wasn’t found.':'The invite didn’t go through.',5000); }
 /* someone else's invite: opening their link does this on its own; typing the code is the fallback (for example after installing from it) */
 function inviteCodeSheet(){ nxSheet(`<h2>Enter an invite code</h2><p style="color:var(--muted);margin:-4px 0 12px">From a friend’s invite. Opening their invite link fills it in for you.</p><input class="nx-txt" id="invCode" maxlength="6" autocapitalize="characters" autocomplete="off" placeholder="6 letters and numbers" style="text-transform:uppercase"><button class="nx-primary" id="invUse">Use code</button>`);
   $('nxSheet').onclick=null; $('invUse').onclick=()=>{ if(inviteUse($('invCode').value)) nxClose(); }; }
@@ -362,14 +362,14 @@ async function nxVoiceCheck(done, opt={}){ const TUNES=opt.tunes||NX_TUNES; let 
       if(stop) break; if(playing){ stopAll(); playing=false; } takeBar=null;
       const tk=S.tracks.find(t=>!t.guide); good=!!(tk&&(tu.kit ? (tk.hits||[]).length>=4 : /^long-/.test(TUNES[i]) ? (tk.notes||[]).length>=1 : (tk.notes||[]).length>=5));
       if(good){ if(!drop && tk.notes && !tu.kit){ learnSqueeze(tk); persist(); } nxTuneDone(TUNES[i]); learned++; }   /* when sharing is on, sending the take already counted it */
-      else if(tries<2){ if(await ask(`<h1>Let’s try that once more</h1><p class="sub">I couldn’t hear enough of it. A little louder, closer to the phone.</p>`,[['vcRe','Try again','nx-primary'],['vcStop2','Stop','nx-ghost']])!==0) stop=true; } } }
+      else if(tries<2){ if(await ask(`<h1>Try that once more</h1><p class="sub">Noodle couldn’t hear enough of it. A little louder, closer to the phone.</p>`,[['vcRe','Try again','nx-primary'],['vcStop2','Stop','nx-ghost']])!==0) stop=true; } } }
   if(stop) return end();
   try{ if(learned) localStorage.setItem('noodle.voice',String(Date.now())); }catch(e){}
   if(opt.train){ const dn=GUIDED.filter(g=>guidedDone.has(g[0])).length;
-    const k=await ask(learned ? `<h1>Nice.</h1><p class="sub">Noodle knows your voice a little better now.</p><p class="sub">${dn} of ${GUIDED.length} tunes done.</p>` : `<h1>That didn’t work this time</h1><p class="sub">I couldn’t hear the tunes clearly, so nothing changed.</p>`,[['vcMore',learned?'Do three more':'Try again','nx-primary'],['vcDone','Done for now','nx-ghost']]);
+    const k=await ask(learned ? `<h1>Done</h1><p class="sub">Noodle knows your voice a little better now.</p><p class="sub">${dn} of ${GUIDED.length} tunes done.</p>` : `<h1>That didn’t work this time</h1><p class="sub">Noodle couldn’t hear the tunes clearly, so nothing changed.</p>`,[['vcMore',learned?'Do three more':'Try again','nx-primary'],['vcDone','Done for now','nx-ghost']]);
     if(k===0) result='more'; return end(); }
   await ask(learned ? `<h1>All set</h1><p class="sub">Thanks. Noodle knows your voice a little better now.</p><p class="sub">You can teach it more any time in More.</p>`
-    : `<h1>That didn’t work this time</h1><p class="sub">I couldn’t hear the tunes clearly, so nothing changed. You can try again any time in More.</p>`,[['vcDone','Done','nx-primary']]);
+    : `<h1>That didn’t work this time</h1><p class="sub">Noodle couldn’t hear the tunes clearly, so nothing changed. You can try again any time in More.</p>`,[['vcDone','Done','nx-primary']]);
   return end(); }
 /* First launch: what Noodle is, then the two optional choices. Shown once. */
 function nxOnboard(done){ const O=$('nxOb'), I=$('nxObIn'), A=$('nxObActs'); O.hidden=false; let step=0;

@@ -102,7 +102,7 @@ const proBridge=()=>!!(window.webkit&&window.webkit.messageHandlers&&window.webk
 /* from the app: whether Pro is owned, and its price in the App Store's own words (e.g. "$4.99") */
 window.noodlePro=(owned, price)=>{ const was=PRO.owned; PRO.owned=!!owned; if(price) PRO.price=price; try{ localStorage.setItem('noodle.pro',PRO.owned?'1':'0'); }catch(e){}
   nxProSync(); if(was!==PRO.owned){ if(PRO.owned) pvCommitAll(); try{ renderTracks(); if(s2.edId!=null) s2EdMount(); }catch(e){} } };
-window.noodleProResult=r=>{ PRO.busy=false; track('pro_result',r); statsFlush(); const m={bought:'Pro unlocked. Thank you!', restored:'Pro restored.', none:'No Pro purchase found for this Apple ID.', pending:'Waiting for approval. Pro unlocks as soon as it’s approved.', failed:'The purchase didn’t go through. Nothing was charged.', unavailable:'The App Store isn’t reachable right now. Try again in a moment.'}[r];
+window.noodleProResult=r=>{ PRO.busy=false; track('pro_result',r); statsFlush(); const m={bought:'Pro unlocked. Thank you.', restored:'Pro restored.', none:'No Pro purchase found for this Apple ID.', pending:'Waiting for approval. Pro unlocks as soon as it’s approved.', failed:'The purchase didn’t go through. Nothing was charged.', unavailable:'The App Store isn’t reachable right now. Try again in a moment.'}[r];
   if(r==='bought'||r==='restored'){ nxClose(); haptic('success'); } if(m) toast(m,5200); nxProSync(); };
 /* the Pro sheet: what Pro adds, grouped by what it's for (keep in step with PRO.md and PRO_SOUNDS / MFX / BEATS / CHORD_STYLES) */
 const PRO_CARDS=[
