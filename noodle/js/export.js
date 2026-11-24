@@ -16,7 +16,7 @@ function keySigBytes(){ const K=currentKey(); if(K.none) return [0xff,0x59,0x02,
   const R=SCALE_REL[K.scale]||[0,0], rel=(K.tonic+R[0])%12; const sf=fifths[rel]; return [0xff,0x59,0x02,(sf+256)&255, R[1]]; }
 function midiBytes(list){
   const SP=spotRanges(), keepM=e=>!SP.length||!inSpot(e.s!==undefined?e.s:e.x,SP);
-  const PPQ=96, tick16=24, n=steps(), loops=S.loops; list=(list||S.tracks).filter(tr=>INST[tr.inst].kind!=='audio'&&INST[tr.inst].kind!=='mix')   /* no MIDI for audio or Song FX */;
+  const PPQ=96, tick16=24, n=steps(), loops=S.loops; list=(list||S.tracks).filter(tr=>INST[tr.inst].kind!=='audio'&&INST[tr.inst].kind!=='mix')   /* no MIDI for audio or Mix effects */;
   const vlq=v=>{ const b=[v&0x7f]; while(v>>=7) b.unshift((v&0x7f)|0x80); return b; };
   const trk=(events)=>{ events.sort((a,b)=>a.t-b.t||a.o-b.o); let last=0; const bytes=[]; for(const e of events){ bytes.push(...vlq(e.t-last),...e.b); last=e.t; } bytes.push(0,0xff,0x2f,0); return [0x4d,0x54,0x72,0x6b,(bytes.length>>>24)&255,(bytes.length>>>16)&255,(bytes.length>>>8)&255,bytes.length&255,...bytes]; };
   const name=s2=>{ const b=[...new TextEncoder().encode(s2)]; return [0xff,0x03,...vlq(b.length),...b]; };
@@ -51,7 +51,7 @@ function zip(files){
 async function renderMix(K, fade){
   await renderDirty();
   const sr=ctx.sampleRate, L=loopLen(), n=Math.round(L*sr), len=n*K+Math.round(2.5*sr);
-  const oc=new OfflineAudioContext(2,len,sr); const ch=buildChain(oc,false); mfxOffline(oc,ch,K);
+  const oc=new OfflineAudioContext(2,len,sr); const ch=buildChain(oc,false); if(mfxParts().some(p=>p.mfx.k==='crush')) await fxWorklet(oc); mfxOffline(oc,ch,K);
   S.tracks.forEach(tr=>{ if(!tr._buf) return; const g=oc.createGain(), p=oc.createStereoPanner(), s2=oc.createGain(); g.gain.value=trackGain(tr); p.pan.value=tr.pan/100; s2.gain.value=Math.pow(tr.send/100,1.5);
     g.connect(p); p.connect(ch.input); p.connect(s2); s2.connect(ch.revIn); const src=oc.createBufferSource(); src.buffer=tr._buf; src.loop=true; src.connect(g); src.start(0); src.stop(n*K/sr); });
   const mix=await oc.startRendering();

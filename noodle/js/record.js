@@ -65,7 +65,7 @@ async function startRecord(calib=false, teach=null){ if(!calib&&!teach&&feelBeat
   // before you sing, and the count-in gives a clean stretch to measure this take's real delay
   const preroll = along && !calib && !teach && S.inst==='vox', SL=loopLen(), poff=(((tgp&&tgp.off?tgp.off:0)*stepDur()-bar)%SL+SL)%SL;   /* the bar before where this take starts */
   if(along) S.tracks.forEach(tr=>{ if(tr._buf && !tr.guide){ ensureNodes(tr); tr._src=preroll?startSrc(tr._buf,tr._g,when,poff):startSrc(tr._buf,tr._g,when+bar,P); } });
-  if(along && !calib && !teach){ if(preroll) mfxStart(when,poff); else mfxStart(when+bar,P); }   /* Song FX play along too, so a take is sung against what the song will sound like */
+  if(along && !calib && !teach){ if(preroll) mfxStart(when,poff); else mfxStart(when+bar,P); }   /* Mix effects play along too, so a take is sung against what the song will sound like */
   if(guideAlong && !calib && !teach) S.tracks.forEach(tr=>{ if(tr._buf && tr.guide){ ensureNodes(tr); tr._src=startSrc(tr._buf,tr._g,when+bar,P); } });   /* hum-along screens: the tune under your take */
   if(!metroGain){ metroGain=ctx.createGain(); metroGain.connect(ctx.destination); }
   metroGain.gain.value=0.75; metroSrc=startSrc(metroBuf,metroGain,when,0); gateOpen(when);

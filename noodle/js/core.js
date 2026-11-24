@@ -13,8 +13,8 @@ const INST = {
   pad:  {label:'Pad', kind:'pitched', oct:0, color:'#b77ce8', say:'sing long', sounds:['Warm pad','Strings','Choir','Sweep','Vowel pad','Digital pad','Chorus pad','Pump pad','Horns','Your voice'], hint:'Sing or hum long, slow notes. Each becomes a chord on a soft pad.'},
   arp:  {label:'Arp', kind:'pitched', oct:0, color:'#2fb3c9', say:'sing roots', sounds:['Pluck','Bell','Supersaw','Square','Saw','Chip','Glass','String pluck','Marimba','Xylophone','Glockenspiel'], hint:'Sing, hum or draw root notes. Each one plays its chord from the key as an arpeggio. Set the pattern, speed and chord size under Controls.'},
   vox:  {label:'Vocals', kind:'audio', color:'#f7768e', say:'sing words', sounds:['Pop','Hip hop','Hard tune','EDM','Rock','Natural','Vocoder','Talkbox'], hint:'Sing the real thing: lyrics, ad-libs, harmonies. Your voice is kept as audio and polished with tuning, EQ, compression, doubling and echo. Wear headphones: the other parts play while you sing.'},
-  mix:  {label:'Song FX', kind:'mix', color:'#e0a43a', say:'', sounds:[], hint:'Effects on the whole song: sweeps, echoes, phasers. Tap an empty spot in this track to add one.'},
-  fx:   {label:'Sound FX', kind:'audio', color:'#9b8cff', say:'“woooop” · “shhh” · “pshh”', sounds:['Synth'], hint:'Ear candy from your mouth: a rising “woooop” is a riser, a falling one a downlifter, “shhh” a noise sweep, a short “pshh” an impact.'},
+  mix:  {label:'Mix effects', kind:'mix', color:'#e0a43a', say:'', sounds:[], hint:'Filters and effects across the whole song. Tap an empty spot in this track to add one.'},
+  fx:   {label:'Transitions', kind:'audio', color:'#9b8cff', say:'“woooop” · “shhh” · “pshh”', sounds:['Synth'], hint:'Make them with your mouth: a rising “woooop” is a riser, a falling one a downlifter, “shhh” a noise sweep, a short “pshh” an impact.'},
 };
 /* Every sound a drum-kit slot can play (all synthesized, plus "my own noise", which plays back your taught recording). */
 const SOUNDS = {
@@ -64,7 +64,7 @@ function exampleTracks(){
     mkTrack('bass',{id:2,notes:bass,ex:true,sound:'Pluck',vol:72,oct:-2,send:15}),
     mkTrack('lead',{id:3,notes:lead,ex:true,sound:'Bell',vol:37,oct:1,send:43}),
     mkTrack('keys',{id:4,notes:keys,ex:true,sound:'Piano',vol:54,oct:0,send:32,chordType:'triad'}),   /* chords: Am, G, Am, Dm, C */
-    Object.assign(mkTrack('fx',{id:5,ex:true}),{fxs:[{...fxNew('sweepDown',0,32),v:0.4},{...fxNew('riser',16,32),v:0.25}]}),   /* a noise sweep down out of the downbeat, and a riser back into the loop */
+    Object.assign(mkTrack('fx',{id:5,ex:true}),{fxs:[{...fxNew('sweepDown',0,32),v:0.4},{...fxNew('riser',16,32),v:0.25},{...fxNew('sweepUp',16,32),v:0.3}]}),   /* a noise sweep down out of the downbeat; a riser and a noise sweep up back into the loop */
   ];
 }
 function mkTrack(inst, o={}){
@@ -153,7 +153,8 @@ function projSoon(){ clearTimeout(projTimer); projTimer=setTimeout(()=>projSaveC
 async function projList(){ const all=(await projDb.all())||[]; return all.map(({json,...p})=>({...p, current:p.id===S.pid})).sort((a,b)=>b.updatedAt-a.updatedAt); }
 async function projLoadState(o){ try{ pvEnd(true); }catch(e){} flushSave(); if(typeof s2!=='undefined') s2.sec=null; if(playing){ stopAll(); playing=false; }
   const st=defaultState(); Object.assign(st,o); SETUP_KEYS.forEach(k=>{ if(k in S) st[k]=S[k]; else delete st[k]; }); st.nextId=Math.max(S.nextId||10, o.nextId||10);
-  takeBar=null; await restoreSnap({json:JSON.stringify(st), rt:new Map()}); hist.undo=[]; hist.redo=[]; hist.cur=snapNow(); projSaved=songJson(); reloadRaw(); }
+  takeBar=null; await restoreSnap({json:JSON.stringify(st), rt:new Map()}); hist.undo=[]; hist.redo=[]; hist.cur=snapNow(); projSaved=songJson(); reloadRaw();
+  if(typeof s2!=='undefined'){ s2.loop=!!S.loopOn; try{ $('s2Loop').setAttribute('aria-pressed',String(s2.loop)); }catch(e){} } }   /* a song opens with Loop off, except one made to loop (the example song: S.loopOn) */
 async function projOpen(id){ await projSaveCurrent(); const p=await projDb.get(id); if(!p) return false; await projLoadState(JSON.parse(p.json)); return true; }
 async function projNew(){ await projSaveCurrent(); const o=defaultState(); o.tracks=[]; o.pid=projId(); await projLoadState(o); return o.pid; }
 async function projRename(id,title){ title=String(title||'').slice(0,80); if(id===S.pid){ S.title=title; persist(); await projSaveCurrent(); return true; }
@@ -259,7 +260,7 @@ async function nxRenderProjects(){ const q=$('nxQ').value.trim().toLowerCase(); 
     : `<p class="nx-empty">${q?'No songs match.':'No songs yet. Tap + to start one.'}</p>${q?'':'<div style="text-align:center"><button class="nx-ghost" id="nxExample" style="width:auto;padding:0 18px">Open an example song</button></div>'}`;
   const ex=$('nxExample'); if(ex) ex.onclick=()=>nxExample(); }
 /* a small finished song to poke at: play it, open a part, re-record over it */
-async function nxExample(stay){ await projNew(); S.title='Example song'; S.bpm=94; S.bars=2; S.tracks=exampleTracks().map(t=>{ t.id=S.nextId++; delete t.ex; t.off=0; t.len=2; t.lenSet=true; t.rep=false; t._dirty=true; return t; }); keyCache=null; save(); flushSave(); await projSaveCurrent(); if(stay){ await nxGo('projects'); return; } await nxGo('studio'); renderTracks(); scheduleRender(); }
+async function nxExample(stay){ await projNew(); S.title='Example song'; S.bpm=94; S.bars=2; S.loopOn=true; s2.loop=true; try{ $('s2Loop').setAttribute('aria-pressed','true'); }catch(e){} S.tracks=exampleTracks().map(t=>{ t.id=S.nextId++; delete t.ex; t.off=0; t.len=2; t.lenSet=true; t.rep=false; t._dirty=true; return t; }); keyCache=null; save(); flushSave(); await projSaveCurrent(); if(stay){ await nxGo('projects'); return; } await nxGo('studio'); renderTracks(); scheduleRender(); }
 async function nxGo(v){ document.querySelectorAll('.info-pop').forEach(x=>x.remove()); if(v!=='studio'){ flushSave(); if(recState) cancelRecord(); if(playing){ stopAll(); playing=false; } await projSaveCurrent().catch(()=>{}); }
   nxAt=v; $('nxProjects').hidden=v!=='projects'; $('nxMore').hidden=v!=='more'; $('nxNav').hidden=v==='studio'; document.body.classList.toggle('nx-on',v!=='studio'); document.body.style.overflow=v==='studio'?'':'hidden';
   if(v==='studio' && s2Use()) s2Show(true); else if(v==='studio') s2Show(false); else { $('s2').hidden=true; document.body.classList.remove('s2-on'); }
