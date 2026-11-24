@@ -37,6 +37,8 @@
 // uploads (PUT /v1/admin/codes, a JSON list); INVITES_FOR_PRO friends earn one; at most REWARDS_PER_DAY are handed out a day.
 //   GET    /v1/admin/list?prefix=&cursor=   owner only (Authorization: Bearer ADMIN_KEY)
 //   GET    /v1/admin/get?key=               owner only
+//   GET    /v1/admin/reports                owner only: reported songs (title, reports, reasons, hidden), newest first; emailed too with REPORT_MAIL
+//   DELETE /v1/admin/songs/:id              owner only: take a song down;   PUT /v1/admin/songs/:id/restore  put a hidden one back
 //   GET/PUT /v1/admin/stats-exclude          owner only: usage-stats IDs left out of the stats (the owner's own phones), body = [ids]
 //   GET    /v1/admin/stats?days=30          owner only: usage counts from Analytics Engine (needs the ANALYTICS_TOKEN secret,
 //                                           a Cloudflare token with Account Analytics: Read; CF_ACCOUNT_ID in wrangler.toml)
@@ -96,6 +98,23 @@ function isWav(buf) {
   if (buf.byteLength < 44) return false;
   const b = new Uint8Array(buf, 0, 12), s = (i) => String.fromCharCode(b[i], b[i + 1], b[i + 2], b[i + 3]);
   return s(0) === 'RIFF' && s(8) === 'WAVE';
+}
+/* Reported songs (owner's list, GET /v1/admin/reports). Email to the owner on every report, when Cloudflare Email Routing is set up for the
+   sending domain: a send_email binding REPORT_MAIL in wrangler.toml, and the variables REPORT_FROM (an address on that domain) and REPORT_TO (a
+   verified destination). Without them nothing is sent and reports still show in the list and on the usage dashboard. */
+const REPORTS = 'reports/';
+async function reportMail(env, rep, url) {
+  if (!env.REPORT_MAIL || !env.REPORT_FROM || !env.REPORT_TO) return;
+  try {
+    const { EmailMessage } = await import('cloudflare:email'), clean = (x) => String(x).replace(/[\r\n]+/g, ' ').slice(0, 120);
+    const subject = `Noodle: song reported${rep.hidden ? ' and hidden' : ''} (${rep.reports}) “${clean(rep.title || 'Untitled')}”`;
+    const body = [`“${clean(rep.title || 'Untitled')}” has ${rep.reports} report${rep.reports === 1 ? '' : 's'}${rep.hidden ? ' and is no longer shown to anyone' : ''}.`,
+      `Reasons: ${rep.reasons.map(clean).join(', ') || 'none given'}`, `Listen: ${url.origin}/s/${rep.id}`, '',
+      `Take it down: DELETE ${url.origin}/v1/admin/songs/${rep.id}`, `Put it back: PUT ${url.origin}/v1/admin/songs/${rep.id}/restore`, `(both with the admin key)`].join('\r\n');
+    const raw = [`From: Noodle <${env.REPORT_FROM}>`, `To: ${env.REPORT_TO}`, `Subject: ${subject}`, `Message-ID: <${crypto.randomUUID()}@${env.REPORT_FROM.split('@')[1]}>`,
+      `Date: ${new Date().toUTCString()}`, 'MIME-Version: 1.0', 'Content-Type: text/plain; charset=utf-8', '', body].join('\r\n');
+    await env.REPORT_MAIL.send(new EmailMessage(env.REPORT_FROM, env.REPORT_TO, raw));
+  } catch (e) { /* email is a convenience: the report is already stored */ }
 }
 async function deletePrefix(bucket, prefix) {
   let cursor, n = 0;
@@ -194,7 +213,12 @@ async function handle(req, env) {
         if (!meta) return json(req, 404, { error: 'not found' }); meta.reports = (meta.reports || 0) + 1;
         let why = ''; try { const buf = await readLimited(req, 1024); why = buf ? String(JSON.parse(new TextDecoder().decode(buf)).reason || '').slice(0, 40) : ''; } catch {}
         if (why) meta.reasons = (meta.reasons || []).concat([why]).slice(-10);   // what reporters chose (no one's identity)
-        await B.put(metaKey, JSON.stringify(meta), { expiresAt: Date.parse(meta.at) + SONG_DAYS * 864e5 }); return json(req, 200, { ok: true });
+        await B.put(metaKey, JSON.stringify(meta), { expiresAt: Date.parse(meta.at) + SONG_DAYS * 864e5 });
+        const now = new Date().toISOString(), r0 = await B.get(REPORTS + id), rep = r0 ? await r0.json() : { id, first: now };   // the owner's list of reported songs
+        Object.assign(rep, { title: meta.title || '', reports: meta.reports, reasons: meta.reasons || [], last: now, hidden: meta.reports >= REPORTS_TO_HIDE });
+        await B.put(REPORTS + id, JSON.stringify(rep), { expiresAt: Date.parse(meta.at) + SONG_DAYS * 864e5 });
+        await reportMail(env, rep, url);   // tells the owner straight away, when email is set up (REPORT_MAIL)
+        return json(req, 200, { ok: true });
       }
       if (req.method === 'DELETE' && !part) { if (!(await isOwner())) return json(req, 403, { error: 'owner' }); return json(req, 200, { deleted: await deletePrefix(B, base) }); }
       if (req.method !== 'PUT') return json(req, 405, { error: 'method' });
@@ -231,7 +255,18 @@ async function handle(req, env) {
         for (const c of codes) if (typeof c === 'string' && /^[A-Z0-9]{6,32}$/.test(c) && !pool.includes(c)) pool.push(c);
         await B.put('rewards/pool.json', JSON.stringify(pool)); return json(req, 200, { pool: pool.length });
       }
+      if (p[2] === 'songs' && SONG.test(p[3] || '')) {   // the owner deals with a reported song: take it down, or put it back
+        const base = `songs/${p[3]}/`;
+        if (req.method === 'DELETE') { const n = await deletePrefix(B, base); await B.delete(REPORTS + p[3]); return json(req, 200, { deleted: n }); }
+        if (req.method === 'PUT' && p[4] === 'restore') { const m = await B.get(base + 'meta.json'); if (!m) return json(req, 404, { error: 'not found' }); const mt = await m.json();
+          mt.reports = 0; delete mt.reasons; await B.put(base + 'meta.json', JSON.stringify(mt), { expiresAt: Date.parse(mt.at) + SONG_DAYS * 864e5 }); await B.delete(REPORTS + p[3]); return json(req, 200, { restored: true }); }
+      }
       if (req.method !== 'GET') return json(req, 405, { error: 'method' });
+      if (p[2] === 'reports') {   // every reported song, newest report first
+        const page = await B.list({ prefix: REPORTS, limit: 1000 }), out = [];
+        for (const o of page.objects) { const r = await B.get(o.key); if (r) out.push(await r.json()); }
+        return json(req, 200, out.sort((a, b) => (a.last < b.last ? 1 : -1)));
+      }
       if (p[2] === 'list') {
         const page = await B.list({ prefix: url.searchParams.get('prefix') || 'takes/', cursor: url.searchParams.get('cursor') || undefined, limit: 1000 });
         return json(req, 200, { keys: page.objects.map((o) => ({ key: o.key, size: o.size, uploaded: o.uploaded })), cursor: page.truncated ? page.cursor : null });

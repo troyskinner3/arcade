@@ -139,6 +139,31 @@ test('song links: not a song file is refused, titles are escaped, reports hide a
   for (let i = 0; i < 3; i++) assert.equal((await call(env, 'POST', `/v1/songs/${S}/report`)).status, 200);
   assert.equal((await call(env, 'GET', `/v1/songs/${S}`)).status, 404);
 });
+test('reported songs: the owner sees them (title, count, reasons), can take one down or put it back', async () => {
+  const env = { TAKES: bucket(), ADMIN_KEY: 'k' }, A = { Authorization: 'Bearer k' }, S = 'song_rep123ABC';
+  await call(env, 'PUT', `/v1/songs/${S}`, songFile('Night ride'), { 'X-Owner': I });
+  assert.equal((await call(env, 'GET', '/v1/admin/reports')).status, 401);
+  await call(env, 'POST', `/v1/songs/${S}/report`, JSON.stringify({ reason: 'Offensive' }), { 'Content-Type': 'application/json' });
+  let list = await (await call(env, 'GET', '/v1/admin/reports', null, A)).json();
+  assert.equal(list.length, 1); assert.equal(list[0].id, S); assert.equal(list[0].title, 'Night ride'); assert.equal(list[0].reports, 1); assert.deepEqual(list[0].reasons, ['Offensive']); assert.equal(list[0].hidden, false);
+  for (let i = 0; i < 2; i++) await call(env, 'POST', `/v1/songs/${S}/report`);
+  list = await (await call(env, 'GET', '/v1/admin/reports', null, A)).json(); assert.equal(list[0].reports, 3); assert.equal(list[0].hidden, true);
+  assert.equal((await call(env, 'GET', `/v1/songs/${S}`)).status, 404);
+  assert.equal((await call(env, 'PUT', `/v1/admin/songs/${S}/restore`, null, A)).status, 200);   // a false alarm: back up
+  assert.equal((await call(env, 'GET', `/v1/songs/${S}`)).status, 200); assert.equal((await (await call(env, 'GET', '/v1/admin/reports', null, A)).json()).length, 0);
+  await call(env, 'POST', `/v1/songs/${S}/report`);
+  assert.equal((await call(env, 'DELETE', `/v1/admin/songs/${S}`, null, A)).status, 200);   // taken down for good
+  assert.equal((await call(env, 'GET', `/v1/songs/${S}`)).status, 404); assert.equal([...env.TAKES.m.keys()].filter((k) => k.includes(S)).length, 0);
+  assert.equal((await call(env, 'DELETE', `/v1/admin/songs/${S}`)).status, 401);
+});
+test('a report emails the owner when email is set up, and the report is kept even if sending fails', async () => {
+  const S = 'song_mail456DEF', sent = [];
+  const env = { TAKES: bucket(), ADMIN_KEY: 'k', REPORT_FROM: 'noodle@tuttii.io', REPORT_TO: 'owner@example.com', REPORT_MAIL: { async send(m) { sent.push(m); } } };
+  await call(env, 'PUT', `/v1/songs/${S}`, songFile('Hello'), { 'X-Owner': I });
+  // cloudflare:email exists only on Cloudflare: here the import fails, so nothing is sent, and the report must still count
+  assert.equal((await call(env, 'POST', `/v1/songs/${S}/report`, JSON.stringify({ reason: 'Spam' }))).status, 200);
+  assert.equal((await (await call(env, 'GET', '/v1/admin/reports', null, { Authorization: 'Bearer k' })).json())[0].reports, 1);
+});
 test('invites: a code per phone, friends join once (never your own code), 3 friends earn a Pro code from the pool', async () => {
   const env = { TAKES: bucket(), ADMIN_KEY: 'k' }, F = (c) => c.repeat(22), H = (o) => ({ 'X-Owner': o });
   const mine = async (o) => (await call(env, 'GET', '/v1/invites/mine', null, H(o))).json();

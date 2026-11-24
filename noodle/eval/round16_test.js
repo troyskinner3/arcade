@@ -9,7 +9,7 @@ const {chromium,devices}=require('playwright');
   const r=await p.evaluate(async()=>{ const w=ms=>new Promise(q=>setTimeout(q,ms)), out={}, nm=t=>s2Name(s2Lane(s2LaneId(t)));
     // the example song
     await nxExample(); await w(600); out.exLoop=s2.loop&&$('s2Loop').getAttribute('aria-pressed')==='true'&&!!document.querySelector('.s2-secb.all');
-    const fx=S.tracks.find(t=>t.inst==='fx'); out.exFx=fx.fxs.map(e=>e.k+'@'+e.s+':'+e.v).join(' ');
+    out.exNames=s2Lanes().map(L=>s2Name(L)).join('|'); const fx=S.tracks.find(t=>t.inst==='fx'); out.exFx=fx.fxs.map(e=>e.k+'@'+e.s+':'+e.v).join(' ');
     await projNew(); await w(100); out.newNoLoop=!s2.loop;
     // names
     S.bars=4; const ld=mkTrack('lead',{id:S.nextId++,off:0,len:1,rep:false,lenSet:true,notes:[{s:0,l:4,p:60,v:.8,x:true}]}); S.tracks.push(ld); renderTracks(); s2Render();
@@ -36,7 +36,7 @@ const {chromium,devices}=require('playwright');
     f2._fxSel=f2.fxs[1]; s2EdMount(); await w(100); out.noOctOnImpact=!document.querySelector('.fxsel [data-fo]'); s2EdClose();
     out.labels=[INST.fx.label,INST.mix.label,PICK_GROUPS[3][0]].join('|');
     return out; });
-  const want={exLoop:true,exFx:'sweepDown@0:0.4 riser@16:0.25 sweepUp@16:0.3',newNoLoop:true,before:'Lead',afterPick:'Bell',laneShows:true,typed:'My hook',typedStays:'My hook',follows:'Pluck',
+  const want={exNames:'Punchy kit|Pluck|Bell|Piano|Transitions',exLoop:true,exFx:'sweepDown@0:0.4 riser@16:0.25 sweepUp@16:0.3',newNoLoop:true,before:'Lead',afterPick:'Bell',laneShows:true,typed:'My hook',typedStays:'My hook',follows:'Pluck',
     kitBefore:'Drum kit',kitAfter:'Punchy kit',vox:'Pop vocals',mixBefore:'Mix effects',mixAfter:'Phaser',edTitle:'Phaser',mixMixed:'Mix effects',twoBells:'Bell 1|Bell 2',
     handles:true,longer:48,earlier:'16,64',newPart:'16:64',ruler:'1,2',octShown:true,oct:1,noOctOnImpact:true,labels:'Transitions|Mix effects|FX'};
   for(const [k,v] of Object.entries(want)) if(r[k]!==v) errs.push(k+': '+JSON.stringify(r[k]));

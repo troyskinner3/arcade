@@ -19,3 +19,9 @@ CF_ACCOUNT_ID = "5649ad1dfbf6102845b7facae8598e7b"   # for reading usage counts 
 binding = "EVENTS"
 dataset = "noodle_events"
 # ADMIN_KEY is a secret: set it in the dashboard (never in this file)
+
+# Email to the owner when a song is reported (optional). Needs Cloudflare Email Routing turned on for a domain on this account (e.g. tuttii.io)
+# and the owner's address added there as a verified destination. Then uncomment the binding and set REPORT_FROM (an address on that domain,
+# e.g. noodle@tuttii.io) and REPORT_TO (the verified address) under Settings → Variables. Without it, reports still show in GET /v1/admin/reports.
+# [[send_email]]
+# name = "REPORT_MAIL"

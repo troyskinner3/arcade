@@ -38,7 +38,7 @@ Today Noodle sends no usage analytics: only crash reports, opt-in shared takes, 
 
 ## 4. App Store listing and optimization
 Draft copy is in `noodle-ios/APP_STORE_LISTING.md`.
-- [ ] **Owner:** Pro price ($6.99 suggested).
+- [x] **Owner:** Pro price: $4.99 (set in App Store Connect).
 - [ ] Final name, subtitle and keywords; check what similar apps rank for.
 - [ ] Screenshots (`noodle-ios/app-store/make_screenshots.js`): final set for the latest UI, first two screenshots carry the pitch.
 - [ ] App preview video (hum → song in 15–30 s).
@@ -51,10 +51,11 @@ Draft copy is in `noodle-ios/APP_STORE_LISTING.md`.
 - [ ] Purchase, restore and the invite reward (offer codes) tested end to end in TestFlight with a sandbox account.
 
 ## 6. Legal and privacy
-- [ ] Privacy policy reviewed, effective date set, draft notice removed (`noodle/privacy/`).
+- [ ] **Owner:** read the privacy policy once more (`noodle/privacy/`; effective date 22 Nov 2026 is set, no draft notice left).
 - [ ] Terms of use for song links (user-generated content), or Apple's standard terms named in the listing.
-- [ ] Sample and sound licenses checked for commercial use (`noodle/samples/CREDITS.md`) and credited in the app.
-- [ ] Reporting a shared song works and someone gets told (Apple requires this for user content).
+- [x] Sample and sound licenses checked for commercial use (`noodle/samples/CREDITS.md`) and credited in the app (More → Sound credits).
+- [x] Reporting a shared song works and the owner can see and act on it: `GET /v1/admin/reports`, take down or restore (takes service).
+- [ ] **Owner:** deploy the takes service, and turn on the report email (Cloudflare Email Routing; steps in `noodle-api/README.md`).
 
 ## 7. Server (takes service) readiness
 - [ ] **Owner:** move the deploy out of the Fan to See repo into its own Cloudflare token and workflow (see `noodle-api/README.md`), or keep it.

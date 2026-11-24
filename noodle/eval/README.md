@@ -724,8 +724,8 @@ the note editor's Today / Tap notes button flips one take between them. The fing
 - Names: Sound FX → Transitions, Song FX → Mix effects, Add track's "Ear candy" → "FX".
 - Track names follow the pick (`s2Auto`): picking a sound, kit, vocal style or preset, or a Mix effect, marks the track `picked`; it then
   shows "Bell", "Phaser", "Punchy kit", "Pop vocals". A typed name wins and is never changed; a track whose parts differ shows its type
-  ("Mix effects"); two with the same name are numbered. Older songs keep type names until something is picked. The example's tracks keep
-  type names (nothing was picked).
+  ("Mix effects"); two with the same name are numbered. Older songs keep type names until something is picked. The example's tracks are
+  named after their sounds (owner): Punchy kit, Pluck, Bell, Piano; Transitions keeps its type name (it has no sound to pick).
 - **Bitcrusher:** it did reach every track (everything goes through the main mix before Mix effects), but it only rounded loudness: at
   low bit depths quiet parts fell to silence while loud ones fuzzed, and above about 8 bits nothing changed (the right half of the
   slider). Now an AudioWorklet also lowers the sample rate (the lo-fi grit; loaded from a Blob like the recorder, so it works offline,

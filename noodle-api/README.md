@@ -13,8 +13,14 @@ Stores takes people chose to share (opt-in, 13+) so Noodle can learn from them. 
 - Song links (`/v1/songs/*`, listen page `/s/<id>`): a song someone chose to share by link (song file up to 8 MB + a 30 s WAV preview).
   Anyone with the link can read it; only the sharing phone (its install id, stored hashed) can replace or delete it. Kept 2 years;
   3 reports hide it; 250 new links a day at most (about 750 of the free plan's 1,000 daily writes in the worst case).
-  Reports (from the app or the page) carry a reason; to review them: `GET /v1/admin/list?prefix=songs/` then `GET /v1/admin/get?key=songs/<id>/meta.json`
-  (`reports`, `reasons`). Reply to anyone who writes to info@tuttii.io; delete a song by removing its `songs/<id>/` keys in the KV namespace.
+  Reports (from the app or the page) carry a reason. `GET /v1/admin/reports` lists every reported song (title, reports, reasons, whether it is
+  hidden, first and last report), newest first. Take one down with `DELETE /v1/admin/songs/<id>`, or put back one hidden by mistake with
+  `PUT /v1/admin/songs/<id>/restore` (all with the admin key). Reply to anyone who writes to info@tuttii.io.
+  **Email on every report (Apple asks for timely responses to reports):** turn on Cloudflare Email Routing for tuttii.io, add your address as a
+  verified destination, uncomment the `send_email` block in `wrangler.toml`, and set `REPORT_FROM` (e.g. noodle@tuttii.io) and `REPORT_TO`
+  under Workers & Pages → noodle-takes → Settings → Variables. Then deploy. The email names the song, the reasons and the two admin calls.
+  Known gap: 3 reports from anyone hide a song (reports aren't tied to people, by design: nothing identifying is stored), so one person could
+  hide a song by reporting it three times. The email lets the owner notice and restore it.
   Variables: `APPLE_APP_ID` (for `/.well-known/apple-app-site-association`), `APP_STORE_ID`, `APP_STORE_URL` (listen page).
 - Invites (`/v1/invites/*`, page `/i/<code>`): a 6-letter code per phone; friends' phones count once (hashed ids). 3 friends earn a Noodle Pro
   offer code from a pool: App Store Connect → Noodle → Monetization → In-App Purchases → Noodle Pro → Offer Codes → create one-time-use
