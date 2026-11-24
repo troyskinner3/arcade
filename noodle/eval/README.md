@@ -766,3 +766,12 @@ the note editor's Today / Tap notes button flips one take between them. The fing
   Import a recording; on the web, how to allow it in the browser. Recording again explains again (it used to switch quietly to import).
 - A song link opened offline says to check the connection; only a deleted one says it isn't available any more.
 - Tests: `errors_test.js` (mic refused in the app and on the web, offline vs. deleted link).
+
+## Round 19 (security review before launch)
+- No paid-service keys anywhere in the app, the site or the git history (searched all commits); secrets live in Cloudflare only.
+- Takes service: reads limited to 240 a minute per address (writes stay at 40; the invite-code call counts as a write; admin calls are
+  limited too); daily storage budgets for new song links (150 MB, preview room included) and take audio (150 MB); previews 1.5 MB at
+  most; invite joins refused (503) until DeviceCheck is set up, so made-up phones can't collect Pro codes. The app keeps a code that got
+  503 and says "Invite saved. It counts once invites open."
+- Tests: `songlink_hostile_test.js` (a song link with HTML in every text field the app shows: nothing runs, it shows as text); service
+  tests for the budgets, read limit and closed invites.

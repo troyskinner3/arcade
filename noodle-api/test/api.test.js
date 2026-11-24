@@ -166,7 +166,7 @@ test('a report emails the owner when email is set up, and the report is kept eve
   assert.equal((await (await call(env, 'GET', '/v1/admin/reports', null, { Authorization: 'Bearer k' })).json())[0].reports, 1);
 });
 test('invites: a code per phone, friends join once (never your own code), 3 friends earn a Pro code from the pool', async () => {
-  const env = { TAKES: bucket(), ADMIN_KEY: 'k' }, F = (c) => c.repeat(22), H = (o) => ({ 'X-Owner': o });
+  const env = { TAKES: bucket(), ADMIN_KEY: 'k', INVITES_WITHOUT_DEVICECHECK: '1' }, F = (c) => c.repeat(22), H = (o) => ({ 'X-Owner': o });
   const mine = async (o) => (await call(env, 'GET', '/v1/invites/mine', null, H(o))).json();
   const me = await mine(I); assert.match(me.code, /^[A-Z2-9]{6}$/); assert.equal(me.joined, 0); assert.equal((await mine(I)).code, me.code);
   assert.equal((await call(env, 'PUT', `/v1/invites/${me.code}/join`, null, H(I))).status, 409);
@@ -242,4 +242,32 @@ test('usage events: the stats ID is kept when well formed; the owner can leave p
     const r = await (await call({ ...env, ANALYTICS_TOKEN: 't', CF_ACCOUNT_ID: 'acc' }, 'GET', '/v1/admin/stats', null, A)).json();
     assert.ok(seen.every((b) => b.includes(`blob6 NOT IN ('${SID}')`))); assert.equal(r.excluded, 1); assert.equal(r.phones[0].n, 2);
   } finally { globalThis.fetch = real; }
+});
+
+test('invites stay closed (503, the app tries later) until DeviceCheck is set up, so friends cannot be invented', async () => {
+  const env = { TAKES: bucket() }, me = await (await call(env, 'GET', '/v1/invites/mine', null, { 'X-Owner': I })).json();
+  assert.equal((await call(env, 'PUT', `/v1/invites/${me.code}/join`, null, { 'X-Owner': I2 })).status, 503);
+  assert.equal((await call(env, 'GET', '/v1/invites/mine', null, { 'X-Owner': I })).status, 200);
+});
+test('daily storage budgets: song links and take audio stop at their daily total, across all phones', async () => {
+  const env = { TAKES: bucket() }, day = new Date().toISOString().slice(0, 10), enc = (o) => new TextEncoder().encode(JSON.stringify(o)).buffer;
+  const song = JSON.stringify({ noodle: 'songs', songs: [{ title: 'x', song: { tracks: [] } }] });
+  env.TAKES.m.set(`quota/songs/${day}.json`, enc({ n: 3, bytes: 150 * 1024 * 1024 - 1024 * 1024 }));   // 1 MB left: less than a song plus its preview
+  assert.equal((await call(env, 'PUT', '/v1/songs/sBUDGET0001', song, { 'X-Owner': I })).status, 429);
+  env.TAKES.m.set(`quota/songs/${day}.json`, enc({ n: 3, bytes: 0 }));
+  assert.equal((await call(env, 'PUT', '/v1/songs/sBUDGET0001', song, { 'X-Owner': I })).status, 200);
+  assert.ok(JSON.parse(new TextDecoder().decode(env.TAKES.m.get(`quota/songs/${day}.json`))).bytes > 1024 * 1024);   // preview room counted
+  const big = new Uint8Array(1600 * 1024); big.set(new TextEncoder().encode('RIFF'), 0); big.set(new TextEncoder().encode('WAVE'), 8);
+  assert.equal((await call(env, 'PUT', '/v1/songs/sBUDGET0001/preview', big.buffer, { 'X-Owner': I })).status, 413);   // previews are 1.5 MB at most
+  await call(env, 'PUT', `/v1/takes/${I}/take01/meta`, meta());
+  env.TAKES.m.set(`quota/audio/${day}.json`, enc({ n: 9, bytes: 150 * 1024 * 1024 - 50 }));
+  assert.equal((await call(env, 'PUT', `/v1/takes/${I}/take01/audio`, wav())).status, 429);
+  env.TAKES.m.set(`quota/audio/${day}.json`, enc({ n: 9, bytes: 0 }));
+  assert.equal((await call(env, 'PUT', `/v1/takes/${I}/take01/audio`, wav())).status, 200);
+});
+test('reads are limited too (240 a minute from one address), so a flood cannot use up the free plan for everyone', async () => {
+  const env = { TAKES: bucket() }; let last = 0;
+  for (let i = 0; i < 245; i++) last = (await call(env, 'GET', '/v1/songs/sNOSUCHSONG1', null, { 'CF-Connecting-IP': '203.0.113.20' })).status;
+  assert.equal(last, 429);
+  assert.equal((await call(env, 'GET', '/v1/songs/sNOSUCHSONG1', null, { 'CF-Connecting-IP': '203.0.113.21' })).status, 404);
 });

@@ -5,12 +5,13 @@ Stores takes people chose to share (opt-in, 13+) so Noodle can learn from them. 
 
 - No accounts. Each install has a random id only that phone knows; it can add, update and delete its own takes.
 - A record is stored only if it carries `consent: {v, age13: true}`; audio only after its record. No IP addresses are stored.
-- Limits: 3 MB audio (WAV), 256 KB record, 300 takes per install per day, 40 writes a minute per address (counted in memory only, best-effort).
+- Limits: 3 MB audio (WAV), 256 KB record, 300 takes per install per day, 150 MB of take audio a day for everyone together, 40 writes and
+  240 reads a minute per address (counted in memory only, best-effort; admin calls included).
 - Takes are kept 3 years at most, counted from when they first arrived (storage expires them on its own).
 - Optional email list (`/v1/signups`): address + date + the consent wording agreed to, deduplicated, removable; 400 new addresses a day at most.
   Not linked to takes. To be copied into Tuttii's marketing sheet (by hand or a script using the admin endpoints).
 - Crash reports (`/v1/errors`): error message, a few stack lines, app build, app or web, screen. No recordings, song content or ID. One record per distinct error per day (`errors/<day>/<hash>.json`), kept 90 days, at most 150 new ones a day. Read them with `/v1/admin/list?prefix=errors/`.
-- Song links (`/v1/songs/*`, listen page `/s/<id>`): a song someone chose to share by link (song file up to 8 MB + a 30 s WAV preview).
+- Song links (`/v1/songs/*`, listen page `/s/<id>`): a song someone chose to share by link (song file up to 8 MB + a 30 s WAV preview of 1.5 MB at most; new links share a 150 MB daily budget, preview room included).
   Anyone with the link can read it; only the sharing phone (its install id, stored hashed) can replace or delete it. Kept 2 years;
   The first report hides it until the owner looks (restore puts it back); 250 new links a day at most (about 750 of the free plan's 1,000 daily writes in the worst case).
   Reports (from the app or the page) carry a reason. `GET /v1/admin/reports` lists every reported song (title, reports, reasons, whether it is
@@ -30,7 +31,9 @@ Stores takes people chose to share (opt-in, 13+) so Noodle can learn from them. 
   **DeviceCheck** → Continue → Register → **Download** the `.p8` (only once) and note its **Key ID**. Cloudflare → noodle-takes → Settings →
   Variables and Secrets: add **Secret** `DC_KEY` = the whole `.p8` file's text, **Secret** `DC_KEY_ID` = the Key ID. While testing with builds run
   from Xcode, also add Text `DC_ENV` = `development`; delete it before the App Store release (TestFlight and App Store use production).
-  From then on a join needs a real iPhone running Noodle, and each iPhone can join only once, ever. Without `DC_KEY`, joins count once per install.
+  From then on a join needs a real iPhone running Noodle, and each iPhone can join only once, ever. Without `DC_KEY`, joins are refused with 503 (the app keeps the
+  code and tries later), because install ids are free to make up and anyone could collect Pro codes. `INVITES_WITHOUT_DEVICECHECK` = `1`
+  turns that off; it is for local testing only (`dev/local-server.mjs` sets it).
 - Owner access (`/v1/admin/*`) needs the `ADMIN_KEY` secret.
 
 ## Cost: none, by design

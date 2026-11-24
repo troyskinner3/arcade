@@ -75,7 +75,15 @@ Draft copy is in `noodle-ios/APP_STORE_LISTING.md`.
 - [ ] **Owner:** move the deploy out of the Fan to See repo into its own Cloudflare token and workflow (see `noodle-api/README.md`), or keep it.
 - [ ] Check Cloudflare free-plan limits (requests, KV reads/writes, storage) against launch-day traffic; know what happens if they're hit.
 - [ ] Alerts when errors spike or the service is down.
-- [ ] Rate limits on sign-ups, song links and invites, so one person can't fill the storage.
+- [x] Rate limits on sign-ups, song links and invites, so one person can't fill the storage: reads limited too (240 a minute per address),
+      daily storage budgets for song links and take audio (150 MB each), previews 1.5 MB at most, invites closed without DeviceCheck.
+      Still true: 1 GB free storage fills in about a week of heavy use (real or not); then move to R2 or clear old takes.
+- [ ] Deploy the takes service with these limits (Actions → "Noodle takes service" in the Fan to See repo).
+- [ ] **Owner:** confirm the Cloudflare account is on the Free Workers plan (Workers & Pages → Plans). On Paid, overuse is billed with no cap.
+- [ ] **Owner:** set `DC_KEY` and `DC_KEY_ID` (DeviceCheck) before launch: invite joins are refused until they are set.
+- [ ] **Owner:** check `ADMIN_KEY` is long and random (32+ characters).
+- [ ] Email list: send a confirmation email before anyone gets news (sign-ups aren't checked; anyone can add or remove any address).
+- [ ] Narrow the Cloudflare token (Fan to See repo secret) and give it only to the deploy step (done in that repo's `noodle-takes.yml`).
 
 ## 8. Quality
 - [ ] Crash reports reviewed and the top crashes fixed.
