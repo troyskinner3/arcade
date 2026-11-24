@@ -33,11 +33,17 @@ const {chromium,devices}=require('playwright');
     const f2=mkTrack('fx',{id:S.nextId++,off:0,len:2,rep:false,lenSet:true}); f2.fxs=[fxNew('riser',0,32),fxNew('impact',16,32)]; S.tracks.push(f2); renderTracks(); s2Edit(f2); await w(250);
     out.ruler=[...document.querySelectorAll('.fxg .edrul span')].map(x=>x.textContent).join(',');
     f2._fxSel=f2.fxs[0]; s2EdMount(); await w(100); out.octShown=!!document.querySelector('.fxsel [data-fo="1"]'); document.querySelector('.fxsel [data-fo="1"]').click(); await w(50); out.oct=f2.fxs[0].o;
-    f2._fxSel=f2.fxs[1]; s2EdMount(); await w(100); out.noOctOnImpact=!document.querySelector('.fxsel [data-fo]'); s2EdClose();
+    f2._fxSel=f2.fxs[1]; s2EdMount(); await w(100); out.noOctOnImpact=!document.querySelector('.fxsel [data-fo]');
+    // round 17: drag the selected effect's middle dot up to bend its loudness; the drawn shape and the sound follow
+    f2._fxSel=f2.fxs[0]; s2EdMount(); await w(150); { const cv=document.querySelector('.fxg canvas'), R=cv.getBoundingClientRect(), G=f2._fxg, e=f2.fxs[0], w0=Math.min(e.l,G.ps-e.s)*G.cw-2, x=R.left+G.gut+e.s*G.cw+1+3+(w0-6)/2;
+      const h=G.rh-10, y=R.top+5+h-3-(h-8)*(0.1+0.9*fxShape(e,0.5)), o={bubbles:true,pointerId:9,isPrimary:true}, flat=fxShape(e,0.5);
+      cv.dispatchEvent(new PointerEvent('pointerdown',{...o,clientX:x,clientY:y})); cv.dispatchEvent(new PointerEvent('pointermove',{...o,clientX:x,clientY:y-30})); cv.dispatchEvent(new PointerEvent('pointerup',{...o,clientX:x,clientY:y-30})); await w(50);
+      out.bent=(e.b||0)>0.3&&e.s===0&&e.l===16; out.bendShape=fxBend(e,0.5)>1.3&&fxBend(e,0)===1&&fxShape(e,0.5)>flat-0.01; }
+    s2EdClose();
     out.labels=[INST.fx.label,INST.mix.label,PICK_GROUPS[3][0]].join('|');
     return out; });
   const want={exNames:'Punchy kit|Pluck|Bell|Piano|Transitions',exLoop:true,exFx:'sweepDown@0:0.4 riser@16:0.25 sweepUp@16:0.3',newNoLoop:true,before:'Lead',afterPick:'Bell',laneShows:true,typed:'My hook',typedStays:'My hook',follows:'Pluck',
     kitBefore:'Drum kit',kitAfter:'Punchy kit',vox:'Pop vocals',mixBefore:'Mix effects',mixAfter:'Phaser',edTitle:'Phaser',mixMixed:'Mix effects',twoBells:'Bell 1|Bell 2',
-    handles:true,longer:48,earlier:'16,64',newPart:'16:64',ruler:'1,2',octShown:true,oct:1,noOctOnImpact:true,labels:'Transitions|Mix effects|FX'};
+    handles:true,longer:48,earlier:'16,64',newPart:'16:64',ruler:'1,2',octShown:true,oct:1,noOctOnImpact:true,bent:true,bendShape:true,labels:'Transitions|Mix effects|FX'};
   for(const [k,v] of Object.entries(want)) if(r[k]!==v) errs.push(k+': '+JSON.stringify(r[k]));
   console.log(JSON.stringify({...r,errs})); await b.close(); })();

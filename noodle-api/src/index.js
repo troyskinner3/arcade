@@ -50,7 +50,7 @@ const INVITE = /^[A-Z2-9]{6}$/, INVITES_FOR_PRO = 3, REWARDS_PER_DAY = 25;
 const EVENTS = new Set(['first_open', 'first_take', 'first_song', 'first_export', 'first_share', 'open', 'take', 'song_parts', 'export',
   'share_link', 'part_used', 'session', 'pro_sheet', 'pro_try', 'pro_buy', 'pro_result', 'restore']);
 const STATS_ID = /^[A-Za-z0-9_-]{16,40}$/, MAX_EVENTS = 50, LABEL = /^[A-Za-z0-9 _.+\-]{0,40}$/;
-const SONG = /^[A-Za-z0-9_-]{10,32}$/, SONG_DAYS = 2 * 365, MAX_SONG = 8 * 1024 * 1024, MAX_PREVIEW = 3 * 1024 * 1024, MAX_SONGS_PER_DAY = 250, REPORTS_TO_HIDE = 3;
+const SONG = /^[A-Za-z0-9_-]{10,32}$/, SONG_DAYS = 2 * 365, MAX_SONG = 8 * 1024 * 1024, MAX_PREVIEW = 3 * 1024 * 1024, MAX_SONGS_PER_DAY = 250, REPORTS_TO_HIDE = 1;   // hidden on the first report while the owner looks (owner, Nov 2026: Apple asks reports be acted on within 24 h)
 const sha = async (t) => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t)))].map((x) => x.toString(16).padStart(2, '0')).join('');
 const esc = (t) => String(t).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 

@@ -1,7 +1,7 @@
 // FX (beta) through the record button with a simulated mic: a rising glide then a short burst -> a riser and an impact, as a part on the timeline; a second take from bar 3 adds a second part
 const {chromium,devices}=require('playwright');
 (async()=>{ const b=await chromium.launch({args:['--use-fake-ui-for-media-stream','--autoplay-policy=no-user-gesture-required']}); const c=await b.newContext({...devices['iPhone 13'],permissions:['microphone'],colorScheme:'dark'}); const p=await c.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(e.message));
-  await p.addInitScript(()=>{ navigator.mediaDevices.getUserMedia=async()=>{ const cx=window.__ctx, dst=cx.createMediaStreamDestination(); window.__dst=dst; return dst.stream; }; });
+  await p.addInitScript(()=>{ try{ localStorage.setItem('noodle.shareAsk','1'); }catch(e){}   /* the share-takes question (after the first Keep) was answered */ navigator.mediaDevices.getUserMedia=async()=>{ const cx=window.__ctx, dst=cx.createMediaStreamDestination(); window.__dst=dst; return dst.stream; }; });
   await p.goto('http://localhost:8800/noodle-s2.html?studio'); await p.waitForTimeout(1000); const out={};
   await p.evaluate(()=>{ ensureCtx(); window.__ctx=ctx; return ctx.resume(); });
   const perform=async()=>{ await p.waitForFunction(()=>!!recState,null,{timeout:10000}); const w=await p.evaluate(()=>{ const r=recState, cx=window.__ctx, dst=window.__dst, bar=240/S.bpm;
