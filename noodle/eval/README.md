@@ -755,3 +755,14 @@ the note editor's Today / Tap notes button flips one take between them. The fing
   days and restores or removes it. Terms, privacy policy, support page, the in-app report sheet and the App Review note say so.
 - Support emails open with the subject "Noodle support" (people can still edit it; a dedicated address is on the roadmap for the owner).
 - Tests that tap Keep mark the share-takes question as answered (`noodle.shareAsk`), as they do the other first-run questions.
+
+## Round 18 (UI pass: recording, editors, sheets, error states)
+- Buttons that looked like text: "Start from a beat" (new song) and "Tap the beat" (Tempo) are outlined again (`.s2 button` reset the
+  outline in the Studio; `.mfx-btn` used Studio-only colours, so it had no edge in sheets).
+- ⓘ works in every sheet (one handler on the sheet). Mix: ⓘ for Reverb, Drive and Punch. Tempo: "Count-in chord" (ⓘ) instead of a
+  sentence as the checkbox label.
+- The track sheet's name field shows the track's name as it appears on the timeline ("Bell"), not its type ("Lead").
+- Microphone refused: a sheet, "Noodle can't hear you": in the iPhone app, Open Settings (the app opens Noodle's page in Settings) and
+  Import a recording; on the web, how to allow it in the browser. Recording again explains again (it used to switch quietly to import).
+- A song link opened offline says to check the connection; only a deleted one says it isn't available any more.
+- Tests: `errors_test.js` (mic refused in the app and on the web, offline vs. deleted link).

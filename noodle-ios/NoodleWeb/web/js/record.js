@@ -15,7 +15,7 @@ async function ensureMic(ec=S.ec){
   try{ if(navigator.audioSession) navigator.audioSession.type='play-and-record'; }catch(e){}
   let stream;
   try{ stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:ec,noiseSuppression:false,autoGainControl:false,channelCount:1}}); }
-  catch(e){ micBlocked(); toast('The microphone isn’t available here. Import a recording instead.'); return false; }
+  catch(e){ micBlocked(); micSheet(S.target, e&&e.name); return false; }
   const src=ctx.createMediaStreamSource(stream), an=ctx.createAnalyser(); an.fftSize=1024; src.connect(an);
   const sink=ctx.createGain(); sink.gain.value=0; sink.connect(ctx.destination);
   const onChunk=(t,d)=>{ if(capturing&&recState) recState.chunks.push({t,d}); };
@@ -44,7 +44,13 @@ function onHide(){
 }
 document.addEventListener('visibilitychange',()=>{ if(document.hidden){ onHide(); dropSync(); projSaveCurrent().catch(()=>{}); } });
 window.addEventListener('pagehide',onHide);
-function micBlocked(){ micOff=true; $('recBtn').hidden=true; }   /* no live mic here (blocked by the page or the person): recording asks for a file instead */
+function micBlocked(){ micOff=true; $('recBtn').hidden=true; }
+/* the microphone was refused (or there is none): say how to turn it on (in the iPhone app, Settings opens at Noodle's page), or import a file */
+function micSheet(id, why){ const app=!!(window.webkit&&window.webkit.messageHandlers&&window.webkit.messageHandlers.noodleNative), denied=why!=='NotFoundError';
+  nxSheet(`<h2>Noodle can’t hear you</h2><p style="color:var(--muted);font-size:15px;margin:-4px 0 14px">${!denied?'Noodle couldn’t find a microphone on this device.':app?'Turn on Microphone for Noodle in Settings, then come back and record.':'Allow the microphone for this page in your browser’s settings, then reload the page.'}${S.tracks.some(x=>x.id===id)?' You can also import a recording instead.':''}</p>
+    ${denied&&app?'<button class="nx-primary" id="micSet">Open Settings</button>':''}${S.tracks.some(x=>x.id===id)?'<button class="nx-ghost" id="micImp" style="margin-top:10px">Import a recording</button>':''}`);
+  if($('micSet')) $('micSet').onclick=()=>{ native({type:'settings'}); nxClose(); };
+  if($('micImp')) $('micImp').onclick=()=>{ nxClose(); importInto(id); }; }   /* no live mic here (blocked by the page or the person): recording asks for a file instead */
 // Safari/iOS don't report output delay; real iPhone takes measure about 0.1 s. autoAdj is learned from your own takes.
 const autoLat=()=>(ctx?(ctx.outputLatency?ctx.outputLatency+(ctx.baseLatency||0)+0.012:(ctx.baseLatency||0)+0.09):0.09)+(S.autoAdj||0);
 const latency=()=>S.latAuto?autoLat():S.latMs/1000;
@@ -103,7 +109,7 @@ async function recordInto(id, resume=null){
   if(recState){ cancelRecord(); return; }
   if(takeReading){ toast('Still reading your last take…'); return; }
   const tr=S.tracks.find(t=>t.id===id); if(!tr) return;
-  if(micOff){ importInto(id); return; }
+  if(micOff){ micSheet(id); return; }   /* explain again, with Import */
   flushSave(); rs={mode:'take', pre:hist.cur, histLen:hist.undo.length, resume}; takeBar=null;
   S.target=tr.id; S.activeId=tr.id; S.inst=tr.inst; 
   if((tr.len||S.bars)>S.bars){ S.bars=tr.len; save(); }

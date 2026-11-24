@@ -212,8 +212,8 @@ async function songLinkDelete(){ const L=S.link; if(!L) return true; let ok=fals
   if(ok){ delete S.link; save(); await projSaveCurrent(); } return ok; }
 /* Opening a song link (in the app, or ?s=<id> on the web): a copy of the song becomes a new song here, "Remix of …", ready for your part. */
 async function songLinkOpen(ref){ const id=String(ref||'').replace(/^.*\/s\//,'').replace(/[?#].*$/,''); if(!/^[A-Za-z0-9_-]{10,32}$/.test(id)) return false;
-  toast('Opening the song…'); let f=null; try{ const r=await fetch(`${NOODLE_API}/v1/songs/${id}`); if(r.ok) f=await r.json(); }catch(e){}
-  if(!f||!f.songs||!f.songs[0]){ toast('That song isn’t available any more.'); return false; }
+  toast('Opening the song…'); let f=null, net=false; try{ const r=await fetch(`${NOODLE_API}/v1/songs/${id}`); if(r.ok) f=await r.json(); else net=r.status>=500; }catch(e){ net=true; }
+  if(!f||!f.songs||!f.songs[0]){ toast(net?'Couldn’t reach Noodle to open that song. Check your connection and open the link again.':'That song isn’t available any more.',5000); return false; }   /* offline isn't "deleted" */
   const g=f.songs[0], t=g.title||'a song'; g.title=('Remix of '+t).slice(0,60); g.createdAt=Date.now(); g.updatedAt=Date.now(); if(g.song){ delete g.song.link; g.song.title=g.title; g.song.remixOf={id,title:t}; }
   const n=await songFileOpen(JSON.stringify(f)); if(n<1||!songFileOpen.last) return false;
   if(!$('nxOb').hidden){ window.__remixAfterOb={pid:songFileOpen.last, title:t}; return true; }   /* first launch: open it once the welcome is done */
@@ -385,7 +385,7 @@ function nxOnboard(done){ const O=$('nxOb'), I=$('nxObIn'), A=$('nxObActs'); O.h
     else { I.innerHTML=`<h1>Want news?</h1><p class="sub">${NX_EMAIL_TEXT}</p><input class="nx-txt" id="obEm" type="email" inputmode="email" autocomplete="email" placeholder="you@example.com" aria-label="Email address">`; A.innerHTML=`<button class="nx-primary" id="obE">Sign me up</button><button class="nx-ghost" id="obK">Skip</button>`;
       $('obK').onclick=finish; $('obE').onclick=async()=>{ const v=$('obEm').value.trim(); if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v)){ toast('That doesn’t look like an email address.'); return; } $('obE').disabled=true; const ok=await emailSignup(v,NX_EMAIL_TEXT); if(ok){ try{ localStorage.setItem('noodle.email',v); }catch(e){} finish(); } else { $('obE').disabled=false; toast('That didn’t go through. You can sign up later in More.'); } }; } };
   show(); }
-function nxInit(){ $('nxPro').onclick=()=>proSheet(); nxProSync(); $('nxMore').addEventListener('click',e=>{ const b=e.target.closest('[data-info]'); if(b){ e.preventDefault(); e.stopPropagation(); infoPop(b); } },true);
+function nxInit(){ $('nxPro').onclick=()=>proSheet(); nxProSync(); $('nxSheet').addEventListener('click',e=>{ const b=e.target.closest('[data-info]'); if(b){ e.preventDefault(); e.stopPropagation(); infoPop(b); } },true);   /* ⓘ in any sheet opens its bubble */ $('nxMore').addEventListener('click',e=>{ const b=e.target.closest('[data-info]'); if(b){ e.preventDefault(); e.stopPropagation(); infoPop(b); } },true);
   setTimeout(()=>{ try{ if(musicalOn()) loadMusical(); }catch(e){} },2500);
   if(window.NOODLE_DEV){ const r=$('nxDevTap'), sw=$('nxTapSw'); r.hidden=false; sw.setAttribute('aria-checked',String(tapNotesOn())); sw.onclick=()=>{ const on=!tapNotesOn(); try{ localStorage.setItem('noodle.tapnotes',on?'1':''); }catch(e){} sw.setAttribute('aria-checked',String(on)); toast(on?'Tap notes on for new takes':'Tap notes off for new takes'); }; }   /* testing: the owner's tap note rules */   /* Musical mode's tables, ready before the first take */
   if(window.NOODLE_DEV){ const dv=$('nxDev'), sync=()=>dv.querySelectorAll('[data-dv]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.dv===devAs()))); dv.hidden=false; sync();
