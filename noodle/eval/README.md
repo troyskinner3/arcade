@@ -766,3 +766,7 @@ the note editor's Today / Tap notes button flips one take between them. The fing
   Import a recording; on the web, how to allow it in the browser. Recording again explains again (it used to switch quietly to import).
 - A song link opened offline says to check the connection; only a deleted one says it isn't available any more.
 - Tests: `errors_test.js` (mic refused in the app and on the web, offline vs. deleted link).
+- Screen sizes: iPhone SE (375 × 667) and Pro Max (430 × 932): Studio, track sheet, drum and Transitions editors, Pro sheet and More all fit.
+  (Playwright's "iPhone SE" preset is the 320 pt first generation, which current iOS doesn't run on.)
+- VoiceOver: every visible control on the main screens has a name; ⓘ buttons now read their explanation instead of "About this".
+- Larger text (Dynamic Type) isn't followed yet; left for the owner to decide (roadmap).

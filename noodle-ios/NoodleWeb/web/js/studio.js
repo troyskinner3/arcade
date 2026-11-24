@@ -405,7 +405,7 @@ function infoPop(btn){ document.querySelectorAll('.info-pop').forEach(x=>x.remov
   d.style.left=left+'px'; d.style.top=(below?r.bottom+10:r.top-10-h)+'px'; d.classList.add(below?'below':'above'); d.style.setProperty('--ax',(r.left+r.width/2-left)+'px');
   const close=e=>{ if(e&&e.target===btn) return; d.remove(); document.removeEventListener('pointerdown',close,true); }; setTimeout(()=>document.addEventListener('pointerdown',close,true),0); setTimeout(close,9000); }
 /* a small ⓘ that shows its text when tapped (instead of a sentence under every control) */
-const s2Inf=t=>`<button class="s2-i" data-info="${nxEsc(t)}" aria-label="About this" type="button">i</button>`;
+const s2Inf=t=>`<button class="s2-i" data-info="${nxEsc(t)}" aria-label="${nxEsc(t)}" type="button">i</button>`;   /* VoiceOver reads the explanation itself, not just "About this" */
 /* a list to pick from (same look as Sound ›): stays open so each choice can be heard; Done or ‹ goes back */
 function nxList(title, groups, cur, pick, back){ const tick='<svg class="nx-ico pk-ok" viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></svg>';
   nxSheet(`<div class="pk-head"><button class="pk-back" data-done aria-label="Back"><svg class="nx-ico" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button><h2>${nxEsc(title)}</h2><button class="pk-done" data-done>Done</button></div>`
