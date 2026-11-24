@@ -66,6 +66,10 @@ Draft copy is in `noodle-ios/APP_STORE_LISTING.md`.
 - [ ] Crash reports reviewed and the top crashes fixed.
 - [ ] A TestFlight beta with a handful of outside people; collect what confuses them.
 - [ ] Songs survive an app update (saved songs open in the new build).
+- [x] Owner review 22 Nov: stuck Pro sheet fixed, FX start quieter, tap empty space to deselect, one Loop button with the yellow band,
+  plainer Pro preview text, Delete track button, drum fills per part (round 15 in `eval/README.md`).
+- [ ] **Owner:** check the metronome buzz on a new iPhone build; if it's still off, set Buzz timing (Mic and timing) until it lands
+  on the click and send the number, so it can become the default.
 
 ## 9. Launch
 - [ ] **Owner:** launch date, and whether to release by hand after Apple approves.

@@ -3,10 +3,11 @@
 let lastMsg='';
 let toastQuiet=false;   /* the voice check shows its own messages */
 function toast(msg,ms=4200){ lastMsg=msg; if(toastQuiet || !$('recSheet').hidden) return;   /* that screen shows its own messages */
-  const t=$('toast'); t.textContent=msg; t.classList.remove('act'); t.onclick=null; toastPlace(t); t.classList.add('on'); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('on'),ms); }
+  const t=$('toast'); t.textContent=msg; t.classList.remove('act'); t.onclick=null; toastPlace(t); t.classList.add('on'); clearTimeout(t._h); t._h=setTimeout(()=>toastOff(t),ms); }
+function toastOff(t){ t.classList.remove('on','act'); t.onclick=null; }   /* a hidden message never catches taps (it used to keep opening the Pro sheet) */
 function toastPlace(t){ t.style.bottom=''; try{ if(s2On()){ const r=($('s2Ed').hidden?$('s2Tl'):$('s2EdBody')).getBoundingClientRect(); t.style.bottom=Math.max(8,window.innerHeight-r.bottom+8)+'px'; } }catch(e){} }
-document.addEventListener('pointerdown',()=>{ const t=$('toast'); if(t&&t.classList.contains('on')&&!t._busy){ clearTimeout(t._h); t.classList.remove('on'); } },{capture:true,passive:true});   /* any tap puts the message away */
-function showBusy(msg){ if(toastQuiet) return ()=>{}; const t=$('toast'); t.textContent=msg; toastPlace(t); t._busy=true; t.classList.add('on'); clearTimeout(t._h); return ()=>{ t._busy=false; }; }
+document.addEventListener('pointerdown',e=>{ const t=$('toast'); if(t&&t.classList.contains('on')&&!t._busy&&!(t.classList.contains('act')&&t.contains(e.target))){ clearTimeout(t._h); toastOff(t); } },{capture:true,passive:true});   /* any tap puts the message away (a tap on its Get Pro opens the sheet) */
+function showBusy(msg){ if(toastQuiet) return ()=>{}; const t=$('toast'); t.textContent=msg; t.classList.remove('act'); t.onclick=null; toastPlace(t); t._busy=true; t.classList.add('on'); clearTimeout(t._h); return ()=>{ t._busy=false; }; }
 /* instrument picker: grouped, with the mouth sounds and a one-line description */
 const PICK_GROUPS=[['Percussion',['kit']],   /* one drum track type (the kit); older songs' single Kick / Snare / Hi-hat / Clap tracks still play and edit */['Melodic',['bass','lead','keys','pad','arp']],['Vocals',['vox']],['Ear candy',['fx','mix']]];
 /* ---- spotlight ruler (vocals): drag to create, drag edges to resize, drag the middle to move, tap to select then ✕ to remove ---- */

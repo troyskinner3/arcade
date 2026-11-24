@@ -1,15 +1,18 @@
 // Drum fills: a looping 1-bar beat with fills every 4 bars gets a fill in bars 4 and 8 (bigger in 8) and a crash on bar 5; the sheet
-// sets it; the rendered part differs from no-fills only around those spots. Prints {..., errs:[]}.
+// drum editor sets it per part; the rendered part differs from no-fills only around those spots. Prints {..., errs:[]}.
 const {chromium,devices}=require('playwright');
 (async()=>{ const b=await chromium.launch(); const c=await b.newContext({...devices['iPhone 13']}); const p=await c.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(e.message));
   await p.goto('http://localhost:8800/noodle-s2.html?studio'); await p.waitForTimeout(1000);
   const r=await p.evaluate(async()=>{ S.bars=8; S.bpm=120; const k=mkTrack('kit',{id:S.nextId++,off:0,len:1,rep:true,hits:[0,8].map(s=>({s,d:'kick',v:1})).concat([4,12].map(s=>({s,d:'snare',v:.9})),Array.from({length:8},(_,i)=>({s:i*2,d:'hat',v:.6})))});
-    S.tracks.push(k); renderTracks(); s2TrackSheet(s2Lane(s2LaneId(k))); const out={sheet:!!document.querySelector('#s2Fill')};
-    document.querySelector('#s2Fill [data-f="4"]').click(); out.fill=k.fill; out.loops=pLoops(k);
+    S.tracks.push(k); renderTracks(); s2TrackSheet(s2Lane(s2LaneId(k))); const out={notInSheet:!document.querySelector('#s2Fill,#edFill')}; nxClose();
+    s2Edit(k); await new Promise(r=>setTimeout(r,200)); out.sheet=!!document.querySelector('#edFill');   /* set per part, in its drum editor */
+    document.querySelector('#edFill [data-f="4"]').click(); out.fill=k.fill; out.loops=pLoops(k); out.pressed=document.querySelector('#edFill [data-f="4"]').getAttribute('aria-pressed');
+    const k2=mkTrack('kit',{id:S.nextId++,off:0,len:2,rep:false,lenSet:true,hits:[{s:0,d:'kick',v:1}]}); S.tracks.push(k2); s2EdClose(); s2Edit(k2); await new Promise(r=>setTimeout(r,150));
+    out.shortOff=document.querySelector('#edFill [data-f="4"]').disabled&&document.querySelector('#edFill [data-f="8"]').disabled; out.otherPart=k2.fill===undefined; s2EdClose(); S.tracks=S.tracks.filter(t=>t!==k2);   /* a 2-bar part can't have a 4-bar fill; the other part keeps its own setting */
     const ev=withFills(k,songEvents(k,k.hits)), at=b=>ev.filter(h=>h.s>=b*16&&h.s<b*16+16).map(h=>h.s%16+':'+soundOf(h.d)).join(' ');
     out.bar4=at(3); out.bar5=at(4).split(' ')[0]+' '+at(4).split(' ').filter(x=>x.endsWith('crash')).length; out.bar8=at(7); out.bar2=at(1);
     return out; });
-  const want={sheet:true,fill:4,loops:8};
+  const want={notInSheet:true,sheet:true,fill:4,loops:8,pressed:'true',shortOff:true,otherPart:true};
   for(const [k,v] of Object.entries(want)) if(r[k]!==v) errs.push(k+': '+r[k]);
   if(!/12:tomhi 13:tomhi 14:tommid 15:tomlo$/.test(r.bar4)||/12:snare|14:hat/.test(r.bar4)) errs.push('bar 4: '+r.bar4);
   if(!/8:snare 10:snare 12:tomhi/.test(r.bar8)) errs.push('bar 8: '+r.bar8);
