@@ -26,7 +26,9 @@ Today Noodle sends no usage analytics: only crash reports, opt-in shared takes, 
 - [ ] First-run flow: a new person gets from opening the app to hearing their own song quickly, with no explanations needed.
   Done so far: the share-takes question moved to after the first kept take. Still before the first song: email news and the voice check.
 - [x] Empty, error and offline states: mic refused (a sheet with Open Settings and Import), song link offline vs. deleted, nothing heard (already explained).
-- [ ] Small and large iPhones, Dynamic Type, VoiceOver labels on the main buttons. (Light mode is now a real light theme; owner to check.)
+- [x] Small and large iPhones (SE 375 pt to Pro Max 430 pt: everything fits) and VoiceOver names on every control (ⓘ reads its explanation).
+- [ ] **Owner:** larger text (Dynamic Type): the app's text doesn't grow with the iPhone's Text Size setting yet. Decide whether the app
+  should zoom with it (Claude's suggestion: up to about 120%, so layouts still fit). Light mode is now a real light theme; owner to check.
 - [ ] Copy pass: no AI-sounding words, plain names, ⓘ for explanations.
 - [ ] New rules from the review go into `STYLE.md`.
 

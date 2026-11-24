@@ -67,6 +67,7 @@ The owner's rules, gathered from reviews. Read this before any UI or copy change
 - **Errors say what to do next:** "Noodle can't hear you" with Open Settings and Import a recording, not a toast that hides the way out.
   Offline is not "gone": say to check the connection.
 - **Checkbox and switch labels are names too** ("Count-in chord" with ⓘ, not "Play the home chord during the count-in").
+- **VoiceOver:** every control has a name; an ⓘ reads its explanation aloud (its label is the bubble's text).
 - **Outlined buttons stay outlined everywhere**, in the Studio and in sheets ("Start from a beat", "Tap the beat").
 - **Feedback:** a light haptic for placing things, medium for record start and stop.
 - **Big targets while recording:** anything you touch while singing (the tap pad) is huge and easy to hit without looking.

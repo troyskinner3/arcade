@@ -9,5 +9,7 @@
 - **Launch roadmap:** `noodle/ROADMAP.md` is the running pre-launch list. Tick items off and add new ones as work lands.
 - Before committing Noodle changes, run `noodle-ios/sync-web.sh` so the iPhone app's bundled copy (`noodle-ios/NoodleWeb/web`) matches.
 - Pushing `main` deploys the website (GitHub Pages). The takes service (`noodle-api/`) deploys by hand only: see its README.
+- **Merge to `main` after every round of updates** (owner's standing instruction): once `bash noodle/eval/run.sh` ends ALL PASS, commit,
+  push the working branch, open a pull request and merge it, so the next TestFlight build has the changes. No need to ask each time.
 - Privacy: `noodle-ios/NoodleWeb/PrivacyInfo.xcprivacy`, `noodle/privacy/` and `noodle-ios/APP_STORE_PRIVACY.md` must match whatever Noodle sends.
 - Tests: `bash noodle/eval/run.sh` must end ALL PASS before committing Noodle changes. The evaluation log is `noodle/eval/README.md` (every round).
