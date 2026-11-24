@@ -1,7 +1,7 @@
 // voice parts anywhere (record at bar 3, render, move, trim), trimming a melody part, More sheets (mic & timing, drum sounds)
 const {chromium,devices}=require('playwright');
 (async()=>{ const b=await chromium.launch({args:['--use-fake-ui-for-media-stream','--autoplay-policy=no-user-gesture-required']}); const c=await b.newContext({...devices['iPhone 13'],permissions:['microphone'],colorScheme:'dark'}); const p=await c.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(e.message));
-  await p.addInitScript(()=>{ navigator.mediaDevices.getUserMedia=async()=>{ const cx=window.__ctx, dst=cx.createMediaStreamDestination(); window.__dst=dst; return dst.stream; }; });
+  await p.addInitScript(()=>{ try{ localStorage.setItem('noodle.shareAsk','1'); }catch(e){}   /* the share-takes question (after the first Keep) was answered */ navigator.mediaDevices.getUserMedia=async()=>{ const cx=window.__ctx, dst=cx.createMediaStreamDestination(); window.__dst=dst; return dst.stream; }; });
   await p.goto('http://localhost:8800/noodle-s2.html?studio'); await p.waitForTimeout(1000); const out={};
   await p.evaluate(()=>{ ensureCtx(); window.__ctx=ctx; S.bars=4; const t=mkTrack('lead',{id:S.nextId++,off:0,len:4,rep:false,lenSet:true,notes:Array.from({length:16},(_,i)=>({s:i*4,l:4,p:60+i%5,v:.8,x:true}))}); S.tracks.push(t); save(); flushSave(); renderTracks(); return ctx.resume(); });
   const st=()=>p.evaluate(()=>S.bars+' | '+S.tracks.map(t=>`${t.inst}:${(t.off||0)/16}+${t.len}`).join(' '));

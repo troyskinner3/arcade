@@ -739,3 +739,19 @@ the note editor's Today / Tap notes button flips one take between them. The fing
 - Tests: `round16_test.js` (names, handles, Octave, example song, ruler, renames), `mfx_brake_test.js` (half speed at 50%, silent when
   stopped, back on pitch and in time after the region; the crusher holds samples at the set rate). `fx_ab_test.js` no longer compares
   Bitcrusher and Vinyl brake with the prototype (changed on purpose).
+
+## Round 17 (owner review, 25 Nov; start of the final UI pass)
+- Transitions: the selected effect has a dot in its middle; drag it up or down to bend its loudness (e.b, −1..1: the middle up to twice as loud
+  or silent, the ends unchanged; snaps back to straight near the middle). The drawn shape bends with it, in the editor and on the timeline.
+- First open: the share-takes question moved to right after the first kept take (asked once; Not now is fine). The welcome screen marks the DAW pack Pro.
+- Light mode is a real light theme: near-white page, white cards, a light tab bar, the voice card light too; the strip behind the status bar
+  follows the theme (it was dark, so the clock was unreadable in light mode); the app's loading background matches.
+- Copy: Noodle refers to itself as "Noodle", not "I"; no "Let's", "Nice." or exclamation marks.
+- Terms of use (draft for the owner, `noodle/terms/`): agreed to once before a first song link ("Agree and make the link"), a row in More.
+  Apple's guideline 1.2 covers songs from other people opened in the app, even though they arrive by text; App Review note written.
+- Takes service: reported songs list, take down / restore, optional report email (round 16 follow-up; deploy by hand).
+- Tests: `onboard_test` now checks the share question comes after the first kept take, once.
+- Reports (owner): the first report hides a song at once (Apple asks reports be acted on within 24 hours); the owner reviews within 2 working
+  days and restores or removes it. Terms, privacy policy, support page, the in-app report sheet and the App Review note say so.
+- Support emails open with the subject "Noodle support" (people can still edit it; a dedicated address is on the roadmap for the owner).
+- Tests that tap Keep mark the share-takes question as answered (`noodle.shareAsk`), as they do the other first-run questions.

@@ -32,8 +32,7 @@ function s2DrawLane(lane,cv){ const W=cv.clientWidth, H=cv.clientHeight; if(!W||
     else if(tr.mfx){ const d=pSteps(tr)*stepDur(), N=Math.max(8,Math.floor(iw/2)); g.beginPath(); g.moveTo(ix,yIn+hIn+3.5); for(let i=0;i<=N;i++) g.lineTo(ix+iw*i/N, yIn+hIn+3.5-(hIn)*mfxFrac(tr,d,i/N)); g.lineTo(ix+iw,yIn+hIn+3.5); g.closePath(); const ga=g.globalAlpha; g.globalAlpha=ga*0.55; g.fill(); g.globalAlpha=ga;
       if(iw>34){ g.fillStyle=getComputedStyle(cv).getPropertyValue('--s2-ink').trim()||'#222'; g.font='600 10px system-ui,sans-serif'; g.textBaseline='top'; g.fillText(MFX[tr.mfx.k].label,ix+2,yIn,iw-4); } }
     else if(tr.inst==='fx'){ (tr.fxs||[]).forEach(e=>{ if(e.s<0||e.s>=ps) return; const xa=ix+e.s*u, xb=Math.min(ix+iw, ix+Math.min(e.s+e.l,ps)*u-1), w2=Math.max(3,xb-xa), y0=yIn+hIn+3.5, hh=hIn+3.5; g.beginPath();
-        if(e.k==='impact'){ g.moveTo(xa,y0); g.lineTo(xa,y0-hh); g.lineTo(xa+w2,y0); }
-        else { const C=e.c||[0,1], up=e.k==='riser'||e.k==='sweepUp'; g.moveTo(xa,y0); for(let i=0;i<C.length;i++){ const lin=i/(C.length-1), yv=0.6*C[i]+0.4*(up?lin:1-lin); g.lineTo(xa+w2*lin, y0-hh*(0.12+0.88*yv)); } g.lineTo(xa+w2,y0); }
+        g.moveTo(xa,y0); for(let i=0;i<=24;i++){ const u=i/24; g.lineTo(xa+w2*u, y0-hh*(0.12+0.88*fxShape(e,u))); } g.lineTo(xa+w2,y0);
         g.closePath(); if(e.k==='sweepUp'||e.k==='sweepDown'){ const ga=g.globalAlpha; g.globalAlpha=ga*0.5; g.fill(); g.globalAlpha=ga; g.stroke(); } else g.fill(); }); }
     else if(tr.hits){ const rows=[...new Set(tr.hits.map(x=>x.d))]; tr.hits.forEach(x=>{ if(x.s<0||x.s>=ps) return; const i=rows.indexOf(x.d), y=yIn+hIn*(rows.length>1?i/(rows.length-1):0.5), xa=ix+x.s*u; g.fillRect(xa, y, Math.max(1.5,Math.min(u-1,ix+iw-xa)), 3.5); }); }
     else { const raw=tr._raw; const N=Math.max(8,Math.floor(iw/3)); for(let i=0;i<N;i++){ let a=0.25; if(raw&&raw.x){ const a0=(tr.va||0)*raw.sr, span=ps*stepDur()*raw.sr, i0=Math.floor(a0+i/N*span), i1=Math.min(raw.x.length,Math.floor(a0+(i+1)/N*span)); let m=0; for(let j=i0;j<i1;j+=16) m=Math.max(m,Math.abs(raw.x[j])); a=Math.min(1,m*2.2); } const bh=Math.max(2,a*(h-2*pad)); g.fillRect(ix+i*(iw/N), top+h/2-bh/2, 1.6, bh); } } } }
@@ -205,10 +204,11 @@ function fxGridMount(tr, host){ const ps=pSteps(tr), wrap=document.createElement
     (tr.fxs||[]).forEach(e=>{ const r=FX_ROWS.indexOf(e.k); if(r<0||e.s>=ps) return; const x=gut+e.s*cw+1, w=Math.max(6,Math.min(e.l,ps-e.s)*cw-2), y=r*rh+5, h=rh-10, sel=tr._fxSel===e;
       g.fillStyle=col; g.globalAlpha=0.28; g.beginPath(); if(g.roundRect) g.roundRect(x,y,w,h,5); else g.rect(x,y,w,h); g.fill(); g.globalAlpha=1; g.strokeStyle=sel?v('--s2-amber'):col; g.lineWidth=sel?2.5:1.5; g.stroke();
       g.fillStyle=col; g.beginPath(); const y0=y+h-3, hh=h-8;   /* the shape of your voice */
-      if(e.k==='impact'){ g.moveTo(x+3,y0); g.lineTo(x+3,y0-hh); g.lineTo(x+w-3,y0); }
-      else { const C=e.c||[0,1], up=e.k==='riser'||e.k==='sweepUp'; g.moveTo(x+3,y0); for(let i=0;i<C.length;i++){ const lin=i/(C.length-1), yv=0.6*C[i]+0.4*(up?lin:1-lin); g.lineTo(x+3+(w-6)*lin, y0-hh*(0.1+0.9*yv)); } g.lineTo(x+w-3,y0); }
+      g.moveTo(x+3,y0); for(let i=0;i<=32;i++){ const u=i/32; g.lineTo(x+3+(w-6)*u, y0-hh*(0.1+0.9*fxShape(e,u))); } g.lineTo(x+w-3,y0);
       g.closePath(); g.globalAlpha=0.85; g.fill(); g.globalAlpha=1;
+      if(sel&&w>30){ const p=fxDot(e); g.beginPath(); g.arc(p.x,p.y,7,0,7); g.fillStyle=v('--s2-amber'); g.fill(); g.lineWidth=2; g.strokeStyle=v('--s2-bg'); g.stroke(); }   /* drag up or down to bend its loudness */
       g.fillStyle=v('--s2-ink'); g.globalAlpha=0.6; g.fillRect(x+w-6,y+h/2-8,2.5,16); g.globalAlpha=1; }); };   /* the grip at the right end */
+  const fxDot=e=>{ const r=FX_ROWS.indexOf(e.k), x=gut+e.s*cw+1, w=Math.max(6,Math.min(e.l,ps-e.s)*cw-2), h=rh-10, y0=r*rh+5+h-3, hh=h-8; return {x:x+3+(w-6)*0.5, y:y0-hh*(0.1+0.9*fxShape(e,0.5)), hh}; };
   const at=ev=>{ const R=cv.getBoundingClientRect(), x=ev.clientX-R.left, y=ev.clientY-R.top; return {x, y, st:Math.floor((x-gut)/cw), row:clamp(Math.floor(y/rh),0,FX_ROWS.length-1)}; };
   const hitAt=q=>(tr.fxs||[]).slice().reverse().find(e=>FX_ROWS.indexOf(e.k)===q.row && q.x>=gut+e.s*cw-4 && q.x<=gut+(e.s+e.l)*cw+4);
   const changed=()=>{ tr.blank=tr.blank||!(tr.fxs||[]).length; tr._dirty=true; save(); scheduleRender(); draw(); const L=s2Lane(s2LaneId(tr)), lc=L&&$('s2In').querySelector(`canvas[data-cv="${L.id}"]`); if(lc) s2DrawLane(L,lc); $('s2EdS').textContent=partWhere(tr)+' · '+(tr.fxs||[]).length+' FX'; };
@@ -216,10 +216,12 @@ function fxGridMount(tr, host){ const ps=pSteps(tr), wrap=document.createElement
   cv.style.touchAction='pan-x';
   cv.addEventListener('touchstart',ev=>{ if(ev.touches.length!==1) return; const q=at(ev.touches[0]); if(q.x>=gut && hitAt(q)) ev.preventDefault(); },{passive:false});   /* on an effect: drag it, don't scroll */
   cv.addEventListener('touchmove',ev=>{ if(d&&d.e) ev.preventDefault(); },{passive:false});
-  cv.addEventListener('pointerdown',ev=>{ const q=at(ev); if(q.x<gut||q.st<0||q.st>=ps) return; flushSave(); const e=hitAt(q); d={q, e, s0:e&&e.s, l0:e&&e.l, k0:e&&e.k, moved:false, mode:e&&q.x>gut+(e.s+e.l)*cw-16?'len':'move', id:ev.pointerId}; if(e){ tr._fxSel=e; draw(); try{ cv.setPointerCapture(ev.pointerId); }catch(_){} } });
+  cv.addEventListener('pointerdown',ev=>{ const q=at(ev); if(q.x<gut||q.st<0||q.st>=ps) return; flushSave(); const sd=tr._fxSel&&(tr.fxs||[]).includes(tr._fxSel)?fxDot(tr._fxSel):null, onDot=sd&&Math.hypot(q.x-sd.x,q.y-sd.y)<22;
+    const e=onDot?tr._fxSel:hitAt(q); d={q, e, s0:e&&e.s, l0:e&&e.l, k0:e&&e.k, b0:e&&(e.b||0), moved:false, mode:onDot?'bend':e&&q.x>gut+(e.s+e.l)*cw-16?'len':'move', id:ev.pointerId}; if(e){ tr._fxSel=e; draw(); try{ cv.setPointerCapture(ev.pointerId); }catch(_){} } });
   cv.addEventListener('pointermove',ev=>{ if(!d||!d.e||ev.pointerId!==d.id) return; const q=at(ev), ds=Math.round((q.x-d.q.x)/cw);
     if(!d.moved && Math.abs(q.x-d.q.x)<6 && Math.abs(q.y-d.q.y)<8) return; d.moved=true; ev.preventDefault();
-    if(d.mode==='len') d.e.l=clamp(d.l0+ds,1,ps-d.e.s);
+    if(d.mode==='bend'){ const b=clamp(d.b0-(q.y-d.q.y)/(fxDot(d.e).hh*0.6),-1,1); if(Math.abs(b)<0.06) delete d.e.b; else d.e.b=+b.toFixed(2); }   /* snaps back to straight near the middle */
+    else if(d.mode==='len') d.e.l=clamp(d.l0+ds,1,ps-d.e.s);
     else { d.e.s=clamp(d.s0+ds,0,ps-1); d.e.l=Math.min(d.l0,ps-d.e.s); d.e.k=FX_ROWS[q.row]; }
     draw(); });
   const up=ev=>{ if(!d) return; const q=d; d=null;
@@ -254,7 +256,7 @@ function s2EdMount(){ if(s2.edId==null) return; const tr=S.tracks.find(t=>t.id==
   { const b=$('s2EdMz'), on=kind==='pitched'&&tr.inst!=='arp'&&!!tr.notes&&!!tr.heardNotes; b.hidden=!on; if(on){ b.textContent=tr.mzOn?'Musical':'As heard'; b.setAttribute('aria-pressed',String(!!tr.mzOn)); b.onclick=()=>{ musicalSwap(tr); s2EdMount(); toast(tr.mzOn?'Musical version':'As heard'); }; } }   /* Musical mode: back to the take as heard, or musical again */
   { const b=$('s2EdTap'), an=tr._an, on=!!window.NOODLE_DEV&&kind==='pitched'&&!!an&&!!an.altNotes; b.hidden=!on; if(on){ b.textContent=an.tapNew?'Tap notes':'Today'; b.setAttribute('aria-pressed',String(!!an.tapNew)); b.onclick=()=>{ tapSwap(tr); s2EdMount(); toast(an.tapNew?'Tap notes':'Today'); }; } }   /* testing: the same take read today or with tap notes */
   const pit=kind==='pitched'&&tr.inst!=='arp'; $('s2EdVer').hidden=!pit; $('s2EdVerI').hidden=!pit; $('s2EdFill').hidden=!pit; if(pit){ if(tr._vi && verSig(tr)!==tr._verSig) tr._vi=0; verUI(tr); } else $('s2EdMine').hidden=true;
-  $('s2EdHint').textContent=tr.mfx?mfxHint(tr):tr.inst==='fx'?'Tap to add an effect. Drag to move it; drag its end to resize.':kind==='pitched'?'Tap a note to select it. Drag to move. Double-tap to split. Hold and drag to select several.':tr.hits?'Tap to add a hit. Drag to move. Hold and drag to select several.':'';
+  $('s2EdHint').textContent=tr.mfx?mfxHint(tr):tr.inst==='fx'?'Tap to add an effect. Drag it to move, its end to resize, its dot to bend it.':kind==='pitched'?'Tap a note to select it. Drag to move. Double-tap to split. Hold and drag to select several.':tr.hits?'Tap to add a hit. Drag to move. Hold and drag to select several.':'';
   $('s2EdUndo').disabled=!hist.undo.length; $('s2EdRedo').disabled=!hist.redo.length; }
 const mfxHint=tr=>isPro()||MFX[tr.mfx.k].free?'Tap + to add a point. Drag to reshape. Drag a line’s middle to curve it.':'Pro effect: try it here. It goes back when you leave, unless you get Pro.';
 function s2EdClose(){ try{ pvEnd(); }catch(e){} const tr=S.tracks.find(t=>t.id===s2.edId); if(tr){ tr._cv=null; tr._sel=null; tr._msel=null; try{ learnSqueezeFromFixes(tr); }catch(e){} } s2.edId=null; GRID_H=176; GRID_RH=15; GRID_DRUM=1; $('s2Ed').hidden=true; $('s2EdBody').innerHTML=''; s2Render(); }
@@ -279,19 +281,20 @@ function s2ShareSheet(){ if(!S.tracks.some(hasContent)){ toast('Record something
     const b=e.target.closest('[data-k]'); if(!b||b.disabled) return; const k=b.dataset.k; $('s2ShSave').textContent='Save to Files'; shareUrl=null;
     if(k==='link'){ let ok=null; try{ ok=localStorage.getItem('noodle.linkOk'); }catch(_){} if(ok) return linkGo();
       st('Anyone with the link can listen to this song and copy it into their own Noodle (your recordings included). You can stop sharing it here any time.'); $('s2ShGo').hidden=true;
-      const c=document.createElement('button'); c.className='nx-primary'; c.id='s2LkOk'; c.textContent='Make the link'; $('s2ShSt').appendChild(c); return; }
+      $('s2ShSt').insertAdjacentHTML('beforeend',`<p style="color:var(--muted);font-size:13px;margin:8px 0">Shared songs follow the <a href="${NX_TERMS}" target="_blank" rel="noopener" style="color:inherit">terms of use</a>: nothing hateful, explicit or someone else’s work.</p>`);   /* Apple 1.2: people agree to terms before sharing (once) */
+      const c=document.createElement('button'); c.className='nx-primary'; c.id='s2LkOk'; c.textContent='Agree and make the link'; $('s2ShSt').appendChild(c); return; }
     if(k==='daw'&&!isPro()){ proSheet('The DAW pack (every track as audio and MIDI, ready for Logic, Ableton or GarageBand) is part of Noodle Pro.'); return; } S.loops=1; lock(true); $('s2ShGo').hidden=true;
     S.exportedAt=new Date().toISOString(); save(); try{ dropSync(true); }catch(e){}   /* exporting says: these notes are what I meant */
     if(k==='daw'){ st('Preparing your tracks…'); bar('ind'); await exportZip(); bar(null); st('Done. Look for the .zip in your downloads or the share sheet.'); lock(false); return; }
     st(k==='video'?'Making your video…':'Making your audio…'); bar('ind'); shareFile=null; let total=0; const prog=sec=>{ const left=Math.ceil(sec); total=Math.max(total,left); if(total>1){ bar('pct',1-left/total); st('Making your video… about '+left+' s left'); } };
     await prepareShare(k,prog); bar(null); lock(false); if(!$('s2ShSt')) return;
     if(shareFile){ st(shareMsg); $('s2ShGo').hidden=false; $('s2ShNow').hidden=!shareCan; } else st('That didn’t work here. Try the other option.'); }; }
-/* Report a song that came from someone else's link (offensive, spam, someone else's work...): the takes service hides it after 3 reports.
+/* Report a song that came from someone else's link (offensive, spam, someone else's work...): the takes service hides it on the first report, until the owner looks.
    Offers to remove it from your songs too. With no accounts there is no one to block: songs only arrive when you open a link yourself. */
 function songReportSheet(){ const r=S.remixOf; if(!r||!r.id) return;
   nxSheet(`<h2>Report this song</h2><p style="color:var(--muted);font-size:14px;margin:-4px 0 12px">“${nxEsc(r.title||'This song')}” came from a shared link. What’s wrong with it?</p>
     <div class="s2-opts" id="repWhy">${['Offensive or hateful','Sexual content','Spam or scam','Someone else’s work','Something else'].map(x=>`<button data-r="${nxEsc(x)}">${nxEsc(x)}</button>`).join('')}</div>
-    <p style="color:var(--muted);font-size:13px;margin:12px 0 0">Reports go to Tuttii (info@tuttii.io). A song reported by several people is taken down.</p>`);
+    <p style="color:var(--muted);font-size:13px;margin:12px 0 0">Reports go to Tuttii (info@tuttii.io). A reported song is hidden while we look at it.</p>`);
   $('nxSheet').onclick=async e=>{ const b=e.target.closest('[data-r]'), d=e.target.closest('#repDel'); if(d){ nxClose(); await projDelete(S.pid); try{ nxGo('projects'); }catch(_){} toast('Removed from your songs.'); return; } if(!b) return;
     let ok=false; try{ ok=(await fetch(`${NOODLE_API}/v1/songs/${r.id}/report`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({reason:b.dataset.r})})).ok; }catch(_){}
     nxSheet(`<h2>${ok?'Thanks for telling us':'Couldn’t send the report'}</h2><p style="color:var(--muted);font-size:14px">${ok?'We’ll look at it.':'Check your connection and try again, or email info@tuttii.io.'}</p><button class="nx-primary" id="repDel">Remove this song from my songs</button>`); }; }
@@ -527,7 +530,7 @@ function s2Init(){ const _rt=renderTracks; renderTracks=function(){ warmSounds()
   $('s2Loop').onclick=()=>{ const t=S.tracks.find(x=>x.id===s2.selId&&hasContent(x));
     if(t&&!(s2.loop&&s2.sec&&s2.sec.id===t.id)){ const was=s2.sec; s2SecSet(t); if(s2.sec!==was) return; }   /* (a part shorter than a beat can't be looped on its own) */
     s2.loop=!s2.loop; $('s2Loop').setAttribute('aria-pressed',String(s2.loop)); s2.sec=null; s2Render(); toast(s2.loop?'Looping the whole song':'Loop off'); };
-  $('s2TkOk').onclick=()=>{ takeBar=null; renderTracks(); };
+  $('s2TkOk').onclick=()=>{ takeBar=null; renderTracks(); setTimeout(shareAsk,350); };   /* the first kept take: ask about sharing takes (once) */
   const gone=p=>{ try{ const t=S.tracks.find(x=>x.id===p.id); if(drop&&t&&t.sid) dropPost({sid:t.sid, meta:{...dropMeta(t), discarded:true}}); }catch(e){} };   /* a thrown-away take is worth knowing about */
   $('s2TkDel').onclick=async()=>{ const p=takeBar, pb=p.prevBars; gone(p); takeBar=null; await discardTake(p); s2.recPrev=pb||0; s2.recId=null; s2Tidy(); renderTracks(); toast('Take discarded'); };
   $('s2TkRe').onclick=async()=>{ const p=takeBar; gone(p); takeBar=null; flushSave(); const snap=hist.cur; await discardTake(p); const t=S.tracks.find(x=>x.id===p.id); s2.recId=p.id; s2.recPrev=p.prevBars||S.bars; s2.recLen=t&&t.off!=null?t.len:0; s2.post=true; recordInto(p.id,{snap,bar:p}); };

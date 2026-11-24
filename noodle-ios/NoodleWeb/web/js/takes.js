@@ -51,7 +51,14 @@ async function addFxTake(x, sr, opt){
     await renderDirty(); if(!playing){ playing=true; playFrom=takeStart(); startAll(ctx.currentTime+0.08, playFrom); }
   } finally{ busy(); } }
 function fxNoise(oc,dur){ const n=Math.ceil(dur*oc.sampleRate), b=oc.createBuffer(1,n,oc.sampleRate), d=b.getChannelData(0); for(let i=0;i<n;i++) d[i]=Math.random()*2-1; const s=oc.createBufferSource(); s.buffer=b; return s; }
-function fxPlay(oc, out, tr, e, t){ if(e.pan){ const pn=oc.createStereoPanner(); pn.pan.value=clamp(e.pan,-1,1); pn.connect(out); out=pn; }   /* each effect can sit left or right */
+/* An effect's bend (e.b, -1..1; the dot in the middle of it in the Transitions editor): its loudness over its length times 1 + b·4u(1−u), so the
+   middle is up to twice as loud (b = 1) or silent (b = −1); the ends stay as they were. */
+const fxBend=(e,u)=>Math.max(0,1+clamp(e.b||0,-1,1)*4*u*(1-u)), fxBendTop=e=>1+Math.max(0,clamp(e.b||0,-1,1));
+/* the shape drawn for an effect (0..1 across it, from your voice's curve), bent like its loudness */
+function fxShape(e,u){ const C=e.c||[0,1], up=e.k==='riser'||e.k==='sweepUp', x=u*(C.length-1), i=Math.min(C.length-2,Math.floor(x)), c=C.length>1?C[i]+(C[i+1]-C[i])*(x-i):C[0];
+  const yv=e.k==='impact'?1-u:0.6*c+0.4*(up?u:1-u); return clamp(yv*fxBend(e,u)/fxBendTop(e),0,1); }
+function fxPlay(oc, out, tr, e, t){ if(e.b){ const bg=oc.createGain(), D0=Math.max(0.12,e.l*stepDur()); bg.connect(out); bg.gain.setValueCurveAtTime(Float32Array.from({length:64},(_,i)=>Math.max(0.0001,fxBend(e,i/63))),t,D0); out=bg; }   /* the bend */
+  if(e.pan){ const pn=oc.createStereoPanner(); pn.pan.value=clamp(e.pan,-1,1); pn.connect(out); out=pn; }   /* each effect can sit left or right */
   const D=Math.max(0.12,e.l*stepDur()), v=(e.v??0.8), N=64, cv=fxResample(Float32Array.from(e.c||[0,1]),N), av=fxResample(Float32Array.from(e.a||[1,1]),N);
   const smp=fxSample(tr,e.k);
   if(smp){ const src=oc.createBufferSource(), g=oc.createGain(); src.buffer=smp; g.gain.value=v; src.connect(g); g.connect(out); const build=e.k==='riser'||e.k==='sweepUp';

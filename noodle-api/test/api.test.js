@@ -130,7 +130,7 @@ test('song links: the sharer uploads, anyone can get it, only the sharer can rep
   assert.equal((await call(env, 'DELETE', `/v1/songs/${S}`, null, { 'X-Owner': I })).status, 200);
   assert.equal((await call(env, 'GET', `/v1/songs/${S}`)).status, 404); assert.equal((await call(env, 'GET', `/s/${S}`)).status, 404);
 });
-test('song links: not a song file is refused, titles are escaped, reports hide a song', async () => {
+test('song links: not a song file is refused, titles are escaped, a report hides a song', async () => {
   const env = { TAKES: bucket() }, S = 'song_def456UVW';
   assert.equal((await call(env, 'PUT', `/v1/songs/${S}`, JSON.stringify({ noodle: 'songs', songs: [] }), { 'X-Owner': I })).status, 400);
   assert.equal((await call(env, 'PUT', `/v1/songs/bad`, songFile(), { 'X-Owner': I })).status, 400);
@@ -145,7 +145,8 @@ test('reported songs: the owner sees them (title, count, reasons), can take one 
   assert.equal((await call(env, 'GET', '/v1/admin/reports')).status, 401);
   await call(env, 'POST', `/v1/songs/${S}/report`, JSON.stringify({ reason: 'Offensive' }), { 'Content-Type': 'application/json' });
   let list = await (await call(env, 'GET', '/v1/admin/reports', null, A)).json();
-  assert.equal(list.length, 1); assert.equal(list[0].id, S); assert.equal(list[0].title, 'Night ride'); assert.equal(list[0].reports, 1); assert.deepEqual(list[0].reasons, ['Offensive']); assert.equal(list[0].hidden, false);
+  assert.equal(list.length, 1); assert.equal(list[0].id, S); assert.equal(list[0].title, 'Night ride'); assert.equal(list[0].reports, 1); assert.deepEqual(list[0].reasons, ['Offensive']); assert.equal(list[0].hidden, true);
+  assert.equal((await call(env, 'GET', `/v1/songs/${S}`)).status, 404);   // the first report hides it while the owner looks
   for (let i = 0; i < 2; i++) await call(env, 'POST', `/v1/songs/${S}/report`);
   list = await (await call(env, 'GET', '/v1/admin/reports', null, A)).json(); assert.equal(list[0].reports, 3); assert.equal(list[0].hidden, true);
   assert.equal((await call(env, 'GET', `/v1/songs/${S}`)).status, 404);

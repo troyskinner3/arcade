@@ -1,4 +1,4 @@
-// first launch: welcome -> sharing opt-in (needs the 13+ box) -> email -> new project in the Studio; More: stop + delete, email off. Against the local takes service.
+// first launch: welcome -> email -> new song in the Studio; the first kept take asks about sharing (needs the 13+ box); More: stop + delete, email off. Against the local takes service.
 const {chromium,devices}=require('playwright');
 const H={Authorization:'Bearer local'}, A='http://localhost:8787/v1/admin/list?prefix=';
 const keys=async pre=>(await (await fetch(A+pre,{headers:H})).json()).keys.map(k=>k.key);
@@ -6,12 +6,16 @@ const keys=async pre=>(await (await fetch(A+pre,{headers:H})).json()).keys.map(k
   await p.addInitScript(()=>{ try{ localStorage.setItem('noodle.api','http://localhost:8787'); }catch(e){} });
   await p.goto('http://localhost:8800/noodle-s2.html'); await p.waitForTimeout(1000); const out={};
   out.welcome=await p.$eval('#nxOb h1',e=>e.textContent); await p.screenshot({path:'results/ob0.png'}); await p.tap('#obN'); await p.waitForTimeout(200);
-  out.share=await p.evaluate(()=>({h:document.querySelector('#nxOb h1').textContent, disabled:$('obY').disabled})); await p.screenshot({path:'results/ob1.png'});
-  await p.tap('#nxAge'); out.enabledAfterAge=await p.evaluate(()=>!$('obY').disabled); await p.tap('#obY'); await p.waitForTimeout(200);
-  out.sharing=await p.evaluate(()=>({api:drop&&drop.api, age13:drop&&drop.consent.age13, id:drop&&drop.install.length}));
+  out.noShareYet=await p.evaluate(()=>!$('obY')&&!!$('obEm'));   /* sharing is asked after the first kept take, not on first open */
   await p.screenshot({path:'results/ob2.png'}); await p.fill('#obEm','nope'); await p.tap('#obE'); await p.waitForTimeout(200); out.badEmail=await p.$eval('#toast',e=>e.textContent);
   await p.fill('#obEm','tester@example.com'); await p.tap('#obE'); await p.waitForSelector('#vcSkip',{timeout:8000}); out.voiceIntro=await p.$eval('#nxOb h1',e=>e.textContent); await p.tap('#vcSkip'); await p.waitForFunction(()=>$('nxOb').hidden,null,{timeout:8000}); await p.waitForTimeout(500);
   out.after=await p.evaluate(()=>({at:nxAt, nav:!$('nxNav').hidden, list:[...document.querySelectorAll('.nx-tt')].map(e=>e.textContent), onboard:localStorage.getItem('noodle.onboard'), email:localStorage.getItem('noodle.email')})); await p.screenshot({path:'results/ob4.png'}); await p.tap('#nxPlus'); await p.waitForTimeout(500); out.signups=(await keys('signups/')).length;
+  // the first kept take asks about sharing (once): needs the 13+ box
+  await p.evaluate(()=>{ takeBar={id:0}; $('s2Take').hidden=false; $('s2TkOk').click(); }); await p.waitForTimeout(600);
+  out.share=await p.evaluate(()=>({h:document.querySelector('#nxSheet h2').textContent, disabled:$('nxShOk').disabled})); await p.screenshot({path:'results/ob1.png'});
+  await p.tap('#nxAge'); out.enabledAfterAge=await p.evaluate(()=>!$('nxShOk').disabled); await p.tap('#nxShOk'); await p.waitForTimeout(200);
+  out.sharing=await p.evaluate(()=>({api:drop&&drop.api, age13:drop&&drop.consent.age13, id:drop&&drop.install.length}));
+  out.askedOnce=await p.evaluate(()=>shareAsk()===false);
   // share a take, then stop + delete from More
   await p.evaluate(async()=>{ ensureCtx(); const sr=ctx.sampleRate, x=new Float32Array(sr*4); for(let n=0;n<4;n++) for(let i=0;i<sr*0.8;i++){ const t=i/sr; x[Math.floor(n*sr+i)]=0.3*Math.sin(2*Math.PI*[196,220,247,262][n]*t)*Math.min(1,t*40)*Math.min(1,(0.8-t)*40); }
     const tr=mkTrack('lead',{id:S.nextId++}); S.tracks.push(tr); S.target=tr.id; S.title='My secret title'; await addTake(x,sr,'lead',{align:0.0,notch:true,live:true}); S.target=null; await new Promise(r=>setTimeout(r,2500)); });
@@ -20,4 +24,5 @@ const keys=async pre=>(await (await fetch(A+pre,{headers:H})).json()).keys.map(k
   await p.tap('#nxShSw'); await p.waitForTimeout(200); await p.tap('#nxSheet [data-a="del"]'); await p.waitForTimeout(1200); out.afterDelete={takes:(await keys('takes/')).length, drop:await p.evaluate(()=>drop), toast:await p.$eval('#toast',e=>e.textContent)};
   await p.tap('#nxEmail'); await p.waitForTimeout(200); await p.tap('#nxEmOff'); await p.waitForTimeout(800); out.emailOff={signups:(await keys('signups/')).length, stored:await p.evaluate(()=>localStorage.getItem('noodle.email'))};
   await p.reload(); await p.waitForTimeout(900); out.secondLaunch=await p.evaluate(()=>({onboard:$('nxOb').hidden}));
+  if(!out.noShareYet||!out.share||out.share.h!=='Help Noodle get better?'||!out.share.disabled||!out.enabledAfterAge||!out.sharing.api||!out.askedOnce) errs.push('sharing ask after the first kept take');
   console.log(JSON.stringify(out,null,1),errs); await b.close(); })();

@@ -60,6 +60,10 @@ The owner's rules, gathered from reviews. Read this before any UI or copy change
   someone types a name, which is never changed. Until a pick, or when its parts differ, it shows the type ("Lead", "Mix effects").
 - **Every part editor has bar numbers on top** (the song's bars), tap or drag them to move the playhead.
 - **Whole-number settings show whole numbers** ("4 bit", not "4.00 bit").
+- **Light and dark are both real themes:** light is a near-white page with white cards and a light tab bar (not mid-grey); nothing stays dark
+  in light mode except readouts that are meant to look like a display (the position counter). The strip behind the status bar follows the theme.
+- **Ask for trust after value:** the share-takes question comes after the first kept take, not on first open.
+- **Noodle speaks as "Noodle"**, never "I".
 - **Feedback:** a light haptic for placing things, medium for record start and stop.
 - **Big targets while recording:** anything you touch while singing (the tap pad) is huge and easy to hit without looking.
 

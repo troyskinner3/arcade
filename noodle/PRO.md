@@ -57,6 +57,7 @@ Status: **confirmed** (owner agreed) or **proposed** (waiting on the owner).
 | Track names follow the sound or effect you pick ("Bell", "Phaser", "Punchy kit") until you type one. Suggest Free | proposed |
 | New part: drag the dotted outline's handles to set its start and length before New part. Suggest Free | proposed |
 | Transitions (were "Sound FX"): Octave on risers and downlifters. Suggest Free | proposed |
+| Transitions: bend an effect's loudness with the dot in its middle. Suggest Free | proposed |
 | Song sections: name, loop and duplicate Intro / Verse / Chorus / Bridge / Outro | proposed |
 | Your presets: vocal presets, track-effect presets, your own drum kits (any drum from any kit + your taught noises), saved on the phone and in backups (a preset with Pro parts is tried) | confirmed |
 | Beats: one per style (Night Drive trap, Dusty Steps boom bap, Rainy Window lo-fi, Night Bus drill, Sunny Side pop, Velvet R&B) | confirmed |

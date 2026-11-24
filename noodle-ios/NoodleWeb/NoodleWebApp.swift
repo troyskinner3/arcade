@@ -234,7 +234,7 @@ struct NoodleWeb: UIViewRepresentable {
     web.scrollView.contentInsetAdjustmentBehavior = .never
     web.scrollView.bounces = false   // an app, not a page: nothing rubber-bands (the timeline frame stays put)
     web.isOpaque = false
-    web.backgroundColor = UIColor(red: 0.07, green: 0.08, blue: 0.09, alpha: 1)
+    web.backgroundColor = UIColor { $0.userInterfaceStyle == .dark ? UIColor(red: 0.07, green: 0.08, blue: 0.09, alpha: 1) : UIColor(red: 0.95, green: 0.95, blue: 0.96, alpha: 1) }   // behind the page while it loads: matches light or dark
     #if DEBUG
     if #available(iOS 16.4, *) { web.isInspectable = true }   // Safari > Develop can inspect it while testing
     #endif

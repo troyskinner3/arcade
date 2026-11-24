@@ -24,8 +24,9 @@ Today Noodle sends no usage analytics: only crash reports, opt-in shared takes, 
 - [ ] Screen-by-screen review against `noodle/STYLE.md`: first open, recording, note editor, drum editor, track menus, mix, More,
       Pro sheet, export, song links.
 - [ ] First-run flow: a new person gets from opening the app to hearing their own song quickly, with no explanations needed.
+  Done so far: the share-takes question moved to after the first kept take. Still before the first song: email news and the voice check.
 - [ ] Empty, error and offline states (no mic permission, server unreachable, nothing heard).
-- [ ] Small and large iPhones, Dynamic Type, dark mode, VoiceOver labels on the main buttons.
+- [ ] Small and large iPhones, Dynamic Type, VoiceOver labels on the main buttons. (Light mode is now a real light theme; owner to check.)
 - [ ] Copy pass: no AI-sounding words, plain names, ⓘ for explanations.
 - [ ] New rules from the review go into `STYLE.md`.
 
@@ -52,10 +53,23 @@ Draft copy is in `noodle-ios/APP_STORE_LISTING.md`.
 
 ## 6. Legal and privacy
 - [ ] **Owner:** read the privacy policy once more (`noodle/privacy/`; effective date 22 Nov 2026 is set, no draft notice left).
-- [ ] Terms of use for song links (user-generated content), or Apple's standard terms named in the listing.
+- [x] Terms of use drafted (`noodle/terms/`), agreed to before a first song link, linked in More; App Review note on user content written.
+- [ ] **Owner:** review the terms draft (24-hour report response is promised there), then remove the draft box and set the date.
 - [x] Sample and sound licenses checked for commercial use (`noodle/samples/CREDITS.md`) and credited in the app (More → Sound credits).
 - [x] Reporting a shared song works and the owner can see and act on it: `GET /v1/admin/reports`, take down or restore (takes service).
 - [ ] **Owner:** deploy the takes service, and turn on the report email (Cloudflare Email Routing; steps in `noodle-api/README.md`).
+- [ ] **Owner:** auto-forward support messages and song reports to your personal email, so you see them in time:
+  - Song reports (sent by the takes service once the report email is on): from `REPORT_FROM` (e.g. noodle@tuttii.io), subject
+    `Noodle: song reported (<count>) “<song title>”`, or `Noodle: song reported and hidden (<count>) “<song title>”` once it is hidden.
+    Filter: subject starts with `Noodle: song reported`.
+  - Support (Help and contact, the support page): to info@tuttii.io, subject `Noodle support` (filled in for people, but they can change it),
+    so forwarding everything sent to info@tuttii.io is the safe rule.
+- [ ] **Owner (decide later):** a support address of its own (e.g. noodle-support@tuttii.io) so a forwarding filter on the address catches
+  every support message (a mail app always lets people edit the subject). Then Claude switches the app, support page, privacy policy,
+  terms and App Review notes to it. Alternative: an in-app contact form sent through the takes service with a fixed subject prefix
+  (more work, and the privacy policy and App Store answers would change).
+- [ ] **Owner:** review reported songs within 2 working days (the terms promise it). A report hides the song at once; restore with
+  `PUT /v1/admin/songs/<id>/restore`, remove with `DELETE /v1/admin/songs/<id>` (admin key; see `noodle-api/README.md`).
 
 ## 7. Server (takes service) readiness
 - [ ] **Owner:** move the deploy out of the Fan to See repo into its own Cloudflare token and workflow (see `noodle-api/README.md`), or keep it.
