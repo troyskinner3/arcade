@@ -779,3 +779,10 @@ the note editor's Today / Tap notes button flips one take between them. The fing
   503 and says "Invite saved. It counts once invites open."
 - Tests: `songlink_hostile_test.js` (a song link with HTML in every text field the app shows: nothing runs, it shows as text); service
   tests for the budgets, read limit and closed invites.
+
+## Takes service hardening (25 Nov, security session)
+- Service only (`noodle-api/`): audio must be exactly the WAV the app writes (checked against the app's own takes at 48, 44.1 and 16 kHz
+  and a 35 s preview, 1.29 MB); `nosniff` on every reply; report emails only on a song's first report (30 a day at most); reports stop
+  being stored after 10; a Pro code handed out is marked and never handed out again; `GET /v1/admin/usage` storage meter.
+- `invite_test.js` uploads a new offer code each run (the service now refuses a code it already handed out, so reruns against the same
+  local service failed).
