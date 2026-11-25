@@ -135,5 +135,15 @@ Draft copy is in `noodle-ios/APP_STORE_LISTING.md`.
 - [ ] Launch posts and a short demo video for TikTok, Reels and Shorts.
 - [ ] First-week plan: read reviews and crash reports daily, ship a quick fix build if needed.
 
+## Faster beat making (owner, 25 Nov; build in small chunks, test each)
+- [x] Finish song: one tap fills in what's missing (drums, bass, chords, a melody, transitions, a mix effect). Free.
+- [ ] Draw notes: a pencil in the note editor; a drawn line becomes notes on the beat and in the key (two lines: two voices, later chords).
+- [ ] Chord pads: the key's chords as big buttons; tap them in time to record a progression; the bass can follow.
+- [ ] Tap a rhythm, Noodle picks the notes: a melody that fits the chords from tapped timing alone.
+- [ ] In-key note pads: one pad per note of the scale for tapping a melody (then Tidy).
+- [ ] Continue this: stretch a 2-bar part to 8 bars with variation and an answering phrase.
+- [ ] Play pad (an XY pad, inspired by the Kaossilator, own design and name): across = notes in the key, up and down = the sound
+  (brightness / effect), recorded with the notes; range, snap and an arpeggio mode under More settings.
+
 ## After launch (not blocking)
 Ideas in `noodle/IDEAS.md` (beat pads, strumming, face tracking and more).
