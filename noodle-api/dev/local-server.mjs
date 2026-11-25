@@ -8,5 +8,5 @@ const m = new Map(), bucket = {
   async list({ prefix = '' }) { return { objects: [...m.keys()].filter((k) => k.startsWith(prefix)).map((k) => ({ key: k, size: m.get(k).byteLength, uploaded: new Date() })), truncated: false }; } };
 const port = +process.argv[2] || 8787;
 http.createServer(async (q, r) => { const chunks = []; for await (const c of q) chunks.push(c);
-  const res = await worker.fetch(new Request(`http://localhost:${port}${q.url}`, { method: q.method, headers: q.headers, body: ['GET', 'HEAD', 'OPTIONS'].includes(q.method) ? undefined : Buffer.concat(chunks) }), { TAKES: bucket, ADMIN_KEY: 'local' });
+  const res = await worker.fetch(new Request(`http://localhost:${port}${q.url}`, { method: q.method, headers: q.headers, body: ['GET', 'HEAD', 'OPTIONS'].includes(q.method) ? undefined : Buffer.concat(chunks) }), { TAKES: bucket, ADMIN_KEY: 'local', INVITES_WITHOUT_DEVICECHECK: '1' });
   r.writeHead(res.status, Object.fromEntries(res.headers)); r.end(Buffer.from(await res.arrayBuffer())); }).listen(port, () => console.log('takes service on', port));

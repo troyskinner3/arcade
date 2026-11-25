@@ -770,3 +770,12 @@ the note editor's Today / Tap notes button flips one take between them. The fing
   (Playwright's "iPhone SE" preset is the 320 pt first generation, which current iOS doesn't run on.)
 - VoiceOver: every visible control on the main screens has a name; ⓘ buttons now read their explanation instead of "About this".
 - Larger text (Dynamic Type) isn't followed yet; left for the owner to decide (roadmap).
+
+## Round 19 (security review before launch)
+- No paid-service keys anywhere in the app, the site or the git history (searched all commits); secrets live in Cloudflare only.
+- Takes service: reads limited to 240 a minute per address (writes stay at 40; the invite-code call counts as a write; admin calls are
+  limited too); daily storage budgets for new song links (150 MB, preview room included) and take audio (150 MB); previews 1.5 MB at
+  most; invite joins refused (503) until DeviceCheck is set up, so made-up phones can't collect Pro codes. The app keeps a code that got
+  503 and says "Invite saved. It counts once invites open."
+- Tests: `songlink_hostile_test.js` (a song link with HTML in every text field the app shows: nothing runs, it shows as text); service
+  tests for the budgets, read limit and closed invites.

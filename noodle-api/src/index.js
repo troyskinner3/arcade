@@ -50,18 +50,27 @@ const INVITE = /^[A-Z2-9]{6}$/, INVITES_FOR_PRO = 3, REWARDS_PER_DAY = 25;
 const EVENTS = new Set(['first_open', 'first_take', 'first_song', 'first_export', 'first_share', 'open', 'take', 'song_parts', 'export',
   'share_link', 'part_used', 'session', 'pro_sheet', 'pro_try', 'pro_buy', 'pro_result', 'restore']);
 const STATS_ID = /^[A-Za-z0-9_-]{16,40}$/, MAX_EVENTS = 50, LABEL = /^[A-Za-z0-9 _.+\-]{0,40}$/;
-const SONG = /^[A-Za-z0-9_-]{10,32}$/, SONG_DAYS = 2 * 365, MAX_SONG = 8 * 1024 * 1024, MAX_PREVIEW = 3 * 1024 * 1024, MAX_SONGS_PER_DAY = 250, REPORTS_TO_HIDE = 1;   // hidden on the first report while the owner looks (owner, Nov 2026: Apple asks reports be acted on within 24 h)
+const SONG = /^[A-Za-z0-9_-]{10,32}$/, SONG_DAYS = 2 * 365, MAX_SONG = 8 * 1024 * 1024, MAX_PREVIEW = 1536 * 1024, MAX_SONGS_PER_DAY = 250, REPORTS_TO_HIDE = 1;   // hidden on the first report while the owner looks (owner, Nov 2026: Apple asks reports be acted on within 24 h)
+// Daily storage budgets for the whole service (all phones together), so no one can fill the free plan's 1 GB in a day.
+// New song links count their file plus room for the preview (a 30 s preview is about 1.3 MB); takes count their audio.
+const MB = 1024 * 1024, SONG_BYTES_PER_DAY = 150 * MB, AUDIO_BYTES_PER_DAY = 150 * MB;
 const sha = async (t) => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t)))].map((x) => x.toString(16).padStart(2, '0')).join('');
 const esc = (t) => String(t).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-// A light brake on floods: at most RATE writes a minute from one address, counted in this worker's memory only (nothing about the address is stored).
-// It is best-effort (each worker instance counts on its own); the free plan's daily limits are the hard stop.
-const RATE = 40, hits = new Map();
-function tooFast(req) {
+// A light brake on floods: at most RATE writes and READ_RATE reads a minute from one address, counted in this worker's memory only
+// (nothing about the address is stored). It is best-effort (each worker instance counts on its own); the free plan's daily limits are the hard stop.
+const RATE = 40, READ_RATE = 240, hits = new Map();
+function tooFast(req, kind = 'w') {
   const ip = req.headers.get('CF-Connecting-IP') || ''; if (!ip) return false;
-  const now = Date.now(), win = Math.floor(now / 60000), k = ip + '|' + win, n = (hits.get(k) || 0) + 1; hits.set(k, n);
+  const now = Date.now(), win = Math.floor(now / 60000), k = kind + '|' + ip + '|' + win, n = (hits.get(k) || 0) + 1; hits.set(k, n);
   if (hits.size > 5000) for (const key of hits.keys()) { if (!key.endsWith('|' + win)) hits.delete(key); }
-  return n > RATE;
+  return n > (kind === 'w' ? RATE : READ_RATE);
+}
+// one shared counter a day ({n, bytes}); false when adding this would go over. One storage write per call.
+async function dayBudget(bucket, name, bytes, maxN, maxBytes) {
+  const day = new Date().toISOString().slice(0, 10), k = `quota/${name}/${day}.json`, cur = await bucket.get(k), c = cur ? await cur.json() : {};
+  const n = c.n || 0, b = c.bytes || 0; if ((maxN && n >= maxN) || b + bytes > maxBytes) return false;
+  await bucket.put(k, JSON.stringify({ n: n + 1, bytes: b + bytes }), { expiresAt: Date.now() + 3 * 864e5 }); return true;
 }
 // error reports a day, counted in memory (best-effort, per worker instance), so a crash loop can't use up the free plan's daily writes
 const errDays = new Map();
@@ -171,10 +180,12 @@ async function handle(req, env) {
     const url = new URL(req.url), p = url.pathname.split('/').filter(Boolean), B = store(env);
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors(req) });
     if (p[0] === '.well-known' && p[1] === 'apple-app-site-association') return new Response(JSON.stringify({ applinks: { details: [{ appIDs: env.APPLE_APP_ID ? [env.APPLE_APP_ID] : [], components: [{ '/': '/s/*' }, { '/': '/i/*' }] }] } }), { headers: { 'Content-Type': 'application/json' } });
+    // writes (and the invite-code call, which makes a record the first time) count against RATE; everything else against READ_RATE
+    const writes = req.method === 'PUT' || req.method === 'DELETE' || req.method === 'POST' || (p[0] === 'v1' && p[1] === 'invites' && p[2] === 'mine');
+    if (tooFast(req, writes ? 'w' : 'r')) return json(req, 429, { error: 'slow down' });
     if (p[0] === 's' && p.length === 2 && req.method === 'GET') return listenPage(req, env, B, p[1]);
     if (p[0] === 'i' && p.length === 2 && req.method === 'GET') return invitePage(req, env, p[1]);
     if (p[0] !== 'v1') return json(req, 404, { error: 'not found' });
-    if ((req.method === 'PUT' || req.method === 'DELETE' || req.method === 'POST') && tooFast(req)) return json(req, 429, { error: 'slow down' });
 
     if (p[1] === 'invites') {
       const owner = req.headers.get('X-Owner') || ''; if (!ID.test(owner)) return json(req, 403, { error: 'owner' }); const oh = await sha(owner);
@@ -193,6 +204,9 @@ async function handle(req, env) {
         const c = await B.get(`invites/codes/${code}.json`); if (!c) return json(req, 404, { error: 'no such code' }); const inviter = (await c.json()).owner;
         if (inviter === oh) return json(req, 409, { error: 'own code' });
         if (await B.head(`invites/joined/${oh}.json`)) return json(req, 200, { ok: true, already: true });   // a phone joins once, with one code
+        // without DeviceCheck anyone could invent friends and collect Pro codes, so joins wait (503: the app keeps the code and tries later)
+        // until DC_KEY is set. INVITES_WITHOUT_DEVICECHECK = 1 is for local testing only.
+        if (!env.DC_KEY && env.INVITES_WITHOUT_DEVICECHECK !== '1') return json(req, 503, { error: 'invites are not open yet' });
         if (env.DC_KEY) { const dc = await deviceOnce(env, req.headers.get('X-Device') || ''); if (dc !== 'ok') return json(req, dc === 'used' ? 409 : 403, { error: dc === 'used' ? 'this iPhone already joined' : 'device check' }); }
         const k = `invites/owners/${inviter}.json`, cur = await B.get(k), me = cur ? await cur.json() : { code, joined: [], reward: null };
         if (!me.joined.includes(oh)) me.joined.push(oh); await B.put(k, JSON.stringify(me)); await B.put(`invites/joined/${oh}.json`, JSON.stringify({ code, at: new Date().toISOString() }));
@@ -233,8 +247,7 @@ async function handle(req, env) {
       const buf = await readLimited(req, MAX_SONG); if (!buf) return json(req, 413, { error: 'too large' });
       let f; try { f = JSON.parse(new TextDecoder().decode(buf)); } catch { return json(req, 400, { error: 'json' }); }
       if (!f || f.noodle !== 'songs' || !Array.isArray(f.songs) || f.songs.length !== 1 || !f.songs[0].song) return json(req, 400, { error: 'song file' });
-      if (!meta) { const day = new Date().toISOString().slice(0, 10), ck = `quota/songs/${day}.json`, cur = await B.get(ck), n = cur ? (await cur.json()).n : 0;
-        if (n >= MAX_SONGS_PER_DAY) return json(req, 429, { error: 'daily limit' }); await B.put(ck, JSON.stringify({ n: n + 1 }), { expiresAt: Date.now() + 3 * 864e5 }); }
+      if (!meta && !(await dayBudget(B, 'songs', buf.byteLength + MAX_PREVIEW, MAX_SONGS_PER_DAY, SONG_BYTES_PER_DAY))) return json(req, 429, { error: 'daily limit' });
       const at = meta ? meta.at : new Date().toISOString(), exp = Date.parse(at) + SONG_DAYS * 864e5;
       await B.put(base + 'song.json', buf, { expiresAt: exp });
       await B.put(metaKey, JSON.stringify({ owner: await sha(owner), title: String(f.songs[0].title || '').slice(0, 80), at, reports: meta ? meta.reports || 0 : 0 }), { expiresAt: exp });
@@ -354,6 +367,7 @@ async function handle(req, env) {
         let at = Date.now(); try { at = Date.parse((await rec.json()).receivedAt) || at; } catch {}
         const buf = await readLimited(req, MAX_AUDIO); if (!buf) return json(req, 413, { error: 'too large' });
         if (!isWav(buf)) return json(req, 415, { error: 'wav only' });
+        if (!(await dayBudget(B, 'audio', buf.byteLength, 0, AUDIO_BYTES_PER_DAY))) return json(req, 429, { error: 'daily limit' });   // the app keeps the take
         await B.put(base + 'audio.wav', buf, { httpMetadata: { contentType: 'audio/wav' }, expiresAt: at + KEEP_DAYS * 864e5 });
         return json(req, 200, { ok: true });
       }
