@@ -62,6 +62,8 @@ Status: **confirmed** (owner agreed) or **proposed** (waiting on the owner).
 | Crash cymbal in the drum kit (a long “k-shhh” when beatboxing). Suggest Free | proposed |
 | Finish song: one tap adds whatever a song is missing (drums, bass, chords, a melody, transitions, a mix effect) in its key and tempo | confirmed |
 | Draw notes: draw a line in the note editor and it becomes notes, on the beat and in the key. Suggest Free | proposed |
+| Chord pads (Add track → Tap it in): six pads with the key's chords, tapped along with the song into a chord part. Suggest Free | proposed |
+| Tap a rhythm (Add track → Tap it in): tapped timing becomes a melody in the key, fitted to the chords; Other notes. Suggest Free | proposed |
 | Song sections: name, loop and duplicate Intro / Verse / Chorus / Bridge / Outro | proposed |
 | Your presets: vocal presets, track-effect presets, your own drum kits (any drum from any kit + your taught noises), saved on the phone and in backups (a preset with Pro parts is tried) | confirmed |
 | Beats: one per style (Night Drive trap, Dusty Steps boom bap, Rainy Window lo-fi, Night Bus drill, Sunny Side pop, Velvet R&B) | confirmed |

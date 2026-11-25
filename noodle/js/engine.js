@@ -87,7 +87,7 @@ const PRO_LOCK='<i class="pro-b" role="img" aria-label="Pro" title="Noodle Pro">
    shared or exported (pvKeep writes the song as it was), and it goes back when you leave the menu or editor, with a note.
    tr._pvOrig holds the real values of the fields being previewed; tracks marked _pvTemp exist only for the preview. ---- */
 let proPv=null;   /* {label, started (we started playback), sec, loop} */
-const pvKeep=function(k,v){ if(k[0]==='_') return undefined; if(k==='tracks'&&Array.isArray(v)&&v.some(t=>t&&t._pvTemp)) return v.filter(t=>!t._pvTemp);
+const pvKeep=function(k,v){ if(k[0]==='_') return undefined; if(k==='tracks'&&Array.isArray(v)&&v.some(t=>t&&(t._pvTemp||t._tapTemp))) return v.filter(t=>!t._pvTemp&&!t._tapTemp);   /* _tapTemp: a Chord pads / Tap a rhythm take not kept yet */
   const o=this&&this._pvOrig; return o&&Object.prototype.hasOwnProperty.call(o,k)?o[k]:v; };
 const pvCopy=v=>v===undefined?undefined:JSON.parse(JSON.stringify(v));
 function pvTry(tr, fields, label, part){ for(const k in fields){ if(!tr._pvOrig) tr._pvOrig={}; if(!(k in tr._pvOrig)) tr._pvOrig[k]=pvCopy(tr[k]); tr[k]=fields[k]; }
