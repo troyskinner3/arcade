@@ -351,6 +351,7 @@ input[type=range]::-moz-range-thumb{width:10px;height:18px;border-radius:1px;bac
 .s2-clip .nx-ico{width:18px;height:18px}
 .s2-add{display:flex;height:48px}
 .s2-add{align-items:center}
+.s2-add .s2-finish{left:calc(var(--s2-hdr) + 8px);width:auto;padding:0 14px;margin-left:16px;display:flex;align-items:center;gap:6px;border:1px solid var(--s2-amber)!important;border-style:solid!important;color:var(--s2-amber)!important}.s2-add .s2-finish .nx-ico{width:16px;height:16px}   /* Finish song: only while the song is missing something */
 .s2-add button{position:sticky;left:8px;z-index:3;width:calc(var(--s2-hdr) - 16px);height:36px;color:var(--s2-ink)!important;font-weight:700!important;font-size:13px!important;text-align:center;border:1px dashed var(--s2-line)!important;border-radius:8px!important;background:var(--s2-raise)!important}   /* a button, not a label */
 .s2-hint{position:sticky;left:var(--s2-hdr);width:min(300px,calc(100vw - var(--s2-hdr)));padding:28px 16px;color:var(--s2-muted);text-align:center}
 .s2-hint b{display:block;color:var(--s2-ink);font-size:16px;margin-bottom:4px}

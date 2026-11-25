@@ -837,3 +837,13 @@ the note editor's Today / Tap notes button flips one take between them. The fing
 - The More settings state is one shared, remembered switch (`s2.more`), as in the track menus.
 - Tests updated: onboard_test (first run, email and voice asks), s2_rest / recsheet_cal (Mic and timing), mfx_ui_test (settings hidden
   first, new names), fxgrid_test / round16_test (left / right and octave), musical_test (the ••• menu).
+
+## Round 23 (Finish song)
+- A Finish song button next to + Add track, shown only while a song with something in it is missing a part. One tap adds what's missing:
+  drums, bass, chords (keys or pad), a melody (an arp playing the chords), transitions (a downsweep at each 4-bar phrase's start, a riser
+  into the next) and a mix effect (a gentle low-pass dip into the loop). Patterns and sounds come from a free beat near the song's tempo,
+  in the song's key (a song with no key yet takes the beat's). Chords follow the song's own melody (`harmonize`), the bass follows the
+  chords (the beat's bass rhythm on each chord's root). Free sounds only. One save, so one Undo takes it all out; after Undo, tapping again
+  picks another combination. The song then plays from the top.
+- Not counted in usage stats yet (the takes service only accepts listed events; adding one is the security session's area).
+- Tests: `finish_test.js` (drums only; melody only; in key; free sounds; one Undo; button only while something's missing; not silent).

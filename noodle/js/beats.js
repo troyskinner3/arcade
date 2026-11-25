@@ -86,3 +86,45 @@ function beatSheet(){ let cur=null; const styles=[...new Set(BEATS.map(b=>b.styl
     if(x=e.target.closest('[data-beat]')){ const b=BEATS.find(y=>y.id===x.dataset.beat); cur=b.id; beatTry(b); const sc=$('nxSheet').scrollTop; draw(); $('nxSheet').scrollTop=sc; return; }
     if(e.target.closest('#btUse')&&cur){ const b=BEATS.find(y=>y.id===cur); if(beatPro(b)){ proSheet(b.name+' and the other Pro beats are part of Noodle Pro.'); return; }
       beatUse(); nxClose(); toast(`${b.name} is in your song. Tap record to rap or sing over it, or tap a track to change its sound.`,6000); } }; }
+/* ---- Finish song (owner, Nov 2026; free): one tap fills in what a song is missing, so it has at least drums, bass, chords (keys or pad),
+   a melody (lead, arp or vocals), transitions and a mix effect. Built from a free beat's patterns and sounds, in the song's key and tempo,
+   following its own melody when there is one (chords come from the melody, the bass from the chords, an arp plays the chords when there's no
+   melody). Every new part is an ordinary part (edit it, change its sound, delete it); one Undo takes them all out; tapping again after
+   Undo gives a different combination. ---- */
+function songRoles(){ const real=S.tracks.filter(t=>!t.guide&&!t._pvTemp&&hasContent(t)), has=f=>real.some(f);
+  return {any:real.length>0, drums:has(t=>/drum/.test(INST[t.inst].kind)), bass:has(t=>t.inst==='bass'), chords:has(t=>t.inst==='keys'||t.inst==='pad'),
+    melody:has(t=>t.inst==='lead'||t.inst==='arp'||(t.inst==='vox'&&t.va!=null)), fx:has(t=>t.inst==='fx'), mix:has(t=>t.inst==='mix')}; }
+const finishMissing=()=>{ const r=songRoles(); return r.any?['drums','bass','chords','melody','fx','mix'].filter(k=>!r[k]):[]; };
+const pickOne=a=>a[Math.floor(Math.random()*a.length)];
+function finishSong(){ const miss=finishMissing(); if(!miss.length) return false; pvEnd(true); flushSave();
+  const free=BEATS.filter(b=>!b.pro), near=free.filter(b=>Math.abs(b.bpm-S.bpm)<=20), b=pickOne(near.length?near:free);
+  let K=currentKey(); if(K.none){ S.key=String(b.tonic); S.scale=b.scale; keyCache=null; scaleCache=null; K=currentKey(); }
+  if(S.bars<4) S.bars=4;
+  const base=beatTracks(b,K.tonic,K.scale), add=[], got=[], ok=snd=>!proLocked(snd);
+  const fromBeat=k=>base.find(t=>k==='drums'?t.inst==='kit':k==='bass'?t.name==='Bass':t.name==='Chords');
+  /* the chords to follow: the song's own chord part, else chords made from its melody, else the beat's progression */
+  const real=S.tracks.filter(t=>!t.guide&&hasContent(t)), chordPart=real.find(t=>(t.inst==='keys'||t.inst==='pad')&&t.notes&&t.notes.length), mel=real.find(t=>(t.inst==='lead'||t.inst==='vox'||t.inst==='arp')&&melodyNotes(t).length);
+  let chords=chordPart;
+  if(miss.includes('chords')){ const c=b.chords; let t;
+    if(mel){ const ch=harmonize(melodyNotes(mel),K,pSteps(mel),1); if(ch&&ch.length) t=mkTrack(c.inst,{id:S.nextId++, off:mel.off||0, len:mel.len, lenSet:true, rep:mel.rep, sound:c.sound, vol:c.vol||55, send:c.send??30, chordType:c.type||'triad', notes:ch.map(x=>({s:x.s,l:x.l,p:x.root,v:0.72,x:true}))}); }
+    if(!t) t=fromBeat('chords');
+    if(t){ if(c.tfx) t.tfx={...c.tfx}; t.picked=true; delete t.name; add.push(t); chords=t; got.push('chords'); } }
+  const roots=chords&&chords.notes&&chords.notes.length?{off:chords.off||0, len:chords.len||4, rep:chords.rep!==false, notes:chords.notes.slice().sort((a,c)=>a.s-c.s)}:null;
+  if(miss.includes('bass')){ let t;
+    if(roots){ const rh=b.bass.rhythm, n=[]; for(const c of roots.notes){ const root=b.bass.oct+((Math.round(c.p)-b.bass.oct)%12+12)%12; let cur=null;
+        for(let s=c.s;s<c.s+c.l;s++){ const ch=rh[s%16]; if(ch==='x'){ cur={s,l:1,p:root,v:0.85}; n.push(cur); } else if(ch==='='&&cur) cur.l++; else cur=null; } }
+      if(n.length) t=mkTrack('bass',{id:S.nextId++, off:roots.off, len:roots.len, lenSet:true, rep:roots.rep, sound:b.bass.sound, vol:74, notes:n}); }
+    if(!t) t=fromBeat('bass');
+    if(t){ t.picked=true; delete t.name; add.push(t); got.push('bass'); } }
+  if(miss.includes('drums')){ const t=fromBeat('drums'); if(t){ t.picked=true; delete t.name; add.push(t); got.push('drums'); } }
+  if(miss.includes('melody')){ const src=roots||{off:0,len:4,rep:true,notes:b.prog.map((d,bar)=>({s:bar*16,l:16,p:48+(((K.tonic+((SCALES[PARENT[K.scale]||K.scale]||SCALES[b.scale])[d%7]))%12)+12)%12}))};
+    const snd=pickOne(['Pluck','Bell','Square','Glass'].filter(ok)), t=mkTrack('arp',{id:S.nextId++, off:src.off, len:src.len, lenSet:true, rep:src.rep, sound:snd, vol:42, send:35, chordType:'triad', picked:true, notes:src.notes.map(n=>({s:n.s,l:n.l,p:62+((Math.round(n.p)-62)%12+12)%12,v:0.7,x:true}))});
+    add.push(t); got.push('a melody'); }
+  if(miss.includes('fx')){ const fxs=[]; for(let bar=0;bar<S.bars;bar+=4){ fxs.push({...fxNew('sweepDown',bar*16,S.bars*16),l:8,v:0.3}); const end=Math.min(S.bars,bar+4); fxs.push({...fxNew('sweepUp',(end-1)*16,S.bars*16),v:0.3}); }
+    const t=mkTrack('fx',{id:S.nextId++, off:0, len:S.bars, lenSet:true, rep:false}); t.fxs=fxs; add.push(t); got.push('transitions'); }
+  if(miss.includes('mix')){ const t=mkTrack('mix',{id:S.nextId++, off:(S.bars-1)*16, len:1, lenSet:true, rep:false}); t.mfx={k:'lp', curve:{nodes:[{t:0,v:0},{t:0.85,v:0.28},{t:1,v:0}], curves:[null,null]}, params:{}}; t.picked=true; add.push(t); got.push('a mix effect'); }   /* a gentle low-pass dip into the loop */
+  if(!add.length) return false;
+  S.tracks.push(...add); add.forEach(t=>{ t._dirty=true; try{ autoOct(t); }catch(e){} }); keyCache=null; S.tracks.forEach(t=>{ t._dirty=true; });
+  warmSounds(); save(); renderTracks(); scheduleRender();
+  const list=got.length>1?got.slice(0,-1).join(', ')+' and '+got[got.length-1]:got[0];
+  toast(`Added ${list}. Undo takes them out.`,5200); return true; }
