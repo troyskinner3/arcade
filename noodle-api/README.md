@@ -7,7 +7,7 @@ Stores takes people chose to share (opt-in, 13+) so Noodle can learn from them. 
 - A record is stored only if it carries `consent: {v, age13: true}`; audio only after its record. No IP addresses are stored.
 - Limits: 3 MB audio (WAV), 256 KB record, 300 takes per install per day, 150 MB of take audio a day for everyone together, 40 writes and
   240 reads a minute per address (counted in memory only, best-effort; admin calls included).
-- Takes are kept 3 years at most, counted from when they first arrived (storage expires them on its own).
+- Takes are kept 1 year at most, counted from when they first arrived (storage expires them on its own; 3 years before 25 Nov 2026).
 - Optional email list (`/v1/signups`): address + date + the consent wording agreed to, deduplicated, removable; 400 new addresses a day at most.
   Not linked to takes. To be copied into Tuttii's marketing sheet (by hand or a script using the admin endpoints).
 - Crash reports (`/v1/errors`): error message, a few stack lines, app build, app or web, screen. No recordings, song content or ID. One record per distinct error per day (`errors/<day>/<hash>.json`), kept 90 days, at most 150 new ones a day. Read them with `/v1/admin/list?prefix=errors/`.
