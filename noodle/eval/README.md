@@ -798,3 +798,7 @@ the note editor's Today / Tap notes button flips one take between them. The fing
   being stored after 10; a Pro code handed out is marked and never handed out again; `GET /v1/admin/usage` storage meter.
 - `invite_test.js` uploads a new offer code each run (the service now refuses a code it already handed out, so reruns against the same
   local service failed).
+
+## Takes kept 1 year (25 Nov, security session)
+- The takes service keeps shared takes 1 year instead of 3 (owner's decision); the privacy policy says so. A take stored under the old
+  rule and sent again after its year is up is deleted (410), since storage refuses an expiry in the past; the app drops it on any 4xx.

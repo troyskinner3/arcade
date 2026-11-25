@@ -9,7 +9,8 @@
 //   DELETE /v1/installs/:install            delete everything this install shared
 //   PUT    /v1/signups                      body = {email, consent: {v, text}}  optional email list (news), separate from sharing takes
 //   DELETE /v1/signups                      body = {email}                      take that email off the list
-// Shared takes are kept for 3 years at most (KEEP_DAYS), counted from when the take first arrived; storage removes them on its own.
+// Shared takes are kept for 1 year at most (KEEP_DAYS), counted from when the take first arrived; storage removes them on its own.
+// (Takes shared before 25 Nov 2026 were stored for 3 years; one edited after its year is up is deleted instead: 410.)
 //   PUT    /v1/errors                       body = {msg, stack, build, app, where}  an anonymous error report (no recordings, no song content)
 //                                           stored once per distinct error per day, kept 90 days, at most MAX_ERRORS_PER_DAY a day
 //   POST   /v1/events                       body = {app, build, plan, id, ev: [{e, p, v, d}]}  usage counts (no song content); id = the phone's
@@ -44,7 +45,7 @@
 //   GET    /v1/admin/stats?days=30          owner only: usage counts from Analytics Engine (needs the ANALYTICS_TOKEN secret,
 //                                           a Cloudflare token with Account Analytics: Read; CF_ACCOUNT_ID in wrangler.toml)
 const ORIGINS = ['noodle://app', 'https://troyskinner3.github.io'];
-const KEEP_DAYS = 3 * 365, MAX_SIGNUPS_PER_DAY = 400, ERROR_DAYS = 90, MAX_ERRORS_PER_DAY = 150;
+const KEEP_DAYS = 365, MAX_SIGNUPS_PER_DAY = 400, ERROR_DAYS = 90, MAX_ERRORS_PER_DAY = 150;
 const MAX_AUDIO = 3 * 1024 * 1024, MAX_META = 256 * 1024, MAX_TAKES_PER_DAY = 300;
 const ID = /^[A-Za-z0-9_-]{22,64}$/, TAKE = /^[A-Za-z0-9_-]{6,96}$/;
 const INVITE = /^[A-Z2-9]{6}$/, INVITES_FOR_PRO = 3, REWARDS_PER_DAY = 25;
@@ -380,13 +381,16 @@ async function handle(req, env) {
         if (!(await underDailyCap(B, install, take))) return json(req, 429, { error: 'daily limit' });
         const prev = await B.get(base + 'meta.json'); let first = null; try { first = prev && (await prev.json()).receivedAt; } catch {}
         delete m.ua; m.receivedAt = first || new Date().toISOString(); m.updatedAt = new Date().toISOString();
-        await B.put(base + 'meta.json', JSON.stringify(m), { httpMetadata: { contentType: 'application/json' }, expiresAt: Date.parse(m.receivedAt) + KEEP_DAYS * 864e5 });
+        const exp = Date.parse(m.receivedAt) + KEEP_DAYS * 864e5;   // storage refuses an expiry in the past, and the take's year is up anyway
+        if (exp < Date.now() + 864e5) { await deletePrefix(B, base); return json(req, 410, { error: 'expired' }); }
+        await B.put(base + 'meta.json', JSON.stringify(m), { httpMetadata: { contentType: 'application/json' }, expiresAt: exp });
         return json(req, 200, { ok: true });
       }
       if (part === 'audio') {
         // the audio is only kept for a take whose record (with consent) is already here
         const rec = await B.get(base + 'meta.json'); if (!rec) return json(req, 409, { error: 'send meta first' });
         let at = Date.now(); try { at = Date.parse((await rec.json()).receivedAt) || at; } catch {}
+        if (at + KEEP_DAYS * 864e5 < Date.now() + 864e5) { await deletePrefix(B, base); return json(req, 410, { error: 'expired' }); }
         const buf = await readLimited(req, MAX_AUDIO); if (!buf) return json(req, 413, { error: 'too large' });
         if (!isWav(buf)) return json(req, 415, { error: 'wav only' });
         if (!(await dayBudget(B, 'audio', buf.byteLength, 0, AUDIO_BYTES_PER_DAY))) return json(req, 429, { error: 'daily limit' });   // the app keeps the take

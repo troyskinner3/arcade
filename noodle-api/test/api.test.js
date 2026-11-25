@@ -87,13 +87,13 @@ test('email signup: needs consent wording, dedupes, can be removed; admin can re
   assert.equal((await call(env, 'DELETE', '/v1/signups', JSON.stringify({ email: 'a@b.co' }))).status, 200);
   assert.equal([...env.TAKES.m.keys()].filter((k) => k.startsWith('signups/')).length, 0);
 });
-test('takes expire 3 years after they first arrived, even when the record is updated later', async () => {
+test('takes expire 1 year after they first arrived, even when the record is updated later', async () => {
   const puts = [], B = bucket(), put0 = B.put; B.put = async (k, v, o) => { puts.push([k, o && o.expiresAt]); return put0(k, v); };
   const env = { TAKES: B };
   await call(env, 'PUT', `/v1/takes/${I}/take01/meta`, meta()); await call(env, 'PUT', `/v1/takes/${I}/take01/audio`, wav());
   const first = JSON.parse(new TextDecoder().decode(B.m.get(`takes/${I}/take01/meta.json`))).receivedAt;
   await new Promise((r) => setTimeout(r, 15)); await call(env, 'PUT', `/v1/takes/${I}/take01/meta`, meta({ now: { notes: [1] } }));
-  const exp = puts.filter(([k]) => k.startsWith('takes/')).map(([, e]) => e), want = Date.parse(first) + 3 * 365 * 864e5;
+  const exp = puts.filter(([k]) => k.startsWith('takes/')).map(([, e]) => e), want = Date.parse(first) + 365 * 864e5;
   assert.equal(exp.length, 3); for (const e of exp) assert.equal(e, want);
   assert.equal(JSON.parse(new TextDecoder().decode(B.m.get(`takes/${I}/take01/meta.json`))).receivedAt, first);
 });
@@ -293,4 +293,15 @@ test('reports stop being stored after 10 (the song is hidden from the first); th
   const u = await (await call(env, 'GET', '/v1/admin/usage', null, { Authorization: 'Bearer k' })).json();
   assert.equal(u.of, 1024); assert.equal(u.by.songs.keys, 2); assert.ok(u.keys >= 3);
   assert.equal((await call(env, 'GET', '/v1/admin/usage')).status, 401);
+});
+
+test('a take older than its year (stored under the old 3-year rule) is deleted when it is sent again, not re-stored', async () => {
+  const env = { TAKES: bucket() }, old = new Date(Date.now() - 400 * 864e5).toISOString();
+  env.TAKES.m.set(`takes/${I}/take01/meta.json`, new TextEncoder().encode(JSON.stringify({ consent: { v: 1, age13: true }, receivedAt: old })).buffer);
+  env.TAKES.m.set(`takes/${I}/take01/audio.wav`, wav());
+  assert.equal((await call(env, 'PUT', `/v1/takes/${I}/take01/audio`, wav())).status, 410);
+  assert.equal([...env.TAKES.m.keys()].filter((k) => k.startsWith('takes/')).length, 0);
+  env.TAKES.m.set(`takes/${I}/take02/meta.json`, new TextEncoder().encode(JSON.stringify({ consent: { v: 1, age13: true }, receivedAt: old })).buffer);
+  assert.equal((await call(env, 'PUT', `/v1/takes/${I}/take02/meta`, meta())).status, 410);
+  assert.equal(env.TAKES.m.has(`takes/${I}/take02/meta.json`), false);
 });
