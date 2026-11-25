@@ -866,3 +866,13 @@ the note editor's Today / Tap notes button flips one take between them. The fing
 - Offline: harmony.json is in the offline cache (service worker v5) and the iPhone copy. Credits: PDMX now also named for Finish song.
 - Tests: `finish_test` checks at most 2 chord changes a bar, bass in key landing on chord roots, and 30 progressions (27 distinct, 3.3
   chords, 24 with their own rhythm, 3.3 bass notes a bar).
+
+## Round 25 (Draw notes)
+- The note editor (melody parts) has Draw next to + All notes. With it on, a finger draws instead of scrolling: the line shows as you
+  go, and on lifting it becomes notes (`strokeNotes`): each 16th step takes the row the line mostly sits in (the rows are the key's notes,
+  or all 12 with + All notes); a new pitch counts when the line stays on it two steps or jumps two rows or more (no wobble notes); steps
+  on one pitch join; one-step scraps join a neighbour. The new notes replace what was under the line; one Undo takes them back. Draw
+  turns amber when on and off when you leave the editor.
+- Draw sits in the row above the grid, not the bottom bar (on an iPhone 13 the bottom bar had no room left).
+- Tests: `draw_test.js` (flat, climbing, wobbly and scrappy lines; drawing in the editor replaces only the stretch drawn, in key; Undo;
+  off after leaving; not on drums).

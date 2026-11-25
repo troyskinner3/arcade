@@ -40,6 +40,8 @@ The owner's rules, gathered from reviews. Read this before any UI or copy change
   Where it's applied: Mic and timing (two basics; the rest under More settings), every Mix effect's own settings, a Transition's left /
   right and octave, Musical / As heard in the note editor's •••, the DAW pack last in Share, and first run (straight to the Studio; each
   question asked once, when it makes sense).
+- **A tool that changes what a finger does shows it's on:** Draw turns amber, the hint line says what to do, and it turns off when you
+  leave the editor.
 - **Plain names for effect settings:** Speed, Tone, Echo length, Repeats (not LFO rate, center frequency, delay time, feedback).
   Pitch correction stays visible on vocals.
 - **One control per job on a screen:** no two buttons that do the same thing.

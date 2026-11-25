@@ -141,7 +141,9 @@ Draft copy is in `noodle-ios/APP_STORE_LISTING.md`.
   public-domain and CC0 tunes: call-and-response 2-bar phrases, chord tones on strong beats, real phrase endings, any key.
 - [x] Chords and bass from data (round 24): progressions with their harmonic rhythm, bass patterns and comping rhythms learned from
   15,247 public-domain songs (`harmony.json`).
-- [ ] Draw notes: a pencil in the note editor; a drawn line becomes notes on the beat and in the key (two lines: two voices, later chords).
+- [x] Draw notes: Draw (next to + All notes in the note editor); a finger line becomes notes on the beat and in the key, replacing what
+  was under it. One voice for now.
+- [ ] Draw chords: a second line over the first adds a second voice (toward drawn chords).
 - [ ] Chord pads: the key's chords as big buttons; tap them in time to record a progression; the bass can follow.
 - [ ] Tap a rhythm, Noodle picks the notes: a melody that fits the chords from tapped timing alone.
 - [ ] In-key note pads: one pad per note of the scale for tapping a melody (then Tidy).

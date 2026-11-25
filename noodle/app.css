@@ -549,3 +549,4 @@ select.nx-txt{-webkit-appearance:none;appearance:none;height:40px;border-radius:
 .nx-act.danger{background:none!important;border-color:var(--rec)!important}
 .s2-secs-b{width:calc(100% - 16px)!important;height:calc(100% - 6px)!important;margin:3px 8px!important;border:1px solid var(--s2-line)!important;border-radius:6px!important;background:var(--s2-raise)!important;color:var(--s2-ink)!important;font:600 13px var(--f-display)!important;padding:0 10px!important;text-align:center}
 .pr-edit{text-decoration:none!important;border:1px solid var(--line)!important;border-radius:6px;padding:2px 10px!important;color:var(--ink)!important}
+.ed-acts{display:flex;gap:6px}#s2EdDraw{display:inline-flex;align-items:center;gap:6px}#s2EdDraw .nx-ico{width:16px;height:16px}#s2EdDraw[aria-pressed="true"]{border-color:var(--s2-amber)!important;color:var(--s2-amber)!important}   /* Draw on: amber */
