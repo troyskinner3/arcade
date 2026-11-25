@@ -127,10 +127,8 @@ Draft copy is in `noodle-ios/APP_STORE_LISTING.md`.
 - [x] Owner review 24 Nov (round 16 in `eval/README.md`): example loops with a sweep up, risers' Octave, bar numbers in every editor,
   handles on a new part's outline, Transitions / Mix effects names, track names follow the pick, Bitcrusher and Vinyl brake rebuilt.
 - [ ] **Owner:** confirm the new "proposed" lines in `PRO.md` (track names, new-part handles, Octave on Transitions).
-- [ ] **Owner:** check the metronome buzz on a new iPhone build; if it's still off, set Buzz timing (Mic and timing) until it lands
-  on the click and send the number, so it can become the default.
-
-## 9. Launch
+- [x] Metronome buzz checked by the owner (25 Nov): −15 ms felt right, now the default (Buzz timing still there). The double buzz at the start
+  (the record-start tap landing on the first beat) is gone.
 - [ ] **Owner:** launch date, and whether to release by hand after Apple approves.
 - [ ] Website landing page with the App Store link, and the support page (`noodle/support/`) current.
 - [ ] Launch posts and a short demo video for TikTok, Reels and Shorts.

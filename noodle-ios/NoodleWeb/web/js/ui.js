@@ -439,7 +439,7 @@ function init(){
   const unlockAudio=()=>{ if(ctx && ctx.state!=='running' && !document.hidden){ try{ ctx.resume(); }catch(e){} } };
   ['touchend','click','keydown'].forEach(ev=>document.addEventListener(ev,unlockAudio,{capture:true,passive:true}));
   // build every part's sound right away (the audio stays silent until the first tap), so the first Play starts instantly
-  setTimeout(()=>{ try{ if(!ctx){ const AC=window.AudioContext||window.webkitAudioContext; ctx=new AC({latencyHint:'interactive'}); chain=buildChain(ctx,true); applyMaster(); S.tracks.forEach(t=>{ t._dirty=true; }); } scheduleRender(); }catch(e){} }, 250);
+  setTimeout(()=>{ try{ if(!ctx) ctxMake();   /* the same setup as ensureCtx (it used to skip the Bitcrusher's worklet) */ scheduleRender(); }catch(e){} }, 250);
 }
 function tick(){
   requestAnimationFrame(tick);

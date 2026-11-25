@@ -17,13 +17,22 @@ function playThroughSilentSwitch(){
 }
 function pauseSilentSwitch(){ if(unmuteEl && !unmuteEl.paused) unmuteEl.pause(); }
 if(IOS) ['touchend','click'].forEach(ev=>document.addEventListener(ev,()=>{ if(typeof mic!=='undefined') playThroughSilentSwitch(); },{passive:true,capture:true}));
+/* Watchdog (owner, Nov 2026: after trying the Bitcrusher, no sound anywhere until the app was quit). While playing, once a second: if iOS has
+   paused the audio, resume it; if what Noodle outputs is no longer a number (one bad value can silence a limiter for good), rebuild the master
+   chain and every track's connections, then carry on playing. */
+let audioWatchT=0;
+function audioWatch(){ if(audioWatchT) return; audioWatchT=setInterval(()=>{ if(!ctx||!chain) return; if(playing&&ctx.state!=='running'&&ctx.state!=='closed'){ try{ ctx.resume(); }catch(e){} }
+  if(!playing||!chain.mon) return; const a=new Float32Array(chain.mon.fftSize); chain.mon.getFloatTimeDomainData(a); if(a.every(Number.isFinite)) return; audioHeal(); },1000); }
+function audioHeal(){ const was=playing, at=was&&ctx?((ctx.currentTime-t0)%loopLen()+loopLen())%loopLen():playFrom; try{ if(playing){ stopAll(); playing=false; } }catch(e){} try{ mfxStop(); }catch(e){}
+  try{ (chain.parts||[]).forEach(n=>{ try{ n.disconnect(); }catch(_){} }); }catch(e){}
+  S.tracks.forEach(t=>{ try{ disposeTrack(t); }catch(e){} t._g=null; t._p=null; t._snd=null; t._src=null; });
+  chain=buildChain(ctx,true); applyMaster(); try{ applyAllMix(); }catch(e){} playFrom=at||0; if(was){ try{ togglePlay(); }catch(e){} } }
+/* the one place the audio context is made (ensureCtx, and the warm-up at start): master chain, the Bitcrusher's worklet, the watchdog */
+function ctxMake(){ const AC=window.AudioContext||window.webkitAudioContext; ctx=new AC({latencyHint:'interactive'});
+  chain=buildChain(ctx, true); applyMaster(); fxWorklet(ctx); audioWatch(); S.tracks.forEach(t=>{ t._dirty=true; }); }
 function ensureCtx(){
   playThroughSilentSwitch();
-  if(!ctx){
-    const AC=window.AudioContext||window.webkitAudioContext; ctx=new AC({latencyHint:'interactive'});
-    chain=buildChain(ctx, true); applyMaster(); fxWorklet(ctx);
-    S.tracks.forEach(t=>{ t._dirty=true; });
-  }
+  if(!ctx) ctxMake();
   if(ctx.state!=='running') ctx.resume();
   return ctx;
 }
@@ -180,12 +189,14 @@ function mfxEdMount(tr, host){ const pro=true,   /* everyone shapes curves; the 
     draw(); };
   cv.addEventListener('pointerup',up); cv.addEventListener('pointercancel',up);
   const fmt=(v,pm)=>(+v).toFixed(pm.step>=1?0:pm.step>=0.1?1:2)+(pm.unit?' '+pm.unit:'');   /* whole-number settings show whole numbers ("4 bit", not "4.00 bit") */
-  const params=()=>{ const box=w.querySelector('.mfx-par'); if(!box) return; const c=cfg(); box.innerHTML=(c.params||[]).map(pm=>{ const v=mfxParam(tr,c,pm.key);
-      if(pm.type==='steps') return `<div class="mfx-st"><span>${pm.label}</span><div class="s2-opts mfx-steps">${pm.options.map(([x,l])=>`<button data-pk="${pm.key}" data-pv="${x}" aria-pressed="${x===v}">${l}</button>`).join('')}</div></div>`;
-      return `<label class="mfx-sl"><span>${pm.label}</span><input type="range" data-pk="${pm.key}" min="${pm.min}" max="${pm.max}" step="${pm.step}" value="${v}"><b>${fmt(v,pm)}</b></label>`; }).join(''); };
-  w.addEventListener('click',ev=>{ const b=ev.target.closest('button'); if(!b) return;
+  const params=()=>{ const box=w.querySelector('.mfx-par'); if(!box) return; const c=cfg(), ps=c.params||[], adv=ps.filter(pm=>pm.adv), one=pm=>{ const v=mfxParam(tr,c,pm.key), lb=pm.label+(pm.info?s2Inf(pm.info):'');
+      if(pm.type==='steps') return `<div class="mfx-st"><span>${lb}</span><div class="s2-opts mfx-steps">${pm.options.map(([x,l])=>`<button data-pk="${pm.key}" data-pv="${x}" aria-pressed="${x===v}">${l}</button>`).join('')}</div></div>`;
+      return `<label class="mfx-sl"><span>${lb}</span><input type="range" data-pk="${pm.key}" min="${pm.min}" max="${pm.max}" step="${pm.step}" value="${v}"><b>${fmt(v,pm)}</b></label>`; };
+    box.innerHTML=ps.filter(pm=>!pm.adv).map(one).join('')+(adv.length?`<button class="mfx-btn mfx-more" data-a="mfxmore" aria-expanded="${!!s2.more}" style="width:100%;margin-top:8px;display:flex;justify-content:space-between">More settings<span aria-hidden="true">${s2.more?'▴':'▾'}</span></button>${s2.more?adv.map(one).join(''):''}`:''); };   /* settings few people need wait under More settings (progressive disclosure) */
+  w.addEventListener('click',ev=>{ const inf=ev.target.closest('[data-info]'); if(inf){ ev.preventDefault(); infoPop(inf); return; } const b=ev.target.closest('button'); if(!b) return;
+    if(b.dataset.a==='mfxmore'){ s2.more=!s2.more; try{ localStorage.setItem('noodle.more',s2.more?'1':'0'); }catch(e){} params(); return; }
     if(b.dataset.k){ const k=b.dataset.k; if(!isPro()){ if(MFX[k].free){ pvForget(tr,['mfx']); } else if(!tr._pvOrig||!('mfx' in tr._pvOrig)){ tr._pvOrig=tr._pvOrig||{}; tr._pvOrig.mfx=pvCopy(tr.mfx); } }   /* a free effect is kept; a Pro one is tried */
-      tr.mfx.k=k; tr.mfx.params={}; tr.picked=true;   /* the track is named after its effect (s2Auto) */ try{ $('s2EdHint').textContent=mfxHint(tr); }catch(e){} w.querySelectorAll('.mfx-k button').forEach(x=>x.setAttribute('aria-pressed',String(x.dataset.k===k))); params(); changed(); return; }
+      tr.mfx.k=k; tr.mfx.params={}; tr.picked=true;   /* the track is named after its effect (s2Auto) */ try{ mfxHintSet(tr); }catch(e){} w.querySelectorAll('.mfx-k button').forEach(x=>x.setAttribute('aria-pressed',String(x.dataset.k===k))); params(); changed(); return; }
     if(b.dataset.pk){ tr.mfx.params[b.dataset.pk]=+b.dataset.pv; params(); changed(); return; }
     const a=b.dataset.a; if(a==='pro') proSheet('Draw your own shape for each effect, and get 9 more effects.');
     else if(a==='add'){ flushSave(); const C=own(); let i=0, gap=-1; for(let j=0;j<C.nodes.length-1;j++){ const gj=C.nodes[j+1].t-C.nodes[j].t; if(gj>gap){ gap=gj; i=j; } } if(gap<0.02) return;   /* in the widest gap, on the curve as it is */
@@ -205,7 +216,7 @@ const MFX={
   tremolo:{label:'Tremolo', kind:'tremolo', lfoRateHz:5, params:[{key:'lfoRateHz',label:'LFO Rate',unit:'Hz',min:0.5,max:20,step:0.1}]},
   autopan:{label:'Auto-pan', kind:'autopan', lfoRateHz:1, params:[{key:'lfoRateHz',label:'LFO Rate',unit:'Hz',min:0.1,max:10,step:0.1}]},
   crush:{label:'Bitcrusher', kind:'crush', bitDepth:4, rateHz:6000, params:[{key:'bitDepth',label:'Bit depth',unit:'bit',min:2,max:8,step:1},{key:'rateHz',label:'Sample rate',unit:'Hz',min:1000,max:12000,step:250}]},   /* 2-8 bits: every step is heard (above 8 the steps are too fine to hear on a mix) */
-  brake:{label:'Vinyl brake', kind:'brake', minHz:300},   /* the curve is how far the record has slowed: 100% = stopped */
+  brake:{label:'Vinyl brake', kind:'brake', minHz:300, jump:0, params:[{key:'jump',label:'Catching up',type:'steps',adv:true,info:'When the curve comes back to 0%, the song gets back on the beat. Speed up: a quick zip. Jump: a clean cut.',options:[[0,'Speed up'],[1,'Jump']]}]},   /* Catching up sits under More settings (progressive disclosure, owner) */   /* the curve is how far the record has slowed: 100% = stopped */
   swell:{label:'Reverse swell', kind:'swell', fromHz:150, toHz:9000},
   ring:{label:'Ring mod', kind:'ring', carrierHz:250, params:[{key:'carrierHz',label:'Frequency',unit:'Hz',min:20,max:2000,step:5}]} };
 const MFX_GAP=0.002, MFX_DROP=0.02, MFX_BOW=12;
@@ -228,8 +239,10 @@ function mfxDepth(p,off,dur){ return [{s:off,f:mfxFrac(p,dur,dur>0?off/dur:1)}].
    recorder's (works offline); live contexts load it in ensureCtx, a mix render before its effects (fxWorklet). Without it: steps only. */
 const CRUSH_WORKLET=`class C extends AudioWorkletProcessor{ static get parameterDescriptors(){ return [{name:'bits',defaultValue:4,minValue:1,maxValue:16,automationRate:'k-rate'},{name:'hold',defaultValue:8,minValue:1,maxValue:256,automationRate:'k-rate'}]; }
   constructor(){ super(); this.ph=[0,0]; this.v=[0,0]; }
-  process(ins,outs,p){ const i=ins[0], o=outs[0]; if(!i||!i.length) return false; const st=Math.pow(2,p.bits[0]), h=p.hold[0];
-    for(let c=0;c<o.length;c++){ const x=i[Math.min(c,i.length-1)], y=o[c]; let ph=this.ph[c]||0, v=this.v[c]||0; for(let n=0;n<y.length;n++){ ph+=1; if(ph>=h){ ph-=h; v=Math.round(x[n]*st)/st; } y[n]=v; } this.ph[c]=ph; this.v[c]=v; } return true; } }
+  process(ins,outs,p){ try{ const i=ins[0], o=outs[0]; if(!o) return true; if(!i||!i.length){ for(const y of o) y.fill(0); return true; }
+    const b=p.bits&&isFinite(p.bits[0])?p.bits[0]:4, st=Math.pow(2,Math.min(16,Math.max(1,b))), h=p.hold&&isFinite(p.hold[0])&&p.hold[0]>=1?p.hold[0]:8;
+    for(let c=0;c<o.length;c++){ const x=i[Math.min(c,i.length-1)], y=o[c]; let ph=this.ph[c]||0, v=this.v[c]||0; for(let n=0;n<y.length;n++){ ph+=1; if(ph>=h){ ph-=h; const q=Math.round(x[n]*st)/st; v=isFinite(q)?Math.max(-1,Math.min(1,q)):0; } y[n]=v; } this.ph[c]=ph; this.v[c]=v; }
+  }catch(e){ try{ for(const y of outs[0]) y.fill(0); }catch(_){} } return true; } }   /* never throws, never outputs a bad number, always stays alive (iPhone: audio went silent everywhere once, owner Nov 2026) */
 registerProcessor('nd-crush',C);`;
 let crushUrl=null;
 function fxWorklet(c){ if(c._ndCrushP) return c._ndCrushP; if(!c.audioWorklet||typeof AudioWorkletNode==='undefined') return Promise.resolve(false);
@@ -264,12 +277,24 @@ function mfxUnit(c,p,keep){ const cfg=MFX[p.mfx.k], K=n=>keep(n), G=v=>{ const g
         volume), so the song is always back on the beat after it. */
       const cap=Math.min(60,mfxSpan(p).d)+0.1, dl=K(c.createDelay(cap)), f=K(c.createBiquadFilter()), g=G(1), top=Math.min(20000,c.sampleRate/2-100); dl.delayTime.value=0;
       f.type='lowpass'; f.frequency.value=top; dl.connect(f); f.connect(g);
-      return {p,input:dl,output:g,automate:(at,off,dur)=>{ const N=Math.max(16,Math.ceil(dur*60)), dt=dur/N, pts=[]; let lag=0, fp=0;
-        for(let i=0;i<=N;i++){ const fi=mfxFrac(p,dur,i/N); if(i) lag=Math.min(cap-0.1, lag+(fi+fp)/2*dt); fp=fi; pts.push({s:i*dt,f:fi,lag}); }
-        const snap=lag>0.004, fade=Math.min(0.03,dur/4), te=at+dur-off;
-        const val=q=>({d:q.lag, hz:cfg.minHz+(top-cfg.minHz)*Math.pow(1-q.f,2), g:(snap&&q.s>dur-fade)?0:Math.pow(1-q.f,0.6)});
+      /* Back to the beat as soon as the curve returns to 0% (owner, Nov 2026: in the middle of a region it used to stay behind until the region
+         ended). By default a brief speed-up catches the song up (a quick zip, at most 0.6 s, so about 2–3× speed); More settings → Catching up →
+         Jump cuts straight back instead (a 15 ms dip). At the region's very end it jumps (there's no room to zip). */
+      return {p,input:dl,output:g,automate:(at,off,dur)=>{ const N=Math.max(16,Math.ceil(dur*60)), dt=dur/N, pts=[], jumpMode=mfxParam(p,cfg,'jump')>0.5; let lag=0, fp=0, peak=0, zip=null;
+        for(let i=0;i<=N;i++){ const sx=i*dt, fi=mfxFrac(p,dur,i/N);
+          if(zip&&sx<zip.end){ pts.push({s:sx,f:fi,lag:Math.max(0,zip.lag0*(1-(sx-zip.s)/zip.T))}); fp=fi; continue; }
+          if(zip){ zip=null; lag=0; }
+          if(i) lag=Math.min(cap-0.1, lag+(fi+fp)/2*dt); peak=Math.max(peak,fi);
+          if(i&&fi<=0.002&&fp>0.002&&lag>0.004){ const left=dur-sx;   /* the curve just came back to 0%: catch up */
+            if(!jumpMode&&left>0.06){ const T=Math.min(left-0.01,Math.max(0.08,Math.min(0.6,lag*0.5))); zip={s:sx,lag0:lag,T,end:sx+T}; pts.push({s:sx,f:fi,lag}); }
+            else { pts.push({s:sx,f:fi,lag,jump:true}); lag=0; }
+            peak=0; fp=fi; continue; }
+          fp=fi; pts.push({s:sx,f:fi,lag}); }
+        const snap=!zip&&lag>0.004, fade=Math.min(0.03,dur/4), te=at+dur-off;
+        const val=q=>({d:q.lag, hz:cfg.minHz+(top-cfg.minHz)*Math.pow(1-q.f,2), g:(q.jump||(snap&&q.s>dur-fade))?0:Math.pow(1-q.f,0.6)});
         let first=true; pts.forEach((q,i)=>{ const nx=pts[i+1]; if(nx&&nx.s<=off) return; const v=val(q), t=Math.max(at,at+q.s-off), m=first?'setValueAtTime':'linearRampToValueAtTime'; first=false;
-          dl.delayTime[m](v.d,t); f.frequency[m](v.hz,t); g.gain[m](v.g,t); });
+          dl.delayTime[m](v.d,t); f.frequency[m](v.hz,t); g.gain[m](v.g,t);
+          if(q.jump){ dl.delayTime.setValueAtTime(0,t+0.002); g.gain.setValueAtTime(0,t+0.002); if(i===pts.length-1){ f.frequency.setValueAtTime(top,t+0.002); g.gain.linearRampToValueAtTime(1,t+0.022); } } });   /* a jump: faded out over the last step, back in over the next (or over 20 ms at the region's end) */
         if(snap){ dl.delayTime.setValueAtTime(0,te); f.frequency.setValueAtTime(top,te); g.gain.setValueAtTime(0,te); g.gain.linearRampToValueAtTime(1,te+0.02); } }}; }
     case 'swell': { const u=dryWet(), nz=K(c.createBufferSource()), f=K(c.createBiquadFilter()); nz.buffer=mfxNoise(c); nz.loop=true; f.type='bandpass'; f.Q.value=1.2; f.frequency.value=cfg.fromHz; nz.connect(f); f.connect(u.wet); nz.start();   /* as the prototype: rising filtered noise, crossfaded against the mix */
       return {p,input:u.i,output:u.o,automate:(at,off,dur)=>{ mfxWet(u.dry,u.wet,p,at,off,dur); mfxSweep(f.frequency,cfg.fromHz,cfg.toHz,p,at,off,dur); }}; }
@@ -297,6 +322,7 @@ function buildChain(c, live){
   let gate=null; if(live){ gate=c.createGain(); safe.connect(gate); gate.connect(c.destination); } else safe.connect(c.destination);
   revIn.connect(conv); conv.connect(revRet); revRet.connect(input);
   const ch={input,shaper,comp,out,revIn,conv,revRet,c,gate,lim};
+  if(live){ const mon=c.createAnalyser(); mon.fftSize=256; safe.connect(mon); ch.mon=mon; ch.parts=[input,shaper,comp,out,revIn,conv,revRet,lim,safe,gate,mon]; }   /* the watchdog listens here (audioWatch) */
   setChain(ch); return ch;
 }
 function setChain(ch){

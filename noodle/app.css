@@ -423,7 +423,7 @@ input[type=range]::-moz-range-thumb{width:10px;height:18px;border-radius:1px;bac
 .nx-sw::after{content:"";position:absolute;left:3px;top:3px;width:22px;height:22px;border-radius:50%;background:var(--pad)}
 .nx-sw[aria-checked="true"]{background:var(--lcd-ink)} .nx-sw[aria-checked="true"]::after{left:21px}
 .nx-on #recSheet{z-index:72}
-.nx-on .toast{z-index:80;bottom:auto;top:calc(64px + env(safe-area-inset-top,0px))}
+.nx-on .toast{z-index:80;bottom:auto!important;top:calc(64px + env(safe-area-inset-top,0px))}   /* !important: a message placed in the Studio (inline bottom) and shown after leaving it used to stretch from top to bottom */
 .nx-view button:focus-visible,.nx-nav button:focus-visible,.nx-sheet button:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
 .selbar .sb-n{margin-right:auto}.selbar .sb-mv,.selbar .sb-pt,.selbar .sb-sp{display:inline-flex;gap:6px;align-items:center}.selbar .sb-sp{font:500 14px var(--f-body);color:var(--muted)}.selbar [hidden]{display:none!important}
 .s2 .selbar .sb-mv .btn,.s2 .selbar .sb-pt .btn,.s2 .selbar .sb-sp .btn{padding:0 11px!important;min-width:38px;justify-content:center}
@@ -442,6 +442,7 @@ input[type=range]::-moz-range-thumb{width:10px;height:18px;border-radius:1px;bac
 .s2-opts button,.mfx-k button{position:relative}.s2-opts button .pro-b,.mfx-k button .pro-b,.s2-clip button .pro-b{position:absolute;top:-6px;right:-6px;width:15px;height:15px;margin:0}
 .s2-clip button{position:relative}
 .pv-line{display:flex;align-items:center;gap:8px;margin:8px 0 4px;padding:8px 10px;border-radius:10px;background:color-mix(in srgb,#f1c75b 14%,transparent);font-size:13px}.pv-line span{flex:1}.pv-line .pro-b{margin:0}
+.pv-one{margin:0;white-space:nowrap}.pv-one span{overflow:hidden;text-overflow:ellipsis}   /* one line under the Mix effects editor */
 .pv-line button{border:0;border-radius:8px;padding:6px 10px;background:#f1c75b;color:#1b1608;font:700 13px var(--f-body);white-space:nowrap}
 .toast.act.on{pointer-events:auto;cursor:pointer}.toast.act::after{content:"Get Pro";display:inline-block;margin-left:10px;padding:3px 9px;border-radius:7px;background:#f1c75b;color:#1b1608;font-weight:700;font-size:13px}
 /* track menus: More settings (advanced controls, closed by default) and "Mine" presets */

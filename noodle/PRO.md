@@ -59,6 +59,7 @@ Status: **confirmed** (owner agreed) or **proposed** (waiting on the owner).
 | New part: drag the dotted outline's handles to set its start and length before New part. Suggest Free | proposed |
 | Transitions (were "Sound FX"): Octave on risers and downlifters. Suggest Free | proposed |
 | Transitions: bend an effect's loudness with the dot in its middle. Suggest Free | proposed |
+| Crash cymbal in the drum kit (a long “k-shhh” when beatboxing). Suggest Free | proposed |
 | Song sections: name, loop and duplicate Intro / Verse / Chorus / Bridge / Outro | proposed |
 | Your presets: vocal presets, track-effect presets, your own drum kits (any drum from any kit + your taught noises), saved on the phone and in backups (a preset with Pro parts is tried) | confirmed |
 | Beats: one per style (Night Drive trap, Dusty Steps boom bap, Rainy Window lo-fi, Night Bus drill, Sunny Side pop, Velvet R&B) | confirmed |
@@ -90,7 +91,7 @@ Status: **confirmed** (owner agreed) or **proposed** (waiting on the owner).
 |---|---|
 | More instruments than today (recorded and synth) | confirmed direction |
 | Premium FX with automation curves you draw over time, reusing the mechanics of the Tuttii prototype (feedback from both apps) | confirmed direction |
-| Mix effects (were "Song FX") from the prototype (`troyskinner3/tuttii-fx-prototype`): free gets High pass and Low pass **with full control** (draw and bow the curve, controls, Reset); Pro gets the other 9 (Phaser, Washout, Echo throw, Tremolo, Auto-pan, Bitcrusher (bit depth and sample rate), Vinyl brake (slows to a real stop), Reverse swell, Ring mod), which free users can try | confirmed |
+| Mix effects (were "Song FX") from the prototype (`troyskinner3/tuttii-fx-prototype`): free gets High pass and Low pass **with full control** (draw and bow the curve, controls, Reset); Pro gets the other 9 (Phaser, Washout, Echo throw, Tremolo, Auto-pan, Bitcrusher (bit depth and sample rate), Vinyl brake (slows to a real stop, then catches back up to the beat; Jump instead under More settings), Reverse swell, Ring mod), which free users can try | confirmed |
 
 ### Limits on free
 - None at launch (confirmed): no caps on song length, parts or number of songs. Pro sells depth (sounds, FX, exports, no tag), not walls. Adding limits later would take away what people had, so start without them.

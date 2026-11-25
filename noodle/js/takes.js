@@ -29,7 +29,9 @@ function fxAnalyze(x, sr, align){
     const F=fr.slice(i0,i1+1), Z=zc.slice(i0,i1+1), q=Math.max(1,Math.floor(F.length/4)), tonal=F.filter(f=>f.conf<0.3&&f.m>28&&f.m<100), tf=tonal.length/F.length;
     const loud=F.map(f=>f.db), l0=med(loud.slice(0,q)), l1=med(loud.slice(-q)), pk=Math.max(...loud), v=0.5*clamp((pk-(top-30))/30,0.35,1);   /* recorded effects sit in the background too: louder takes up to 50, like a new one at 40 */
     let k, cur;
-    if(dur<0.28){ k='impact'; cur=F.map(()=>0); }
+    const zs0=med(Z.slice(0,q)), zs1=med(Z.slice(-q));
+    if(dur<0.28&&!(zs1<zs0*0.8)){ k='impact'; cur=F.map(()=>0); }   /* short and staying bright: an impact ("pssh") */
+    else if(dur<0.28){ k='sweepDown'; cur=Z.map(z=>Math.log(Math.max(200,z))); }   /* short but clearly darkening: a quick downsweep (owner's takes, Nov 2026: their "shhh" downsweeps were ~0.25 s and read as impacts) */
     else if(tf>=0.5){ const ms=tonal.map(f=>f.m), qq=Math.max(1,Math.floor(ms.length/4)), rise=med(ms.slice(-qq))-med(ms.slice(0,qq)); k = rise>=2 ? 'riser' : rise<=-2 ? 'down' : (l1-l0<=-8?'down':'riser');   /* a held note fades a little on its own: only a clear fade reads as a downlifter */
       let last=tonal[0].m; cur=F.map(f=>{ if(f.conf<0.3&&f.m>28&&f.m<100) last=f.m; return last; }); }
     else { const z0=med(Z.slice(0,q)), z1=med(Z.slice(-q)); k = (z1>z0*1.12 || (Math.abs(z1-z0)<=z0*0.12 && l1>=l0)) ? 'sweepUp' : 'sweepDown'; cur=Z.map(z=>Math.log(Math.max(200,z))); }
@@ -53,10 +55,10 @@ async function addFxTake(x, sr, opt){
 function fxNoise(oc,dur){ const n=Math.ceil(dur*oc.sampleRate), b=oc.createBuffer(1,n,oc.sampleRate), d=b.getChannelData(0); for(let i=0;i<n;i++) d[i]=Math.random()*2-1; const s=oc.createBufferSource(); s.buffer=b; return s; }
 /* An effect's bend (e.b, -1..1; the dot in the middle of it in the Transitions editor): its loudness over its length times 1 + b·4u(1−u), so the
    middle is up to twice as loud (b = 1) or silent (b = −1); the ends stay as they were. */
-const fxBend=(e,u)=>Math.max(0,1+clamp(e.b||0,-1,1)*4*u*(1-u)), fxBendTop=e=>1+Math.max(0,clamp(e.b||0,-1,1));
+const fxBend=(e,u)=>Math.max(0,1+clamp(e.b||0,-1,1)*4*u*(1-u));
 /* the shape drawn for an effect (0..1 across it, from your voice's curve), bent like its loudness */
 function fxShape(e,u){ const C=e.c||[0,1], up=e.k==='riser'||e.k==='sweepUp', x=u*(C.length-1), i=Math.min(C.length-2,Math.floor(x)), c=C.length>1?C[i]+(C[i+1]-C[i])*(x-i):C[0];
-  const yv=e.k==='impact'?1-u:0.6*c+0.4*(up?u:1-u); return clamp(yv*fxBend(e,u)/fxBendTop(e),0,1); }
+  const yv=e.k==='impact'?1-u:0.6*c+0.4*(up?u:1-u); return clamp(yv*fxBend(e,u),0,1); }   /* the ends stay where they are (as in Mix effects); only the middle bends (it used to be scaled down as a whole, so the start looked lower: owner) */
 function fxPlay(oc, out, tr, e, t){ if(e.b){ const bg=oc.createGain(), D0=Math.max(0.12,e.l*stepDur()); bg.connect(out); bg.gain.setValueCurveAtTime(Float32Array.from({length:64},(_,i)=>Math.max(0.0001,fxBend(e,i/63))),t,D0); out=bg; }   /* the bend */
   if(e.pan){ const pn=oc.createStereoPanner(); pn.pan.value=clamp(e.pan,-1,1); pn.connect(out); out=pn; }   /* each effect can sit left or right */
   const D=Math.max(0.12,e.l*stepDur()), v=(e.v??0.8), N=64, cv=fxResample(Float32Array.from(e.c||[0,1]),N), av=fxResample(Float32Array.from(e.a||[1,1]),N);

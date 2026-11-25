@@ -24,6 +24,10 @@ const {chromium,devices}=require('playwright');
   // a song file with a made-up instrument: the part is left out, the rest opens, no page errors
   out.badPart=await p.evaluate(async()=>{ const f={noodle:'songs',v:1,songs:[{title:'Odd',createdAt:1,updatedAt:1,song:{v:1,bpm:100,bars:1,tracks:[{id:1,inst:'<b>x</b>',notes:[]},{id:2,inst:'lead',sound:'Saw',notes:[{s:0,l:4,p:60,v:.8}],off:0,len:1,lenSet:true,rep:false},{id:3,inst:'keys',notes:'nope'}]}}]};
     const n=await songFileOpen(JSON.stringify(f)); await projOpen(songFileOpen.last); await new Promise(q=>setTimeout(q,400)); renderTracks(); s2Render(); return n+':'+S.tracks.map(t=>t.inst).join(','); });
+  // the audio watchdog: an invalid value fed into the mix while playing (it silenced everything on an iPhone once) is caught and the mix rebuilt
+  out.heal=await p.evaluate(async()=>{ const w=ms=>new Promise(q=>setTimeout(q,ms)); await nxExample(); await w(800); ensureCtx(); await ctx.resume(); await renderDirty(); if(!playing) await togglePlay(); await w(400); const old=chain;
+    old.mon.getFloatTimeDomainData=a=>a.fill(NaN);   /* what the iPhone's output looks like once a bad value got in (desktop Chrome cleans them up itself) */
+    await w(2600); const a=new Float32Array(chain.mon.fftSize); chain.mon.getFloatTimeDomainData(a); const r={rebuilt:chain!==old, finite:a.every(Number.isFinite), playing}; if(playing) await togglePlay(); return r; });
   await c.close();
   // the website ignores a saved Pro flag and console purchase reports (Pro is bought in the iPhone app): the page served under a non-local
   // name; on localhost (local test runs) the flag still counts
@@ -32,7 +36,7 @@ const {chromium,devices}=require('playwright');
     await p2.goto('http://noodle.test:8800/noodle-s2.html?studio'); await p2.waitForTimeout(1000); out.webPro=await p2.evaluate(()=>{ const a=isPro(); window.noodlePro(true,'$4.99'); return a+','+isPro(); });
     await p2.goto('http://localhost:8800/noodle-s2.html?studio'); await p2.waitForTimeout(1000); out.localPro=await p2.evaluate(()=>isPro());
     await b2.close(); }
-  if(out.badPart!=='1:lead') errs.push('bad part: '+out.badPart); if(out.localPro!==true||out.webPro!=='false,false') errs.push('web pro: '+out.localPro+' '+out.webPro);
+  if(!out.heal.rebuilt||!out.heal.finite||!out.heal.playing) errs.push('heal: '+JSON.stringify(out.heal)); if(out.badPart!=='1:lead') errs.push('bad part: '+out.badPart); if(out.localPro!==true||out.webPro!=='false,false') errs.push('web pro: '+out.localPro+' '+out.webPro);
   if(out.app.title!=='Noodle can’t hear you'||!out.app.settings||!out.app.imp||!out.app.sent||!out.app.again) errs.push('app: '+JSON.stringify(out.app));
   if(out.web.title!=='Noodle can’t hear you'||out.web.settings||!out.web.imp||!out.web.again) errs.push('web: '+JSON.stringify(out.web));
   if(!/connection/.test(out.offline)) errs.push('offline: '+out.offline); if(!/isn’t available/.test(out.gone)) errs.push('gone: '+out.gone);
