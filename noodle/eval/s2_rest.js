@@ -18,6 +18,7 @@ const {chromium,devices}=require('playwright');
   await p.evaluate(()=>renderTracks()); await p.waitForTimeout(300); await p.screenshot({path:'results/rest1.png'});
   // More sheets
   await p.tap('#s2Back'); await p.waitForTimeout(400); await p.tap('#nxTabM'); await p.waitForTimeout(200); await p.tap('#nxTiming'); await p.waitForTimeout(200); await p.screenshot({path:'results/rest3.png'});
+  if(await p.evaluate(()=>$('nxMtAdv').hidden)) await p.tap('#nxMtMore');   /* the rest of Mic and timing is under More settings */
   await p.tap('#nxEc'); out.ec=await p.evaluate(()=>S.ec); await p.evaluate(()=>{ const e=$('nxSens'); e.value=70; e.dispatchEvent(new Event('change',{bubbles:true})); }); out.sens=await p.evaluate(()=>S.sens);
   await p.tap('#nxCal'); await p.waitForTimeout(700); out.calib=await p.evaluate(()=>({sheet:!$('recSheet').hidden, title:$('rsTitle').textContent, z:getComputedStyle($('recSheet')).zIndex, rec:!!recState})); await p.screenshot({path:'results/rest4.png'}); await p.evaluate(()=>closeRec()); await p.waitForTimeout(300);
   await p.tap('#nxDrums'); await p.waitForTimeout(200); out.drums=await p.$$eval('#nxSheet [data-teach]',x=>x.length); await p.screenshot({path:'results/rest5.png'}); await p.tap('#nxSheet [data-teach]'); await p.waitForTimeout(700); out.teach=await p.evaluate(()=>({sheet:!$('recSheet').hidden, title:$('rsTitle').textContent})); await p.evaluate(()=>closeRec());

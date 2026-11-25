@@ -37,6 +37,10 @@ The owner's rules, gathered from reviews. Read this before any UI or copy change
 - **Progressive disclosure, always (owner, Nov 2026):** the basics a beginner needs are on the first screen; the rest is under More settings
   or •••. For every new feature or setting, choose a good default and don't show the choice; if some people will want to change it, put it
   under More settings (e.g. Vinyl brake → More settings → Catching up). Never add a control to the first screen when a default will do.
+  Where it's applied: Mic and timing (two basics; the rest under More settings), every Mix effect's own settings, a Transition's left /
+  right and octave, Musical / As heard in the note editor's •••, the DAW pack last in Share, and first run (straight to the Studio; each
+  question asked once, when it makes sense).
+- **Plain names for effect settings:** Speed, Tone, Echo length, Repeats (not LFO rate, center frequency, delay time, feedback).
   Pitch correction stays visible on vocals.
 - **One control per job on a screen:** no two buttons that do the same thing.
 - **Every setting a beginner might not understand has an ⓘ** (sliders too, like Mic sensitivity).

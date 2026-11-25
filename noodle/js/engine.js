@@ -207,18 +207,19 @@ function mfxEdMount(tr, host){ const pro=true,   /* everyone shapes curves; the 
   w.addEventListener('change',ev=>{ if(ev.target.dataset.pk) changed(); });
   params(); draw(); }
 /* ---- Mix FX ---- */
+/* Every effect's own settings wait under More settings in its editor (owner, Nov 2026: progressive disclosure); the defaults sound right. */
 const MFX={
   hp:{label:'High pass', free:true, kind:'filter', type:'highpass', fromHz:20, toHz:15000},
   lp:{label:'Low pass', free:true, kind:'filter', type:'lowpass', fromHz:20000, toHz:20},
-  phaser:{label:'Phaser', kind:'phaser', stages:6, centerHz:800, lfoRateHz:0.3, lfoDepthHz:600, params:[{key:'lfoRateHz',label:'LFO Rate',unit:'Hz',min:0.05,max:5,step:0.01},{key:'centerHz',label:'Center Freq',unit:'Hz',min:200,max:2000,step:10}]},
+  phaser:{label:'Phaser', kind:'phaser', stages:6, centerHz:800, lfoRateHz:0.3, lfoDepthHz:600, params:[{key:'lfoRateHz',label:'Speed',unit:'Hz',min:0.05,max:5,step:0.01,adv:true},{key:'centerHz',label:'Tone',unit:'Hz',min:200,max:2000,step:10,adv:true}]},
   washout:{label:'Washout', kind:'washout', fromHz:20, toHz:300},
-  echo:{label:'Echo throw', kind:'echo', div:0.5, feedback:0.45, params:[{key:'div',label:'Delay Time',type:'steps',options:[[0.25,'1/16'],[0.5,'1/8'],[0.75,'1/8.'],[1,'1/4'],[1.5,'1/4.'],[2,'1/2']]},{key:'feedback',label:'Feedback',min:0,max:0.85,step:0.01}]},
-  tremolo:{label:'Tremolo', kind:'tremolo', lfoRateHz:5, params:[{key:'lfoRateHz',label:'LFO Rate',unit:'Hz',min:0.5,max:20,step:0.1}]},
-  autopan:{label:'Auto-pan', kind:'autopan', lfoRateHz:1, params:[{key:'lfoRateHz',label:'LFO Rate',unit:'Hz',min:0.1,max:10,step:0.1}]},
-  crush:{label:'Bitcrusher', kind:'crush', bitDepth:4, rateHz:6000, params:[{key:'bitDepth',label:'Bit depth',unit:'bit',min:2,max:8,step:1},{key:'rateHz',label:'Sample rate',unit:'Hz',min:1000,max:12000,step:250}]},   /* 2-8 bits: every step is heard (above 8 the steps are too fine to hear on a mix) */
+  echo:{label:'Echo throw', kind:'echo', div:0.5, feedback:0.45, params:[{key:'div',label:'Echo length',type:'steps',adv:true,options:[[0.25,'1/16'],[0.5,'1/8'],[0.75,'1/8.'],[1,'1/4'],[1.5,'1/4.'],[2,'1/2']]},{key:'feedback',label:'Repeats',min:0,max:0.85,step:0.01,adv:true}]},
+  tremolo:{label:'Tremolo', kind:'tremolo', lfoRateHz:5, params:[{key:'lfoRateHz',label:'Speed',unit:'Hz',min:0.5,max:20,step:0.1,adv:true}]},
+  autopan:{label:'Auto-pan', kind:'autopan', lfoRateHz:1, params:[{key:'lfoRateHz',label:'Speed',unit:'Hz',min:0.1,max:10,step:0.1,adv:true}]},
+  crush:{label:'Bitcrusher', kind:'crush', bitDepth:4, rateHz:6000, params:[{key:'bitDepth',label:'Bit depth',unit:'bit',min:2,max:8,step:1,adv:true},{key:'rateHz',label:'Sample rate',unit:'Hz',min:1000,max:12000,step:250,adv:true}]},   /* 2-8 bits: every step is heard (above 8 the steps are too fine to hear on a mix) */
   brake:{label:'Vinyl brake', kind:'brake', minHz:300, jump:0, params:[{key:'jump',label:'Catching up',type:'steps',adv:true,info:'When the curve comes back to 0%, the song gets back on the beat. Speed up: a quick zip. Jump: a clean cut.',options:[[0,'Speed up'],[1,'Jump']]}]},   /* Catching up sits under More settings (progressive disclosure, owner) */   /* the curve is how far the record has slowed: 100% = stopped */
   swell:{label:'Reverse swell', kind:'swell', fromHz:150, toHz:9000},
-  ring:{label:'Ring mod', kind:'ring', carrierHz:250, params:[{key:'carrierHz',label:'Frequency',unit:'Hz',min:20,max:2000,step:5}]} };
+  ring:{label:'Ring mod', kind:'ring', carrierHz:250, params:[{key:'carrierHz',label:'Tone',unit:'Hz',min:20,max:2000,step:5,adv:true}]} };
 const MFX_GAP=0.002, MFX_DROP=0.02, MFX_BOW=12;
 const mfxParam=(p,cfg,k)=>p.mfx.params&&p.mfx.params[k]!==undefined?p.mfx.params[k]:cfg[k];
 /* the curve: points {t,v} in 0..1 joined by segments, each a quadratic bow (curves[i]: its middle value; none = straight). The ends stay at 0, so

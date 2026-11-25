@@ -824,3 +824,16 @@ the note editor's Today / Tap notes button flips one take between them. The fing
 - Transitions bend: the drawn shape keeps its ends; only the middle moves (the shape used to be scaled down as a whole).
 - Tests: `round21_test.js` (crash, kit migration, playhead, outline, Pro line, bend ends, message height); `mfx_brake_test` (catch-up both
   ways); `errors_test` (watchdog); `haptic_test` (default nudge, no start tap).
+
+## Round 22 (progressive disclosure pass, owner-approved 25 Nov)
+- First run: Get started goes straight to the Studio. Email news is asked once, back on the Songs list after the first finished song
+  (exported or shared by link); Teach Noodle your voice is offered once after the third kept take (sharing takes stays on the first).
+- Mic and timing: Hear the song while recording and Silent metronome; Fix late notes, Mic sensitivity, Auto mic delay, Buzz timing, Tap
+  pad and Echo cancellation under More settings.
+- Mix effects: every effect's own settings under More settings, renamed Speed, Tone, Echo length, Repeats (Ring mod: Tone).
+- Share: Audio, Video, Link to remix, then the DAW pack.
+- Transitions: a selected effect shows Volume; Left / right and Octave under More settings.
+- Note editor: Musical / As heard moved from the bottom bar to a ••• in the editor's top bar (shown only when the part has both).
+- The More settings state is one shared, remembered switch (`s2.more`), as in the track menus.
+- Tests updated: onboard_test (first run, email and voice asks), s2_rest / recsheet_cal (Mic and timing), mfx_ui_test (settings hidden
+  first, new names), fxgrid_test / round16_test (left / right and octave), musical_test (the ••• menu).

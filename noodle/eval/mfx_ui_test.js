@@ -41,6 +41,8 @@ await p.click('.mfx-k button[data-k="phaser"]'); await p.waitForTimeout(250); r.
     if(r.undoCurve) await p.evaluate(async()=>{ s2EdMount(); await new Promise(r=>setTimeout(r,150)); }); await p.mouse.click(X(0.4),Y(0.5)); await p.waitForTimeout(100); r.delEnabled=r.delEnabled&&await p.evaluate(()=>!document.querySelector('.mfx-acts [data-a="del"]').disabled);
     await p.click('.mfx-acts [data-a="del"]'); await p.waitForTimeout(150); r.afterDelete=await p.evaluate(()=>S.tracks.find(t=>t.mfx).mfx.curve.nodes.length);
     await p.click('.mfx-acts [data-a="reset"]'); await p.waitForTimeout(150); r.reset=await p.evaluate(()=>S.tracks.find(t=>t.mfx).mfx.curve===null);
+    r.hiddenFirst=await p.evaluate(()=>!document.querySelector('.mfx-par [data-pk]')&&!!document.querySelector('.mfx-par [data-a="mfxmore"]'));   /* an effect's settings wait under More settings */
+    if(!(await p.evaluate(()=>!!document.querySelector('.mfx-par [data-pk]')))) { await p.click('.mfx-par [data-a="mfxmore"]'); await p.waitForTimeout(150); }
     await p.click('.mfx-par button[data-pv="1"]'); await p.waitForTimeout(150);
     r.echo=await p.evaluate(()=>S.tracks.find(t=>t.mfx).mfx); r.undo=await p.evaluate(()=>hist.undo.length>0);
     r.labels=await p.evaluate(()=>[...document.querySelectorAll('.mfx-par .mfx-st>span,.mfx-par .mfx-sl>span')].map(e=>e.textContent).join('|'));
@@ -50,6 +52,6 @@ await p.click('.mfx-k button[data-k="phaser"]'); await p.waitForTimeout(250); r.
     out.pro=r; }
   const f=out.free, pr=out.pro, bad=[];
   if(!f.offered||!f.lanes.includes('mix')||f.armOnMix||!f.newShown||!f.part||f.part.k!=='lp'||f.part.len!==4||!f.part.editor||f.part.chips!==11||!f.proSheet||f.stillLp!=='lp'||f.hpFree!=='hp'||!f.noDraw||f.recordSheetHasMix||f.del.afterOnly!==0||!f.del.laneKept||f.del.afterTwo!=='lp'||f.del.mixAfter!==1||!f.fits) bad.push('free');
-  if(pr.added!==4||pr.dragged[0]!==0.4||Math.abs(pr.dragged[1]-0.5)>0.05||typeof pr.bent!=='number'||!pr.delEnabled||!pr.tapToggles||!pr.undoCurve||pr.afterDelete!==3||!pr.reset||pr.echo.k!=='echo'||pr.echo.params.div!==1||!pr.undo||pr.labels!=='Delay Time|Feedback'||pr.filter!=='lp'||!(pr.mix>-40)) bad.push('pro');
+  if(pr.added!==4||pr.dragged[0]!==0.4||Math.abs(pr.dragged[1]-0.5)>0.05||typeof pr.bent!=='number'||!pr.delEnabled||!pr.tapToggles||!pr.undoCurve||pr.afterDelete!==3||!pr.reset||pr.echo.k!=='echo'||pr.echo.params.div!==1||!pr.undo||pr.labels!=='Echo length|Repeats'||pr.filter!=='lp'||!(pr.mix>-40)) bad.push('pro');
   if(bad.length) errs.push('mix fx ui: '+bad.join(', '));
   console.log(JSON.stringify(out),errs); await b.close(); })();
