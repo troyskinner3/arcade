@@ -34,7 +34,11 @@ Stores takes people chose to share (opt-in, 13+) so Noodle can learn from them. 
   From then on a join needs a real iPhone running Noodle, and each iPhone can join only once, ever. Without `DC_KEY`, joins are refused with 503 (the app keeps the
   code and tries later), because install ids are free to make up and anyone could collect Pro codes. `INVITES_WITHOUT_DEVICECHECK` = `1`
   turns that off; it is for local testing only (`dev/local-server.mjs` sets it).
-- Owner access (`/v1/admin/*`) needs the `ADMIN_KEY` secret.
+- Owner access (`/v1/admin/*`) needs the `ADMIN_KEY` secret. `GET /v1/admin/usage` shows how much is stored, by kind, against the free
+  plan's 1 GB (it reads every key's size, so use it now and then, not on a timer).
+- Hardening: audio must be exactly the WAV the app writes (44-byte header, 16-bit mono PCM, matching sizes); every reply carries
+  `X-Content-Type-Options: nosniff`. A song's first report emails the owner (at most 30 emails a day); reports stop being stored after 10.
+  A Pro code handed out is marked (`rewards/given/<code>`), so it is never handed out twice or put back in the pool.
 
 ## Cost: none, by design
 Storage is Workers KV on the free plan: no payment card, and when a limit is reached Cloudflare refuses the write (the app just keeps the

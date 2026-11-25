@@ -84,8 +84,13 @@ Draft copy is in `noodle-ios/APP_STORE_LISTING.md`.
 - [ ] **Owner:** confirm the Cloudflare account is on the Free Workers plan (Workers & Pages → Plans). On Paid, overuse is billed with no cap.
 - [ ] **Owner:** set `DC_KEY` and `DC_KEY_ID` (DeviceCheck) before launch: invite joins are refused until they are set.
 - [ ] **Owner:** check `ADMIN_KEY` is long and random (32+ characters).
-- [ ] Email list: send a confirmation email before anyone gets news (sign-ups aren't checked; anyone can add or remove any address).
-- [ ] Narrow the Cloudflare token (Fan to See repo secret) and give it only to the deploy step (done in that repo's `noodle-takes.yml`).
+- [ ] **Owner:** email list: pick the mail tool (e.g. Buttondown, Mailchimp) and import with double opt-in before anyone gets news
+      (sign-ups aren't checked; anyone can add or remove any address). Cloudflare can only email verified addresses, so not from the service.
+- [x] Cloudflare token given only to the deploy step (Fan to See `noodle-takes.yml`, on its `main` since 25 Nov).
+- [ ] **Owner:** narrow that token in Cloudflare (My Profile → API Tokens): Workers Scripts Edit + Workers KV Storage Edit, this account only.
+- [x] Hardening (25 Nov): strict WAV check, nosniff on every reply, report emails only on a song's first report (30 a day at most),
+      reports stop being stored after 10, Pro codes marked when handed out (no double handout), `GET /v1/admin/usage` storage meter.
+- [ ] **Owner:** storage plan before launch: shorter take retention than 3 years, fewer takes kept, or R2 (needs a card; add alerts).
 
 ## 8. Quality
 - [ ] Crash reports reviewed and the top crashes fixed.
