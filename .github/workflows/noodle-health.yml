@@ -2,7 +2,7 @@ name: Noodle takes service (health)
 # Watches the live takes service. A failed run is the alert: GitHub emails the owner when a scheduled run fails
 # (Settings → Notifications → Actions: "Send notifications for failed workflows only").
 #  - Every 30 minutes: is the service up and able to reach its storage? (An unknown song must come back as a quick 404.)
-#  - Once a day: crash reports today above ERROR_LIMIT, or reported songs waiting for review (they are hidden until the owner looks;
+#  - Once a day: crash reports today above ERROR_LIMIT, storage above STORAGE_LIMIT_MB (the free plan holds 1 GB), or reported songs waiting for review (they are hidden until the owner looks;
 #    the terms promise a review within 2 working days). These two need the repository secret NOODLE_ADMIN_KEY (the takes service's
 #    ADMIN_KEY); without it they are skipped.
 # GitHub pauses scheduled workflows after 60 days with no activity in the repository; re-enable it under Actions if that happens.
@@ -16,6 +16,7 @@ permissions:
 env:
   API: https://noodle-takes.cracked.workers.dev
   ERROR_LIMIT: '25'
+  STORAGE_LIMIT_MB: '700'
 jobs:
   health:
     runs-on: ubuntu-latest
@@ -45,4 +46,8 @@ jobs:
           echo "Reported songs waiting for review: $r"
           if [ "$r" = '?' ]; then echo "::warning::Couldn't read reported songs (deploy the takes service with GET /v1/admin/reports)."; r=0; fi
           if [ "${r:-0}" -gt 0 ]; then echo "::error::$r reported song(s) hidden and waiting for your review (GET /v1/admin/reports; restore or delete them)."; fail=1; fi
+          u=$(curl -sf --max-time 60 -H "Authorization: Bearer $KEY" "$API/v1/admin/usage" | jq '.mb | floor' || echo '?')
+          echo "Storage used: $u MB of 1024"
+          if [ "$u" = '?' ]; then echo "::warning::Couldn't read storage use (deploy the takes service with GET /v1/admin/usage)."; u=0; fi
+          if [ "${u:-0}" -gt "$STORAGE_LIMIT_MB" ]; then echo "::error::Storage is at $u MB of the free plan's 1024 MB (alert above $STORAGE_LIMIT_MB). Clear old takes or move to R2 before it fills: see GET /v1/admin/usage."; fail=1; fi
           exit $fail
