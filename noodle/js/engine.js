@@ -61,7 +61,10 @@ function driveCurve(amt){ if(amt<=0.01) return null; const k=amt*14, n=2048, c=n
 /* ---- Noodle Pro ---- */
 /* What Pro unlocks: noodle/PRO.md (keep both in step). A one-time purchase in the iPhone app, kept for life; the app checks it with the App Store
    on every launch and tells the page (window.noodlePro). The last answer is remembered so Pro works offline. */
-const PRO={owned:false, price:''}; try{ PRO.owned=localStorage.getItem('noodle.pro')==='1'; }catch(e){}
+/* Pro is bought in the iPhone app (StoreKit). The app remembers it (noodle.pro) so it opens unlocked, and the App Store's answer (noodlePro)
+   replaces it. The website has no purchase, so a saved value there means nothing: anyone could type it into the console (security review,
+   Nov 2026). Local test runs (localhost) keep it so the Pro tests can switch it on. */
+const PRO={owned:false, price:''}; try{ const app=!!(window.webkit&&window.webkit.messageHandlers&&window.webkit.messageHandlers.noodlePro), dev=/^(localhost|127\.0\.0\.1)$/.test(location.hostname); PRO.owned=(app||dev)&&localStorage.getItem('noodle.pro')==='1'; }catch(e){}
 /* Builds run from Xcode (DEBUG) set NOODLE_DEV: More then has "Test as: Free / Pro / App Store" to try both versions; App Store and TestFlight builds don't */
 const devAs=()=>{ if(!window.NOODLE_DEV) return ''; try{ return localStorage.getItem('noodle.devAs')||''; }catch(e){ return ''; } };
 const isPro=()=>devAs()?devAs()==='pro':PRO.owned;
@@ -100,7 +103,7 @@ function pvCommitAll(){ delete S._pvOrig; S.tracks.forEach(t=>{ delete t._pvOrig
 function proNote(ls){ toast((ls.length>1?ls.join(' and ')+' are':ls[0]+' is')+' Pro. Get Pro to keep '+(ls.length>1?'them':'it')+'.',5000); const t=$('toast'); t.classList.add('act'); t.onclick=()=>{ toastOff(t); proSheet(); }; }
 const proBridge=()=>!!(window.webkit&&window.webkit.messageHandlers&&window.webkit.messageHandlers.noodlePro);
 /* from the app: whether Pro is owned, and its price in the App Store's own words (e.g. "$4.99") */
-window.noodlePro=(owned, price)=>{ const was=PRO.owned; PRO.owned=!!owned; if(price) PRO.price=price; try{ localStorage.setItem('noodle.pro',PRO.owned?'1':'0'); }catch(e){}
+window.noodlePro=(owned, price)=>{ if(!proBridge()&&!/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) return;   /* only the iPhone app reports purchases */ const was=PRO.owned; PRO.owned=!!owned; if(price) PRO.price=price; try{ localStorage.setItem('noodle.pro',PRO.owned?'1':'0'); }catch(e){}
   nxProSync(); if(was!==PRO.owned){ if(PRO.owned) pvCommitAll(); try{ renderTracks(); if(s2.edId!=null) s2EdMount(); }catch(e){} } };
 window.noodleProResult=r=>{ PRO.busy=false; track('pro_result',r); statsFlush(); const m={bought:'Pro unlocked. Thank you.', restored:'Pro restored.', none:'No Pro purchase found for this Apple ID.', pending:'Waiting for approval. Pro unlocks as soon as it’s approved.', failed:'The purchase didn’t go through. Nothing was charged.', unavailable:'The App Store isn’t reachable right now. Try again in a moment.'}[r];
   if(r==='bought'||r==='restored'){ nxClose(); haptic('success'); } if(m) toast(m,5200); nxProSync(); };

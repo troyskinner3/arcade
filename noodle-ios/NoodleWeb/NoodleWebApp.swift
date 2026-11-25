@@ -251,7 +251,10 @@ struct NoodleWeb: UIViewRepresentable {
     // microphone: the app already asked once (Info.plist text), so don't ask again inside the page
     func webView(_ webView: WKWebView, requestMediaCapturePermissionFor origin: WKSecurityOrigin, initiatedByFrame frame: WKFrameInfo,
                  type: WKMediaCaptureType, decisionHandler: @escaping (WKPermissionDecision) -> Void) {
-      decisionHandler(origin.`protocol` == "noodle" || origin.host == liveURL.host ? .grant : .prompt)
+      // Noodle's own pages only: the bundled copy (noodle://), or the live site under /arcade/noodle/ (the frame's URL; an origin has no path).
+      // Any other page on github.io gets the normal question (security review, Nov 2026).
+      let p = frame.request.url?.path ?? "", live = origin.host == liveURL.host && (p == liveURL.path || p.hasPrefix(liveURL.path + "/"))
+      decisionHandler(origin.`protocol` == "noodle" || live ? .grant : .prompt)
     }
     // the bundled page must be allowed to use the microphone (a secure context); if not, use the live site instead
     private var checked = false
