@@ -556,7 +556,7 @@ function s2Init(){ const _rt=renderTracks; renderTracks=function(){ warmSounds()
       { const at=Math.floor(st/(16*snapBars()))*Math.round(16*snapBars()), same=s2.empty&&String(s2.empty.lane)===String(L.id)&&s2.empty.at===at;
         s2.empty = !t && !had && !same && L.tracks[0].inst!=='vox' && !L.tracks[0].guide ? {lane:L.id, at} : null; } s2Render(); }   /* an empty spot: offer a new part there (tap it again, or anywhere else, to dismiss; a tap that only deselects doesn't offer) */
     else if(e.target.id==='s2Add') s2AddSheet(false);
-    else if(e.target.closest('#s2Finish')){ if(finishSong()){ playFrom=0; s2.cur=0; if(!playing) togglePlay(); } }   /* fill in what the song is missing, then hear it from the top */
+    else if(e.target.closest('#s2Finish')){ const b=e.target.closest('#s2Finish'); b.disabled=true; finishSong().then(ok=>{ if(ok){ playFrom=0; s2.cur=0; if(!playing) togglePlay(); } else b.disabled=false; }); }   /* fill in what the song is missing, then hear it from the top */
     else if(!e.target.closest('button,.s2-th,.s2-ruler,.s2-sel')&&(s2.selId!=null||s2.empty)){ s2.selId=null; s2.empty=null; s2Render(); } };   /* the empty space under the tracks: deselect */
   { const T=$('s2In'); let g=null;
     T.addEventListener('pointerdown',e=>{ const sel=e.target.closest('.s2-sel'); if(!sel||recState) return; const tr=S.tracks.find(x=>x.id===s2.selId); if(!tr) return; e.stopPropagation();

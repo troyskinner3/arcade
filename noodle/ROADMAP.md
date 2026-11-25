@@ -137,6 +137,10 @@ Draft copy is in `noodle-ios/APP_STORE_LISTING.md`.
 
 ## Faster beat making (owner, 25 Nov; build in small chunks, test each)
 - [x] Finish song: one tap fills in what's missing (drums, bass, chords, a melody, transitions, a mix effect). Free.
+- [x] Finish song writes real lead melodies (most of the time; otherwise an arp), from the tables Musical mode learned from ~45,000
+  public-domain and CC0 tunes: call-and-response 2-bar phrases, chord tones on strong beats, real phrase endings, any key.
+- [ ] Chords and bass from data, not just the beats' progressions: re-run the PDMX extraction (it already pulls the accompaniment under each
+  melody note) to learn which chord follows which (by position in the phrase) and how bass lines move between roots; download is a few GB.
 - [ ] Draw notes: a pencil in the note editor; a drawn line becomes notes on the beat and in the key (two lines: two voices, later chords).
 - [ ] Chord pads: the key's chords as big buttons; tap them in time to record a progression; the bass can follow.
 - [ ] Tap a rhythm, Noodle picks the notes: a melody that fits the chords from tapped timing alone.
