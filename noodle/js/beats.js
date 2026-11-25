@@ -97,6 +97,7 @@ function songRoles(){ const real=S.tracks.filter(t=>!t.guide&&!t._pvTemp&&hasCon
 const finishMissing=()=>{ const r=songRoles(); return r.any?['drums','bass','chords','melody','fx','mix'].filter(k=>!r[k]):[]; };
 const pickOne=a=>a[Math.floor(Math.random()*a.length)];
 async function finishSong(){ const miss=finishMissing(); if(!miss.length) return false; if(miss.includes('melody')) try{ await loadMusical(); }catch(e){}   /* the melody tables (lead melodies) */
+  if(miss.includes('chords')||miss.includes('bass')) try{ await loadHarmony(); }catch(e){}   /* chords, comping and bass learned from real songs */
   pvEnd(true); flushSave();
   const free=BEATS.filter(b=>!b.pro), near=free.filter(b=>Math.abs(b.bpm-S.bpm)<=20), b=pickOne(near.length?near:free);
   const pitched=S.tracks.some(t=>!t.guide&&t.notes&&t.notes.length&&INST[t.inst].kind==='pitched');
@@ -109,12 +110,15 @@ async function finishSong(){ const miss=finishMissing(); if(!miss.length) return
   const real=S.tracks.filter(t=>!t.guide&&hasContent(t)), chordPart=real.find(t=>(t.inst==='keys'||t.inst==='pad')&&t.notes&&t.notes.length), mel=real.find(t=>(t.inst==='lead'||t.inst==='vox'||t.inst==='arp')&&melodyNotes(t).length);
   let chords=chordPart;
   if(miss.includes('chords')){ const c=b.chords; let t;
-    if(mel){ const ch=harmonize(melodyNotes(mel),K,pSteps(mel),1); if(ch&&ch.length) t=mkTrack(c.inst,{id:S.nextId++, off:mel.off||0, len:mel.len, lenSet:true, rep:mel.rep, sound:c.sound, vol:c.vol||55, send:c.send??30, chordType:c.type||'triad', notes:ch.map(x=>({s:x.s,l:x.l,p:x.root,v:0.72,x:true}))}); }
+    const comp=ns=>c.inst==='keys'?harmComp(ns,64):ns;   /* keys strike in a learned rhythm; pads hold */
+    if(mel){ const ch=harmonize(melodyNotes(mel),K,pSteps(mel),16);   /* one chord a bar (16 steps), as the chord sheet does */ if(ch&&ch.length) t=mkTrack(c.inst,{id:S.nextId++, off:mel.off||0, len:mel.len, lenSet:true, rep:mel.rep, sound:c.sound, vol:c.vol||55, send:c.send??30, chordType:c.type||'triad', notes:comp(ch.map(x=>({s:x.s,l:x.l,p:x.root}))).map(n=>({...n,v:0.72,x:true}))}); }
+    if(!t&&HARM){ const pr=harmProg(K); if(pr) t=mkTrack(c.inst,{id:S.nextId++, off:0, len:4, lenSet:true, rep:true, sound:c.sound, vol:c.vol||55, send:c.send??30, chordType:c.type||'triad', notes:comp(pr).map(n=>({...n,v:n.s%16===0?0.76:0.68,x:true})), _prog:pr}); }   /* a progression learned from real songs, with its rhythm */
     if(!t) t=fromBeat('chords');
     if(t){ if(c.tfx) t.tfx={...c.tfx}; t.picked=true; delete t.name; add.push(t); chords=t; got.push('chords'); } }
-  const roots=chords&&chords.notes&&chords.notes.length?{off:chords.off||0, len:chords.len||4, rep:chords.rep!==false, notes:chords.notes.slice().sort((a,c)=>a.s-c.s)}:null;
+  const roots=chords&&chords.notes&&chords.notes.length?{off:chords.off||0, len:chords.len||4, rep:chords.rep!==false, notes:(chords._prog||chords.notes).slice().sort((a,c)=>a.s-c.s)}:null; if(chords) delete chords._prog;
   if(miss.includes('bass')){ let t;
-    if(roots){ const rh=b.bass.rhythm, n=[]; for(const c of roots.notes){ const root=b.bass.oct+((Math.round(c.p)-b.bass.oct)%12+12)%12; let cur=null;
+    if(roots&&HARM){ const n=harmBass(roots.notes,K,Math.max(1,Math.round(roots.len)),b.bass.oct); if(n&&n.length) t=mkTrack('bass',{id:S.nextId++, off:roots.off, len:roots.len, lenSet:true, rep:roots.rep, sound:b.bass.sound, vol:74, notes:n}); }   /* a bass line learned from real songs */
+    if(!t&&roots){ const rh=b.bass.rhythm, n=[]; for(const c of roots.notes){ const root=b.bass.oct+((Math.round(c.p)-b.bass.oct)%12+12)%12; let cur=null;
         for(let s=c.s;s<c.s+c.l;s++){ const ch=rh[s%16]; if(ch==='x'){ cur={s,l:1,p:root,v:0.85}; n.push(cur); } else if(ch==='='&&cur) cur.l++; else cur=null; } }
       if(n.length) t=mkTrack('bass',{id:S.nextId++, off:roots.off, len:roots.len, lenSet:true, rep:roots.rep, sound:b.bass.sound, vol:74, notes:n}); }
     if(!t) t=fromBeat('bass');
@@ -139,3 +143,33 @@ async function finishSong(){ const miss=finishMissing(); if(!miss.length) return
   warmSounds(); save(); renderTracks(); scheduleRender();
   const list=got.length>1?got.slice(0,-1).join(', ')+' and '+got[got.length-1]:got[0];
   toast(`Added ${list}. Undo takes them out.`,5200); return true; }
+/* ---- Chords and bass from data (round 24; owner: "account for rhythm, not just the progression"). noodle/harmony.json is learned from
+   ~15,000 public-domain and CC0 songs in 4/4 (PDMX; modern genres weighted up; eval/musical_train/extract_harm.py, train_harm.py):
+     prog: 4-bar progressions with their own harmonic rhythm (where each chord starts and how long it lasts), per mode, in semitones above
+           the key; only ones Noodle plays exactly as written (a root in the key keeps the key's own chord, one outside is major);
+     bass: 1-bar bass patterns: each note's start, length, interval above the chord under it, octave against the bar's first note;
+     comp: 1-bar rhythms of where the accompaniment strikes (for keys).
+   Picks are spread across each list (weight^0.6), and progressions with 3+ chords are favoured, so it isn't always the plainest one. ---- */
+let HARM=null, harmLoad=null;
+function loadHarmony(){ return harmLoad||(harmLoad=fetch(new URL('harmony.json',location.href)).then(r=>r.ok?r.json():null).then(j=>{ HARM=j; return j; }).catch(()=>{ harmLoad=null; return null; })); }
+const wpick=(list,f)=>{ const w=list.map(x=>Math.pow(Math.max(1e-6,f?f(x):x[1]),0.6)); let t=w.reduce((a,b)=>a+b,0), r=Math.random()*t; for(let i=0;i<list.length;i++){ if((r-=w[i])<=0) return list[i]; } return list[list.length-1]; };
+/* a 4-bar progression in key K: [{s,l,p}] roots (pitch class in octave 4 for chord parts) */
+function harmProg(K){ if(!HARM) return null; const md=K.set.includes(3)&&!K.set.includes(4)?'min':'maj', list=HARM.prog[md]; if(!list||!list.length) return null;
+  const [tpl]=wpick(list,x=>x[1]*(new Set(x[0].split(',').map(e=>e.split(':')[2])).size>=3?1.6:1));
+  return tpl.split(',').map(e=>{ const [s,l,r]=e.split(':').map(Number); return {s, l, p:48+((K.tonic+r)%12)}; }); }
+/* keys strike in a learned rhythm inside each chord; pads hold */
+function harmComp(chords, bars){ if(!HARM||!HARM.comp||!HARM.comp.length) return chords; const [mask]=wpick(HARM.comp.filter(([m])=>m&1)), on=[]; for(let i=0;i<16;i++) if(mask&(1<<i)) on.push(i);
+  const out=[]; for(const c of chords){ const hits=[]; for(let s=c.s;s<c.s+c.l;s++) if(on.includes(s%16)||s===c.s) hits.push(s);
+    hits.forEach((s,i)=>out.push({s, l:(i<hits.length-1?hits[i+1]:c.s+c.l)-s, p:c.p})); }
+  return out.filter(n=>n.s<bars*16); }
+/* a bass line under chords [{s,l,p}] (roots), from a learned 1-bar pattern (a second one on each phrase's 4th bar); oct: the bass's lowest home */
+function harmBass(chords, K, bars, oct){ if(!HARM||!HARM.bass) return null; const pats=HARM.bass.filter(([k])=>{ const n=k.split(',').length; return n>=2&&n<=8; }); if(!pats.length) return null;
+  const parse=k=>k.split(',').map(e=>{ const [s,l,iv,o]=e.split(':').map(Number); return {s,l,iv,o}; }), A=parse(wpick(pats)[0]), B=parse(wpick(pats)[0]);
+  const ink=m=>K.set.includes(((m-K.tonic)%12+12)%12), snap=m=>{ for(const d of [0,-1,1,-2,2]) if(ink(m+d)) return m+d; return m; };
+  const chordAt=st=>chords.find(c=>st>=c.s&&st<c.s+c.l), out=[];
+  for(let bar=0;bar<bars;bar++){ const pat=bar%4===3?B:A;
+    for(const n of pat){ const st=bar*16+n.s, c=chordAt(st); if(!c) continue; const root=oct+((Math.round(c.p)-oct)%12+12)%12;
+      let p= n.iv===0||c.s===st?root : n.iv===7?snap(root+7) : (n.iv===3||n.iv===4)?(ink(root+4)?root+4:root+3) : snap(root+n.iv);   /* a chord change always lands on its root */
+      p+=12*Math.max(-1,Math.min(1,n.o)); if(p<oct-5) p+=12; if(p>oct+19) p-=12;
+      out.push({s:st, l:Math.max(1,Math.min(n.l,(bar+1)*16-st)), p, v:n.s%4===0?0.88:0.78}); } }
+  return out.sort((a,b)=>a.s-b.s).filter((n,i,a)=>!i||n.s>a[i-1].s); }

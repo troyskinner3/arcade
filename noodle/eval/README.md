@@ -853,3 +853,16 @@ the note editor's Today / Tap notes button flips one take between them. The fing
   missing (an arp otherwise, or when the tables can't load). With nothing pitched yet, Finish song sets the song's key from the beat (it
   used to stay "auto" and be re-guessed after, so a melody could fall outside it). Over 40 melodies in A minor on Am F C G: all in key
   and range, answers repeat the call's rhythm, 100 % end on a chord tone, 86 % chord tones on strong beats, 87 % small steps, all different.
+
+## Round 24 (chords and bass learned from real songs, with their rhythm)
+- `noodle/harmony.json` (~18 KB) from 15,247 public-domain / CC0 songs in 4/4 (PDMX; modern genres weighted x3, classical x0.5):
+  160 four-bar progressions per mode with their harmonic rhythm (e.g. i for 2 bars then bVI, or vi IV I V a bar each, or a chord change on
+  beat 3), 140 one-bar bass patterns (rhythm plus each note's interval to the chord: root, fifth, third, octave, passing notes), 80 comping
+  rhythms. Tools: `eval/musical_train/extract_harm.py`, `train_harm.py`.
+- Finish song: with no melody, chords are a learned progression (3+ chords favoured, picks spread across the list); keys strike in a learned
+  comping rhythm, pads hold; the bass is a learned pattern on the chords (a second pattern on each phrase's 4th bar; a chord change always
+  lands on its root). Chords from a melody still follow the melody.
+- Bug fixed: Finish song asked for chords from the melody once per 16th step (64 tiny chords per 4 bars) instead of once a bar.
+- Offline: harmony.json is in the offline cache (service worker v5) and the iPhone copy. Credits: PDMX now also named for Finish song.
+- Tests: `finish_test` checks at most 2 chord changes a bar, bass in key landing on chord roots, and 30 progressions (27 distinct, 3.3
+  chords, 24 with their own rhythm, 3.3 bass notes a bar).
