@@ -64,6 +64,10 @@ Status: **confirmed** (owner agreed) or **proposed** (waiting on the owner).
 | Draw notes: draw a line in the note editor and it becomes notes, on the beat and in the key. Suggest Free | proposed |
 | Drum pads (Add track → Tap it in): a pad per kit sound, tapped along with the song into a drum part; Add more layers another pass. Suggest Free | proposed |
 | Chord pads (Add track → Tap it in): six pads with the key's chords, tapped along with the song into a chord part. Suggest Free | proposed |
+| Note pads (Add track → Tap it in): a pad per note of the key, tapped along with the song into a melody; Add more for a second line. Suggest Free | proposed |
+| Play pad (Add track → Tap it in): slide across for notes in the key, up for a brighter sound; recorded with each note's brightness. Suggest Free | proposed |
+| Draw chords: in Draw, a line above or below notes adds a second voice (over a line redoes it). Suggest Free | proposed |
+| Continue this (note editor •••): a short part grows into a phrase with a variation, an answer and an ending. Suggest Free | proposed |
 | Tap a rhythm (Add track → Tap it in): tapped timing becomes a melody in the key, fitted to the chords; Other notes. Suggest Free | proposed |
 | Song sections: name, loop and duplicate Intro / Verse / Chorus / Bridge / Outro | proposed |
 | Your presets: vocal presets, track-effect presets, your own drum kits (any drum from any kit + your taught noises), saved on the phone and in backups (a preset with Pro parts is tried) | confirmed |

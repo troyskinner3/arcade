@@ -143,14 +143,15 @@ Draft copy is in `noodle-ios/APP_STORE_LISTING.md`.
   15,247 public-domain songs (`harmony.json`).
 - [x] Draw notes: Draw (next to + All notes in the note editor); a finger line becomes notes on the beat and in the key, replacing what
   was under it. One voice for now.
-- [ ] Draw chords: a second line over the first adds a second voice (toward drawn chords).
+- [x] Draw chords: a line above or below notes adds a second voice; over a line redoes it (round 27).
 - [x] Drum pads: a big pad per kit sound, tapped in time into a drum part, with Add more to layer passes (round 26).
 - [x] Chord pads: the key's chords as big buttons; tap them in time to record a progression (round 26: Add track → Tap it in). Later: the bass can follow.
 - [x] Tap a rhythm, Noodle picks the notes: a melody that fits the chords from tapped timing alone (round 26).
-- [ ] In-key note pads: one pad per note of the scale for tapping a melody (then Tidy).
-- [ ] Continue this: stretch a 2-bar part to 8 bars with variation and an answering phrase.
-- [ ] Play pad (an XY pad, inspired by the Kaossilator, own design and name): across = notes in the key, up and down = the sound
-  (brightness / effect), recorded with the notes; range, snap and an arpeggio mode under More settings.
+- [x] In-key note pads: one pad per note of the scale for tapping a melody; Add more for a second line (round 27: Note pads).
+- [x] Continue this: stretch a 2-bar part to 8 bars with variation and an answering phrase (round 27: note editor •••).
+- [x] Play pad (an XY pad, inspired by the Kaossilator, own design and name): across = notes in the key, up and down = brightness,
+  recorded with the notes (round 27: Add track → Tap it in).
+- [ ] Play pad More settings: range, snap off and an arpeggio mode (defaults for now: two octaves, snapped to the key).
 
 ## After launch (not blocking)
 Ideas in `noodle/IDEAS.md` (beat pads, strumming, face tracking and more).
