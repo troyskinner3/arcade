@@ -25,7 +25,8 @@ const {chromium,devices}=require('playwright');
     S.tracks.push(mkTrack('lead',{id:S.nextId++,off:0,len:4,rep:false,lenSet:true,sound:'Saw',notes:mel})); save(); flushSave(); renderTracks(); await w(300);
     await finishSong(); await w(500);
     const ch=S.tracks.find(t=>t.inst==='keys'||t.inst==='pad'), bs=S.tracks.find(t=>t.inst==='bass');
-    out.melodyCase=kinds(); out.chordsFollow=!!ch&&ch.notes.every(n=>n.s<64); out.bassOnRoots=!!(ch&&bs)&&bs.notes.every(n=>ch.notes.some(c=>n.s>=c.s&&n.s<c.s+c.l&&((Math.round(c.p)-Math.round(n.p))%12+12)%12===0));
+    out.melodyCase=kinds(); out.chordsFollow=!!ch&&ch.notes.every(n=>n.s<64)&&ch.notes.filter((n,i,a)=>!i||Math.round(n.p)!==Math.round(a[i-1].p)).length<=8;   /* inside the part; at most 2 chord changes a bar (it once changed every 16th) */ const K3=currentKey(), sc3=SCALES[PARENT[K3.scale]||K3.scale], inK=p=>sc3.includes(((Math.round(p)-K3.tonic)%12+12)%12), starts=ch?ch.notes.filter((c,i,a)=>!i||Math.round(c.p)!==Math.round(a[i-1].p)):[];
+    out.bassOnRoots=!!(ch&&bs)&&bs.notes.every(n=>inK(n.p))&&starts.filter(c=>bs.notes.some(n=>n.s===c.s&&((Math.round(c.p)-Math.round(n.p))%12+12)%12===0)).length>=starts.length*0.5;   /* in key; most chord changes land on their root (learned lines also use fifths, thirds and passing notes) */
     out.noArp=!S.tracks.some(t=>t.inst==='arp');   /* it has a melody already */
     // the generated lead melodies themselves (A minor over Am F C G, 4 bars), 40 of them
     await loadMusical(); S.key='9'; S.scale='minor'; keyCache=null; scaleCache=null; const K2=currentKey(), prog=[57,53,48,55], tones=r=>new Set(chordTones(r,'triad').map(x=>((x%12)+12)%12)), chordAt=st=>tones(prog[Math.floor((st%64)/16)]);
@@ -36,6 +37,11 @@ const {chromium,devices}=require('playwright');
       const L=ns[ns.length-1]; if(chordAt(L.s).has(((L.p%12)+12)%12)) endC++;
       ns.forEach((n,i)=>{ if(n.s%8===0){ strongN++; if(chordAt(n.s).has(((n.p%12)+12)%12)) strong++; } if(i&&n.s<32===ns[i-1].s<32){ ivs++; if(Math.abs(n.p-ns[i-1].p)<=4) steps++; } }); }
     out.mel={inKey:mKey/40, inRange:inRange/40, answerRhythm:ans/40, endsOnChord:endC/40, strongChord:+(strong/strongN).toFixed(2), steps:+(steps/ivs).toFixed(2), notes:Math.round(notes/40), distinct:seen.size/40, example:genMelody(K2,4,chordAt).map(n=>n.s+':'+n.p+'/'+n.l).join(' ')};
+    // chords and bass learned from real songs (harmony.json): varied, with their own rhythm
+    await loadHarmony(); { S.key='0'; S.scale='major'; keyCache=null; scaleCache=null; const KM=currentKey(), seen=new Set(); let chords=0, offGrid=0, bassN=0;
+      for(let k=0;k<30;k++){ const pr=harmProg(KM); seen.add(pr.map(c=>c.s+':'+c.l+':'+c.p).join(' ')); chords+=pr.length; if(pr.some(c=>c.l!==16)) offGrid++;
+        const bl=harmBass(pr,KM,4,36); bassN+=bl.length; }
+      out.harm={distinct:seen.size, avgChords:+(chords/30).toFixed(1), rhythmVaried:offGrid, bassPerBar:+(bassN/30/4).toFixed(1)}; }
     return out; });
   const want={noButtonEmpty:true, button:true, drumsOnly:'(any)', missingAfter:'', buttonGone:true, inKey:true, freeOnly:true, undoOne:true, undoSteps:0, chordsFollow:true, bassOnRoots:true, noArp:true};
   for(const [k,v] of Object.entries(want)) if(k!=='drumsOnly'&&r[k]!==v) errs.push(k+': '+JSON.stringify(r[k]));
@@ -43,4 +49,5 @@ const {chromium,devices}=require('playwright');
   const m=r.mel; if(!(m.inKey===1&&m.inRange===1&&m.answerRhythm>=0.95&&m.endsOnChord>=0.9&&m.strongChord>=0.6&&m.steps>=0.6&&m.notes>=8&&m.notes<=22&&m.distinct>=0.8)) errs.push('melodies: '+JSON.stringify(m));
   if(!/^(bass,fx,keys,lead,mix,kit|bass,fx,kit,lead,mix,pad|bass,fx,keys,kit,lead,mix)$/.test(r.melodyCase)) errs.push('melodyCase: '+r.melodyCase);
   if(!(r.loud>-45)) errs.push('loud: '+r.loud);
+  if(!(r.harm.distinct>=15&&r.harm.avgChords>=2.5&&r.harm.rhythmVaried>=5&&r.harm.bassPerBar>=1.5)) errs.push('harm: '+JSON.stringify(r.harm));
   console.log(JSON.stringify({...r,errs})); await b.close(); })();
