@@ -99,8 +99,21 @@ Draft copy is in `noodle-ios/APP_STORE_LISTING.md`.
   and move to R2 (10 GB free, needs a card; set billing alerts) when it passes about 70% of the free 1 GB.
 - [x] Daily storage alert: `.github/workflows/noodle-health.yml` reads `GET /v1/admin/usage` once a day and fails (emails you) above 700 MB
   of the free 1 GB. Until the takes service is deployed with that route, it shows a warning instead.
-- [ ] **Owner:** email list: pick the mail tool (e.g. Buttondown, Mailchimp) and import with double opt-in before anyone gets news
-      (sign-ups aren't checked; anyone can add or remove any address). Cloudflare can only email verified addresses, so not from the service.
+- [ ] **Owner, before anyone gets news: email list with Kit (free plan, up to 10,000 subscribers).** Sign-ups aren't checked today
+  (anyone can add or remove any address), so each address must confirm by email first. Cloudflare can only email verified addresses,
+  so Kit sends the confirmation. A 10-minute test first, since Kit's docs don't say whether these two work:
+  double opt-in on the free plan, and the confirmation email when someone is added through the API.
+  1. Make a free account at https://kit.com/ on the free plan. If it asks for a card, stop and tell Claude. (It will likely ask for a
+     mailing address for email footers; anti-spam laws require one.)
+  2. Make a form: Grow → Landing Pages & Forms → Create new → Form (any design). In its settings turn on the confirmation email
+     (Kit calls it the "incentive email"). If there is no such option on the free plan, tell Claude.
+  3. Note the form's number in the address bar while editing it.
+  4. Make an API key: https://app.kit.com/account_settings/developer_settings → Add a new key → name it "Noodle" → copy it (shown once).
+     Don't paste it in chat: tell Claude, which opens a secure form to save it.
+  5. Claude adds your own address through the API. If a "please confirm" email arrives, Claude connects Noodle's sign-ups to Kit
+     (the key becomes the Cloudflare secret `KIT_API_KEY`) and moves the addresses already collected over, asking each to confirm once.
+  If no confirmation arrives: the service can post to Kit's public form like a website form does (no key; not a documented API),
+  or switch to Brevo (300 emails a day free; its double opt-in sign-up still to be checked).
 - [x] Cloudflare token given only to the deploy step (Fan to See `noodle-takes.yml`, on its `main` since 25 Nov).
 - [x] Hardening (25 Nov): strict WAV check, nosniff on every reply, report emails only on a song's first report (30 a day at most),
       reports stop being stored after 10, Pro codes marked when handed out (no double handout), `GET /v1/admin/usage` storage meter.
