@@ -803,3 +803,24 @@ the note editor's Today / Tap notes button flips one take between them. The fing
 - The takes service keeps shared takes 1 year instead of 3 (owner's decision); the privacy policy says so. A take stored under the old
   rule and sent again after its year is up is deleted (410), since storage refuses an expiry in the past; the app drops it on any 4xx.
 - Health workflow: a daily storage check (`GET /v1/admin/usage`, alert above 700 MB of the free 1 GB), the security session's suggestion.
+
+## Round 21 (owner's TestFlight review, 25 Nov)
+- Recording: the song plays about 4 dB quieter during a take (less bleed without headphones); back to normal after.
+- Transitions: a short hiss (under 0.28 s) that clearly darkens (brightness falls by 20 %+) is a sweep down; only one that stays bright is an
+  impact. Checked on the owner's 5 shared Transitions takes: their 24 Nov downsweep now reads as a sweep down.
+- Drum kit: a Crash slot (a bright hit ringing 0.35 s or more: a long “k-shhh”), for new kits and, once, existing ones. A new hit
+  measure (`tail`, up to 1 s) leaves the old `dur` alone, so kick / snare / hat sorting is unchanged.
+- Takes: when a take ends, the playhead waits at its start (Keep leaves it there); Discard puts it back where it was; Retake counts in from
+  the take's start. A song opens with the playhead at the start.
+- Leaving the Studio with a message up no longer stretches it from top to bottom on the Songs screen.
+- Felt metronome: no extra tap on the first beat (the record-start tap landed with it: two buzzes at once); Buzz timing defaults to −15 ms.
+- Mix effects: a new track comes with the new-part outline at the playhead's bar. A free user previewing a Pro effect sees one line,
+  "Previewing a Pro effect", with Get Pro.
+- Bitcrusher silence: the app made its audio context in a second place at start that skipped the crusher's worklet (so the iPhone used
+  the old crusher) and had no recovery. Now one setup path; the worklet can't throw or output a bad number; a watchdog resumes paused
+  audio and rebuilds the mix if its output stops being numbers. The cause on the iPhone isn't proven: owner to retest.
+- Vinyl brake: back on the beat as soon as the curve returns to 0%, with a quick speed-up (at most 0.6 s); More settings → Catching up →
+  Jump cuts instead. The Mix effects editor has a More settings disclosure for settings few people need.
+- Transitions bend: the drawn shape keeps its ends; only the middle moves (the shape used to be scaled down as a whole).
+- Tests: `round21_test.js` (crash, kit migration, playhead, outline, Pro line, bend ends, message height); `mfx_brake_test` (catch-up both
+  ways); `errors_test` (watchdog); `haptic_test` (default nudge, no start tap).

@@ -9,9 +9,10 @@ const {chromium,devices}=require('playwright');
       await startRecord(); const r=recState; if(!r) return {started:false}; const beat=60/S.bpm, at=x=>{ const g=metroGain.gain; return +g.value.toFixed(2); };
       await new Promise(q=>setTimeout(q,(r.start-ctx.currentTime)*1000+300)); const after=+metroGain.gain.value.toFixed(2);
       const mm=window.__m.find(m=>m.type==='metro'), timing=!!mm&&Math.abs(mm.sentMs-Date.now())<5000&&mm.inMs>-50&&mm.inMs<(r.countStart-ctx.currentTime)*1000+3000;   /* when the first click is heard, from the page's clock (the app takes off the trip) */
-      const m0=metroAt(ctx.currentTime+1).inMs; S.buzzMs=40; const m1=metroAt(ctx.currentTime+1).inMs; S.buzzMs=0;
-      cancelRecord(); return {started:true, timing, nudge:Math.abs(m1-m0-40)<=15, after, msgs:window.__m.filter(m=>['metro','metroStop','metroWarm'].includes(m.type)).map(m=>m.type==='metro'?`metro:${m.beats}:${Math.round(m.beatMs)}:${m.perBar}`:m.type)}; });
+      const md=metroAt(ctx.currentTime+1).inMs; S.buzzMs=0; const m0=metroAt(ctx.currentTime+1).inMs; S.buzzMs=40; const m1=metroAt(ctx.currentTime+1).inMs; delete S.buzzMs; const dflt=Math.abs(m0-md-15)<=15;   /* the default nudge is −15 ms */
+      const startTap=window.__m.filter(m=>m.type==='haptic'&&m.style==='medium').length;   /* no extra tap on the first beat */
+      cancelRecord(); return {started:true, timing, nudge:Math.abs(m1-m0-40)<=15, dflt, startTap, after, msgs:window.__m.filter(m=>['metro','metroStop','metroWarm'].includes(m.type)).map(m=>m.type==='metro'?`metro:${m.beats}:${Math.round(m.beatMs)}:${m.perBar}`:m.type)}; });
     out[app?'app':'web']=r; await c.close(); }
-  if(!out.app.started||!out.app.timing||!out.app.nudge||out.app.after!==0||out.app.msgs.find(m=>m.startsWith('metro:'))!=='metro:8:500:4'||!out.app.msgs.includes('metroStop')) errs.push('app '+JSON.stringify(out.app));
+  if(!out.app.started||!out.app.timing||!out.app.nudge||!out.app.dflt||out.app.startTap!==0||out.app.after!==0||out.app.msgs.find(m=>m.startsWith('metro:'))!=='metro:8:500:4'||!out.app.msgs.includes('metroStop')) errs.push('app '+JSON.stringify(out.app));
   if(!out.web.started||out.web.after===0||out.web.msgs.length) errs.push('web '+JSON.stringify(out.web));
   console.log(JSON.stringify({...out,errs})); await b.close(); })();

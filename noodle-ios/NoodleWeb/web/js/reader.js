@@ -80,6 +80,7 @@ function detectOnsets(x, sr, sens, minGap){
     let pk=0,pb=b0; for(let b=b0;b<Math.min(nB,b0+Math.round(0.03*sr/B));b++) if(env[b]>pk){pk=env[b];pb=b;}
     let e=pb; const lim=Math.min(nB-8,pb+Math.round(0.4*sr/B)); while(e<lim && sm(e)>0.2*pk) e++;
     o.dur=Math.max(0.008,(e-b0)*B/sr);
+    { let e2=e; const lim2=Math.min(nB-8,pb+Math.round(1.0*sr/B)); while(e2<lim2 && sm(e2)>0.2*pk) e2++; o.tail=(e2-b0)*B/sr; }   /* how long the sound rings, up to 1 s (a crash's “k-shhh”); dur above stays as it was */
     o.fv=fingerprint(x,s0,sr,o); }
   // a hit right behind a similar-sounding one must be a real new attack, not that sound's tail changing colour
   // (a different sound right after, like "k" then "B", is kept)
@@ -132,9 +133,15 @@ function dropFaintKicks(ons){ const isKick=o=>{ const sl=slotOf(o.cls); return (
   const top=k[Math.floor((k.length-1)*0.75)]; for(let i=ons.length-1;i>=0;i--) if(isKick(ons[i]) && ons[i].db<top-FAINT_KICK_DB) ons.splice(i,1); }
 function classifyKit(ons){
   const T=taughtSlots();
-  if(T.length>=2 && ons.every(o=>o.fv)){ const sc=featScale(); ons.forEach(o=>{ o.cls=nearestSlot(o.fv,T,sc).id; }); return; }
-  ruleClassify(ons);
+  if(T.length>=2 && ons.every(o=>o.fv)){ const sc=featScale(); ons.forEach(o=>{ o.cls=nearestSlot(o.fv,T,sc).id; }); }
+  else ruleClassify(ons);
+  crashRule(ons);
 }
+/* A crash: a bright, noisy hit that rings on (a long “k-shhh”, 0.35 s or more), where a snare or hi-hat stops. Only when the kit has a crash
+   slot that wasn't taught (a taught one is found by its examples). */
+const CRASH_TAIL=0.35, CRASH_CEN=2200;
+function crashRule(ons){ const sl=S.kit.slots.find(x=>x.sound==='crash'); if(!sl||(sl.ex&&sl.ex.length>=3)) return;
+  ons.forEach(o=>{ const snd=(slotOf(o.cls)||{}).sound||o.cls; if(snd!=='kick'&&o.tail>=CRASH_TAIL&&o.cen>CRASH_CEN) o.cls=sl.id; }); }
 const KIT_PROTO={clap:[Math.log2(1900),Math.log2(0.03)], snare:[Math.log2(3600),Math.log2(0.13)], hat:[Math.log2(7500),Math.log2(0.06)]};
 function nearestProto(o,names){ const f=[Math.log2(o.cen),Math.log2(o.dur)]; let bn=names[0],bd=1e9;
   for(const n of names){ const c=KIT_PROTO[n]; const d=Math.hypot(f[0]-c[0],(f[1]-c[1])*0.55); if(d<bd){bd=d;bn=n;} } return bn; }

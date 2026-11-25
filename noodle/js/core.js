@@ -2,7 +2,7 @@
 /* ============================== constants ============================== */
 const DRUM_SOUNDS = ['808','Punchy','EDM','Rock','Brushes','Lo-fi'];
 const INST = {
-  kit:  {label:'Drum kit', kind:'drums', color:'#e4572e', say:'“B” · “ch” · “k” · “ts”', sounds:DRUM_SOUNDS, hint:'Beatbox the whole groove: “B” for kick, “ch” for snare, “k” for clap, “ts” for hi-hat. Add more sounds and teach it your own noises in Your kit below. Fix any hit by tapping the grid.'},
+  kit:  {label:'Drum kit', kind:'drums', color:'#e4572e', say:'“B” · “ch” · “k” · “ts” · “k-shhh”', sounds:DRUM_SOUNDS, hint:'Beatbox the whole groove: “B” for kick, “ch” for snare, “k” for clap, “ts” for hi-hat, a long “k-shhh” for a crash. Add more sounds and teach it your own noises in Your kit below. Fix any hit by tapping the grid.'},
   kick: {label:'Kick', kind:'drum', drum:'kick', color:'#e4572e', say:'“B” · “bm”', sounds:DRUM_SOUNDS, hint:'Just the kick drum. Say “B” or “bm” wherever you want a kick.'},
   snare:{label:'Snare', kind:'drum', drum:'snare', color:'#f0a238', say:'“ch” · “K” · “Pf”', sounds:DRUM_SOUNDS, hint:'Just the snare. “ch”, “K”, “Pf” or “psh” all work.'},
   hat:  {label:'Hi-hat', kind:'drum', drum:'hat', color:'#22b0a0', say:'“ts” · “tk”', sounds:DRUM_SOUNDS, hint:'Just the hi-hats. Say “ts”, “tk” or “tss”.'},
@@ -35,7 +35,9 @@ const STYLES={
   'Lo-fi':  {drums:'Lo-fi',  bass:'Sub',        lead:'Bell',     keys:'E-piano', pad:'Warm pad', arp:'Pluck',    vox:'Natural',  mix:{swing:45, drive:20, punch:40, rev:55}},
 };
 const styleSound=inst=>{ const st=S&&S.genre&&STYLES[S.genre]; if(!st) return null; const k=INST[inst].kind; return k==='drums'||k==='drum'?st.drums:st[inst]; };
-const defaultKit=()=>({next:1, slots:[{id:'kick',sound:'kick',say:'B'},{id:'snare',sound:'snare',say:'ch'},{id:'clap',sound:'clap',say:'k'},{id:'hat',sound:'hat',say:'ts'}]});
+/* existing kits (the kit belongs to the phone, not a song) get the crash too: once, so deleting it later sticks */
+function kitMigrate(k){ if(!k||k.mig4) return k; k.mig4=1; if(!k.slots.some(x=>x.id==='crash'||x.sound==='crash')) k.slots.push({id:'crash',sound:'crash',say:'k-shhh'}); return k; }
+const defaultKit=()=>({next:1, slots:[{id:'kick',sound:'kick',say:'B'},{id:'snare',sound:'snare',say:'ch'},{id:'clap',sound:'clap',say:'k'},{id:'hat',sound:'hat',say:'ts'},{id:'crash',sound:'crash',say:'k-shhh'}]});   /* crash: a long “k-shhh” (owner, Nov 2026) */
 const soundOf=d=>{ const sl=slotOf(d); return sl?sl.sound:d; };
 function slotLabel(d){ const sl=slotOf(d), snd=sl?sl.sound:d, base=SOUNDS[snd]||{label:d};
   const same=S.kit.slots.filter(x=>x.sound===snd); const nm=base.short||base.label;
@@ -81,6 +83,7 @@ let S = defaultState();
 (function load(){
   try{ const raw=localStorage.getItem(STORE_KEY); if(raw){ const o=JSON.parse(raw); if(o&&o.v===1){ S=Object.assign(defaultState(),o); S.master=Object.assign(defaultState().master,o.master||{}); if(!o.mig2){ S.ec=false; S.playAlong=false; S.mig2=true; } if(!o.mig3){ if(!S.latAuto && S.latMs<15){ S.latAuto=true; S.calibrated=false; } S.mig3=true; } delete S.kitProfile; } } }catch(e){}
   if(!S.kit||!Array.isArray(S.kit.slots)||!S.kit.slots.length) S.kit=defaultKit();
+  else kitMigrate(S.kit);
   if(!Array.isArray(S.tracks)) S.tracks = [];
   S.tracks.forEach(t=>{ t._dirty=true; });
 })();
@@ -154,7 +157,7 @@ async function projList(){ const all=(await projDb.all())||[]; return all.map(({
 async function projLoadState(o){ try{ pvEnd(true); }catch(e){} flushSave(); if(typeof s2!=='undefined') s2.sec=null; if(playing){ stopAll(); playing=false; }
   const st=defaultState(); Object.assign(st,o); SETUP_KEYS.forEach(k=>{ if(k in S) st[k]=S[k]; else delete st[k]; }); st.nextId=Math.max(S.nextId||10, o.nextId||10);
   takeBar=null; await restoreSnap({json:JSON.stringify(st), rt:new Map()}); hist.undo=[]; hist.redo=[]; hist.cur=snapNow(); projSaved=songJson(); reloadRaw();
-  if(typeof s2!=='undefined'){ s2.loop=!!S.loopOn; try{ $('s2Loop').setAttribute('aria-pressed',String(s2.loop)); }catch(e){} } }   /* a song opens with Loop off, except one made to loop (the example song: S.loopOn) */
+  if(typeof s2!=='undefined'){ s2.loop=!!S.loopOn; try{ $('s2Loop').setAttribute('aria-pressed',String(s2.loop)); }catch(e){} s2.cur=0; s2.pos=-1; try{ $('s2Tl').scrollLeft=0; }catch(e){} } playFrom=0; }   /* a song opens at its start, the playhead all the way left (owner) */   /* a song opens with Loop off, except one made to loop (the example song: S.loopOn) */
 async function projOpen(id){ await projSaveCurrent(); const p=await projDb.get(id); if(!p) return false; await projLoadState(JSON.parse(p.json)); return true; }
 async function projNew(){ await projSaveCurrent(); const o=defaultState(); o.tracks=[]; o.pid=projId(); await projLoadState(o); return o.pid; }
 async function projRename(id,title){ title=String(title||'').slice(0,80); if(id===S.pid){ S.title=title; persist(); await projSaveCurrent(); return true; }

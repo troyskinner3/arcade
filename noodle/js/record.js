@@ -71,7 +71,7 @@ async function startRecord(calib=false, teach=null){ if(!calib&&!teach&&feelBeat
   // before you sing, and the count-in gives a clean stretch to measure this take's real delay
   const preroll = along && !calib && !teach && S.inst==='vox', SL=loopLen(), poff=(((tgp&&tgp.off?tgp.off:0)*stepDur()-bar)%SL+SL)%SL;   /* the bar before where this take starts */
   if(along) S.tracks.forEach(tr=>{ if(tr._buf && !tr.guide){ ensureNodes(tr); tr._src=preroll?startSrc(tr._buf,tr._g,when,poff):startSrc(tr._buf,tr._g,when+bar,P); } });
-  if(along && !calib && !teach){ if(preroll) mfxStart(when,poff); else mfxStart(when+bar,P); }   /* Mix effects play along too, so a take is sung against what the song will sound like */
+  if(along && !calib && !teach){ if(preroll) mfxStart(when,poff); else mfxStart(when+bar,P); if(chain) chain.input.gain.setTargetAtTime(trimBase()*mixTrim*REC_ALONG, ctx.currentTime, 0.05); }   /* the song plays a little quieter while you record: less of it bleeds into the mic without headphones (owner) */   /* Mix effects play along too, so a take is sung against what the song will sound like */
   if(guideAlong && !calib && !teach) S.tracks.forEach(tr=>{ if(tr._buf && tr.guide){ ensureNodes(tr); tr._src=startSrc(tr._buf,tr._g,when+bar,P); } });   /* hum-along screens: the tune under your take */
   if(!metroGain){ metroGain=ctx.createGain(); metroGain.connect(ctx.destination); }
   metroGain.gain.value=0.75; metroSrc=startSrc(metroBuf,metroGain,when,0); gateOpen(when);
@@ -124,7 +124,7 @@ function importInto(id){ lastNoise=null;
 }
 function afterTake(){ setTimeout(()=>{ try{ inviteSend(false); }catch(e){} },1500);
   const changed = rs.pre && snapNow().json!==rs.pre.json;
-  if(changed && S.tracks.some(t=>t.id===S.activeId&&hasContent(t))){ takeBar={id:S.activeId, pre:rs.pre, histLen:rs.histLen, hint:bleedHint, prevBars:s2.recPrev}; } bleedHint=false;
+  if(changed && S.tracks.some(t=>t.id===S.activeId&&hasContent(t))){ takeBar={id:S.activeId, pre:rs.pre, histLen:rs.histLen, hint:bleedHint, prevBars:s2.recPrev}; try{ const t=S.tracks.find(x=>x.id===S.activeId); setTimeout(()=>s2PlayheadTo((t.off||0)/16),0); }catch(e){} } bleedHint=false;   /* a new take: the playhead waits at its start, ready to play it back (Keep leaves it there) */
   S.target=null; rs.mode=null; renderTracks();
   const tr=S.tracks.find(t=>t.id===S.activeId);
   if(changed && tr && hasContent(tr)){ statsSess.takes++; track('take',tr.inst); trackOnce('first_take',tr.inst); const n=S.tracks.filter(t=>hasContent(t)&&!t.guide&&!t.mfx).length; if(n>=2) trackOnce('first_song','',n); }
@@ -139,10 +139,12 @@ $('s2TapPad').addEventListener('pointerdown',e=>{ e.preventDefault(); const r=re
 function metroAt(when){ const now=performance.now(); let heardIn;
   try{ const ts=ctx.getOutputTimestamp&&ctx.getOutputTimestamp(); if(ts&&ts.contextTime>0&&ts.performanceTime>0&&Math.abs(now-ts.performanceTime)<1000) heardIn=ts.performanceTime+(when-ts.contextTime)*1000-now; }catch(e){}
   if(heardIn==null) heardIn=(when-ctx.currentTime+Math.min(0.15,ctx.outputLatency||ctx.baseLatency||0))*1000;
-  return {inMs:Math.round(heardIn+(+S.buzzMs||0)), sentMs:Date.now()}; }
+  return {inMs:Math.round(heardIn+(Number.isFinite(+S.buzzMs)&&S.buzzMs!=null?+S.buzzMs:BUZZ_MS)), sentMs:Date.now()}; }
+const BUZZ_MS=-15;   /* the default nudge: the owner's iPhone felt right at −15 ms (Nov 2026); Buzz timing changes it */
 /* the felt metronome runs only in the iPhone app (the web can't buzz an iPhone) */
 const feelBeat=()=>S.feelBeat!==false&&!!(window.webkit&&window.webkit.messageHandlers&&window.webkit.messageHandlers.noodleNative);
-function setRecUI(on){ if(!on) native({type:'metroStop'});
+const REC_ALONG=0.6;   /* about −4 dB */
+function setRecUI(on){ if(!on){ native({type:'metroStop'}); try{ applyTrim(); }catch(e){} }   /* back to the normal level */
  $('s2TapPad').hidden=!(on&&tapPadOn());
  RSE.hidden=!on; $('recBtn').classList.toggle('live',on); $('recTxt').textContent=on?'Stop':'Start recording';
  }
