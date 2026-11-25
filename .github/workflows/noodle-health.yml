@@ -1,0 +1,48 @@
+name: Noodle takes service (health)
+# Watches the live takes service. A failed run is the alert: GitHub emails the owner when a scheduled run fails
+# (Settings → Notifications → Actions: "Send notifications for failed workflows only").
+#  - Every 30 minutes: is the service up and able to reach its storage? (An unknown song must come back as a quick 404.)
+#  - Once a day: crash reports today above ERROR_LIMIT, or reported songs waiting for review (they are hidden until the owner looks;
+#    the terms promise a review within 2 working days). These two need the repository secret NOODLE_ADMIN_KEY (the takes service's
+#    ADMIN_KEY); without it they are skipped.
+# GitHub pauses scheduled workflows after 60 days with no activity in the repository; re-enable it under Actions if that happens.
+on:
+  schedule:
+    - cron: '*/30 * * * *'
+    - cron: '17 13 * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+env:
+  API: https://noodle-takes.cracked.workers.dev
+  ERROR_LIMIT: '25'
+jobs:
+  health:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Service is up
+        run: |
+          for i in 1 2 3; do
+            code=$(curl -s -o body.txt -w '%{http_code}' --max-time 20 "$API/v1/songs/healthcheck00" || echo 000)
+            if [ "$code" = 404 ] && grep -q 'not found' body.txt; then echo "up"; exit 0; fi
+            echo "try $i: HTTP $code $(head -c 200 body.txt 2>/dev/null)"; sleep 20
+          done
+          echo "::error::The Noodle takes service is down or can't reach its storage (last HTTP $code)."; exit 1
+      - name: Crash reports and reported songs (daily)
+        if: github.event.schedule == '17 13 * * *' || github.event_name == 'workflow_dispatch'
+        env:
+          KEY: ${{ secrets.NOODLE_ADMIN_KEY }}
+        run: |
+          set -o pipefail
+          if [ -z "$KEY" ]; then echo "NOODLE_ADMIN_KEY isn't set: skipped."; exit 0; fi
+          day=$(date -u +%F); fail=0
+          n=$(curl -sf --max-time 20 -H "Authorization: Bearer $KEY" "$API/v1/admin/list?prefix=errors/$day/" | jq '.keys | length' || echo '?')
+          echo "Distinct crash reports today: $n"
+          if [ "$n" = '?' ]; then echo "::warning::Couldn't read crash reports (admin key, or the service isn't deployed with this route yet)."; n=0; fi
+          if [ "${n:-0}" -gt "$ERROR_LIMIT" ]; then echo "::error::$n distinct crash reports today (limit $ERROR_LIMIT). See GET /v1/admin/list?prefix=errors/$day/"; fail=1; fi
+          r=$(curl -sf --max-time 20 -H "Authorization: Bearer $KEY" "$API/v1/admin/reports" | jq '[.[] | select(.hidden)] | length' || echo '?')
+          echo "Reported songs waiting for review: $r"
+          if [ "$r" = '?' ]; then echo "::warning::Couldn't read reported songs (deploy the takes service with GET /v1/admin/reports)."; r=0; fi
+          if [ "${r:-0}" -gt 0 ]; then echo "::error::$r reported song(s) hidden and waiting for your review (GET /v1/admin/reports; restore or delete them)."; fail=1; fi
+          exit $fail

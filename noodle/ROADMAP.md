@@ -76,16 +76,29 @@ Draft copy is in `noodle-ios/APP_STORE_LISTING.md`.
 ## 7. Server (takes service) readiness
 - [ ] **Owner:** move the deploy out of the Fan to See repo into its own Cloudflare token and workflow (see `noodle-api/README.md`), or keep it.
 - [ ] Check Cloudflare free-plan limits (requests, KV reads/writes, storage) against launch-day traffic; know what happens if they're hit.
-- [ ] Alerts when errors spike or the service is down.
+- [x] Alerts: `.github/workflows/noodle-health.yml` checks the service every 30 minutes, and once a day checks crash reports (more than 25
+  distinct a day) and reported songs waiting for review. A failed run is the alert: GitHub emails you.
+- [ ] **Owner:** for the daily checks, add the repository secret `NOODLE_ADMIN_KEY` (the takes service's `ADMIN_KEY`) in this repo's
+  Settings → Secrets and variables → Actions. Check that GitHub emails you about failed workflow runs (github.com → Settings →
+  Notifications → Actions). If the repo goes 60 days without changes, GitHub pauses the schedule; turn it back on under Actions.
+- [x] App-side security fixes (from the security review): the website ignores a saved Pro flag and console purchase reports (Pro is
+  bought in the iPhone app); the app gives the microphone only to Noodle's own pages; a song file with an unknown instrument or broken
+  settings opens without errors (the bad part is left out, missing settings get defaults).
 - [x] Rate limits on sign-ups, song links and invites, so one person can't fill the storage: reads limited too (240 a minute per address),
       daily storage budgets for song links and take audio (150 MB each), previews 1.5 MB at most, invites closed without DeviceCheck.
       Still true: 1 GB free storage fills in about a week of heavy use (real or not); then move to R2 or clear old takes.
-- [ ] Deploy the takes service with these limits (Actions → "Noodle takes service" in the Fan to See repo).
-- [ ] **Owner:** confirm the Cloudflare account is on the Free Workers plan (Workers & Pages → Plans). On Paid, overuse is billed with no cap.
-- [ ] **Owner:** set `DC_KEY` and `DC_KEY_ID` (DeviceCheck) before launch: invite joins are refused until they are set.
-- [ ] **Owner:** check `ADMIN_KEY` is long and random (32+ characters).
+- [ ] **Owner, before launch, in this order** (the code is all on `main`; nothing is live until step 4):
+  1. Confirm the Cloudflare account is on the Free Workers plan (Workers & Pages → Plans). On Paid, overuse is billed with no cap: then
+     set billing alerts first.
+  2. Set `DC_KEY` (the DeviceCheck .p8 file's text) and `DC_KEY_ID` on the noodle-takes Worker: invite joins are refused until they are set.
+  3. Check `ADMIN_KEY` is long and random (32+ characters); if you replace it, update it where Claude sessions get it.
+  4. Deploy the takes service (Actions → "Noodle takes service" in the Fan to See repo).
+  5. Narrow the Cloudflare API token (My Profile → API Tokens) to Workers Scripts Edit and Workers KV Storage Edit on this account only
+     (it also controls Fan to See).
+- [ ] **Owner:** decide on storage before launch: free KV (1 GB) fills in about 1–2 weeks at ~250 takes a day. Keep takes for less time,
+  keep fewer, or move to R2 (10 GB free, needs a card; set billing alerts). The security session has the details.
 - [ ] Email list: send a confirmation email before anyone gets news (sign-ups aren't checked; anyone can add or remove any address).
-- [ ] Narrow the Cloudflare token (Fan to See repo secret) and give it only to the deploy step (done in that repo's `noodle-takes.yml`).
+- [ ] Give the Cloudflare token only to the deploy step (done on the security session's fantasy-lab branch; merge it there).
 
 ## 8. Quality
 - [ ] Crash reports reviewed and the top crashes fixed.

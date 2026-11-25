@@ -9,6 +9,7 @@ The one list of what is free and what Noodle Pro unlocks. Update it with every n
   are rewarded, never asked to pay again). The yearly plan is then simply the way new people get Pro. Only something with real running
   costs (for example cloud sync) might be subscription-only, and even then lifetime buyers should be considered for it.
 - In the app, "has Pro" = owns the one-time purchase **or** has an active yearly plan (StoreKit), so both can coexist.
+- The website has no Pro: it can't be bought there, and a saved Pro flag is ignored (only the iPhone app reports purchases).
 
 ## In the app
 Enforced in `noodle/js/` (mostly `engine.js`, `studio.js`, `export.js`): `PRO_SOUNDS` (Pro sounds, including Vocoder and Talkbox), `CHORD_STYLES[...].pro`, `isPro()` for track effects and backing vocals, `MFX[...].free` (free mix effects), the DAW pack and the video tag in Share, curve drawing in

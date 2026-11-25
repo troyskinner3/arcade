@@ -186,7 +186,8 @@ async function songFileOpen(text){ let f; try{ f=JSON.parse(text); }catch(e){ f=
   const have=(await projDb.all())||[]; let added=0, nid=Math.max(S.nextId||10,10);
   for(const g of f.songs){ if(!g||!g.song||!Array.isArray(g.song.tracks)) continue;
     if(have.some(p=>p.createdAt===g.createdAt && (p.title||'')===(g.title||'') && p.updatedAt>=g.updatedAt)) continue;   /* already here (and not older) */
-    const o=g.song; for(const t of o.tracks){ const old=t.id; t.id=nid++; if(o.activeId===old) o.activeId=t.id; if(g.takes&&g.takes[old]) await takeStore.put('vox'+t.id, unpackV(g.takes[old])); }   /* each part gets a new id, so nothing here is overwritten */
+    const o=g.song; o.tracks=o.tracks.filter(t=>t&&typeof t==='object'&&Object.prototype.hasOwnProperty.call(INST,t.inst)&&(t.notes==null||Array.isArray(t.notes))&&(t.hits==null||Array.isArray(t.hits))&&(t.fxs==null||Array.isArray(t.fxs))).map(t=>{ const d=mkTrack(t.inst); for(const k in d) if(typeof d[k]==='number'&&!(typeof t[k]==='number'&&isFinite(t[k]))) t[k]=d[k]; return t; });   /* settings missing or not numbers get the defaults (they reach the audio engine). A part Noodle can't play (an unknown instrument, from a broken or hostile file) is left out, instead of breaking the song on every open (security review, Nov 2026) */
+    for(const t of o.tracks){ const old=t.id; t.id=nid++; if(o.activeId===old) o.activeId=t.id; if(g.takes&&g.takes[old]) await takeStore.put('vox'+t.id, unpackV(g.takes[old])); }   /* each part gets a new id, so nothing here is overwritten */
     o.nextId=nid; o.pid=projId(); const now=Date.now();
     await projDb.put({id:o.pid, title:g.title||'', createdAt:g.createdAt||now, updatedAt:g.updatedAt||now, bpm:o.bpm, bars:o.bars, key:'', parts:o.tracks.filter(t=>!t.guide).map(t=>t.inst), json:JSON.stringify(o)}); added++; songFileOpen.last=o.pid; }
   S.nextId=Math.max(S.nextId||10,nid); persist(); return added; }
