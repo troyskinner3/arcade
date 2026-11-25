@@ -560,4 +560,5 @@ select.nx-txt{-webkit-appearance:none;appearance:none;height:40px;border-radius:
 .tapin.live .s2-edh{color:var(--s2-ink);font:700 17px var(--f-display);font-variant-numeric:tabular-nums}
 .s2 .ti-bar .nx-primary{background:var(--s2-amber);color:var(--s2-amber-ink);border:0}
 .ti-bar{padding:6px 16px 12px;display:flex;flex-direction:column;gap:8px}.ti-bar .nx-primary,.ti-bar .nx-ghost{margin:0}
+.ti-pads .ti-pad:last-child:nth-child(odd){grid-column:span 2}
 .ti-row{display:flex;gap:8px}.ti-row>button{flex:1}

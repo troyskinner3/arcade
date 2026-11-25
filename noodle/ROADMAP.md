@@ -144,6 +144,7 @@ Draft copy is in `noodle-ios/APP_STORE_LISTING.md`.
 - [x] Draw notes: Draw (next to + All notes in the note editor); a finger line becomes notes on the beat and in the key, replacing what
   was under it. One voice for now.
 - [ ] Draw chords: a second line over the first adds a second voice (toward drawn chords).
+- [x] Drum pads: a big pad per kit sound, tapped in time into a drum part, with Add more to layer passes (round 26).
 - [x] Chord pads: the key's chords as big buttons; tap them in time to record a progression (round 26: Add track → Tap it in). Later: the bass can follow.
 - [x] Tap a rhythm, Noodle picks the notes: a melody that fits the chords from tapped timing alone (round 26).
 - [ ] In-key note pads: one pad per note of the scale for tapping a melody (then Tidy).
