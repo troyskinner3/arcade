@@ -876,3 +876,21 @@ the note editor's Today / Tap notes button flips one take between them. The fing
 - Draw sits in the row above the grid, not the bottom bar (on an iPhone 13 the bottom bar had no room left).
 - Tests: `draw_test.js` (flat, climbing, wobbly and scrappy lines; drawing in the editor replaces only the stretch drawn, in key; Undo;
   off after leaving; not on drums).
+
+## Round 26 (Chord pads and Tap a rhythm)
+- Add track has a new group, Tap it in, with Chord pads and Tap a rhythm (not on the "What are you recording?" sheet). Each opens a
+  full-screen pad over the Studio. Record gives four count-in clicks, then the song plays for 4 bars from the playhead's bar (the song
+  grows to fit) with the metronome, and the felt metronome in the iPhone app. Taps are timed against what you hear (output delay and how long
+  ago the finger landed are taken off).
+- Chord pads: the key's six chords (the diminished one left off), e.g. C Dm Em F G Am or Am C Dm Em F G. Each tap plays the chord and starts
+  it in the part on the nearest 8th, held until the next tap. Keys sound, chords follow the key like any chord part.
+- Tap a rhythm: one big pad. Taps on the nearest 16th are the rhythm; `genMelody` has a new `onsets` option that keeps them exactly and
+  picks the notes (the answer phrase copies the call's start only when its rhythm matches). It fits the song's chords under the part, else a
+  progression from harmony.json. Other notes keeps the rhythm and picks again.
+- After a take: it plays once (the top-right button plays it again), then Keep, Tap again, and for rhythms Other notes. Nothing is added
+  until Keep, so one Undo takes the part out; leaving or Stop puts the song's length and key back. A song with nothing pitched gets its key
+  set when the pads open, so the chords don't change once notes arrive.
+- Style check (iPhone 13, dark and light): the filled Record/Keep lost their fill to the Studio's button reset at first (fixed: amber fill);
+  hints cut to one line; the count-in reads "Get ready · 3" in larger type.
+- Tests: `tapin_test.js` (sheet; pads in C major and A minor; a real timed take into chords on 8ths; Keep is one Undo; Stop and leaving add
+  nothing and restore; a tapped rhythm keeps its exact steps, in key; Other notes; the model with 40 random tapped rhythms).

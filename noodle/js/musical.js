@@ -142,12 +142,18 @@ function genMelody(K, bars, chordAt, opt={}){ if(!MZ||K.none) return null;
       if(on.length>=4&&on.length<=11) return on; }
     return [0,4,8,12,16,20,24]; };
   const chordFit=(s,l,q)=>{ const T=chordAt(s); if(!T) return 0; const a=MZ.ch[`${mzMetric(s)},${mzDur(l)}`]; return a?(T.has(pc(q))?a[1]:a[0]):0; };
-  const out=[]; let rh=null, firstPitches=null, prevP=null, prevIv=null, prevS=null;
-  for(let ph=0;ph<phrases;ph++){ const base=ph*phraseLen, answer=ph%2===1; if(!answer||!rh) rh=rhythm(); const ons=rh.map(s=>base+s);
-    const lens=ons.map((s,i)=>i<ons.length-1?ons[i+1]-s:Math.max(4,Math.min(12,base+phraseLen-s)));
+  /* opt.onsets: a rhythm someone tapped (steps in the part); the notes are chosen for it, and an answer phrase copies the call's start only when its rhythm is the same */
+  const fixed=opt.onsets?[...new Set(opt.onsets.map(Math.round))].filter(s=>s>=0&&s<bars*16).sort((a,b)=>a-b):null;
+  const out=[]; let rh=null, callRh=null, firstPitches=null, prevP=null, prevIv=null, prevS=null;
+  for(let ph=0;ph<phrases;ph++){ const base=ph*phraseLen, answer=ph%2===1; let ons;
+    if(fixed){ ons=fixed.filter(s=>s>=base&&s<base+phraseLen); if(!ons.length){ if(!answer) firstPitches=null; continue; } rh=ons.map(s=>s-base).join(); }
+    else { if(!answer||!rh) rh=rhythm(); ons=rh.map(s=>base+s); }
+    const copy=!fixed||callRh===rh; if(!answer) callRh=rh;
+    const lens=fixed?ons.map(s=>{ const nx=fixed.find(x=>x>s); return Math.max(1,Math.min(16,(nx??bars*16)-s)); })
+      :ons.map((s,i)=>i<ons.length-1?ons[i+1]-s:Math.max(4,Math.min(12,base+phraseLen-s)));
     const ps=[];
     for(let i=0;i<ons.length;i++){ const s=ons[i], l=lens[i], last=i===ons.length-1, songEnd=last&&ph===phrases-1;
-      if(answer&&firstPitches&&i<Math.ceil(ons.length/2)&&firstPitches[i]!=null){ ps.push(firstPitches[i]); prevIv=prevP==null?null:firstPitches[i]-prevP; prevP=firstPitches[i]; prevS=s; continue; }   /* the answer starts like the call */
+      if(answer&&copy&&firstPitches&&i<Math.ceil(ons.length/2)&&firstPitches[i]!=null){ ps.push(firstPitches[i]); prevIv=prevP==null?null:firstPitches[i]-prevP; prevP=firstPitches[i]; prevS=s; continue; }   /* the answer starts like the call */
       const w=[]; const from=prevP==null?null:prevP;
       for(let q=lo;q<=hi;q++){ if(!ink(q)) continue; let lp=0;
         if(from==null) lp=(chordAt(s)&&chordAt(s).has(pc(q))?0:-3)-Math.abs(q-(lo+hi)/2)*0.08;   /* start on a chord tone mid-range */

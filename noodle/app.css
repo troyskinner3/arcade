@@ -550,3 +550,14 @@ select.nx-txt{-webkit-appearance:none;appearance:none;height:40px;border-radius:
 .s2-secs-b{width:calc(100% - 16px)!important;height:calc(100% - 6px)!important;margin:3px 8px!important;border:1px solid var(--s2-line)!important;border-radius:6px!important;background:var(--s2-raise)!important;color:var(--s2-ink)!important;font:600 13px var(--f-display)!important;padding:0 10px!important;text-align:center}
 .pr-edit{text-decoration:none!important;border:1px solid var(--line)!important;border-radius:6px;padding:2px 10px!important;color:var(--ink)!important}
 .ed-acts{display:flex;gap:6px}#s2EdDraw{display:inline-flex;align-items:center;gap:6px}#s2EdDraw .nx-ico{width:16px;height:16px}#s2EdDraw[aria-pressed="true"]{border-color:var(--s2-amber)!important;color:var(--s2-amber)!important}   /* Draw on: amber */
+/* Tap it in (round 26): Chord pads and Tap a rhythm */
+.tapin .ti-body{flex:1;min-height:0;display:flex;padding:8px 16px 4px}
+.ti-pads{flex:1;display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:1fr;gap:10px}
+.s2 .ti-pad{border:1.5px solid var(--s2-line);border-radius:14px;background:var(--s2-raise);color:var(--s2-ink);font:700 30px var(--f-display);font-variant-numeric:tabular-nums;touch-action:manipulation;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;min-height:64px}
+.s2 .ti-pad.ti-one{flex:1;border:2px solid var(--s2-amber);color:var(--s2-amber);background:color-mix(in srgb,var(--s2-amber) 9%,var(--s2-bg))}
+.s2 .ti-pad.hit{animation:tiHit .22s ease-out}
+@keyframes tiHit{from{background:color-mix(in srgb,var(--s2-amber) 38%,var(--s2-raise));border-color:var(--s2-amber)}}
+.tapin.live .s2-edh{color:var(--s2-ink);font:700 17px var(--f-display);font-variant-numeric:tabular-nums}
+.s2 .ti-bar .nx-primary{background:var(--s2-amber);color:var(--s2-amber-ink);border:0}
+.ti-bar{padding:6px 16px 12px;display:flex;flex-direction:column;gap:8px}.ti-bar .nx-primary,.ti-bar .nx-ghost{margin:0}
+.ti-row{display:flex;gap:8px}.ti-row>button{flex:1}
