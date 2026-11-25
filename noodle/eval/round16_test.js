@@ -32,6 +32,7 @@ const {chromium,devices}=require('playwright');
     // octave
     const f2=mkTrack('fx',{id:S.nextId++,off:0,len:2,rep:false,lenSet:true}); f2.fxs=[fxNew('riser',0,32),fxNew('impact',16,32)]; S.tracks.push(f2); renderTracks(); s2Edit(f2); await w(250);
     out.ruler=[...document.querySelectorAll('.fxg .edrul span')].map(x=>x.textContent).join(',');
+    s2.more=true;   /* Octave is under More settings */
     f2._fxSel=f2.fxs[0]; s2EdMount(); await w(100); out.octShown=!!document.querySelector('.fxsel [data-fo="1"]'); document.querySelector('.fxsel [data-fo="1"]').click(); await w(50); out.oct=f2.fxs[0].o;
     f2._fxSel=f2.fxs[1]; s2EdMount(); await w(100); out.noOctOnImpact=!document.querySelector('.fxsel [data-fo]');
     // round 17: drag the selected effect's middle dot up to bend its loudness; the drawn shape and the sound follow

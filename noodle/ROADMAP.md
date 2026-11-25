@@ -24,7 +24,8 @@ Today Noodle sends no usage analytics: only crash reports, opt-in shared takes, 
 - [ ] Screen-by-screen review against `noodle/STYLE.md`: first open, recording, note editor, drum editor, track menus, mix, More,
       Pro sheet, export, song links.
 - [ ] First-run flow: a new person gets from opening the app to hearing their own song quickly, with no explanations needed.
-  Done so far: the share-takes question moved to after the first kept take. Still before the first song: email news and the voice check.
+  Done: Get started goes straight to the Studio. Sharing takes is asked after the first kept take, email news after the first finished
+  song (back on the Songs list), Teach Noodle your voice after the third kept take.
 - [x] Empty, error and offline states: mic refused (a sheet with Open Settings and Import), song link offline vs. deleted, nothing heard (already explained).
 - [x] Small and large iPhones (SE 375 pt to Pro Max 430 pt: everything fits) and VoiceOver names on every control (ⓘ reads its explanation).
 - [ ] **Owner:** larger text (Dynamic Type): the app's text doesn't grow with the iPhone's Text Size setting yet. Decide whether the app

@@ -13,8 +13,9 @@ const {chromium,devices}=require('playwright');
       const ns=[[0,3,60,.8],[3,1,62,.3],[5,3,64,.8],[8,4,62,.8],[12,2,79,.8],[14,2,65,.8],[16,4,67,.8],[20,4,71,.8],[24,4,74,.8],[28,4,69,.8]].map(([s,l,p,v])=>({s,l,p,v,x:true}));
       const t=mkTrack('lead',{id:S.nextId++,off:0,len:2,rep:false,lenSet:true,notes:ns}); S.tracks.push(t); keyCache=null;
       const mz=musicalize(t,t.notes), old=musicalRules(t,t.notes); return {data:!!MZ, notes:mz.map(x=>[x.s,x.l,x.p]), stat:mz.stat, vel:mz.map(x=>x.v), rules:old.map(x=>[x.s,x.l,x.p])}; });
-    out.swap=await p.evaluate(async()=>{ const t=S.tracks[0]; s2Edit(t); await new Promise(q=>setTimeout(q,300)); const hid=document.getElementById('s2EdMz').hidden; musicalPass(t); s2EdMount(); await new Promise(q=>setTimeout(q,300)); const b=document.getElementById('s2EdMz'); const r={hidBefore:hid, shown:!b.hidden, label:b.textContent};
-      b.click(); await new Promise(q=>setTimeout(q,200)); r.after=document.getElementById('s2EdMz').textContent; r.n1=S.tracks[0].notes.length; document.getElementById('s2EdMz').click(); await new Promise(q=>setTimeout(q,200)); r.back=S.tracks[0].notes.length; r.label2=document.getElementById('s2EdMz').textContent; return r; });
+    out.swap=await p.evaluate(async()=>{ const t=S.tracks[0]; s2Edit(t); await new Promise(q=>setTimeout(q,300)); const hid=document.getElementById('s2EdMore').hidden; musicalPass(t); s2EdMount(); await new Promise(q=>setTimeout(q,300)); const m=document.getElementById('s2EdMore'), cur=()=>{ const p=document.querySelector('#nxSheet [data-mz][aria-pressed="true"]'); return p?p.textContent:''; };
+      m.click(); await new Promise(q=>setTimeout(q,200)); const r={hidBefore:hid, shown:!m.hidden, label:cur()};   /* Musical / As heard: in the editor's ••• */
+      document.querySelector('#nxSheet [data-mz="0"]').click(); await new Promise(q=>setTimeout(q,200)); r.after=cur(); r.n1=S.tracks[0].notes.length; document.querySelector('#nxSheet [data-mz="1"]').click(); await new Promise(q=>setTimeout(q,200)); r.back=S.tracks[0].notes.length; r.label2=cur(); nxClose(); return r; });
     await c.close(); }
   const N=out.res.notes, at=s=>N.find(x=>x[0]===s);
   if(out.store.row||out.dev.row) errs.push('a Musical mode switch is still shown'); if(!out.store.on||!out.dev.on) errs.push('Musical mode not on by default');

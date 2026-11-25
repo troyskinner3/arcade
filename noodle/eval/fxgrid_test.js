@@ -12,6 +12,7 @@ const {chromium,devices}=require('playwright');
   const fx=()=>p.evaluate(()=>S.tracks[0].fxs.map(e=>`${e.k}@${e.s}+${e.l}`).sort().join(' '));
   let a=await pt(2,4); await p.mouse.click(a.x,a.y); await p.waitForTimeout(250); out.added=await fx();
   a=await pt(4,16); await p.mouse.click(a.x,a.y); await p.waitForTimeout(250); out.tapSelects={still:await fx(), bar:await p.evaluate(()=>!document.querySelector('.fxsel').hidden), title:await p.$eval('.fxsel b',e=>e.textContent)};
+  out.panHidden=await p.evaluate(()=>!$('fxPan')); await p.evaluate(()=>{ if(!$('fxPan')) document.querySelector('.fxsel [data-a="fxmore"]').click(); });   /* left / right waits under More settings */
   await p.evaluate(()=>{ const set=(id,v)=>{ const e=$(id); e.value=v; e.dispatchEvent(new Event('change',{bubbles:true})); }; set('fxVol',40); set('fxPan',-60); }); out.levels=await p.evaluate(()=>{ const e=S.tracks[0].fxs.find(x=>x.k==='impact'); return {v:e.v, pan:e.pan}; });
   out.panRenders=await p.evaluate(async()=>{ const t=S.tracks[0], only={...t, fxs:t.fxs.filter(x=>x.k==='impact')}; const b=await renderFx(only), L=b.getChannelData(0), R=b.getChannelData(1); let l=0,r=0; for(let i=0;i<L.length;i++){ l+=L[i]*L[i]; r+=R[i]*R[i]; } return l>r*3; });   /* the impact alone: panned left */
   await p.screenshot({path:'results/fxsel.png'});
