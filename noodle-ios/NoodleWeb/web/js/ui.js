@@ -283,7 +283,29 @@ function placeHandle(tr){ const h=tr._nsel, G=tr._grid, n=tr._sel, x=tr._ndel; i
   if(x){ const top=1+i*G.rh, above=top>=26; x.hidden=false; x.style.left=Math.max(0,G.gut+(n.s+evLen(n))*G.cw-12)+'px'; x.style.top=((above?top-26:top+G.rh+2)+EDRUL_H)+'px'; }
   const sp=tr._nsplit; if(sp){ const q=S.quant==8?2:1, top=1+i*G.rh, above=top>=26; sp.hidden=!isPitchedTr(tr)||evLen(n)<2*q; sp.style.left=Math.max(0,G.gut+(n.s+evLen(n))*G.cw-40)+'px'; sp.style.top=((above?top-26:top+G.rh+2)+EDRUL_H)+'px'; }
   const pad=8; h.hidden=false; h.style.left=(G.gut+n.s*G.cw-pad)+'px'; h.style.top=(Math.max(0,1+i*G.rh-pad)+EDRUL_H)+'px'; h.style.width=(evLen(n)*G.cw+pad*2)+'px'; h.style.height=(G.rh+pad*2)+'px'; }
+/* ---- Draw notes (round 25; owner): with Draw on in the note editor, a finger line becomes notes. Each 16th step the line passes takes the
+   row it mostly sits in (the rows are the key's notes, or all 12 with + All notes, so it's in key); a new pitch counts when the line stays
+   on it for 2 steps or jumps 2+ rows (no wobble notes); steps on the same pitch join; one-step scraps join the note before. The new notes
+   replace what was under the line (one note at a time; chords later). ---- */
+function strokeNotes(G, pts){ if(!G||!pts||!pts.length) return [];
+  const smp=[]; for(let i=0;i<pts.length;i++){ const a=pts[i-1]||pts[i], b=pts[i], d=Math.hypot(b.x-a.x,b.y-a.y), k=Math.max(1,Math.ceil(d/2)); for(let j=1;j<=k;j++) smp.push({x:a.x+(b.x-a.x)*j/k, y:a.y+(b.y-a.y)*j/k}); }
+  const cols=new Map(); for(const p of smp){ const st=Math.floor((p.x-G.gut)/G.cw); if(st<0||st>=G.sPL) continue; if(!cols.has(st)) cols.set(st,[]); cols.get(st).push((p.y-1)/G.rh-0.5); }
+  const seq=[...cols.keys()].sort((a,b)=>a-b).map(st=>({s:st, r:clamp(Math.round(median(cols.get(st))),0,G.rows.length-1)})); if(!seq.length) return [];
+  let cur=seq[0].r; for(let i=1;i<seq.length;i++){ const r=seq[i].r; if(r===cur) continue; if(Math.abs(r-cur)>=2||(seq[i+1]&&seq[i+1].r===r&&seq[i+1].s===seq[i].s+1)) cur=r; else seq[i].r=cur; }
+  const out=[]; for(const x of seq){ const L=out[out.length-1], p=G.rows[x.r]; if(L&&L.p===p&&L.s+L.l===x.s) L.l++; else out.push({s:x.s, l:1, p, v:0.8, x:true}); }
+  for(let i=0;i<out.length;i++){ const n=out[i]; if(n.l>=2||out.length<2) continue; const pv=out[i-1], nx=out[i+1];
+    if(pv&&pv.s+pv.l===n.s){ pv.l+=n.l; out.splice(i,1); i--; } else if(nx&&n.s+n.l===nx.s){ nx.s=n.s; nx.l+=n.l; out.splice(i,1); i--; } }
+  for(let i=1;i<out.length;i++){ const pv=out[i-1], n=out[i]; if(pv.p===n.p&&pv.s+pv.l===n.s){ pv.l+=n.l; out.splice(i,1); i--; } }   /* a scrap gone: the same pitch on both sides is one note */
+  return out; }
+function drawStart(tr,e){ e.preventDefault(); const r=tr._cv.getBoundingClientRect(); tr._pen=[{x:e.clientX-r.left, y:e.clientY-r.top}]; try{ tr._cv.setPointerCapture(e.pointerId); }catch(_){} }
+function drawMove(tr,e){ const r=tr._cv.getBoundingClientRect(), p={x:e.clientX-r.left, y:e.clientY-r.top}, a=tr._pen[tr._pen.length-1]; tr._pen.push(p);
+  const g=tr._cv.getContext('2d'), dpr=Math.min(2,window.devicePixelRatio||1); g.setTransform(dpr,0,0,dpr,0,0); g.strokeStyle=cssVar('--lcd-ink')||'#f2b33d'; g.lineWidth=3; g.lineCap='round'; g.beginPath(); g.moveTo(a.x,a.y); g.lineTo(p.x,p.y); g.stroke(); }   /* the line you draw shows as you go */
+function drawEnd(tr,e,cancel){ const pts=tr._pen; tr._pen=null; if(cancel||!pts||pts.length<2){ drawGrid(tr); return; }
+  const ns=strokeNotes(tr._grid,pts); if(!ns.length){ drawGrid(tr); return; } flushSave();
+  const a=ns[0].s, b=ns[ns.length-1].s+ns[ns.length-1].l; tr.notes=(tr.notes||[]).filter(n=>n.s+n.l<=a||n.s>=b).concat(ns).sort((x,y)=>x.s-y.s);
+  tr._sel=null; tr._msel=null; tr._dirty=true; logEdit(tr,{k:'draw',s:a,n:ns.length}); save(); drawGrid(tr); try{ renderNoteBar(tr); }catch(_){} scheduleRender(); haptic('light'); }
 function noteDown(tr,e,onSel){
+  if(s2.draw&&isPitchedTr(tr)&&s2.edId===tr.id){ drawStart(tr,e); return; }   /* Draw is on: the finger draws */
   const q=S.quant==8?2:1; tr._touchT=Date.now();
   if(onSel && tr._sel){ const n=tr._sel, c=cellAt(tr,e,true); if(!c) return;
     try{ tr._nsel.setPointerCapture(e.pointerId); }catch(_){}
@@ -300,6 +322,7 @@ function startNewNote(tr,c){ haptic('light'); if(!isPitchedTr(tr)){ const q=S.qu
   const q=S.quant==8?2:1, kp=snap(c.row); const nt={s:Math.floor(c.s/q)*q,l:q,p:kp,v:0.85,x:true}; tr.notes.push(nt); keyCache=null;
   tr._drag={note:nt,mode:'resize',s0:c.s,row0:c.row,ns:nt.s,np:kp,moved:false,created:true}; tr._sel=nt; drawGrid(tr); previewNote(tr,kp); }
 function noteMove(tr,e){
+  if(tr._pen){ drawMove(tr,e); return; }
   let d=tr._drag; if(!d) return;
   if(d.pending){ const dx=Math.abs(e.clientX-d.x0), dy=Math.abs(e.clientY-d.y0); if(dx>=8||dy>=8){ clearTimeout(d.hold); tr._drag=null; } return; }   // a swipe scrolls
   if(d.box){ const c=cellAt(tr,e,true); if(c){ d.box.c1=c; boxSelect(tr,d.box); } return; }
@@ -314,6 +337,7 @@ function noteMove(tr,e){
   drawGrid(tr);
 }
 function noteUp(tr,e,cancel){
+  if(tr._pen){ drawEnd(tr,e,cancel); return; }
   const d=tr._drag; if(!d) return; tr._drag=null; clearTimeout(d.hold);
   if(d.box){ drawBox(tr,true); if(!tr._msel.length){ tr._msel=null; } else if(tr._msel.length===1){ tr._sel=tr._msel[0]; tr._msel=null; } drawGrid(tr); renderNoteBar(tr); return; }
   if(d.group){ if(d.moved){ d.orig.forEach(o=>logEdit(tr,isPitchedTr(tr)?{k:'move',s:o.n.s,from:o.s,group:1}:{k:'hitmove',s:o.n.s,from:o.s,d:o.n.d,fromD:o.p})); evChanged(tr); } else { tr._msel=null; drawGrid(tr); renderNoteBar(tr); } return; }
