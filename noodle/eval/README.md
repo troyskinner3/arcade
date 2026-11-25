@@ -892,5 +892,9 @@ the note editor's Today / Tap notes button flips one take between them. The fing
   set when the pads open, so the chords don't change once notes arrive.
 - Style check (iPhone 13, dark and light): the filled Record/Keep lost their fill to the Studio's button reset at first (fixed: amber fill);
   hints cut to one line; the count-in reads "Get ready · 3" in larger type.
-- Tests: `tapin_test.js` (sheet; pads in C major and A minor; a real timed take into chords on 8ths; Keep is one Undo; Stop and leaving add
+- Drum pads (owner asked for the drum version): one pad per sound in the song's kit (up to 8; the last of an odd number spans the row),
+  in the kit's sound (the song's drum kit, else the default; free only). Taps land on the nearest 16th, one hit per drum per step. Add more
+  plays the take back while you tap another layer (kick and snare first, then hats); Stop during Add more goes back to the take you had.
+  The header shows the tempo instead of the key; the song's key is left alone.
+- Tests: `tapin_test.js` (sheet; drum pads, a timed take, Add more layering and Stop; pads in C major and A minor; a real timed take into chords on 8ths; Keep is one Undo; Stop and leaving add
   nothing and restore; a tapped rhythm keeps its exact steps, in key; Other notes; the model with 40 random tapped rhythms).

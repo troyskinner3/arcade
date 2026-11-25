@@ -7,7 +7,7 @@ const {chromium,devices}=require('playwright');
   await p.addInitScript(()=>{ ['noodle.onboard','noodle.shareAsk','noodle.kitOffer'].forEach(k=>localStorage.setItem(k,'1')); });
   await p.goto('http://localhost:8800/noodle-s2.html?studio'); await p.waitForTimeout(1200);
   const r=await p.evaluate(async()=>{ const w=ms=>new Promise(q=>setTimeout(q,ms)), out={};
-    const until=async f=>{ for(let i=0;i<400&&!f();i++) await w(10); };
+    const until=async f=>{ for(let i=0;i<1500&&!f();i++) await w(10); };
     const tapAt=async(sel,step)=>{ const T=tapIn; await until(()=>T.start&&ctx.currentTime>=T.start+step*stepDur()+T.lat); document.querySelector(sel).dispatchEvent(new PointerEvent('pointerdown',{bubbles:true})); };
     // the sheet
     await projNew(); await w(100); S.bpm=150; S.bars=1; renderTracks(); const key0=S.key+'/'+S.scale;
@@ -39,6 +39,15 @@ const {chromium,devices}=require('playwright');
     out.otherBtn=[...document.querySelectorAll('#tiBar button')].some(x=>x.textContent==='Other notes');
     const p1=m1.map(n=>n.p).join(); let diff=false; for(let k=0;k<5&&!diff;k++){ await tapOther(); diff=tapIn.tr.notes.map(n=>n.p).join()!==p1; } out.otherDiffers=diff; out.otherRhythm=tapIn.tr.notes.map(n=>n.s).join()===steps.join();
     out.notInSave=!JSON.parse(songJson()).tracks.some(t=>t.inst==="lead"); tapClose(); out.rhythmDropped=S.tracks.length===1;
+    // Drum pads: one per kit sound; taps on the nearest 16th; Add more layers a second pass over the first
+    await tapOpen('drums'); out.drumPads=[...document.querySelectorAll('#tapIn .ti-pad')].map(x=>x.textContent).join(' '); out.drumSub=document.querySelector('#tapIn .s2-edt small').textContent;
+    const kick=S.kit.slots.findIndex(x=>x.id==='kick'), snare=S.kit.slots.findIndex(x=>x.id==='snare'), hat=S.kit.slots.findIndex(x=>x.id==='hat');
+    tapRec(); await until(()=>tapIn.start); for(const [i,st] of [[kick,0],[snare,4],[kick,8.3],[snare,12]]) await tapAt(`#tapIn .ti-pad[data-i="${i}"]`,st);
+    await until(()=>tapIn.state==='review'); out.drumBtns=[...document.querySelectorAll('#tiBar button')].map(x=>x.textContent).join('|'); out.drum1=tapIn.tr.inst+':'+tapIn.tr.hits.map(h=>h.s+h.d[0]).join(' ');
+    tapRec(true); await until(()=>tapIn.start); for(const st of [2,6]) await tapAt(`#tapIn .ti-pad[data-i="${hat}"]`,st);
+    await until(()=>tapIn.state==='review'); out.drum2=tapIn.tr.hits.map(h=>h.s+h.d[0]).join(' ');
+    tapRec(true); await until(()=>tapIn.start); tapCancelTake(); out.moreStop=tapIn.state==='review'&&!!tapIn.tr&&tapIn.tr.hits.length===6;
+    const n0=S.tracks.filter(t=>!t._tapTemp).length; tapKeep(); await w(500); out.drumKept=S.tracks.length===n0+1&&S.tracks.some(t=>t.inst==='kit'&&t.hits.length===6); undo(); await w(300);
     // the model with tapped onsets: 40 rhythms, notes on them, in the key and range
     await loadMusical(); const KA=currentKey(), cat=st=>new Set(chordTones([57,53,48,55][Math.floor(st/16)%4],'triad').map(x=>x%12)); let onOk=0, keyOk=0, rangeOk=0, strong=0, strongN=0;
     for(let k=0;k<40;k++){ const ons=[...new Set(Array.from({length:6+k%8},()=>Math.floor(Math.random()*64)))].sort((a,b)=>a-b); const ns=genMelody(KA,4,cat,{onsets:ons});
@@ -46,11 +55,13 @@ const {chromium,devices}=require('playwright');
       ns.forEach(n=>{ if(n.s%8===0){ strongN++; if(cat(n.s).has(n.p%12)) strong++; } }); }
     out.model={onsets:onOk/40, inKey:keyOk/40, range:rangeOk/40, strongChord:+(strong/Math.max(1,strongN)).toFixed(2)};
     return out; });
-  if(r.sheet!=='Chord pads|Tap a rhythm') errs.push('sheet: '+r.sheet);
+  if(r.sheet!=='Drum pads|Chord pads|Tap a rhythm') errs.push('sheet: '+r.sheet);
   if(r.padsC!=='C Dm Em F G Am') errs.push('padsC: '+r.padsC); if(r.padsAm!=='Am C Dm Em F G') errs.push('padsAm: '+r.padsAm);
   if(r.chordNotes!=='0:8:A 8:8:F 16:20:C 36:28:G') errs.push('chordNotes: '+r.chordNotes);
   if(r.chordKind!=='keys/triad') errs.push('chordKind: '+r.chordKind); if(r.reviewBtns!=='Keep|Tap again') errs.push('reviewBtns: '+r.reviewBtns);
   if(r.barsDuring!==4) errs.push('barsDuring: '+r.barsDuring); if(r.melInst!=='lead') errs.push('melInst: '+r.melInst);
-  for(const k of ['notOnRecord','restored','autoFixed','autoBack','playVisible','notSavedYet','kept','undone','stopped','onePad','rhythm','melInKey','otherBtn','otherDiffers','otherRhythm','rhythmDropped','notInSave']) if(!r[k]) errs.push(k);
+  if(r.drumPads!=='Kick Snare Clap Hat Crash') errs.push('drumPads: '+r.drumPads); if(!/^\d+ BPM · bars/.test(r.drumSub)) errs.push('drumSub: '+r.drumSub);
+  if(r.drumBtns!=='Keep|Tap again|Add more') errs.push('drumBtns: '+r.drumBtns); if(r.drum1!=='kit:0k 4s 8k 12s') errs.push('drum1: '+r.drum1); if(r.drum2!=='0k 2h 4s 6h 8k 12s') errs.push('drum2: '+r.drum2);
+  for(const k of ['moreStop','drumKept','notOnRecord','restored','autoFixed','autoBack','playVisible','notSavedYet','kept','undone','stopped','onePad','rhythm','melInKey','otherBtn','otherDiffers','otherRhythm','rhythmDropped','notInSave']) if(!r[k]) errs.push(k);
   if(!(r.model.onsets===1&&r.model.inKey===1&&r.model.range===1&&r.model.strongChord>=0.6)) errs.push('model: '+JSON.stringify(r.model));
   console.log(JSON.stringify({...r,errs})); await b.close(); })();
