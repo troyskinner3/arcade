@@ -779,3 +779,15 @@ the note editor's Today / Tap notes button flips one take between them. The fing
   503 and says "Invite saved. It counts once invites open."
 - Tests: `songlink_hostile_test.js` (a song link with HTML in every text field the app shows: nothing runs, it shows as text); service
   tests for the budgets, read limit and closed invites.
+
+## Round 20 (app-side security fixes, alerts)
+- The website no longer trusts a saved Pro flag (`noodle.pro`) or a `window.noodlePro(...)` call from the console: only the iPhone app
+  reports purchases. Local test runs (localhost) keep the flag so the Pro tests work.
+- iPhone app: the microphone is granted without asking only to the bundled page and the live site under `/arcade/noodle/` (it was any
+  page on troyskinner3.github.io). Not compiled here (no Swift on Linux): check in Xcode.
+- Importing a song file: parts with an unknown instrument, or notes / hits / effects that aren't lists, are left out; number settings
+  that are missing or not numbers get the defaults. A broken or hostile file used to cause a page error on every open (and missing
+  volumes broke the audio).
+- Alerts: `.github/workflows/noodle-health.yml` (service up every 30 minutes; crash reports and reported songs daily, with the
+  NOODLE_ADMIN_KEY secret). Tried against the live service from here.
+- Tests: `errors_test.js` now also checks a broken song file and Pro on a non-local host.
