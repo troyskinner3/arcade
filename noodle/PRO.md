@@ -65,7 +65,8 @@ Status: **confirmed** (owner agreed) or **proposed** (waiting on the owner).
 | Drum pads (Add track → Tap it in): a pad per kit sound, tapped along with the song into a drum part; Add more layers another pass. Suggest Free | proposed |
 | Chord pads (Add track → Tap it in): six pads with the key's chords, tapped along with the song into a chord part. Suggest Free | proposed |
 | Note pads (Add track → Tap it in): a pad per note of the key, tapped along with the song into a melody; Add more for a second line. Suggest Free | proposed |
-| Play pad (Add track → Tap it in): slide across for notes in the key, up for a brighter sound; recorded with each note's brightness. Suggest Free | proposed |
+| Play pad (Add track → Tap it in): the default pad (two octaves, snapped to the key, up = brighter), recorded with each note's brightness. Free | confirmed (owner, 25 Nov) |
+| Play pad settings (range, snap off, arpeggio mode, anything beyond the default pad): Pro, like Mix effects (two free, the rest Pro). Not built yet | confirmed Pro (owner, 25 Nov) |
 | Draw chords: in Draw, a line above or below notes adds a second voice (over a line redoes it). Suggest Free | proposed |
 | Continue this (note editor •••): a short part grows into a phrase with a variation, an answer and an ending. Suggest Free | proposed |
 | Tap a rhythm (Add track → Tap it in): tapped timing becomes a melody in the key, fitted to the chords; Other notes. Suggest Free | proposed |

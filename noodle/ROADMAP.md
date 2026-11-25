@@ -151,7 +151,8 @@ Draft copy is in `noodle-ios/APP_STORE_LISTING.md`.
 - [x] Continue this: stretch a 2-bar part to 8 bars with variation and an answering phrase (round 27: note editor •••).
 - [x] Play pad (an XY pad, inspired by the Kaossilator, own design and name): across = notes in the key, up and down = brightness,
   recorded with the notes (round 27: Add track → Tap it in).
-- [ ] Play pad More settings: range, snap off and an arpeggio mode (defaults for now: two octaves, snapped to the key).
+- [ ] Play pad settings: range, snap off and an arpeggio mode. Pro (owner, 25 Nov): the default pad stays free, changing it needs Pro
+  (shown with the Pro preview, like Mix effects).
 
 ## After launch (not blocking)
 Ideas in `noodle/IDEAS.md` (beat pads, strumming, face tracking and more).
