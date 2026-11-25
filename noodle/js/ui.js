@@ -302,7 +302,14 @@ function drawMove(tr,e){ const r=tr._cv.getBoundingClientRect(), p={x:e.clientX-
   const g=tr._cv.getContext('2d'), dpr=Math.min(2,window.devicePixelRatio||1); g.setTransform(dpr,0,0,dpr,0,0); g.strokeStyle=cssVar('--lcd-ink')||'#f2b33d'; g.lineWidth=3; g.lineCap='round'; g.beginPath(); g.moveTo(a.x,a.y); g.lineTo(p.x,p.y); g.stroke(); }   /* the line you draw shows as you go */
 function drawEnd(tr,e,cancel){ const pts=tr._pen; tr._pen=null; if(cancel||!pts||pts.length<2){ drawGrid(tr); return; }
   const ns=strokeNotes(tr._grid,pts); if(!ns.length){ drawGrid(tr); return; } flushSave();
-  const a=ns[0].s, b=ns[ns.length-1].s+ns[ns.length-1].l; tr.notes=(tr.notes||[]).filter(n=>n.s+n.l<=a||n.s>=b).concat(ns).sort((x,y)=>x.s-y.s);
+  const a=ns[0].s, b=ns[ns.length-1].s+ns[ns.length-1].l;
+  /* Draw chords: a line replaces only the notes it runs close to (within 2 semitones while they overlap); a line above or below them
+     adds a second voice, so drawing over the same line redoes it and drawing a harmony keeps the tune */
+  const near=n=>ns.some(m=>m.s<n.s+n.l&&n.s<m.s+m.l&&Math.abs(pitchOf(m)-pitchOf(n))<=2);
+  const kept=[]; for(const n of tr.notes||[]){ if(n.s+n.l<=a||n.s>=b||!near(n)){ kept.push(n); continue; }
+    if(n.s<a) kept.push({...n, l:a-n.s}); if(n.s+n.l>b) kept.push({...n, s:b, l:n.s+n.l-b}); }   /* what sticks out of the line stays */
+  const harm=kept.some(n=>n.s<b&&n.s+n.l>a);
+  tr.notes=kept.concat(ns).sort((x,y)=>x.s-y.s); if(harm&&!tr._drawHarmTold){ tr._drawHarmTold=1; toast('Added as a second line. Draw over a line to redo it.',3500); }
   tr._sel=null; tr._msel=null; tr._dirty=true; logEdit(tr,{k:'draw',s:a,n:ns.length}); save(); drawGrid(tr); try{ renderNoteBar(tr); }catch(_){} scheduleRender(); haptic('light'); }
 function noteDown(tr,e,onSel){
   if(s2.draw&&isPitchedTr(tr)&&s2.edId===tr.id){ drawStart(tr,e); return; }   /* Draw is on: the finger draws */

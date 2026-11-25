@@ -561,4 +561,5 @@ select.nx-txt{-webkit-appearance:none;appearance:none;height:40px;border-radius:
 .s2 .ti-bar .nx-primary{background:var(--s2-amber);color:var(--s2-amber-ink);border:0}
 .ti-bar{padding:6px 16px 12px;display:flex;flex-direction:column;gap:8px}.ti-bar .nx-primary,.ti-bar .nx-ghost{margin:0}
 .ti-pads .ti-pad:last-child:nth-child(odd){grid-column:span 2}
+.ti-xy{flex:1;position:relative;border:2px solid var(--s2-amber);border-radius:14px;background:color-mix(in srgb,var(--s2-amber) 7%,var(--s2-bg));touch-action:none;user-select:none;-webkit-user-select:none;overflow:hidden}.ti-xy canvas{position:absolute;inset:0;width:100%;height:100%}
 .ti-row{display:flex;gap:8px}.ti-row>button{flex:1}

@@ -187,6 +187,50 @@ function padChords(K){ const sc=SCALES[PARENT[K.scale]||K.scale]||SCALES.major, 
 /* Drum pads: one per sound in your kit (the kit's own sounds, any you added), up to 8; the sound of the song's drum kit if it has one */
 function tapDrumPads(){ return S.kit.slots.slice(0,8).map(sl=>({id:sl.id, name:slotLabel(sl.id), v:sl.sound==='kick'?1:sl.sound==='hat'?0.75:0.9})); }
 function tapKitSound(){ const k=S.tracks.find(t=>t.inst==='kit'&&!t.guide&&!t._pvTemp); let snd=k?k.sound:mkTrack('kit').sound; if(proLocked(snd)) snd=INST.kit.sounds.find(x=>!proLocked(x)); return snd; }
+const TAP_NAMES={drums:'Drum pads',chords:'Chord pads',notes:'Note pads',rhythm:'Tap a rhythm',xy:'Play pad'};
+/* Note pads: the key's notes over an octave (8 pads in a 7-note key), low to high from the bottom left, like a keypad */
+function tapNotePads(K){ const t=60+((K.tonic-60)%12+12)%12, base=t>66?t-12:t, out=[];   /* the tonic between F#3 and F4 */
+  for(let p=base;out.length<9&&p<=base+12;p++) if(K.set.includes(((p-K.tonic)%12+12)%12)) out.push({p, name:NOTE_NAMES[p%12]});
+  const cols=Math.ceil(out.length/2); out.forEach((n,i)=>{ n.row=i<cols?2:1; n.col=i<cols?i+1:i-cols+1; }); out.cols=cols; return out; }   /* the low half on the bottom row */
+function tapLeadSound(){ const l=S.tracks.find(t=>t.inst==='lead'&&!t.guide&&!t._pvTemp&&!t._tapTemp); let snd=l?l.sound:'Bell'; if(proLocked(snd)) snd=INST.lead.sounds.find(x=>!proLocked(x)); return snd; }
+/* one held note on the lead sound: returns a release function */
+function leadNote(T,p,dur,tone=0.5,dest){ ensureCtx(); const g=ctx.createGain(), now=ctx.currentTime+0.005; g.gain.value=0.55; g.connect(dest||chain.input); VOICE_INST='lead';
+  try{ voice(ctx,g,T.lead,now,dur,p,0.8,tone); }catch(e){} finally{ VOICE_INST=null; }
+  return ()=>{ const t=ctx.currentTime; g.gain.cancelScheduledValues(t); g.gain.setValueAtTime(g.gain.value,t); g.gain.linearRampToValueAtTime(0,t+0.06); setTimeout(()=>{ try{ g.disconnect(); }catch(e){} },400); }; }
+/* taps into notes: the nearest 16th, each lasting until the next tap (at most 2 beats); two pads at once make a chord */
+function tapNoteList(taps,span){ const by=new Map(); taps.forEach(x=>{ const s=Math.min(span-1,Math.round(x.st)); by.set(s+':'+x.p,{s,p:x.p}); });
+  const ns=[...by.values()].sort((a,b)=>a.s-b.s||a.p-b.p), starts=[...new Set(ns.map(n=>n.s))];
+  return ns.map(n=>{ const nx=starts.find(s=>s>n.s); return {s:n.s, l:Math.max(1,Math.min(8,(nx??span)-n.s)), p:n.p, v:n.s%4===0?0.85:0.75, x:true}; }); }
+/* Play pad: across = the key's notes over two octaves (snapped), up = brighter. While a finger is down the note sounds; in a take, each note
+   is kept with where it started and ended and how bright it was (nt.tn) */
+function xyMount(T){ const box=$('tiXY'), cv=box.querySelector('canvas'); const K=T.K, lo=55+((K.tonic-55)%12+12)%12, ps=[]; for(let p=lo;p<=lo+24;p++) if(K.set.includes(((p-K.tonic)%12+12)%12)) ps.push(p);
+  T.xy={ps, down:false, cur:null, rel:null, ev:[]};
+  const draw=(fx,fy)=>{ const r=box.getBoundingClientRect(), dpr=Math.min(2,window.devicePixelRatio||1); if(cv.width!==Math.round(r.width*dpr)){ cv.width=Math.round(r.width*dpr); cv.height=Math.round(r.height*dpr); }
+    const g=cv.getContext('2d'); g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,r.width,r.height); const W=r.width/ps.length, cs=getComputedStyle(box), ink=cs.getPropertyValue('--s2-muted').trim()||'#9299a8', amb=cs.getPropertyValue('--s2-amber').trim()||'#f1c75b';
+    g.font='600 11px '+(cs.getPropertyValue('--f-display').trim()||'sans-serif'); g.textAlign='center';
+    ps.forEach((p,i)=>{ const tonic=((p-K.tonic)%12+12)%12===0; g.fillStyle=tonic?'rgba(128,128,128,.16)':'rgba(128,128,128,.06)'; if(i%2===0||tonic) g.fillRect(i*W,0,W,r.height); g.fillStyle=ink; g.fillText(NOTE_NAMES[p%12],i*W+W/2,r.height-8); });
+    g.textAlign='left'; g.fillText('Brighter',8,16);
+    if(fx!=null){ g.fillStyle=amb; g.beginPath(); g.arc(fx,fy,18,0,7); g.globalAlpha=0.35; g.fill(); g.globalAlpha=1; g.beginPath(); g.arc(fx,fy,7,0,7); g.fill(); } };
+  T.xy.draw=draw; requestAnimationFrame(()=>draw());
+  const at=e=>{ const r=box.getBoundingClientRect(), x=clamp(e.clientX-r.left,0,r.width-0.01), y=clamp(e.clientY-r.top,0,r.height); return {x,y,p:ps[Math.floor(x/r.width*ps.length)], tn:+clamp(1-y/r.height,0,1).toFixed(2)}; };
+  const filt=()=>{ if(!T.xy.lp){ const f=ctx.createBiquadFilter(); f.type='lowpass'; f.Q.value=0.7; f.connect(chain.input); T.xy.lp=f; } return T.xy.lp; };
+  const play=(c,e)=>{ const X=T.xy; X.tn=c.tn; filt().frequency.setTargetAtTime(400+c.tn*c.tn*9000,ctx.currentTime,0.02);
+    if(X.cur!==c.p){ if(X.rel) X.rel(); X.cur=c.p; X.rel=leadNote(T,c.p,8,0.75,filt()); tapMark(T,c.p,c.tn,e); } draw(c.x,c.y); };
+  box.addEventListener('pointerdown',e=>{ e.preventDefault(); ensureCtx(); try{ box.setPointerCapture(e.pointerId); }catch(_){} T.xy.down=true; play(at(e),e); });
+  box.addEventListener('pointermove',e=>{ if(!T.xy.down) return; play(at(e),e); });
+  const up=e=>{ if(!T.xy.down) return; T.xy.down=false; xyOff(T,e); draw(); };
+  box.addEventListener('pointerup',up); box.addEventListener('pointercancel',up); }
+/* in a take: a note starts (p) or the finger lifts (p null), at the moment it was heard */
+function tapMark(T,p,tn,e){ if(T.state!=='take'&&T.state!=='count'||!T.start) return; const late=Math.min(0.1,Math.max(0,(performance.now()-(e&&e.timeStamp||performance.now()))/1000)), at=ctx.currentTime-late-T.lat;
+  if(at<T.start-0.15||at>=T.end) return; T.taps.push({st:Math.max(0,(at-T.start)/stepDur()), p, tn}); }
+function xyOff(T,e){ const X=T&&T.xy; if(!X) return; if(X.rel){ X.rel(); X.rel=null; } if(X.cur!=null){ tapMark(T,null,null,e); X.cur=null; } }
+function xyNotes(T){ const span=TAP_BARS*16, out=[]; let cur=null;
+  for(const ev of T.taps){ const s=Math.min(span,Math.round(ev.st)); if(cur){ cur.l=s-cur.s; if(cur.l<1&&ev.p==null) cur.l=1;   /* a quick tap is a 16th */ if(cur.l>=1) out.push(cur); cur=null; }
+    if(ev.p!=null&&s<span) cur={s, l:1, p:ev.p, v:0.8, tn:ev.tn, x:true}; }
+  if(cur){ cur.l=Math.max(1,span-cur.s); out.push(cur); }
+  /* fast slides: a note shorter than a 16th gave its step to the next one; same pitch twice in a row is one note */
+  const m=[]; for(const n of out){ const pv=m[m.length-1]; if(pv&&pv.p===n.p&&pv.s+pv.l===n.s){ pv.l+=n.l; continue; } if(pv&&pv.s+pv.l>n.s) pv.l=Math.max(1,n.s-pv.s); m.push(n); }
+  return m.filter(n=>n.l>=1); }
 function tapKeyName(K){ return NOTE_NAMES[K.tonic]+' '+(K.set.includes(3)&&!K.set.includes(4)?'minor':'major'); }
 async function tapOpen(kind){ if(tapIn) tapClose(); ensureCtx(); pvEnd(true); flushSave(); if(playing) await togglePlay();
   const T=tapIn={kind, state:'ready', taps:[], tr:null, cur0:s2.cur||0, bars0:S.bars, key0:[S.key,S.scale], sec0:s2.sec, timers:[]};
@@ -194,15 +238,16 @@ async function tapOpen(kind){ if(tapIn) tapClose(); ensureCtx(); pvEnd(true); fl
     if(kind!=='drums'&&(K0.none||!pitched)){ S.key=String(K0.none?0:K0.tonic); S.scale=K0.none?'major':K0.scale; keyCache=null; scaleCache=null; } }   /* nothing pitched yet: the key is set now, so the chords don't change once notes arrive (kept only with the part) */
   s2.sec=null;   /* a looping section must not jump back during the take */
   T.P=clamp(Math.floor((s2.cur||0)+1e-6),0,64-TAP_BARS); if(S.bars<T.P+TAP_BARS){ S.bars=T.P+TAP_BARS; }
-  const K=currentKey(); T.K={...K, set:SCALES[PARENT[K.scale]||K.scale]||K.set}; T.pads=kind==='drums'?tapDrumPads():padChords(T.K); T.kitSound=kind==='drums'?tapKitSound():null;
+  const K=currentKey(); T.K={...K, set:SCALES[PARENT[K.scale]||K.scale]||K.set}; T.pads=kind==='drums'?tapDrumPads():kind==='notes'?tapNotePads(T.K):kind==='xy'?[]:padChords(T.K); T.kitSound=kind==='drums'?tapKitSound():null; T.lead=kind==='notes'||kind==='xy'?tapLeadSound():null;
   let el=$('tapIn'); if(!el){ el=document.createElement('div'); el.className='s2-ed tapin'; el.id='tapIn'; $('s2Ed').insertAdjacentElement('afterend',el); }
   el.innerHTML=`<div class="s2-top s2-g"><button class="s2-ib" id="tiBack" aria-label="Back to the timeline"><svg class="nx-ico" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
-    <div class="s2-edt"><b>${{chords:'Chord pads',rhythm:'Tap a rhythm',drums:'Drum pads'}[kind]}</b><small>${kind==='drums'?S.bpm+' BPM':tapKeyName(T.K)} · bars ${T.P+1}–${T.P+TAP_BARS}</small></div>
+    <div class="s2-edt"><b>${TAP_NAMES[kind]}</b><small>${kind==='drums'?S.bpm+' BPM':tapKeyName(T.K)} · bars ${T.P+1}–${T.P+TAP_BARS}</small></div>
     <button class="s2-ib" id="tiPlay" aria-label="Play the take" hidden></button></div>
-    <div class="ti-body">${kind!=='rhythm'?`<div class="ti-pads">${T.pads.map((c,i)=>`<button class="ti-pad" data-i="${i}" aria-label="${nxEsc(c.name)}${kind==='chords'?' chord':''}">${nxEsc(c.name)}</button>`).join('')}</div>`:'<button class="ti-pad ti-one" id="tiOne" aria-label="Tap pad">Tap</button>'}</div>
+    <div class="ti-body">${kind==='xy'?'<div class="ti-xy" id="tiXY" role="application" aria-label="Play pad: across for notes, up for a brighter sound"><canvas></canvas></div>':kind!=='rhythm'?`<div class="ti-pads"${kind==='notes'?` style="grid-template-columns:repeat(${T.pads.cols},1fr)"`:''}>${T.pads.map((c,i)=>`<button class="ti-pad" data-i="${i}"${c.row?` style="grid-row:${c.row};grid-column:${c.col}"`:''} aria-label="${nxEsc(c.name)}${kind==='chords'?' chord':''}">${nxEsc(c.name)}</button>`).join('')}</div>`:'<button class="ti-pad ti-one" id="tiOne" aria-label="Tap pad">Tap</button>'}</div>
     <div class="s2-edh s2-g" id="tiHint"></div><div class="ti-bar s2-g" id="tiBar"></div>`;
   el.hidden=false;
   el.querySelectorAll('.ti-pad').forEach(b=>b.addEventListener('pointerdown',e=>{ e.preventDefault(); tapHit(b,e); }));
+  if(kind==='xy') xyMount(T);
   $('tiBack').onclick=()=>tapClose();
   $('tiPlay').onclick=()=>{ if(T.playing) tapStopPlay(); else tapPlay(); };
   $('tiBar').onclick=e=>{ const b=e.target.closest('button'); if(!b) return; const a=b.dataset.a;
@@ -211,17 +256,18 @@ async function tapOpen(kind){ if(tapIn) tapClose(); ensureCtx(); pvEnd(true); fl
   if(kind==='rhythm'){ try{ await loadMusical(); }catch(e){} try{ await loadHarmony(); }catch(e){} }
   renderDirty(); }
 function tapUI(msg){ const T=tapIn; if(!T) return; const hint=$('tiHint'), bar=$('tiBar'), pl=$('tiPlay');
-  const H={ready:T.kind==='rhythm'?'Record, then tap a rhythm. Noodle picks the notes.':'Tap a pad to hear it. Record to play along.',
-    review:{chords:'Each chord lasts until the next one.',rhythm:'Your rhythm, with notes in the key.',drums:'Add more plays this back while you tap another layer.'}[T.kind]};
+  const H={ready:T.kind==='rhythm'?'Record, then tap a rhythm. Noodle picks the notes.':T.kind==='xy'?'Slide across for notes, up for a brighter sound.':'Tap a pad to hear it. Record to play along.',
+    review:{chords:'Each chord lasts until the next one.',rhythm:'Your rhythm, with notes in the key.',drums:'Add more plays this back while you tap another layer.',notes:'Each note lasts until the next one. Add more for a second line.',xy:'Your notes, in the key, with the brightness you played.'}[T.kind]};
   if(msg!=null) hint.textContent=msg; else if(H[T.state]) hint.textContent=H[T.state];
   const busy=T.state==='count'||T.state==='take'; document.getElementById('tapIn').classList.toggle('live',busy);
   bar.innerHTML= busy?'<button class="nx-ghost" data-a="stop">Stop</button>'
-    : T.state==='review'?`<button class="nx-primary" data-a="keep">Keep</button><div class="ti-row"><button class="nx-ghost" data-a="again">Tap again</button>${T.kind==='rhythm'?'<button class="nx-ghost" data-a="other">Other notes</button>':T.kind==='drums'?'<button class="nx-ghost" data-a="more">Add more</button>':''}</div>`
+    : T.state==='review'?`<button class="nx-primary" data-a="keep">Keep</button><div class="ti-row"><button class="nx-ghost" data-a="again">Tap again</button>${T.kind==='rhythm'?'<button class="nx-ghost" data-a="other">Other notes</button>':T.kind==='drums'||T.kind==='notes'?'<button class="nx-ghost" data-a="more">Add more</button>':''}</div>`
     : '<button class="nx-primary" data-a="rec">Record</button>';
   pl.hidden=T.state!=='review'; pl.setAttribute('aria-label',T.playing?'Stop':'Play the take');
   pl.innerHTML=T.playing?'<svg class="nx-ico" viewBox="0 0 24 24"><path d="M7 5v14M17 5v14" stroke-width="3"/></svg>':'<svg class="nx-ico" viewBox="0 0 24 24"><path d="M7 4l13 8-13 8V4z" fill="currentColor"/></svg>'; }
 /* a pad's own sound: the chord on the keys sound, or a soft click for the rhythm pad (its notes aren't chosen yet) */
 function tapSound(c){ ensureCtx(); const T=tapIn, now=ctx.currentTime+0.005;
+  if(T.kind==='notes'){ leadNote(T,c.p,0.45); return; }
   if(T.kind==='drums'){ const out=ctx.createGain(); out.gain.value=0.7; out.connect(chain.input); try{ drumHit(ctx,out,c.id,now,c.v,T.kitSound,0.5); }catch(e){} return; }
   if(T.kind==='chords'){ const tr=mkTrack('keys'); if(proLocked(tr.sound)) tr.sound=INST.keys.sounds.find(s=>!proLocked(s))||'Piano'; const out=ctx.createGain(); out.gain.value=0.5; out.connect(chain.input); VOICE_INST='keys';
     const dur=T.state==='take'?Math.min(2,4*60/S.bpm):0.7; try{ chordTones(c.root+12,'triad').forEach(m=>voice(ctx,out,tr.sound,now,dur,m,0.7,0.5)); }catch(e){} finally{ VOICE_INST=null; } return; }
@@ -231,7 +277,7 @@ function tapHit(b,e){ const T=tapIn; if(!T) return; b.classList.remove('hit'); v
   if(T.state!=='take'&&T.state!=='count'||!T.start) return;
   const late=Math.min(0.1,Math.max(0,(performance.now()-(e&&e.timeStamp||performance.now()))/1000));   /* how long ago the finger landed */
   const at=ctx.currentTime-late-T.lat; if(at<T.start-0.15||at>=T.end) return;
-  T.taps.push({st:Math.max(0,(at-T.start)/stepDur()), root:c?c.root:null, d:c?c.id:null, v:c?c.v:null}); }
+  T.taps.push({st:Math.max(0,(at-T.start)/stepDur()), root:c?c.root:null, d:c?c.id:null, v:c?c.v:null, p:c?c.p:null}); }
 function tapClick(when,first){ const o=ctx.createOscillator(), g=ctx.createGain(); o.frequency.value=first?2000:1500; g.gain.setValueAtTime(0,when); g.gain.linearRampToValueAtTime(first?0.5:0.32,when+0.002); g.gain.exponentialRampToValueAtTime(0.001,when+0.03); o.connect(g); g.connect(ctx.destination); o.start(when); o.stop(when+0.04); return o; }
 function tapClear(){ const T=tapIn; if(!T) return; T.timers.forEach(clearTimeout); T.timers=[]; if(T.clicks){ T.clicks.forEach(o=>{ try{ o.stop(); }catch(e){} }); T.clicks=null; } }
 async function tapRec(more){ const T=tapIn; if(!T||T.state==='count'||T.state==='take') return; ensureCtx(); try{ await ctx.resume(); }catch(e){}
@@ -248,11 +294,15 @@ async function tapRec(more){ const T=tapIn; if(!T||T.state==='count'||T.state===
   for(let i=0;i<4;i++) at(when+i*beat-0.02,()=>tapUI('Get ready · '+(4-i)));
   for(let k=0;k<TAP_BARS;k++) at(T.start+k*bar-0.02,()=>{ T.state='take'; tapUI(`Tap along · bar ${k+1} of ${TAP_BARS}`); });
   at(T.end+0.05,()=>tapFinish()); }
-function tapHalt(){ const T=tapIn; tapClear(); native({type:'metroStop'}); if(playing){ stopAll(ctx.currentTime+0.02); playing=false; } if(T){ s2.cur=T.cur0; s2.pos=-1; playFrom=Math.min(T.cur0,S.bars)*16*stepDur(); } }
+function tapHalt(){ const T=tapIn; tapClear(); if(T) xyOff(T); native({type:'metroStop'}); if(playing){ stopAll(ctx.currentTime+0.02); playing=false; } if(T){ s2.cur=T.cur0; s2.pos=-1; playFrom=Math.min(T.cur0,S.bars)*16*stepDur(); } }
 function tapCancelTake(){ const T=tapIn; if(!T) return; tapHalt(); haptic('medium'); T.state=T.more&&T.tr?'review':'ready'; T.more=false; T.taps=[]; tapUI(); }   /* Stop during Add more: back to the take you had */
 async function tapFinish(){ const T=tapIn; if(!T||T.state!=='take') return; tapHalt(); haptic('medium');
   const span=TAP_BARS*16; let notes;
-  if(T.kind==='drums'){ const by=new Map(); T.taps.forEach(x=>{ const s=Math.min(span-1,Math.round(x.st)); by.set(s+':'+x.d,{s,d:x.d,v:x.v}); });   /* the nearest 16th; one hit per drum per step */
+  if(T.kind==='notes'||T.kind==='xy'){ const nw=T.kind==='xy'?xyNotes(T):tapNoteList(T.taps,span);
+    if(T.more&&T.tr){ T.more=false; if(!nw.length){ T.state='review'; tapUI('No taps came in. That layer is left out.'); return; }
+      const key=n=>n.s+':'+n.p, have=new Set(nw.map(key)); T.tr.notes=T.tr.notes.filter(n=>!have.has(key(n))).concat(nw).sort((a,b)=>a.s-b.s); T.tr._dirty=true; T.state='review'; tapUI(); tapPlay(); return; }
+    notes=nw; }
+  else if(T.kind==='drums'){ const by=new Map(); T.taps.forEach(x=>{ const s=Math.min(span-1,Math.round(x.st)); by.set(s+':'+x.d,{s,d:x.d,v:x.v}); });   /* the nearest 16th; one hit per drum per step */
     if(T.more&&T.tr){ T.more=false; if(!by.size){ T.state='review'; tapUI('No taps came in. That layer is left out.'); return; }
       T.tr.hits.forEach(h=>{ if(!by.has(h.s+':'+h.d)) by.set(h.s+':'+h.d,h); }); T.tr.hits=[...by.values()].sort((a,b)=>a.s-b.s); T.tr._dirty=true; T.state='review'; tapUI(); tapPlay(); return; }
     notes=[...by.values()].sort((a,b)=>a.s-b.s); }
@@ -260,7 +310,8 @@ async function tapFinish(){ const T=tapIn; if(!T||T.state!=='take') return; tapH
     const ss=[...by.keys()].sort((a,b)=>a-b); notes=ss.map((s,i)=>({s, l:(i<ss.length-1?ss[i+1]:span)-s, p:by.get(s), v:0.74, x:true})); }
   else { const ons=[...new Set(T.taps.map(x=>Math.min(span-1,Math.round(x.st))))].sort((a,b)=>a-b); T.ons=ons; notes=ons.length>=2?tapMelody(T):[]; }
   if(!notes||!notes.length||T.kind==='rhythm'&&T.ons.length<2){ T.state='ready'; tapUI(T.taps.length?'Tap at least two notes, then try again.':'No taps came in. Record and tap along with the song.'); return; }
-  const tr=T.kind==='drums'?mkTrack('kit',{id:S.nextId++, off:T.P*16, len:TAP_BARS, lenSet:true, rep:false, sound:T.kitSound, picked:true, hits:notes})
+  const tr=T.kind==='notes'||T.kind==='xy'?mkTrack('lead',{id:S.nextId++, off:T.P*16, len:TAP_BARS, lenSet:true, rep:false, sound:T.lead, vol:T.lead==='Saw'||T.lead==='Supersaw'?40:48, send:35, picked:true, notes})
+    :T.kind==='drums'?mkTrack('kit',{id:S.nextId++, off:T.P*16, len:TAP_BARS, lenSet:true, rep:false, sound:T.kitSound, picked:true, hits:notes})
     :T.kind==='chords'?mkTrack('keys',{id:S.nextId++, off:T.P*16, len:TAP_BARS, lenSet:true, rep:false, chordType:'triad', vol:60, send:30, picked:true, notes})
     :mkTrack('lead',{id:S.nextId++, off:T.P*16, len:TAP_BARS, lenSet:true, rep:false, sound:pickOne(['Bell','Square','Saw','Guitar'].filter(s=>!proLocked(s))), vol:46, send:35, picked:true, notes});
   if(proLocked(tr.sound)) tr.sound=INST[tr.inst].sounds.find(s=>!proLocked(s));
@@ -281,7 +332,33 @@ function tapStopPlay(){ const T=tapIn; if(!T) return; const was=T.playing; T.pla
 async function tapOther(){ const T=tapIn; if(!T||!T.tr||T.kind!=='rhythm') return; tapStopPlay(); const ns=tapMelody(T); if(!ns.length) return; T.tr.notes=ns; T.tr._dirty=true; tapPlay(); }
 function tapDrop(){ const T=tapIn; if(!T||!T.tr) return; const i=S.tracks.indexOf(T.tr); if(i>=0) S.tracks.splice(i,1); try{ disposeTrack(T.tr); }catch(e){} T.tr=null; keyCache=null; }
 function tapKeep(){ const T=tapIn; if(!T||!T.tr) return; tapStopPlay(); const tr=T.tr; delete tr._tapTemp; T.tr=null; T.kept=true; S.activeId=tr.id; keyCache=null; save(); haptic('light');
-  tapClose(); toast(`Added ${{chords:'chords',rhythm:'a melody',drums:'drums'}[T.kind]}. Undo takes ${T.kind==='rhythm'?'it':'them'} out.`,3500); }
-function tapClose(){ const T=tapIn; if(!T) return; tapClear(); if(T.state==='count'||T.state==='take'||T.playing){ T.playing=false; tapHalt(); } tapDrop();
+  tapClose(); toast(`Added ${{chords:'chords',rhythm:'a melody',drums:'drums',notes:'notes',xy:'notes'}[T.kind]}. Undo takes ${T.kind==='rhythm'?'it':'them'} out.`,3500); }
+function tapClose(){ const T=tapIn; if(!T) return; tapClear(); xyOff(T); if(T.state==='count'||T.state==='take'||T.playing){ T.playing=false; tapHalt(); } tapDrop();
   if(!T.kept){ S.bars=T.bars0; S.key=T.key0[0]; S.scale=T.key0[1]; keyCache=null; scaleCache=null; }
   s2.sec=T.sec0; tapIn=null; const el=$('tapIn'); if(el){ el.hidden=true; el.innerHTML=''; } renderTracks(); scheduleRender(); }
+/* Continue this (round 27): a short part (up to 4 bars) grows to four times its length, as a phrase: the part, a variation (the same
+   rhythm, new notes in its second half), an answer (the same rhythm, new notes: the melody model, fitted to the chords there) and the part
+   again with an ending on the key's home note. Chord parts repeat and end on the home chord. Less room after it: 3 (part, answer, ending)
+   or 2 (part, ending). One Undo. */
+const continueOk=tr=>!!tr&&INST[tr.inst].kind==='pitched'&&tr.inst!=='vox'&&!tr.guide&&!!tr.notes&&tr.notes.length>0&&pSteps(tr)<=64;
+async function continuePart(tr){ if(!continueOk(tr)) return false; try{ await loadMusical(); }catch(e){} try{ await loadHarmony(); }catch(e){}
+  const L=pSteps(tr), off=tr.off||0, lane=s2LaneId(tr), next=S.tracks.filter(t=>t!==tr&&s2LaneId(t)===lane&&(t.off||0)>off).reduce((m,t)=>Math.min(m,t.off||0),64*16);
+  const reps=Math.min(4,Math.floor((next-off)/L)); if(reps<2){ toast('No room after this part. Move the next part along first.'); return false; }
+  const K0=currentKey(), K={...K0, set:SCALES[PARENT[K0.scale]||K0.scale]||K0.set}; if(K0.none){ toast('Set a key first (Key at the top).'); return false; }
+  flushSave();
+  const A=inWin(tr.notes,L).map(n=>({...n})).sort((a,b)=>a.s-b.s), chordy=chordsOn(tr), plan={2:'AE',3:'ABE',4:'AVBE'}[reps];
+  const ps=A.map(pitchOf), lo=Math.min(...ps)-2, hi=Math.max(Math.max(...ps)+2,lo+12), ons=[...new Set(A.map(n=>n.s))];
+  const CM=songChordMap(); let prog=null;
+  const chordAt=k=>st=>{ const a=CM.get(off+k*L+st); if(a&&a.size&&!chordy) return a; if(!prog) prog=(HARM&&harmProg(K))||[0,4,5,3].map((d,b)=>({s:b*16,l:16,p:48+((K.tonic+K.set[d%K.set.length])%12)}));
+    const q=(k*L+st)%64, c=prog.find(n=>q>=n.s&&q<n.s+n.l); return c?new Set(chordTones(Math.round(c.p),'triad').map(x=>((x%12)+12)%12)):null; };
+  const fresh=k=>{ const g=typeof genMelody==='function'&&MZ?genMelody(K,Math.max(1,L/16),chordAt(k),{onsets:ons,lo,hi}):null; const m=new Map((g||[]).map(n=>[n.s,n.p])); return m; };
+  const home=p=>{ let best=p, d=99; for(let q=p-6;q<=p+6;q++) if(((q-K.tonic)%12+12)%12===0&&Math.abs(q-p)<d){ d=Math.abs(q-p); best=q; } return best; };
+  const out=[];
+  [...plan].forEach((kind,k)=>{ let seg=A.map(n=>({...n}));
+    if(!chordy&&(kind==='V'||kind==='B')){ const m=fresh(k); seg=seg.map(n=>{ const q=m.get(n.s); return q!=null&&(kind==='B'||n.s>=L/2)?{...n,p:q,x:true}:n; }); }
+    if(kind==='E'&&seg.length){ const last=seg[seg.length-1], fs=seg.filter(n=>n.s===last.s); fs.forEach(n=>{ n.p=home(pitchOf(n)); n.x=true; }); }   /* it ends at home */
+    seg.forEach(n=>{ n.s+=k*L; out.push(n); }); });
+  tr.notes=out; tr.len=reps*L/16; tr.lenSet=true; tr.rep=false; if(S.bars<Math.ceil((off+reps*L)/16)) S.bars=Math.ceil((off+reps*L)/16);
+  tr._dirty=true; keyCache=null; logEdit(tr,{k:'continue',n:reps}); save(); renderTracks(); scheduleRender();
+  toast(`Now ${reps*L/16} bars: ${{2:'the part and an ending',3:'the part, an answer and an ending',4:'a repeat, a variation, an answer and an ending'}[reps]}. Undo puts it back.`,4500);
+  return true; }

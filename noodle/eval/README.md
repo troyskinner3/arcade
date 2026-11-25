@@ -898,3 +898,22 @@ the note editor's Today / Tap notes button flips one take between them. The fing
   The header shows the tempo instead of the key; the song's key is left alone.
 - Tests: `tapin_test.js` (sheet; drum pads, a timed take, Add more layering and Stop; pads in C major and A minor; a real timed take into chords on 8ths; Keep is one Undo; Stop and leaving add
   nothing and restore; a tapped rhythm keeps its exact steps, in key; Other notes; the model with 40 random tapped rhythms).
+
+## Round 27 (Note pads, Play pad, Draw chords, Continue this)
+- Note pads (Add track → Tap it in): the key's notes over an octave (8 pads in a 7-note key, 6 in pentatonic), low half on the bottom row.
+  Taps land on the nearest 16th and last until the next tap (at most 2 beats); two pads at once make a chord. Add more records another line
+  over the first. The pads sound the song's lead sound (else Bell; free only).
+- Play pad (Tap it in): one big square. Across: the key's notes over two octaves (snapped; the home note's column shaded, names along the
+  bottom). Up: brighter (a live low-pass while you play). In a take each note keeps where it started and ended and how bright it was: notes
+  have a new optional field `tn` (0..1) that the render uses as that note's tone. Quick taps are a 16th; a slide's passing notes shorter
+  than a 16th give their step to the next. Range, snap off and an arpeggio mode are on the roadmap under More settings.
+- Draw chords: a drawn line now replaces only the notes it runs close to (within 2 semitones while they overlap), and what sticks out of
+  the line stays (it used to remove whole notes). A line above or below adds a second voice; the first time, a message says how to redo.
+- Continue this (note editor •••, shown for melody and chord parts up to 4 bars): four times as long: the part, a variation (second half
+  new notes, same rhythm), an answer (same rhythm, new notes from the melody model fitted to the chords there) and the part ending on the
+  home note. Chord parts repeat and end on the home chord. Less room before the next part: 3 copies (part, answer, ending) or 2. One Undo.
+- Style check (iPhone 13, dark and light): the Play pad's canvas read colours from the page root at first (dark colours in light mode); it
+  reads the Studio's own now.
+- Tests: `tapin_test.js` (Note pads: names, rows, a timed take, Add more; Play pad: range, a timed slide with brightness, quick tap, nothing
+  left sounding), `draw_test.js` (redo over a line keeps what sticks out; a line above adds a voice), `continue_test.js` (new);
+  `musical_test.js` now checks there is no Version choice before a take (the ••• itself shows for Continue this).

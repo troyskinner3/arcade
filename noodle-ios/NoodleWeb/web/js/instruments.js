@@ -319,7 +319,7 @@ async function renderStem(tr){
     if(X){ const g=oc.createGain(), lpf=oc.createBiquadFilter(); lpf.type='lowpass'; lpf.Q.value=0.8; g.connect(lpf); lpf.connect(out);
       g.gain.setValueCurveAtTime(X.gain,ts+0.002,dur); lpf.frequency.setValueCurveAtTime(X.cut,ts+0.002,dur);
       const cs=oc.createConstantSource(); cs.offset.value=0; cs.offset.setValueCurveAtTime(X.bend,ts+0.002,dur); cs.start(ts); cs.stop(ts+dur+1); EXPR_DET=cs; nout=g; if(VOICE_DONE) VOICE_DONE.push({n:lpf,end:ts+dur+1}); }
-    ps.forEach((pp,j)=>voice(oc,nout,tr.sound,ts+0.002,dur,pp+12*tr.oct,nt.v*(ps.length>1?1.1/Math.sqrt(ps.length+0.2):1),T, pps?pps[Math.min(j,pps.length-1)]+12*tr.oct:null)); EXPR_DET=null; })); } }
+    ps.forEach((pp,j)=>voice(oc,nout,tr.sound,ts+0.002,dur,pp+12*tr.oct,nt.v*(ps.length>1?1.1/Math.sqrt(ps.length+0.2):1),Number.isFinite(nt.tn)?Math.min(1,Math.max(0,nt.tn)):T, pps?pps[Math.min(j,pps.length-1)]+12*tr.oct:null)); EXPR_DET=null; })); } }
   else { for(const h of (FULL?withFills(tr,songEvents(tr,tr.hits)):inWin(tr.hits,PN)).filter(h=>keep(h.s))){ const t=stepTime(h.s)+0.002; at(t,job(()=>drumHit(oc,out,h.d,t,h.v,tr.sound,T))); } }
   ENV_OVR=null;
   let jobErr=null; if(jobs.length){ const CH=2, LEAD=0.25, total=(n+tail*sr)/sr; jobs.sort((a,b)=>a.t-b.t); let ji=0; const run=lim=>{ while(ji<jobs.length && jobs[ji].t<lim){ try{ jobs[ji++].f(); }catch(e){ jobErr=jobErr||e; } } };   /* an error never stalls the render; it's reported after */   /* a stable sort: same-time notes keep their order */

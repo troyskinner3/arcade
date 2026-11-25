@@ -48,6 +48,20 @@ const {chromium,devices}=require('playwright');
     await until(()=>tapIn.state==='review'); out.drum2=tapIn.tr.hits.map(h=>h.s+h.d[0]).join(' ');
     tapRec(true); await until(()=>tapIn.start); tapCancelTake(); out.moreStop=tapIn.state==='review'&&!!tapIn.tr&&tapIn.tr.hits.length===6;
     const n0=S.tracks.filter(t=>!t._tapTemp).length; tapKeep(); await w(500); out.drumKept=S.tracks.length===n0+1&&S.tracks.some(t=>t.inst==='kit'&&t.hits.length===6); undo(); await w(300);
+    // Note pads: the key's notes over an octave, low row at the bottom; taps last until the next (at most 2 beats); Add more adds a line
+    S.key='0'; S.scale='major'; keyCache=null; scaleCache=null; await tapOpen('notes'); const np=[...document.querySelectorAll('#tapIn .ti-pad')];
+    out.notePads=np.map(x=>x.textContent).join(' '); const rc=x=>x.getBoundingClientRect(); out.lowRowBelow=rc(np[0]).top>rc(np[4]).top&&rc(np[0]).left<rc(np[1]).left;
+    tapRec(); await until(()=>tapIn.start); for(const [i,st] of [[0,0],[2,4],[4,8],[7,16]]) await tapAt(`#tapIn .ti-pad[data-i="${i}"]`,st);
+    await until(()=>tapIn.state==='review'); out.notes1=tapIn.tr.inst+':'+tapIn.tr.notes.map(n=>n.s+':'+n.l+':'+n.p).join(' '); out.noteBtns=[...document.querySelectorAll('#tiBar button')].map(x=>x.textContent).join('|');
+    tapRec(true); await until(()=>tapIn.start); await tapAt('#tapIn .ti-pad[data-i="4"]',0); await until(()=>tapIn.state==='review'); out.notes2=tapIn.tr.notes.length; tapClose();
+    // Play pad: across picks notes in the key, up is brighter; a slide is recorded with where each note starts and how bright it is
+    await tapOpen('xy'); const box=$('tiXY'), R=box.getBoundingClientRect(), n=tapIn.xy.ps.length, X=i=>R.left+(i+0.5)*R.width/n, pe=(type,i,y)=>box.dispatchEvent(new PointerEvent(type,{bubbles:true,clientX:X(i),clientY:R.top+y*R.height,pointerId:1}));
+    out.xyRange=tapIn.xy.ps.length+':'+tapIn.xy.ps.every(q=>[0,2,4,5,7,9,11].includes(q%12));
+    tapRec(); await until(()=>tapIn.start); const T=tapIn, waitSt=async st=>until(()=>ctx.currentTime>=T.start+st*stepDur()+T.lat);
+    await waitSt(0); pe('pointerdown',0,0.1); await waitSt(4); pe('pointermove',2,0.9); await waitSt(6); pe('pointermove',2,0.5); await waitSt(8); pe('pointerup',2,0.5);
+    await waitSt(16); pe('pointerdown',4,0.5); await waitSt(16.2); pe('pointerup',4,0.5);
+    await until(()=>tapIn.state==='review'); const ps=tapIn.xy.ps; out.xy=tapIn.tr.notes.map(n=>n.s+':'+n.l+':'+ps.indexOf(n.p)+':'+(n.tn>0.6?'hi':n.tn<0.4?'lo':'mid')).join(' ');
+    out.xyHeld=!tapIn.xy.rel; tapClose(); out.xyClosed=!S.tracks.some(t=>t._tapTemp);
     // the model with tapped onsets: 40 rhythms, notes on them, in the key and range
     await loadMusical(); const KA=currentKey(), cat=st=>new Set(chordTones([57,53,48,55][Math.floor(st/16)%4],'triad').map(x=>x%12)); let onOk=0, keyOk=0, rangeOk=0, strong=0, strongN=0;
     for(let k=0;k<40;k++){ const ons=[...new Set(Array.from({length:6+k%8},()=>Math.floor(Math.random()*64)))].sort((a,b)=>a-b); const ns=genMelody(KA,4,cat,{onsets:ons});
@@ -55,13 +69,16 @@ const {chromium,devices}=require('playwright');
       ns.forEach(n=>{ if(n.s%8===0){ strongN++; if(cat(n.s).has(n.p%12)) strong++; } }); }
     out.model={onsets:onOk/40, inKey:keyOk/40, range:rangeOk/40, strongChord:+(strong/Math.max(1,strongN)).toFixed(2)};
     return out; });
-  if(r.sheet!=='Drum pads|Chord pads|Tap a rhythm') errs.push('sheet: '+r.sheet);
+  if(r.sheet!=='Drum pads|Chord pads|Note pads|Tap a rhythm|Play pad') errs.push('sheet: '+r.sheet);
   if(r.padsC!=='C Dm Em F G Am') errs.push('padsC: '+r.padsC); if(r.padsAm!=='Am C Dm Em F G') errs.push('padsAm: '+r.padsAm);
   if(r.chordNotes!=='0:8:A 8:8:F 16:20:C 36:28:G') errs.push('chordNotes: '+r.chordNotes);
   if(r.chordKind!=='keys/triad') errs.push('chordKind: '+r.chordKind); if(r.reviewBtns!=='Keep|Tap again') errs.push('reviewBtns: '+r.reviewBtns);
   if(r.barsDuring!==4) errs.push('barsDuring: '+r.barsDuring); if(r.melInst!=='lead') errs.push('melInst: '+r.melInst);
   if(r.drumPads!=='Kick Snare Clap Hat Crash') errs.push('drumPads: '+r.drumPads); if(!/^\d+ BPM · bars/.test(r.drumSub)) errs.push('drumSub: '+r.drumSub);
   if(r.drumBtns!=='Keep|Tap again|Add more') errs.push('drumBtns: '+r.drumBtns); if(r.drum1!=='kit:0k 4s 8k 12s') errs.push('drum1: '+r.drum1); if(r.drum2!=='0k 2h 4s 6h 8k 12s') errs.push('drum2: '+r.drum2);
-  for(const k of ['moreStop','drumKept','notOnRecord','restored','autoFixed','autoBack','playVisible','notSavedYet','kept','undone','stopped','onePad','rhythm','melInKey','otherBtn','otherDiffers','otherRhythm','rhythmDropped','notInSave']) if(!r[k]) errs.push(k);
+  if(r.notePads!=='C D E F G A B C') errs.push('notePads: '+r.notePads); if(r.notes1!=='lead:0:4:60 4:4:64 8:8:67 16:8:72') errs.push('notes1: '+r.notes1);
+  if(r.noteBtns!=='Keep|Tap again|Add more') errs.push('noteBtns: '+r.noteBtns); if(r.notes2!==5) errs.push('notes2: '+r.notes2);
+  if(r.xyRange!=='15:true') errs.push('xyRange: '+r.xyRange); if(r.xy!=='0:4:0:hi 4:4:2:lo 16:1:4:mid') errs.push('xy: '+r.xy);
+  for(const k of ['lowRowBelow','xyHeld','xyClosed','moreStop','drumKept','notOnRecord','restored','autoFixed','autoBack','playVisible','notSavedYet','kept','undone','stopped','onePad','rhythm','melInKey','otherBtn','otherDiffers','otherRhythm','rhythmDropped','notInSave']) if(!r[k]) errs.push(k);
   if(!(r.model.onsets===1&&r.model.inKey===1&&r.model.range===1&&r.model.strongChord>=0.6)) errs.push('model: '+JSON.stringify(r.model));
   console.log(JSON.stringify({...r,errs})); await b.close(); })();
