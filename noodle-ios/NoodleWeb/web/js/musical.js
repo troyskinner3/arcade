@@ -123,3 +123,41 @@ function musicalPass(tr){ if(!musicalOn()||!tr.notes||INST[tr.inst].kind!=='pitc
 function musicalSwap(tr){ loadMusical(); if(!tr.heardNotes){ tr.heardNotes=tr.notes.map(n=>({...n})); const mz=musicalize(tr,tr.heardNotes); tr.notes=mz.map(({mz,...x})=>({...x,mz:1})); tr.mzOn=true; }
   else { const cur=tr.notes; tr.notes=tr.mzOn?tr.heardNotes:(tr.mzNotes||musicalize(tr,tr.heardNotes).map(({mz,...x})=>({...x,mz:1}))); if(tr.mzOn) tr.mzNotes=cur; tr.mzOn=!tr.mzOn; }
   tr._dirty=true; keyCache=null; save(); scheduleRender(); }
+/* ---- A new lead melody over chords (Finish song; owner, Nov 2026: "not too basic / computer generated"). Sampled from the same tables
+   Musical mode learned from ~45,000 public-domain and CC0 tunes, in scale degrees so it fits any key:
+     rhythm: where real melodies start notes, given the last start (MZ.on), not too busy, a breath at the end of each phrase;
+     pitch:  each move drawn from how real melodies move (MZ.o0-o2: degree, beat strength, the move before), weighted toward chord tones on
+             strong beats (MZ.ch), phrase ends on the degrees real phrases end on (MZ.end), the last note on a song-ending degree (MZ.fin),
+             within a singable range;
+     shape:  a 2-bar phrase, then an answer with the same rhythm that starts like it and comes home (call and response), so it repeats like
+             a real hook instead of wandering.
+   chordAt(s): the chord's pitch classes at step s. Returns notes [{s,l,p,v}] over `bars` bars, or null without the tables. ---- */
+function genMelody(K, bars, chordAt, opt={}){ if(!MZ||K.none) return null;
+  const md=K.set.includes(3)&&!K.set.includes(4)?'min':'maj', pc=m=>((m%12)+12)%12, dg=m=>pc(m-K.tonic), ink=m=>K.set.includes(dg(m));
+  const lo=opt.lo??64, hi=opt.hi??81, rnd=opt.rnd||Math.random, pick=w=>{ let t=0; for(const x of w) t+=x[1]; let r=rnd()*t; for(const x of w){ if((r-=x[1])<=0) return x[0]; } return w[w.length-1][0]; };
+  const phraseLen=32, phrases=Math.max(1,Math.round(bars*16/phraseLen));
+  /* rhythm of one phrase: onsets in 32 steps, the last beat or two left free (a breath) */
+  const rhythm=()=>{ for(let tries=0;tries<40;tries++){ const on=[]; let s=pick([[0,6],[2,2],[4,2]]);   /* mostly on the downbeat */
+      while(s<phraseLen-4){ on.push(s); const w=[]; for(let d=1;d<=8;d++){ const q=s+d; if(q>=phraseLen-3) break; const lp=MZ.on[s%16][q%16]+(d===1?-1.5:d===2?0:d<=4?0.3:-0.4); w.push([q,Math.exp(lp)]); } if(!w.length) break; s=pick(w); }
+      if(on.length>=4&&on.length<=11) return on; }
+    return [0,4,8,12,16,20,24]; };
+  const chordFit=(s,l,q)=>{ const T=chordAt(s); if(!T) return 0; const a=MZ.ch[`${mzMetric(s)},${mzDur(l)}`]; return a?(T.has(pc(q))?a[1]:a[0]):0; };
+  const out=[]; let rh=null, firstPitches=null, prevP=null, prevIv=null, prevS=null;
+  for(let ph=0;ph<phrases;ph++){ const base=ph*phraseLen, answer=ph%2===1; if(!answer||!rh) rh=rhythm(); const ons=rh.map(s=>base+s);
+    const lens=ons.map((s,i)=>i<ons.length-1?ons[i+1]-s:Math.max(4,Math.min(12,base+phraseLen-s)));
+    const ps=[];
+    for(let i=0;i<ons.length;i++){ const s=ons[i], l=lens[i], last=i===ons.length-1, songEnd=last&&ph===phrases-1;
+      if(answer&&firstPitches&&i<Math.ceil(ons.length/2)&&firstPitches[i]!=null){ ps.push(firstPitches[i]); prevIv=prevP==null?null:firstPitches[i]-prevP; prevP=firstPitches[i]; prevS=s; continue; }   /* the answer starts like the call */
+      const w=[]; const from=prevP==null?null:prevP;
+      for(let q=lo;q<=hi;q++){ if(!ink(q)) continue; let lp=0;
+        if(from==null) lp=(chordAt(s)&&chordAt(s).has(pc(q))?0:-3)-Math.abs(q-(lo+hi)/2)*0.08;   /* start on a chord tone mid-range */
+        else { const iv=q-from; if(iv<-9||iv>9) continue; const newPh=i===0; lp=Math.log(mzIv(md,mzMetric(s),dg(from),mzMetric(prevS??0),newPh?null:prevIv,iv)+1e-6); }
+        lp+=2.2*chordFit(s,l,q);
+        if(last) lp+=2.5*(songEnd?MZ.fin[md][dg(q)]:MZ.end[md][dg(q)])+2.5*chordFit(s,l,q)+(chordAt(s)&&chordAt(s).has(pc(q))?1.5:0);   /* a phrase ends where real phrases end, on the chord under it (the part loops, so the last chord isn't always home) */
+        if(last&&!answer&&ph<phrases-1&&dg(q)===0) lp-=1.2;   /* the call stays open; the answer comes home */
+        if(q<lo+3||q>hi-3) lp-=0.8;
+        w.push([q,Math.exp(lp*0.85)]); }
+      const q=w.length?pick(w):(prevP??lo+7); ps.push(q); prevIv=prevP==null?null:q-prevP; prevP=q; prevS=s; }
+    if(!answer) firstPitches=ps.slice();
+    ons.forEach((s,i)=>{ const acc=s%16===0?0.9:s%4===0?0.82:s%2===0?0.74:0.68; out.push({s, l:Math.max(1,lens[i]-(i===ons.length-1?0:0)), p:ps[i], v:+acc.toFixed(2)}); }); }
+  return out.filter(n=>n.s<bars*16).map(n=>({...n, l:Math.min(n.l,bars*16-n.s)})); }

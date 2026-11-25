@@ -96,9 +96,12 @@ function songRoles(){ const real=S.tracks.filter(t=>!t.guide&&!t._pvTemp&&hasCon
     melody:has(t=>t.inst==='lead'||t.inst==='arp'||(t.inst==='vox'&&t.va!=null)), fx:has(t=>t.inst==='fx'), mix:has(t=>t.inst==='mix')}; }
 const finishMissing=()=>{ const r=songRoles(); return r.any?['drums','bass','chords','melody','fx','mix'].filter(k=>!r[k]):[]; };
 const pickOne=a=>a[Math.floor(Math.random()*a.length)];
-function finishSong(){ const miss=finishMissing(); if(!miss.length) return false; pvEnd(true); flushSave();
+async function finishSong(){ const miss=finishMissing(); if(!miss.length) return false; if(miss.includes('melody')) try{ await loadMusical(); }catch(e){}   /* the melody tables (lead melodies) */
+  pvEnd(true); flushSave();
   const free=BEATS.filter(b=>!b.pro), near=free.filter(b=>Math.abs(b.bpm-S.bpm)<=20), b=pickOne(near.length?near:free);
-  let K=currentKey(); if(K.none){ S.key=String(b.tonic); S.scale=b.scale; keyCache=null; scaleCache=null; K=currentKey(); }
+  const pitched=S.tracks.some(t=>!t.guide&&t.notes&&t.notes.length&&INST[t.inst].kind==='pitched');
+  let K=currentKey(); if(K.none||!pitched){ S.key=String(b.tonic); S.scale=b.scale; keyCache=null; scaleCache=null; K=currentKey(); }   /* nothing pitched yet: the song takes the beat's key, so it doesn't change once notes arrive */
+  K={...K, set:SCALES[PARENT[K.scale]||K.scale]||K.set};   /* the melody, chords and bass all use the same scale */
   if(S.bars<4) S.bars=4;
   const base=beatTracks(b,K.tonic,K.scale), add=[], got=[], ok=snd=>!proLocked(snd);
   const fromBeat=k=>base.find(t=>k==='drums'?t.inst==='kit':k==='bass'?t.name==='Bass':t.name==='Chords');
@@ -117,7 +120,15 @@ function finishSong(){ const miss=finishMissing(); if(!miss.length) return false
     if(!t) t=fromBeat('bass');
     if(t){ t.picked=true; delete t.name; add.push(t); got.push('bass'); } }
   if(miss.includes('drums')){ const t=fromBeat('drums'); if(t){ t.picked=true; delete t.name; add.push(t); got.push('drums'); } }
-  if(miss.includes('melody')){ const src=roots||{off:0,len:4,rep:true,notes:b.prog.map((d,bar)=>({s:bar*16,l:16,p:48+(((K.tonic+((SCALES[PARENT[K.scale]||K.scale]||SCALES[b.scale])[d%7]))%12)+12)%12}))};
+  if(miss.includes('melody')){ const src0=roots||null;
+    /* a lead melody written over the chords, most of the time (genMelody: learned from real tunes); otherwise an arp playing the chords */
+    const leadSrc=src0||{off:0,len:4,rep:true,notes:(fromBeat('chords')||{notes:[]}).notes};
+    if(typeof genMelody==='function'&&MZ&&leadSrc.notes.length&&Math.random()<0.7){ const bars=Math.max(1,Math.round(leadSrc.len)), span=bars*16, ns=leadSrc.notes;
+      const chordAt=st=>{ const q=((st%span)+span)%span, c=ns.find(n=>q>=n.s&&q<n.s+n.l); return c?new Set(chordTones(Math.round(c.p),'triad').map(x=>((x%12)+12)%12)):null; };
+      const notes=genMelody(K,bars,chordAt);
+      if(notes&&notes.length){ const snd=pickOne(['Bell','Square','Saw','Supersaw','Guitar'].filter(ok)); add.push(mkTrack('lead',{id:S.nextId++, off:leadSrc.off, len:leadSrc.len, lenSet:true, rep:leadSrc.rep, sound:snd, vol:snd==='Supersaw'||snd==='Saw'?40:48, send:35, picked:true, notes:notes.map(n=>({...n,x:true}))})); got.push('a melody'); } }
+  }
+  if(miss.includes('melody')&&!got.includes('a melody')){ const src=roots||{off:0,len:4,rep:true,notes:b.prog.map((d,bar)=>({s:bar*16,l:16,p:48+(((K.tonic+((SCALES[PARENT[K.scale]||K.scale]||SCALES[b.scale])[d%7]))%12)+12)%12}))};
     const snd=pickOne(['Pluck','Bell','Square','Glass'].filter(ok)), t=mkTrack('arp',{id:S.nextId++, off:src.off, len:src.len, lenSet:true, rep:src.rep, sound:snd, vol:42, send:35, chordType:'triad', picked:true, notes:src.notes.map(n=>({s:n.s,l:n.l,p:62+((Math.round(n.p)-62)%12+12)%12,v:0.7,x:true}))});
     add.push(t); got.push('a melody'); }
   if(miss.includes('fx')){ const fxs=[]; for(let bar=0;bar<S.bars;bar+=4){ fxs.push({...fxNew('sweepDown',bar*16,S.bars*16),l:8,v:0.3}); const end=Math.min(S.bars,bar+4); fxs.push({...fxNew('sweepUp',(end-1)*16,S.bars*16),v:0.3}); }

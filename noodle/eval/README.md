@@ -847,3 +847,9 @@ the note editor's Today / Tap notes button flips one take between them. The fing
   picks another combination. The song then plays from the top.
 - Not counted in usage stats yet (the takes service only accepts listed events; adding one is the security session's area).
 - Tests: `finish_test.js` (drums only; melody only; in key; free sounds; one Undo; button only while something's missing; not silent).
+- Lead melodies (owner: "not too basic / computer generated"): `genMelody` samples from Musical mode's tables (onsets by position, next
+  interval by degree / beat / previous move, chord-tone odds, phrase and song endings), in scale degrees, as a 2-bar call and an answer with
+  the same rhythm that starts like it; phrase ends land on the chord under them. Finish song uses it 70 % of the time when a melody is
+  missing (an arp otherwise, or when the tables can't load). With nothing pitched yet, Finish song sets the song's key from the beat (it
+  used to stay "auto" and be re-guessed after, so a melody could fall outside it). Over 40 melodies in A minor on Am F C G: all in key
+  and range, answers repeat the call's rhythm, 100 % end on a chord tone, 86 % chord tones on strong beats, 87 % small steps, all different.
