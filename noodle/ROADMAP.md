@@ -97,8 +97,11 @@ Draft copy is in `noodle-ios/APP_STORE_LISTING.md`.
      (it also controls Fan to See).
 - [ ] **Owner:** decide on storage before launch: free KV (1 GB) fills in about 1–2 weeks at ~250 takes a day. Keep takes for less time,
   keep fewer, or move to R2 (10 GB free, needs a card; set billing alerts). The security session has the details.
-- [ ] Email list: send a confirmation email before anyone gets news (sign-ups aren't checked; anyone can add or remove any address).
-- [ ] Give the Cloudflare token only to the deploy step (done on the security session's fantasy-lab branch; merge it there).
+- [ ] **Owner:** email list: pick the mail tool (e.g. Buttondown, Mailchimp) and import with double opt-in before anyone gets news
+      (sign-ups aren't checked; anyone can add or remove any address). Cloudflare can only email verified addresses, so not from the service.
+- [x] Cloudflare token given only to the deploy step (Fan to See `noodle-takes.yml`, on its `main` since 25 Nov).
+- [x] Hardening (25 Nov): strict WAV check, nosniff on every reply, report emails only on a song's first report (30 a day at most),
+      reports stop being stored after 10, Pro codes marked when handed out (no double handout), `GET /v1/admin/usage` storage meter.
 
 ## 8. Quality
 - [ ] Crash reports reviewed and the top crashes fixed.

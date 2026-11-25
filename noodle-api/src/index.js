@@ -40,6 +40,7 @@
 //   GET    /v1/admin/reports                owner only: reported songs (title, reports, reasons, hidden), newest first; emailed too with REPORT_MAIL
 //   DELETE /v1/admin/songs/:id              owner only: take a song down;   PUT /v1/admin/songs/:id/restore  put a hidden one back
 //   GET/PUT /v1/admin/stats-exclude          owner only: usage-stats IDs left out of the stats (the owner's own phones), body = [ids]
+//   GET    /v1/admin/usage                  owner only: how much is stored, by kind, against the free plan's 1 GB
 //   GET    /v1/admin/stats?days=30          owner only: usage counts from Analytics Engine (needs the ANALYTICS_TOKEN secret,
 //                                           a Cloudflare token with Account Analytics: Read; CF_ACCOUNT_ID in wrangler.toml)
 const ORIGINS = ['noodle://app', 'https://troyskinner3.github.io'];
@@ -81,7 +82,8 @@ function cors(req) {
   return { 'Access-Control-Allow-Origin': ok ? o : ORIGINS[1], 'Vary': 'Origin',
     'Access-Control-Allow-Methods': 'GET, PUT, POST, DELETE, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type, X-Owner', 'Access-Control-Max-Age': '86400' };
 }
-const json = (req, status, body) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json', ...cors(req) } });
+const NOSNIFF = { 'X-Content-Type-Options': 'nosniff' };   // browsers use the stated type only (a "WAV" is never run as a page)
+const json = (req, status, body) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json', ...NOSNIFF, ...cors(req) } });
 
 async function readLimited(req, max) {
   const len = +req.headers.get('Content-Length') || 0;
@@ -103,15 +105,20 @@ function store(env) {
       return { objects: r.keys.map((x) => ({ key: x.name, size: x.metadata && x.metadata.size, uploaded: x.metadata && new Date(x.metadata.at) })), truncated: !r.list_complete, cursor: r.cursor }; },
   };
 }
+// Only the WAV the app writes: a plain 44-byte header, 16-bit mono PCM, sizes that match the file. Anything else is refused.
 function isWav(buf) {
   if (buf.byteLength < 44) return false;
-  const b = new Uint8Array(buf, 0, 12), s = (i) => String.fromCharCode(b[i], b[i + 1], b[i + 2], b[i + 3]);
-  return s(0) === 'RIFF' && s(8) === 'WAVE';
+  const b = new Uint8Array(buf, 0, 44), d = new DataView(buf, 0, 44), s = (i) => String.fromCharCode(b[i], b[i + 1], b[i + 2], b[i + 3]);
+  return s(0) === 'RIFF' && s(8) === 'WAVE' && s(12) === 'fmt ' && s(36) === 'data' && d.getUint32(16, true) === 16 && d.getUint16(20, true) === 1 &&
+    d.getUint16(22, true) === 1 && d.getUint16(34, true) === 16 && d.getUint32(4, true) === buf.byteLength - 8 && d.getUint32(40, true) === buf.byteLength - 44;
 }
 /* Reported songs (owner's list, GET /v1/admin/reports). Email to the owner on every report, when Cloudflare Email Routing is set up for the
    sending domain: a send_email binding REPORT_MAIL in wrangler.toml, and the variables REPORT_FROM (an address on that domain) and REPORT_TO (a
    verified destination). Without them nothing is sent and reports still show in the list and on the usage dashboard. */
-const REPORTS = 'reports/';
+const REPORTS = 'reports/', REPORT_MAILS_PER_DAY = 30, MAX_REPORTS = 10;
+// emails a day, counted in memory (best-effort, per worker instance), so many reports can't flood the owner's inbox
+const mailDays = new Map();
+function mailsToday() { const day = new Date().toISOString().slice(0, 10), n = (mailDays.get(day) || 0) + 1; mailDays.clear(); mailDays.set(day, n); return n; }
 async function reportMail(env, rep, url) {
   if (!env.REPORT_MAIL || !env.REPORT_FROM || !env.REPORT_TO) return;
   try {
@@ -195,7 +202,13 @@ async function handle(req, env) {
           me = { code, joined: [], reward: null }; await B.put(`invites/codes/${code}.json`, JSON.stringify({ owner: oh })); await B.put(k, JSON.stringify(me)); }
         if (!me.reward && me.joined.length >= INVITES_FOR_PRO) {   // earned: hand out a code from the pool, if there is one today
           const day = new Date().toISOString().slice(0, 10), dk = `quota/rewards/${day}.json`, dc = await B.get(dk), n = dc ? (await dc.json()).n : 0, pc = await B.get('rewards/pool.json'), pool = pc ? await pc.json() : [];
-          if (n < REWARDS_PER_DAY && pool.length) { me.reward = pool.shift(); await B.put('rewards/pool.json', JSON.stringify(pool)); await B.put(dk, JSON.stringify({ n: n + 1 }), { expiresAt: Date.now() + 3 * 864e5 }); await B.put(k, JSON.stringify(me)); }
+          // storage isn't transactional: two people earning at once could both take the first code. So each picks by its own id among the
+          // first few, skips codes already marked as given, and marks the one it takes.
+          const off = parseInt(oh.slice(0, 8), 16) % Math.max(1, Math.min(pool.length, 10)), order = pool.map((_, i) => i);
+          order.unshift(...order.splice(off, 1));   // this phone's own pick among the first ten first, then the rest in order
+          let pick = -1; for (const j of order) { if (!(await B.head(`rewards/given/${pool[j]}.json`))) { pick = j; break; } }
+          if (pick < 0 && pool.length) await B.put('rewards/pool.json', '[]');   // every code left was already handed out
+          if (n < REWARDS_PER_DAY && pick >= 0) { me.reward = pool.splice(pick, 1)[0]; await B.put(`rewards/given/${me.reward}.json`, JSON.stringify({ at: new Date().toISOString() })); await B.put('rewards/pool.json', JSON.stringify(pool)); await B.put(dk, JSON.stringify({ n: n + 1 }), { expiresAt: Date.now() + 3 * 864e5 }); await B.put(k, JSON.stringify(me)); }
         }
         return json(req, 200, { code: me.code, joined: me.joined.length, need: INVITES_FOR_PRO, reward: me.reward, url: `${url.origin}/i/${me.code}` });
       }
@@ -221,17 +234,19 @@ async function handle(req, env) {
       if (req.method === 'GET') {
         if (!meta || meta.reports >= REPORTS_TO_HIDE) return json(req, 404, { error: 'not found' });
         const o = await B.get(base + (part === 'preview' ? 'preview.wav' : 'song.json')); if (!o) return json(req, 404, { error: 'not found' });
-        return new Response(o.body, { headers: { 'Content-Type': part === 'preview' ? 'audio/wav' : 'application/json', 'Cache-Control': 'public, max-age=300', ...cors(req) } });
+        return new Response(o.body, { headers: { 'Content-Type': part === 'preview' ? 'audio/wav' : 'application/json', 'Cache-Control': 'public, max-age=300', ...NOSNIFF, ...cors(req) } });
       }
       if (req.method === 'POST' && part === 'report') {
-        if (!meta) return json(req, 404, { error: 'not found' }); meta.reports = (meta.reports || 0) + 1;
+        if (!meta) return json(req, 404, { error: 'not found' });
+        if ((meta.reports || 0) >= MAX_REPORTS) return json(req, 200, { ok: true });   // already hidden and on the owner's list: nothing more to store
+        meta.reports = (meta.reports || 0) + 1;
         let why = ''; try { const buf = await readLimited(req, 1024); why = buf ? String(JSON.parse(new TextDecoder().decode(buf)).reason || '').slice(0, 40) : ''; } catch {}
         if (why) meta.reasons = (meta.reasons || []).concat([why]).slice(-10);   // what reporters chose (no one's identity)
         await B.put(metaKey, JSON.stringify(meta), { expiresAt: Date.parse(meta.at) + SONG_DAYS * 864e5 });
         const now = new Date().toISOString(), r0 = await B.get(REPORTS + id), rep = r0 ? await r0.json() : { id, first: now };   // the owner's list of reported songs
         Object.assign(rep, { title: meta.title || '', reports: meta.reports, reasons: meta.reasons || [], last: now, hidden: meta.reports >= REPORTS_TO_HIDE });
         await B.put(REPORTS + id, JSON.stringify(rep), { expiresAt: Date.parse(meta.at) + SONG_DAYS * 864e5 });
-        await reportMail(env, rep, url);   // tells the owner straight away, when email is set up (REPORT_MAIL)
+        if (!r0 && mailsToday() <= REPORT_MAILS_PER_DAY) await reportMail(env, rep, url);   // the song's first report tells the owner straight away (REPORT_MAIL)
         return json(req, 200, { ok: true });
       }
       if (req.method === 'DELETE' && !part) { if (!(await isOwner())) return json(req, 403, { error: 'owner' }); return json(req, 200, { deleted: await deletePrefix(B, base) }); }
@@ -265,7 +280,7 @@ async function handle(req, env) {
       if (p[2] === 'codes' && req.method === 'PUT') {   // a list of unused Noodle Pro offer codes, added to the pool
         const buf = await readLimited(req, 256 * 1024); let codes; try { codes = JSON.parse(new TextDecoder().decode(buf)); } catch { return json(req, 400, { error: 'json' }); }
         if (!Array.isArray(codes)) return json(req, 400, { error: 'list' }); const cur = await B.get('rewards/pool.json'), pool = cur ? await cur.json() : [];
-        for (const c of codes) if (typeof c === 'string' && /^[A-Z0-9]{6,32}$/.test(c) && !pool.includes(c)) pool.push(c);
+        for (const c of codes) if (typeof c === 'string' && /^[A-Z0-9]{6,32}$/.test(c) && !pool.includes(c) && !(await B.head(`rewards/given/${c}.json`))) pool.push(c);   // never a code already handed out
         await B.put('rewards/pool.json', JSON.stringify(pool)); return json(req, 200, { pool: pool.length });
       }
       if (p[2] === 'songs' && SONG.test(p[3] || '')) {   // the owner deals with a reported song: take it down, or put it back
@@ -284,12 +299,19 @@ async function handle(req, env) {
         const page = await B.list({ prefix: url.searchParams.get('prefix') || 'takes/', cursor: url.searchParams.get('cursor') || undefined, limit: 1000 });
         return json(req, 200, { keys: page.objects.map((o) => ({ key: o.key, size: o.size, uploaded: o.uploaded })), cursor: page.truncated ? page.cursor : null });
       }
+      if (p[2] === 'usage') {   // how much is stored, by kind (the free plan holds 1 GB); reads every key's size, so it is for the owner only
+        const by = {}; let cursor, total = 0, keys = 0;
+        do { const page = await B.list({ cursor, limit: 1000 }); for (const o of page.objects) { const k = o.key.split('/')[0], z = o.size || 0; by[k] = by[k] || { keys: 0, mb: 0 }; by[k].keys++; by[k].mb += z / 1048576; total += z; keys++; }
+          cursor = page.truncated ? page.cursor : undefined; } while (cursor);
+        for (const v of Object.values(by)) v.mb = Math.round(v.mb * 10) / 10;
+        return json(req, 200, { keys, mb: Math.round(total / 104857.6) / 10, of: 1024, by });
+      }
       if (p[2] === 'stats-exclude') { const o = await B.get('stats/exclude.json'); return json(req, 200, o ? await o.json() : []); }
       if (p[2] === 'stats') { const o = await B.get('stats/exclude.json'); return json(req, 200, await usageStats(env, url.searchParams.get('days'), o ? await o.json() : [])); }
       if (p[2] === 'get') {
         const key = url.searchParams.get('key') || ''; if (!/^(takes|signups|errors|songs|invites|rewards)\//.test(key)) return json(req, 400, { error: 'key' });
         const o = await B.get(key); if (!o) return json(req, 404, { error: 'not found' });
-        return new Response(o.body, { headers: { 'Content-Type': key.endsWith('.json') ? 'application/json' : 'audio/wav' } });
+        return new Response(o.body, { headers: { 'Content-Type': key.endsWith('.json') ? 'application/json' : 'audio/wav', ...NOSNIFF } });
       }
       return json(req, 404, { error: 'not found' });
     }
@@ -385,7 +407,7 @@ async function listenPage(req, env, B, id) {
 main{width:min(420px,100% - 32px);text-align:center}h1{font-size:30px;margin:6px 0 2px}.wm{font:800 22px system-ui;letter-spacing:.02em}.wm b{color:#f1c75b}p{color:#9aa1ad;margin:6px 0 18px}
 audio{width:100%;margin:12px 0 20px}a.btn{display:block;padding:14px;border-radius:12px;background:#f1c75b;color:#121418;font-weight:700;text-decoration:none;margin:10px 0}
 a.alt{background:#262a31;color:#eceef2}small{display:block;color:#6b7280;margin-top:22px}small button{background:none;border:0;color:#6b7280;text-decoration:underline;font:inherit;cursor:pointer}</style></head>
-<body><main><div class="wm">N<b>oo</b>dle</div>${body}</main></body></html>`, { status, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'public, max-age=300' } });
+<body><main><div class="wm">N<b>oo</b>dle</div>${body}</main></body></html>`, { status, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'public, max-age=300', ...NOSNIFF } });
   if (!SONG.test(id)) return page('Not found', '<h1>Song not found</h1><p>This link is not right.</p>', 404);
   const m = await B.get(`songs/${id}/meta.json`), meta = m ? await m.json() : null;
   if (!meta || meta.reports >= REPORTS_TO_HIDE) return page('Not found', '<h1>Song not found</h1><p>It may have been deleted, or the link has expired.</p>', 404);
@@ -406,7 +428,7 @@ ${env.APP_STORE_ID ? `<meta name="apple-itunes-app" content="app-id=${esc(env.AP
 <style>:root{color-scheme:dark}body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#121418;color:#eceef2;font:16px/1.45 -apple-system,system-ui,sans-serif}
 main{width:min(420px,100% - 32px);text-align:center}h1{font-size:28px;margin:6px 0 2px}.wm{font:800 22px system-ui}.wm b{color:#f1c75b}p{color:#9aa1ad;margin:8px 0 18px}
 a.btn{display:block;padding:14px;border-radius:12px;background:#f1c75b;color:#121418;font-weight:700;text-decoration:none;margin:10px 0}a.alt{background:#262a31;color:#eceef2}</style></head>
-<body><main><div class="wm">N<b>oo</b>dle</div>${body}</main></body></html>`, { status: INVITE.test(c) ? 200 : 404, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+<body><main><div class="wm">N<b>oo</b>dle</div>${body}</main></body></html>`, { status: INVITE.test(c) ? 200 : 404, headers: { 'Content-Type': 'text/html; charset=utf-8', ...NOSNIFF } });
 }
 // Apple DeviceCheck: is this a real device running Noodle, and has it joined an invite before? Bit 0 = "joined". Returns 'ok', 'used' or 'bad'.
 async function dcJwt(env) {

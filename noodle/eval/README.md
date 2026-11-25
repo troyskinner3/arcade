@@ -791,3 +791,10 @@ the note editor's Today / Tap notes button flips one take between them. The fing
 - Alerts: `.github/workflows/noodle-health.yml` (service up every 30 minutes; crash reports and reported songs daily, with the
   NOODLE_ADMIN_KEY secret). Tried against the live service from here.
 - Tests: `errors_test.js` now also checks a broken song file and Pro on a non-local host.
+
+## Takes service hardening (25 Nov, security session)
+- Service only (`noodle-api/`): audio must be exactly the WAV the app writes (checked against the app's own takes at 48, 44.1 and 16 kHz
+  and a 35 s preview, 1.29 MB); `nosniff` on every reply; report emails only on a song's first report (30 a day at most); reports stop
+  being stored after 10; a Pro code handed out is marked and never handed out again; `GET /v1/admin/usage` storage meter.
+- `invite_test.js` uploads a new offer code each run (the service now refuses a code it already handed out, so reruns against the same
+  local service failed).

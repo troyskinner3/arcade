@@ -8,7 +8,10 @@ function bucket() { const m = new Map(); return { m,
   async delete(ks) { for (const k of [].concat(ks)) m.delete(k); },
   async list({ prefix = '' }) { return { objects: [...m.keys()].filter((k) => k.startsWith(prefix)).map((k) => ({ key: k, size: m.get(k).byteLength, uploaded: new Date() })), truncated: false }; } }; }
 const I = 'a'.repeat(22), I2 = 'b'.repeat(22), U = 'https://x.test';
-const wav = () => { const b = new Uint8Array(100); b.set(new TextEncoder().encode('RIFF'), 0); b.set(new TextEncoder().encode('WAVE'), 8); return b.buffer; };
+// a WAV like the app's: 44-byte header, 16-bit mono PCM, sizes matching the file
+const wav = (bytes = 100) => { const b = new ArrayBuffer(bytes), d = new DataView(b), w = (o, t) => [...t].forEach((c, i) => d.setUint8(o + i, c.charCodeAt(0)));
+  w(0, 'RIFF'); d.setUint32(4, bytes - 8, true); w(8, 'WAVE'); w(12, 'fmt '); d.setUint32(16, 16, true); d.setUint16(20, 1, true); d.setUint16(22, 1, true);
+  d.setUint32(24, 16000, true); d.setUint32(28, 32000, true); d.setUint16(32, 2, true); d.setUint16(34, 16, true); w(36, 'data'); d.setUint32(40, bytes - 44, true); return b; };
 const call = (env, method, path, body, headers = {}) => worker.fetch(new Request(U + path, { method, body, headers }), env);
 const meta = (o = {}) => JSON.stringify({ consent: { v: 1, age13: true }, heard: { notes: [] }, ua: 'x', ...o });
 
@@ -175,7 +178,10 @@ test('invites: a code per phone, friends join once (never your own code), 3 frie
   await call(env, 'PUT', `/v1/invites/${me.code}/join`, null, H(F('c')));   // the same friend again: not counted twice
   let r = await mine(I); assert.equal(r.joined, 3); assert.equal(r.reward, null);   // earned, but the pool is empty
   assert.equal((await call(env, 'PUT', '/v1/admin/codes', JSON.stringify(['PROCODE1', 'PROCODE2', 'bad code']), { Authorization: 'Bearer k' })).status, 200);
-  r = await mine(I); assert.equal(r.reward, 'PROCODE1'); assert.equal((await mine(I)).reward, 'PROCODE1');
+  r = await mine(I); assert.ok(['PROCODE1', 'PROCODE2'].includes(r.reward)); assert.equal((await mine(I)).reward, r.reward);
+  assert.ok(env.TAKES.m.has(`rewards/given/${r.reward}.json`));   // marked, so it is never handed out again
+  await call(env, 'PUT', '/v1/admin/codes', JSON.stringify([r.reward]), { Authorization: 'Bearer k' });   // re-uploading it doesn't put it back
+  assert.deepEqual(JSON.parse(new TextDecoder().decode(env.TAKES.m.get('rewards/pool.json'))), ['PROCODE1', 'PROCODE2'].filter((c) => c !== r.reward));
   assert.match(await (await call(env, 'GET', `/i/${me.code}`)).text(), new RegExp(me.code));
 });
 test('invites with DeviceCheck: a join needs a real device token, and an iPhone can join only once', async () => {
@@ -257,8 +263,7 @@ test('daily storage budgets: song links and take audio stop at their daily total
   env.TAKES.m.set(`quota/songs/${day}.json`, enc({ n: 3, bytes: 0 }));
   assert.equal((await call(env, 'PUT', '/v1/songs/sBUDGET0001', song, { 'X-Owner': I })).status, 200);
   assert.ok(JSON.parse(new TextDecoder().decode(env.TAKES.m.get(`quota/songs/${day}.json`))).bytes > 1024 * 1024);   // preview room counted
-  const big = new Uint8Array(1600 * 1024); big.set(new TextEncoder().encode('RIFF'), 0); big.set(new TextEncoder().encode('WAVE'), 8);
-  assert.equal((await call(env, 'PUT', '/v1/songs/sBUDGET0001/preview', big.buffer, { 'X-Owner': I })).status, 413);   // previews are 1.5 MB at most
+  assert.equal((await call(env, 'PUT', '/v1/songs/sBUDGET0001/preview', wav(1600 * 1024), { 'X-Owner': I })).status, 413);   // previews are 1.5 MB at most
   await call(env, 'PUT', `/v1/takes/${I}/take01/meta`, meta());
   env.TAKES.m.set(`quota/audio/${day}.json`, enc({ n: 9, bytes: 150 * 1024 * 1024 - 50 }));
   assert.equal((await call(env, 'PUT', `/v1/takes/${I}/take01/audio`, wav())).status, 429);
@@ -270,4 +275,22 @@ test('reads are limited too (240 a minute from one address), so a flood cannot u
   for (let i = 0; i < 245; i++) last = (await call(env, 'GET', '/v1/songs/sNOSUCHSONG1', null, { 'CF-Connecting-IP': '203.0.113.20' })).status;
   assert.equal(last, 429);
   assert.equal((await call(env, 'GET', '/v1/songs/sNOSUCHSONG1', null, { 'CF-Connecting-IP': '203.0.113.21' })).status, 404);
+});
+
+test('only the WAV the app writes is stored, and every reply tells browsers not to guess its type', async () => {
+  const env = { TAKES: bucket() }; await call(env, 'PUT', `/v1/takes/${I}/take01/meta`, meta());
+  const bad = (f) => { const b = wav(200); f(new DataView(b)); return b; };
+  for (const b of [bad((d) => d.setUint32(4, 1, true)), bad((d) => d.setUint16(20, 3, true)), bad((d) => d.setUint8(36, 0x58)), bad((d) => d.setUint32(40, 9999, true))])
+    assert.equal((await call(env, 'PUT', `/v1/takes/${I}/take01/audio`, b)).status, 415);
+  const ok = await call(env, 'PUT', `/v1/takes/${I}/take01/audio`, wav(200)); assert.equal(ok.status, 200); assert.equal(ok.headers.get('X-Content-Type-Options'), 'nosniff');
+  assert.equal((await call(env, 'GET', '/s/sNOSUCHSONG1')).headers.get('X-Content-Type-Options'), 'nosniff');
+});
+test('reports stop being stored after 10 (the song is hidden from the first); the owner sees storage use by kind', async () => {
+  const env = { TAKES: bucket(), ADMIN_KEY: 'k' }, song = JSON.stringify({ noodle: 'songs', songs: [{ title: 'x', song: { tracks: [] } }] });
+  await call(env, 'PUT', '/v1/songs/sREPORTED001', song, { 'X-Owner': I });
+  for (let i = 0; i < 14; i++) assert.equal((await call(env, 'POST', '/v1/songs/sREPORTED001/report', JSON.stringify({ reason: 'Spam' }))).status, 200);
+  assert.equal(JSON.parse(new TextDecoder().decode(env.TAKES.m.get('songs/sREPORTED001/meta.json'))).reports, 10);
+  const u = await (await call(env, 'GET', '/v1/admin/usage', null, { Authorization: 'Bearer k' })).json();
+  assert.equal(u.of, 1024); assert.equal(u.by.songs.keys, 2); assert.ok(u.keys >= 3);
+  assert.equal((await call(env, 'GET', '/v1/admin/usage')).status, 401);
 });
