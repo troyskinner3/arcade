@@ -946,3 +946,20 @@ the note editor's Today / Tap notes button flips one take between them. The fing
   buffer (`setPreferredIOBufferDuration`). Press and hold the position counter to see the delay the phone reports (to check on the next build).
 - The scrolling editor first showed only 7 rows on the smallest phone (iPhone SE); rows shrink there (to 20 px) so about 10 fit.
 - `corr_test` and `keyroll_test` updated for the scrolling window (the full row lists are compared).
+
+## Round 29 B1 (owner's TestFlight notes, 26 Nov: fixes)
+- Mix effects tracks keep an empty R space, so M and S line up with every other track.
+- The selected-spot bar: Copy to another song only on a part (it did nothing on an empty spot), with a clearer icon; on an empty spot,
+  Paste here appears once something is copied and pastes at that spot (into that track when it's the same kind, else a new track). Pro.
+- Share: compact rows (icon, name, a short tag: WAV, Audio + MIDI; Video, Link to remix and DAW pack explain behind ⓘ; the rows line up).
+- Usage stats ⓘ: "They're sent with an anonymous ID that isn't linked to you" (was "a random number made only for this").
+- Teaching the crash: the take's sounds were all thrown away as metronome bleed (they land on the click, as asked); teaching now uses the
+  count-in's click measurement, and without one keeps sounds louder than −30 dB. The result shows on the teaching screen ("Noodle heard…",
+  not "I only heard…"). Closing the teaching or Fix late notes screen stops any playback.
+- Beats: once a beat is picked, Use this beat (Get Pro to use this beat for a Pro beat) is pinned to the bottom; closing without using one
+  puts the playhead back where it was (any preview that started playback does); a free beat is no longer named in the "is Pro" note.
+- Buzz timing goes to ±300 ms.
+- Sound delay: while stopped (every 5 s, and 0.8 s after coming back to the app) the delay the phone reports is compared with the audio
+  context's own start; grown by more than 80 ms (and over 120 ms), a new context replaces it (the song's sound is rebuilt). The hold-the-
+  position-counter readout counts restarts.
+- Tests: `b1_test.js`, `teachcrash_test.js` (new; the crash take was kept 1 time in 3 before, 5 in 5 after).

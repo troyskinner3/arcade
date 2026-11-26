@@ -69,6 +69,7 @@ Status: **confirmed** (owner agreed) or **proposed** (waiting on the owner).
 | Play pad settings (range, snap off, arpeggio mode, anything beyond the default pad): Pro, like Mix effects (two free, the rest Pro). Not built yet | confirmed Pro (owner, 25 Nov) |
 | Draw chords: in Draw, a line above or below notes adds a second voice (over a line redoes it). Suggest Free | proposed |
 | Note editor: scroll through every octave, Octave − / + for selected notes, drag a note's front edge, same-pitch overlap rule. Suggest Free (basic editing) | proposed |
+| Paste here (an empty spot in a track, after Copy to another song): part of copying a part between songs, which is Pro | Pro (as copying) |
 | Section types (Intro, Verse, Pre-chorus, Chorus, Drop, Bridge, Solo, Breakdown, Outro) with automatic numbering. Suggest Free | proposed |
 | Continue this (note editor •••): a short part grows into a phrase with a variation, an answer and an ending. Suggest Free | proposed |
 | Tap a rhythm (Add track → Tap it in): tapped timing becomes a melody in the key, fitted to the chords; Other notes. Suggest Free | proposed |

@@ -21,12 +21,25 @@ if(IOS) ['touchend','click'].forEach(ev=>document.addEventListener(ev,()=>{ if(t
    paused the audio, resume it; if what Noodle outputs is no longer a number (one bad value can silence a limiter for good), rebuild the master
    chain and every track's connections, then carry on playing. */
 let audioWatchT=0;
-function audioWatch(){ if(audioWatchT) return; audioWatchT=setInterval(()=>{ if(!ctx||!chain) return; if(playing&&ctx.state!=='running'&&ctx.state!=='closed'){ try{ ctx.resume(); }catch(e){} }
+let audioWatchN=0;
+function audioWatch(){ if(audioWatchT) return; audioWatchT=setInterval(()=>{ if(!ctx||!chain) return; if(!playing&&(++audioWatchN%5===0)) audioLagCheck(); if(playing&&ctx.state!=='running'&&ctx.state!=='closed'){ try{ ctx.resume(); }catch(e){} }
   if(!playing||!chain.mon) return; const a=new Float32Array(chain.mon.fftSize); chain.mon.getFloatTimeDomainData(a); if(a.every(Number.isFinite)) return; audioHeal(); },1000); }
 function audioHeal(){ const was=playing, at=was&&ctx?((ctx.currentTime-t0)%loopLen()+loopLen())%loopLen():playFrom; try{ if(playing){ stopAll(); playing=false; } }catch(e){} try{ mfxStop(); }catch(e){}
   try{ (chain.parts||[]).forEach(n=>{ try{ n.disconnect(); }catch(_){} }); }catch(e){}
   S.tracks.forEach(t=>{ try{ disposeTrack(t); }catch(e){} t._g=null; t._p=null; t._snd=null; t._src=null; });
   chain=buildChain(ctx,true); applyMaster(); try{ applyAllMix(); }catch(e){} playFrom=at||0; if(was){ try{ togglePlay(); }catch(e){} } }
+/* the sound got stuck late (owner, 26 Nov: after switching apps, the sound lagged the picture by ~1/8 note until a hard quit; a fresh audio
+   context fixed it). While nothing plays, the delay the phone reports is compared with what this context started with; if it has clearly grown,
+   a new context replaces it (the song is kept; its sound is rebuilt). Checked on coming back to the app and every few seconds while stopped. */
+let audioRestarts=0;
+function audioLagCheck(){ if(!ctx||playing||recState||ctx.state!=='running'||document.hidden) return; const d=outDelay();
+  if(ctx._base==null){ if(ctx.currentTime>1.5) ctx._base=d; return; }
+  if(d>Math.max(0.12,ctx._base+0.08)) audioRestart(); }
+function audioRestart(){ const old=ctx; try{ stopAll(); }catch(e){} playing=false; try{ mfxStop(); }catch(e){}
+  S.tracks.forEach(t=>{ try{ disposeTrack(t); }catch(e){} t._g=null; t._p=null; t._snd=null; t._src=null; t._dirty=true; });
+  metroGain=null; metroSrc=null; metroBuf=null; metroDirty=true; renderedLen=0; ctx=null; chain=null; audioRestarts++;
+  try{ old.close(); }catch(e){} ctxMake(); try{ applyAllMix(); }catch(e){} scheduleRender(); }
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden) setTimeout(audioLagCheck,800); });
 /* the one place the audio context is made (ensureCtx, and the warm-up at start): master chain, the Bitcrusher's worklet, the watchdog */
 function ctxMake(){ const AC=window.AudioContext||window.webkitAudioContext; ctx=new AC({latencyHint:'interactive'});
   chain=buildChain(ctx, true); applyMaster(); fxWorklet(ctx); audioWatch(); S.tracks.forEach(t=>{ t._dirty=true; }); }
@@ -100,7 +113,7 @@ function pvTry(tr, fields, label, part){ for(const k in fields){ if(!tr._pvOrig)
   pvOpen(label, part||tr); tr._dirty=true; tr._tuned=null; tr._harm=null; scheduleRender(); }
 /* the start of a preview: the part plays, looping, so you hear it at once */
 function pvOpen(label, part){ if(!proPv) proPv={labels:[]}; if(!proPv.labels.includes(label)) track('pro_try',label); proPv.labels=proPv.labels.filter(x=>x!==label).concat([label]); if(part) pvPlay(part); }
-function pvPlay(t){ const p=proPv; if(!p||p.started!=null||recState) return; p.sec=s2.sec; p.loop=s2.loop; p.started=!playing;
+function pvPlay(t){ const p=proPv; if(!p||p.started!=null||recState) return; p.sec=s2.sec; p.loop=s2.loop; p.started=!playing; p.cur0=s2.cur; p.from0=playFrom;   /* where the playhead was: it goes back there when the preview ends */
   try{ if(hasContent(t)&&!t.guide) s2SecSet(t); }catch(e){} if(!playing) togglePlay(); }
 /* a free choice made while previewing (say Piano after trying Trumpet) becomes the real value */
 function pvForget(tr, keys){ if(!tr._pvOrig) return; keys.forEach(k=>delete tr._pvOrig[k]); if(!Object.keys(tr._pvOrig).length) delete tr._pvOrig; }
@@ -110,7 +123,7 @@ function pvEnd(quiet){ const p=proPv; let back=false;
   if(S._pvOrig){ for(const k in S._pvOrig){ if(JSON.stringify(S[k])!==JSON.stringify(S._pvOrig[k])) back=true; S[k]=S._pvOrig[k]; } delete S._pvOrig; scaleCache=null; S.tracks.forEach(t=>{ if(t.hits) t._dirty=true; }); }   /* a kit tried */
   const tmp=S.tracks.filter(t=>t._pvTemp); if(tmp.length){ back=true; tmp.forEach(t=>{ try{ disposeTrack(t); }catch(e){} }); S.tracks=S.tracks.filter(t=>!t._pvTemp); keyCache=null; }
   proPv=null; if(!p&&!back) return false;
-  if(p&&p.started!=null){ s2.sec=p.sec; s2.loop=p.loop; try{ $('s2Loop').setAttribute('aria-pressed',String(!!s2.loop)); }catch(e){} if(p.started&&playing) togglePlay(); }
+  if(p&&p.started!=null){ s2.sec=p.sec; s2.loop=p.loop; try{ $('s2Loop').setAttribute('aria-pressed',String(!!s2.loop)); }catch(e){} if(p.started&&playing) togglePlay(); if(p.started&&p.cur0!=null){ s2.cur=p.cur0; playFrom=p.from0; s2.pos=-1; } }   /* closing a preview puts the playhead back (owner, 26 Nov: the next take started at bar 5) */
   if(back){ try{ renderTracks(); }catch(e){} scheduleRender(); if(!quiet&&p&&p.labels&&p.labels.length&&!isPro()) proNote(p.labels.slice(-2)); } else { try{ s2Render(); }catch(e){} }
   return back; }
 /* someone bought Pro while trying something: keep it */
