@@ -10,7 +10,7 @@ const {chromium,devices}=require('playwright');
   // a voice track: record from bar 3 until stopped
   await p.tap('#s2Add'); await p.tap('#nxSheet [data-k="vox"]'); await p.waitForTimeout(300);
   const box=await p.$eval('#s2Marks',e=>{ const r=e.getBoundingClientRect(); return {x:r.left,y:r.top+10}; }); await p.mouse.click(box.x+44*2.3,box.y); await p.waitForTimeout(200);
-  await p.tap('#s2RecB'); await p.waitForFunction(()=>!!recState,null,{timeout:10000});
+  await p.tap('#s2RecB'); await p.evaluate(()=>{ const b=document.querySelector('#nxSheet [data-rin="mic"]'); if(b) b.click(); }); await p.waitForFunction(()=>!!recState,null,{timeout:10000});
   const w=await p.evaluate(()=>{ const r=recState, cx=window.__ctx, o=cx.createOscillator(), g=cx.createGain(); o.type='sawtooth'; o.frequency.value=220; g.gain.value=0; g.gain.setTargetAtTime(0.2,r.start,0.02); g.gain.setTargetAtTime(0,r.start+3.2,0.02); o.connect(g); g.connect(window.__dst); o.start(r.start); o.stop(r.start+3.5); return {wait:(r.start-cx.currentTime)+3.6, off:(S.tracks.find(t=>t.id===s2.recId)||{}).off, pre:r.preroll}; });
   out.voxRec=w; await p.waitForTimeout(w.wait*1000); await p.tap('#s2RecB'); await p.waitForFunction(()=>!$('s2Take').hidden,null,{timeout:25000}); await p.waitForTimeout(800); out.afterVox=await st(); await p.tap('#s2TkOk'); if(await p.evaluate(()=>playing)) await p.tap('#s2Play');
   out.voxAudio=await p.evaluate(async()=>{ await renderDirty(); const v=S.tracks.find(t=>t.inst==='vox'), L=loopLen(), bar=L/S.bars, d=v._buf.getChannelData(0), r=[]; for(let i=0;i<S.bars;i++){ let e=0; const a=Math.floor(i*bar*ctx.sampleRate), z=Math.floor((i+1)*bar*ctx.sampleRate); for(let k=a;k<z;k+=7) e+=d[k]*d[k]; r.push(e>0.5?1:0); } return r.join(''); });

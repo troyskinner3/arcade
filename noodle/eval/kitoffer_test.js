@@ -5,14 +5,14 @@ const {chromium,devices}=require('playwright');
     await p.addInitScript(()=>{ navigator.mediaDevices.getUserMedia=async()=>{ const cx=window.__ctx, dst=cx.createMediaStreamDestination(); window.__dst=dst; return dst.stream; }; });
     await p.goto('http://localhost:8800/noodle-s2.html?studio'); await p.waitForTimeout(1000); await p.evaluate(()=>{ ensureCtx(); window.__ctx=ctx; return ctx.resume(); }); return {c,p}; };
   // 1. Not now
-  { const {c,p}=await page(); await p.tap('#s2RecB'); await p.tap('#nxSheet [data-k="kit"]'); await p.waitForTimeout(250);
+  { const {c,p}=await page(); await p.tap('#s2RecB'); await p.tap('#nxSheet [data-k="kit"]'); await p.evaluate(()=>{ const b=document.querySelector('#nxSheet [data-rin="mic"]'); if(b) b.click(); }); await p.waitForTimeout(250);
     out.offer={shown:await p.evaluate(()=>!!$('kitTeach')), title:await p.$eval('#nxSheet h2',e=>e.textContent)}; await p.screenshot({path:'results/kit_offer.png'});
     await p.tap('#kitSkip'); await p.waitForFunction(()=>!!recState,null,{timeout:10000}); out.notNow={recording:true, teach:await p.evaluate(()=>!!recState.teach)}; await p.tap('#s2RecB'); await p.waitForFunction(()=>!recState,null,{timeout:20000}); await p.waitForTimeout(800);
     if(await p.evaluate(()=>!$('s2Take').hidden)) await p.tap('#s2TkDel'); await p.waitForTimeout(300);
     await p.evaluate(()=>{ s2.armId=s2Lanes().find(L=>L.tracks[0].inst==='kit').id; }); await p.tap('#s2RecB'); await p.waitForTimeout(400); out.secondTime={offer:await p.evaluate(()=>!!$('kitTeach')&&!$('nxScrim').hidden), recording:await p.evaluate(()=>!!recState)};
     if(await p.evaluate(()=>!!recState)){ await p.tap('#s2RecB'); await p.waitForFunction(()=>!recState,null,{timeout:20000}); } await c.close(); }
   // 2. Teach my sounds
-  { const {c,p}=await page(); await p.tap('#s2RecB'); await p.tap('#nxSheet [data-k="kit"]'); await p.waitForTimeout(250); await p.tap('#kitTeach'); const said=[];
+  { const {c,p}=await page(); await p.tap('#s2RecB'); await p.tap('#nxSheet [data-k="kit"]'); await p.evaluate(()=>{ const b=document.querySelector('#nxSheet [data-rin="mic"]'); if(b) b.click(); }); await p.waitForTimeout(250); await p.tap('#kitTeach'); const said=[];
     for(let k=0;k<3;k++){ await p.waitForFunction(()=>recState&&recState.teach,null,{timeout:15000}); said.push(await p.evaluate(()=>recState.teach.d));
       const w=await p.evaluate(()=>{ const r=recState, cx=window.__ctx, dst=window.__dst, beat=60/S.bpm, d=r.teach.d, sr=cx.sampleRate;
         for(let i=0;i<8;i++){ const t=r.start+i*beat+0.01; if(t>r.end-0.1) break; const n=cx.createBufferSource(), buf=cx.createBuffer(1,Math.round(sr*0.2),sr), x=buf.getChannelData(0); let y=0,ph=0;

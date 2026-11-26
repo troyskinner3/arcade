@@ -5,7 +5,7 @@ const {chromium,devices}=require('playwright');
   await p.goto('http://localhost:8800/noodle-s2.html?studio'); await p.waitForTimeout(1200); const out={};
   out.start=await p.evaluate(()=>({s2:!$('s2').hidden, hint:!!document.querySelector('.s2-hint'), nav:$('nxNav').hidden})); await p.screenshot({path:'results/s2a.png'});
   await p.evaluate(()=>{ ensureCtx(); window.__ctx=ctx; return ctx.resume(); });
-  await p.tap('#s2RecB'); await p.waitForTimeout(300); out.sheet=await p.$eval('#nxSheet h2',e=>e.textContent); await p.tap('#nxSheet [data-k="lead"]'); await p.waitForTimeout(500);
+  await p.tap('#s2RecB'); await p.waitForTimeout(300); out.sheet=await p.$eval('#nxSheet h2',e=>e.textContent); await p.tap('#nxSheet [data-k="lead"]'); await p.evaluate(()=>{ const b=document.querySelector('#nxSheet [data-rin="mic"]'); if(b) b.click(); }); await p.waitForTimeout(500);
   out.rec=await p.evaluate(()=>{ const r=recState; if(!r) return null; const beat=60/S.bpm; window.__sing(r.start,[[0,beat*.9,196],[beat,beat*.9,220],[2*beat,beat*.9,247],[3*beat,beat*.9,262],[4*beat,beat*1.8,247]]); return {label:$('s2RecL').textContent, cls:$('s2').classList.contains('recording'), end:r.end-r.start}; });
   await p.waitForTimeout(600); await p.screenshot({path:'results/s2b.png'});
   await p.waitForTimeout(6500); await p.tap('#s2RecB'); await p.waitForFunction(()=>!recState,null,{timeout:8000}); await p.waitForFunction(()=>!$('s2Take').hidden,null,{timeout:15000}); await p.waitForTimeout(800);

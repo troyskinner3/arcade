@@ -969,3 +969,15 @@ the note editor's Today / Tap notes button flips one take between them. The fing
   local takes service or check timing against the clock (taps, the mic, the metronome, render speed) run afterwards one at a time, with
   nothing else running (SOLO list). A script that fails in parallel is moved to SOLO, never retried. Before switching: three full runs in
   parallel all passed (91 scripts, 720-722 s each), against about 30 minutes one at a time.
+
+## Round 29 B2a (owner, 26 Nov: pads are ways to record into a track)
+- Record on an instrument track asks once "How do you want to record?" (rows with ⓘ): drums Mic · Drum pads; keys, pad, arp Mic · Chord
+  pads · Note pads; lead, bass Mic · Note pads · Tap a rhythm · Play pad. The answer is kept on the track (`rin`); Record with (in the
+  track's sheet, under Sound) changes it. Vocals and transitions only use the mic and never ask. Tap it in left Add track.
+- The pad screen records into that track: its sound, octave and chord type; from the playhead's bar until Stop (up to 16 bars; a Stop just
+  after a bar line ends at that line; the bars any tap landed in are kept). The take is a new part on the track; Keep, Retake, plus Add
+  more (drums, notes; it records over the part as long as it is) or Other notes (rhythm). Back discards. No octave change to the track.
+- Pads sit where the instrument sounds best (TAP_CENTER, minus the track's octave): a bass's note pads, Play pad and tapped melodies are low.
+- Tests: `tapin_test.js` rewritten for the Record flow (the question once, straight in after, Record with, vocals never ask, chord take
+  stopped in bar 3, drum layers, bass range, rhythm, Play pad, nothing saved before Keep).
+- Recording tests (review1, kitoffer, s2_test, s2_linear, s2_replace, s2_rest) pick Mic at the new question.

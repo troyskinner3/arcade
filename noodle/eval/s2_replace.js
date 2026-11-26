@@ -14,7 +14,7 @@ const {chromium,devices}=require('playwright');
   // real take: an 8-bar part, record 1 bar at bar 3 -> left 2 bars, new 1 bar, right 5 bars; discard restores
   await p.evaluate(()=>{ ensureCtx(); window.__ctx=ctx; S.bars=8; const t=mkTrack('lead',{id:S.nextId++,off:0,len:8,rep:false,lenSet:true,notes:Array.from({length:32},(_,i)=>({s:i*4,l:4,p:60+i%5,v:.8,x:true}))}); S.tracks.push(t); s2.armId=t.id; s2.cur=2.2; save(); flushSave(); renderTracks(); return ctx.resume(); });
   const state=()=>p.evaluate(()=>({bars:S.bars, clips:S.tracks.map(t=>`${(t.off||0)/16}+${t.len}:${(t.notes||[]).length}`).sort().join(' ')}));
-  out.before=await state(); await p.tap('#s2RecB'); await p.waitForFunction(()=>!!recState,null,{timeout:8000});
+  out.before=await state(); await p.tap('#s2RecB'); await p.evaluate(()=>{ const b=document.querySelector('#nxSheet [data-rin="mic"]'); if(b) b.click(); }); await p.waitForFunction(()=>!!recState,null,{timeout:8000});
   const w=await p.evaluate(()=>{ const r=recState, beat=60/S.bpm; window.__sing(r.start,[[0,beat*.9,196],[beat,beat*.9,220],[2*beat,beat*.9,247]]); return (r.start-ctx.currentTime)+3*beat+0.4; });
   await p.waitForTimeout(w*1000); await p.tap('#s2RecB'); await p.waitForFunction(()=>!$('s2Take').hidden,null,{timeout:20000}); await p.waitForTimeout(600); out.afterTake=await state(); await p.screenshot({path:'results/rep1.png'});
   await p.tap('#s2TkDel'); await p.waitForFunction(()=>S.bars===8&&S.tracks.length===1,null,{timeout:15000}).catch(()=>{}); out.afterDiscard=await state();
