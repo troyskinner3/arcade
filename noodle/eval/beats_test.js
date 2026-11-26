@@ -19,7 +19,7 @@ const {chromium,devices}=require('playwright');
   await p.evaluate(()=>{ PRO.owned=true; S.key='0'; S.scale='major'; S.bpm=100; keyCache=null; S.tracks=[mkTrack('lead',{id:S.nextId++,off:0,len:4,rep:false,lenSet:true,notes:[{s:0,l:8,p:60,v:.8},{s:8,l:8,p:64,v:.8}]})]; save(); renderTracks(); s2AddSheet(false); });
   await p.tap('#s2AddBeat'); await p.tap('[data-beat="pop2"]'); await p.waitForTimeout(300); await p.tap('#btUse'); await p.waitForTimeout(200);
   out.follow=await p.evaluate(()=>({bpm:S.bpm, bassPcs:[...new Set(S.tracks.find(t=>t.name==='Bass').notes.map(n=>n.p%12))].sort((a,b)=>a-b).join(','), tracks:S.tracks.length}));
-  const want={offer:true,tiles:12,proTiles:6,try:{tracks:'kit,bass,pad,arp',bpm:140,key:9,playing:true},trySaved:{n:0,bpm:94},used:{n:4,bpm:140},proTry:'Brushes',proAsked:true,proAfter:0,follow:{bpm:100,bassPcs:'0,5,7,9',tracks:5}};
+  const want={offer:true,tiles:15,proTiles:6,try:{tracks:'kit,bass,pad,arp',bpm:140,key:9,playing:true},trySaved:{n:0,bpm:94},used:{n:4,bpm:140},proTry:'Brushes',proAsked:true,proAfter:0,follow:{bpm:100,bassPcs:'0,5,7,9',tracks:5}};
   for(const [k,v] of Object.entries(want)) if(JSON.stringify(out[k])!==JSON.stringify(v)) errs.push(k+': '+JSON.stringify(out[k]));
   if(!(out.mix>-40)) errs.push('mix '+out.mix);
   console.log(JSON.stringify({...out,errs})); await b.close(); })();

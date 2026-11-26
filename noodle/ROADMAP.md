@@ -160,9 +160,9 @@ Draft copy is in `noodle-ios/APP_STORE_LISTING.md`.
 - [x] Livelier rhythms (syncopation, pushes, genre grooves) in everything Noodle writes (round 29: GROOVES; chorus comping and bass syncopated, bass can lock to the kick).
 - [x] Finish song: the song's real length, its sections (marked or worked out), each filled for its role; no filling empty bars (round 29).
 - [x] Modern-genre data: Chordonomicon (MIT), McGill Billboard (CC0), Groove MIDI (CC BY 4.0), approved by the owner 26 Nov; genre.json; credited in More → Credits.
-- [ ] More free beats for the genres the data covers but the beat list doesn't (rock, country, reggaeton with a hand-written dembow); then Finish song can pick a genre beyond hip hop, pop and R&B.
-- [ ] Desktop web app tied to the phone account (songs synced; export the DAW pack straight on the laptop). Later; needs accounts and sync.
-- [ ] Laptop layout: use the width (taller curve editor, effect list as a column). Later.
+- [x] More free beats (owner, 26 Nov): Garage Lights (rock), Open Road (country), Dembow Nights (reggaeton, hand-written dembow); Finish song now also picks rock, country and Latin material.
+- [ ] Desktop web app tied to the phone account (songs synced; export the DAW pack straight on the laptop). Post-launch; needs accounts and sync.
+- [ ] Laptop layout: use the width (taller curve editor, effect list as a column). Post-launch (owner, 26 Nov).
 - [x] Count-in chord moved to Mic and timing → More settings.
 - [x] Timeline lines at the snap size (merging to beats, then bars, zoomed out).
 - [x] Pro badges on the Mix effect buttons no longer cut off.

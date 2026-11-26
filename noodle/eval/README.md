@@ -1007,3 +1007,10 @@ the note editor's Today / Tap notes button flips one take between them. The fing
   apart (merging to beats, then bars only); room above the Mix effect buttons for the Pro badge.
 - Tests: `finish_test.js` rewritten (grown drums-only song, the example song, marked sections with a melody, liveliness, genre data, the
   melody model); `b2_test.js` (new).
+
+## Round 29 B3 (owner: more free beats)
+- Three free beats, free sounds only: Garage Lights (rock, 122, E minor: Rock kit, 8th hats, a crash every 2 bars, 8th-note rock bass, organ
+  power chords), Open Road (country, 100, G major: a train beat, boom-chick piano on the off-beats, bass on 1 and 3, a plucked arp), Dembow
+  Nights (reggaeton, 95, A minor: four-on-the-floor kick, the dembow snare and clap on the 4th and 7th 16th of each half bar, an 808 bass and
+  key stabs on the dembow). Finish song maps them to rock, country and Latin material (genre.json).
+- Tests: `beats_test` counts 15 beats; `b2_test` plays each new beat (sound, free sounds, in key).
