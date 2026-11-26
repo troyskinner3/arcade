@@ -17,8 +17,11 @@ const {chromium,devices}=require('playwright');
     o.newBeats=[]; for(const id of ['rock1','country1','regg1']){ await projNew(); await w(100); const bt=BEATS.find(x=>x.id===id); beatTry(bt); beatUse(); if(playing) await togglePlay(); await renderDirty();
       const mix=await renderMix(1,false); let q=0; const d=mix.getChannelData(0); for(let i=0;i<d.length;i++) q+=d[i]*d[i]; const K=currentKey(), sc=SCALES[PARENT[K.scale]||K.scale];
       o.newBeats.push(id+':'+(!bt.pro)+':'+(10*Math.log10(q/d.length+1e-12)>-40)+':'+S.tracks.every(t=>!PRO_SOUNDS.has(t.sound))+':'+S.tracks.filter(t=>t.notes).every(t=>t.notes.every(n=>sc.includes(((Math.round(n.p)-K.tonic)%12+12)%12)))); }
+    // odd values from a song file: an unknown record method asks again; an unknown section name counts as a verse
+    await projNew(); await w(100); const kx=mkTrack('keys',{id:S.nextId++,rin:'bogus'}); S.tracks.push(kx); renderTracks(); s2.armId=kx.id; s2Record(); await w(200); o.oddRin=!!document.querySelector('#nxSheet [data-rin]')&&!tapIn; nxClose();
+    S.secs=[{a:0,b:4,name:'constructor'},{a:4,b:8,name:'Chorus'}]; o.oddSec=finishSections(8,8,false).secs.map(x=>x.name).join(',');
     return o; });
-  const want={newBeats:undefined, tempoNoChord:true, micHasChord:true, q44:'11px/true', e120:'15px/true', e30:'100%/false', bar:'100%/false', badgeInside:true, credits:true};
+  const want={newBeats:undefined, oddRin:true, oddSec:'Verse,Chorus', tempoNoChord:true, micHasChord:true, q44:'11px/true', e120:'15px/true', e30:'100%/false', bar:'100%/false', badgeInside:true, credits:true};
   if(r.newBeats.join()!=='rock1:true:true:true:true,country1:true:true:true:true,regg1:true:true:true:true') errs.push('new beats: '+r.newBeats.join());
   for(const [k,v] of Object.entries(want)) if(k!=='newBeats'&&r[k]!==v) errs.push(k+': '+JSON.stringify(r[k]));
   console.log(JSON.stringify({...r,errs})); await b.close(); })();
