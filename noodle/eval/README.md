@@ -963,3 +963,9 @@ the note editor's Today / Tap notes button flips one take between them. The fing
   context's own start; grown by more than 80 ms (and over 120 ms), a new context replaces it (the song's sound is rebuilt). The hold-the-
   position-counter readout counts restarts.
 - Tests: `b1_test.js`, `teachcrash_test.js` (new; the crash take was kept 1 time in 3 before, 5 in 5 after).
+
+## Faster test runs (26 Nov)
+- `run.sh` runs scripts 3 at a time (JOBS=3; `--serial` or JOBS=1 for one at a time) and prints how long each took. Scripts that use the
+  local takes service or check timing against the clock (taps, the mic, the metronome, render speed) run afterwards one at a time, with
+  nothing else running (SOLO list). A script that fails in parallel is moved to SOLO, never retried. Before switching: three full runs in
+  parallel all passed (91 scripts, 720-722 s each), against about 30 minutes one at a time.
