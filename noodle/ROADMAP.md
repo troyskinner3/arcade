@@ -149,8 +149,14 @@ Draft copy is in `noodle-ios/APP_STORE_LISTING.md`.
 - [ ] Pads as ways to record into a track (owner, 26 Nov): Record on an instrument track asks once "How do you want to record?" (Mic, Drum pads,
   Chord pads, Note pads, Tap a rhythm, Play pad, by track type), remembered per track, changed with Record with in the track sheet; takes run
   from the playhead until Stop (up to 16 bars) like mic takes; Tap it in leaves Add track.
-- [ ] Mix effects track header: M and S in the same right-hand spot as other tracks (no R).
-- [ ] The copy button on an empty spot does nothing: hide it there (show Paste here when something is copied); clearer copy icon.
+- [x] Mix effects track header: M and S in the same right-hand spot as other tracks (no R).
+- [x] The copy button on an empty spot does nothing: hide it there (show Paste here when something is copied); clearer copy icon.
+- [x] Sound delay grown after switching apps: the audio restarts by itself (checked on return and every few seconds while stopped).
+- [x] Share sheet: compact rows (icon, name, a short tag; details behind ⓘ).
+- [x] Usage stats ⓘ says "anonymous ID" plainly.
+- [x] Teaching the crash: it's kept (it was thrown away as metronome bleed); nothing plays after teaching.
+- [x] Beats: Use this beat pinned after a pick; closing puts the playhead back; a free beat is no longer called Pro.
+- [x] Buzz timing range ±300 ms. Revisit the default (−15; the owner found +50 right after a fresh start) once the delay fix is on a build.
 - [ ] Livelier rhythms (syncopation, pushes, genre grooves) in everything Noodle writes.
 - [ ] Finish song: the song's real length, its sections (marked or worked out), each filled for its role; no filling empty bars.
 - [ ] Modern-genre data (hip hop, pop, rock, country, reggaeton): a shortlist with licences for the owner to approve.

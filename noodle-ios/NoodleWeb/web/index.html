@@ -13,7 +13,7 @@
 <title>Noodle</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="stylesheet" href="vendor/fonts/fonts.css">
-<link rel="stylesheet" href="app.css?v=3438057149">
+<link rel="stylesheet" href="app.css?v=4d6f2367f5">
 
 
 
@@ -64,7 +64,8 @@
       <button class="go" id="s2CbNew" hidden><svg class="nx-ico" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>New part</button>
       <button class="go" id="s2CbEdit"><svg class="nx-ico" viewBox="0 0 24 24"><path d="M4 20l4-1L19 8l-3-3L5 16l-1 4z"/></svg>Edit</button>
       <button id="s2CbDup" aria-label="Duplicate this part"><svg class="nx-ico" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 00-2-2H6a2 2 0 00-2 2v8a2 2 0 002 2h2"/></svg></button>
-      <button id="s2CbCopy" aria-label="Copy this part to another song"><svg class="nx-ico" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="16" rx="2"/><path d="M9 5V3h6v2M9 11h6M9 15h4"/></svg></button>
+      <button id="s2CbCopy" aria-label="Copy to another song" title="Copy to another song"><svg class="nx-ico" viewBox="0 0 24 24"><rect x="3" y="8" width="11" height="13" rx="2"/><path d="M8 8V5a2 2 0 012-2h9a2 2 0 012 2v9a2 2 0 01-2 2h-5"/><path d="M14 11l5-5M15 6h4v4"/></svg></button>
+      <button id="s2CbPaste" aria-label="Paste here" title="Paste here" hidden><svg class="nx-ico" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="16" rx="2"/><path d="M9 5V3h6v2M12 9v8M8 13l4 4 4-4"/></svg></button>
       <button class="del" id="s2CbDel" aria-label="Delete this part"><svg class="nx-ico" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg></button></div>
     <div class="s2-take s2-g" id="s2Take" hidden><span>New take</span><button id="s2TkRe">Retake</button><button id="s2TkDel">Discard</button><button class="ok" id="s2TkOk">Keep</button></div>
     <div class="s2-tr s2-g">
@@ -98,7 +99,7 @@
     <div class="nx-card">
     <div class="nx-item"><span>Share my takes<button class="s2-i" data-info="Sends your recordings and your fixes so Noodle learns to read people better. For ages 13 and up. Turn it off any time, and delete what you shared." aria-label="Sends your recordings and your fixes so Noodle learns to read people better. For ages 13 and up. Turn it off any time, and delete what you shared." type="button">i</button><small id="nxShS"></small></span><button class="nx-sw" id="nxShSw" role="switch" aria-checked="false" aria-label="Share my takes"></button></div>
     <div class="nx-item"><span>Send crash reports<button class="s2-i" data-info="What went wrong and the app version. Never recordings or songs." aria-label="What went wrong and the app version. Never recordings or songs." type="button">i</button></span><button class="nx-sw" id="nxCrSw" role="switch" aria-checked="true" aria-label="Send crash reports"></button></div>
-    <div class="nx-item"><span>Send usage stats<button class="s2-i" data-info="Counts like how many songs get finished and which sounds get used, with a random number made only for this. Never recordings, songs, your name or your email. Turning this off deletes the number." aria-label="Counts like how many songs get finished and which sounds get used, with a random number made only for this. Never recordings, songs, your name or your email. Turning this off deletes the number." type="button">i</button></span><button class="nx-sw" id="nxStSw" role="switch" aria-checked="true" aria-label="Send usage stats"></button></div>
+    <div class="nx-item"><span>Send usage stats<button class="s2-i" data-info="Counts like how many songs get finished and which sounds get used. They're sent with an anonymous ID that isn't linked to you. Never your recordings, songs, name or email. Turning this off deletes the ID." aria-label="Counts like how many songs get finished and which sounds get used. They're sent with an anonymous ID that isn't linked to you. Never your recordings, songs, name or email. Turning this off deletes the ID." type="button">i</button></span><button class="nx-sw" id="nxStSw" role="switch" aria-checked="true" aria-label="Send usage stats"></button></div>
     </div>
     <div class="nx-grp">Your songs</div>
     <div class="nx-card">
@@ -156,17 +157,17 @@
 <link rel="prefetch" href="js/reader-worker.js?v=dcb343728e" as="script">
 <script src="js/reader.js?v=f01cefddab"></script>
 <script src="js/core.js?v=7fa4b97d32"></script>
-<script src="js/studio.js?v=af9e0eba52"></script>
+<script src="js/studio.js?v=401eb4d2cb"></script>
 <script src="js/dsp.js?v=126f1ae4bb"></script>
 <script src="js/key.js?v=a993631d92"></script>
-<script src="js/engine.js?v=8a5af2fa92"></script>
+<script src="js/engine.js?v=7f3dc50a3d"></script>
 <script src="js/instruments.js?v=10a8ca42a5"></script>
-<script src="js/record.js?v=c18a8e30d6"></script>
+<script src="js/record.js?v=53347df899"></script>
 <script src="js/takes.js?v=2c74db1360"></script>
 <script src="js/musical.js?v=d67be96042"></script>
-<script src="js/beats.js?v=6d9235c519"></script>
+<script src="js/beats.js?v=27ba3664ba"></script>
 <script src="js/presets.js?v=039945adfe"></script>
-<script src="js/ui.js?v=c01f9bbbf3"></script>
+<script src="js/ui.js?v=5954967a76"></script>
 <script src="js/export.js?v=ffea4828b2"></script>
 
 </body>

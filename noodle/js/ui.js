@@ -509,7 +509,7 @@ function init(){
   // iOS only lets audio start on a finger lift (touchend/click), not on touch-down: unlock (or re-wake) on every such gesture while it's suspended
   /* hidden check (owner, 26 Nov: sound lagged the picture): press and hold the position counter to see the delay the phone reports */
   { let hold=0; const pos=$('s2Pos'); if(pos){ pos.addEventListener('pointerdown',()=>{ clearTimeout(hold); hold=setTimeout(()=>{ if(!ctx) ensureCtx(); const ms=x=>Math.round((x||0)*1000);
-      toast(`Sound delay ${ms(outDelay())} ms (output ${ms(ctx.outputLatency)} ms, buffer ${ms(ctx.baseLatency)} ms, ${ctx.sampleRate} Hz)`,6000); },700); });
+      toast(`Sound delay ${ms(outDelay())} ms (output ${ms(ctx.outputLatency)} ms, buffer ${ms(ctx.baseLatency)} ms, ${ctx.sampleRate} Hz${audioRestarts?`, audio restarted ${audioRestarts}×`:''})`,6000); },700); });
     ['pointerup','pointercancel','pointerleave'].forEach(ev=>pos.addEventListener(ev,()=>clearTimeout(hold))); } }
   const unlockAudio=()=>{ if(ctx && ctx.state!=='running' && !document.hidden){ try{ ctx.resume(); }catch(e){} } };
   ['touchend','click','keydown'].forEach(ev=>document.addEventListener(ev,unlockAudio,{capture:true,passive:true}));

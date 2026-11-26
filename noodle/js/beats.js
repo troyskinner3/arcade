@@ -72,14 +72,14 @@ function beatTry(b){ pvEnd(true); const fresh=!S.tracks.some(t=>!t.guide&&hasCon
   if(fresh){ S._pvOrig={bpm:S.bpm, key:S.key, scale:S.scale, swing:S.swing, bars:S.bars, master:copyJ(S.master)}; S.bpm=b.bpm; S.key=String(b.tonic); S.scale=b.scale; S.swing=b.swing; S.bars=Math.max(8,S.bars); S.master=Object.assign({},S.master,b.master); keyCache=null; }
   const tonic=fresh||K.none?b.tonic:K.tonic, scale=fresh||K.none?b.scale:K.scale;
   const ts=beatTracks(b,tonic,scale); ts.forEach(t=>{ t._pvTemp=true; t._dirty=true; }); S.tracks.push(...ts); ts.forEach(t=>{ try{ autoOct(t); }catch(e){} }); keyCache=null; S.tracks.forEach(t=>t._dirty=true);
-  warmSounds(); renderTracks(); pvOpen(b.name+(b.pro?' (Pro beat)':' beat'), ts.find(t=>t.name==='Chords')||ts[0]); return ts; }
+  warmSounds(); renderTracks(); const hear=ts.find(t=>t.name==='Chords')||ts[0]; if(beatPro(b)) pvOpen(b.name+' (Pro beat)', hear); else { if(!proPv) proPv={labels:[]}; pvPlay(hear); } return ts; }   /* only a Pro beat is named in the "is Pro" note (a free one was, when the sheet closed) */
 /* keep it */
 function beatUse(){ S.tracks.forEach(t=>{ delete t._pvTemp; }); delete S._pvOrig; const p=proPv; proPv=null; if(p&&p.started!=null){ s2.sec=p.sec; s2.loop=p.loop; }
   keyCache=null; save(); renderTracks(); scheduleRender(); }
 function beatSheet(){ let cur=null; const styles=[...new Set(BEATS.map(b=>b.style))];
   const draw=()=>{ nxSheet(`<h2>Beats</h2><p style="color:var(--muted);font-size:14px;margin:-4px 0 10px">Tap one to hear it.</p>
     ${styles.map(st=>`<div class="s2-sg">${nxEsc(st)}</div><div class="bt-grid">${BEATS.filter(b=>b.style===st).map(b=>`<button class="bt" data-beat="${b.id}" aria-pressed="${cur===b.id}"><b>${nxEsc(b.name)}</b><small>${b.bpm} BPM</small>${b.pro&&!isPro()?PRO_LOCK:''}</button>`).join('')}</div>`).join('')}
-    ${cur&&beatPro(BEATS.find(b=>b.id===cur))?pvLine('Previewing '+BEATS.find(b=>b.id===cur).name):''}<button class="nx-primary" id="btUse" ${cur?'':'disabled'}>Use this beat</button>`); };
+    ${cur?`<div class="pro-foot">${beatPro(BEATS.find(b=>b.id===cur))?pvLine('Previewing '+BEATS.find(b=>b.id===cur).name):''}<button class="nx-primary" id="btUse">${beatPro(BEATS.find(b=>b.id===cur))?'Get Pro to use this beat':'Use this beat'}</button></div>`:''}`); };   /* once a beat is picked, the next step is pinned to the bottom (owner, 26 Nov) */
   draw();
   $('nxSheet').onclick=e=>{ let x;
     if(e.target.closest('[data-a="pvpro"]')){ proSheet(); return; }

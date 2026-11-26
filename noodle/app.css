@@ -574,3 +574,8 @@ select.nx-txt{-webkit-appearance:none;appearance:none;height:40px;border-radius:
 .nx-sub .nx-ico{flex:none;transition:transform .15s}.nx-sub[aria-expanded="true"] .nx-ico{transform:rotate(180deg)}
 .nx-subb{padding:2px 0 4px 10px;border-left:2px solid var(--s2-line,var(--line));margin-left:6px}
 .s2-mkdd{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 8px 0 12px;border:1px solid var(--s2-line);border-radius:8px;background:var(--s2-raise);color:inherit;font:600 15px var(--f-display)}.s2-mkdd .nx-ico{width:16px;height:16px}
+.sh-list{display:flex;flex-direction:column;gap:6px;margin:2px 0 8px}
+.sh-row{display:flex;align-items:center;gap:6px}.sh-row .s2-i,.sh-pad{flex:none;width:28px;height:28px;margin:0}
+.nx-act.sh-a{flex:1;display:flex;flex-direction:row;align-items:center;gap:12px;min-height:50px;padding:0 14px;margin:0!important}
+.nx-act.sh-a .nx-ico{flex:none;width:20px;height:20px;opacity:.85}.nx-act.sh-a span{flex:1;text-align:left;font-weight:600}
+.nx-act.sh-a em{font-style:normal;font:500 13px var(--f-display);color:var(--muted)}

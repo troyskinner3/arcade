@@ -94,7 +94,7 @@ function openRec(mode='take', partId=null){
   $('rsReview').hidden=true; $('rsReady').hidden=false;
 }
 let teachBack=false;   /* teaching from Your drum sounds: come back to that list, to teach the next one */
-function closeRec(){ if(teachBack){ teachBack=false; setTimeout(()=>{ const d=$('nxDrums'); if(d && !$('nxMore').hidden) d.click(); },60); } if(s2.afterTeach){ s2.afterTeach=false; setTimeout(()=>{ if(s2On()) toast(taughtSlots().length>=2?'Learned. Now tap record for your beat.':'Tap record when you’re ready.'); },60); } if(recState) cancelRecord(); S.target=null; $('recSheet').hidden=true; document.body.style.overflow=''; rs.mode=null; renderTracks(); }
+function closeRec(){ if((rs.mode==='teach'||rs.mode==='calib')&&ctx){ try{ stopAll(); }catch(e){} playing=false; }   /* nothing plays after teaching or Fix late notes (owner, 26 Nov: the example song started looping) */ if(teachBack){ teachBack=false; setTimeout(()=>{ const d=$('nxDrums'); if(d && !$('nxMore').hidden) d.click(); },60); } if(s2.afterTeach){ s2.afterTeach=false; setTimeout(()=>{ if(s2On()) toast(taughtSlots().length>=2?'Learned. Now tap record for your beat.':'Tap record when you’re ready.'); },60); } if(recState) cancelRecord(); S.target=null; $('recSheet').hidden=true; document.body.style.overflow=''; rs.mode=null; renderTracks(); }
 function showReview(){   /* after calibrating or teaching drum sounds */
   $('rsReady').hidden=true; $('rsReview').hidden=false; $('rsMsg').textContent=lastMsg||'';
   $('rsKeep').textContent='Done'; $('rsRetry').hidden=rs.mode!=='calib';
@@ -248,9 +248,10 @@ function encodeVoice(x,sr,t0){ // 0.4 s of the hit at 24 kHz, 16-bit, base64
 }
 function finishTeach(x,sr,t){
   const sl=slotOf(t.d); if(!sl){ teachQueue=null; dropMic(); return; }
-  const an=analyzeTake(x,sr,'kick',60,true); const cb=removeClickBleed(an.onsets,0.08);
+  const an=analyzeTake(x,sr,'kick',60,true); let cb=removeClickBleed(an.onsets,0.08,x.length/sr,x.click);   /* the count-in measured the click: only what's about that loud on the click is bleed */
+  if(cb.ons.length<3&&!x.click){ const loud=an.onsets.filter(o=>o.db>-30); if(loud.length>=3) cb={ons:loud,removed:an.onsets.length-loud.length}; }   /* teaching asks for a sound on every click, so sounds on the click are the point (a crash was thrown away as bleed; owner, 26 Nov); only quiet ones can be the click */
   const ons=cb.ons.slice().sort((a,b)=>b.db-a.db).slice(0,12);
-  if(ons.length<3){ teachQueue=null; dropMic(); toast(`I only heard ${ons.length} “${t.say}” sounds. Tap Teach and make it louder on every click.`); return; }
+  if(ons.length<3){ teachQueue=null; dropMic(); lastMsg=`Noodle heard ${ons.length} “${t.say}” sound${ons.length===1?'':'s'}. Tap Teach and make it louder on every click.`; toast(lastMsg); return; }   /* said on the teaching screen too (a message alone was hidden behind it) */
   sl.ex=ons.map(o=>o.fv); const loud=ons[0]; sl.voice=encodeVoice(x,sr,Math.max(0,loud.t-0.005));
   scaleCache=null; teachQueue.shift();
   if(teachQueue.length){ save(); toast(`Got your “${t.say}”. Next: “${teachQueue[0].say}” on every click.`); nextTeach(); return; }
@@ -259,7 +260,7 @@ function finishTeach(x,sr,t){
   if(n) scheduleRender();
  
   const w=kitWarnings();
-  toast(Object.keys(w).length ? `Learned. Heads up: some sounds are easy to mix up (marked in Your kit).` : `Learned your sounds. Drum kit takes now sort by your own examples`+(n?' (this session’s takes were re-sorted).':'.'));
+  lastMsg=Object.keys(w).length ? `Learned. Heads up: some sounds are easy to mix up (marked in Your kit).` : `Learned your sounds. Drum kit takes now sort by your own examples`+(n?' (this session’s takes were re-sorted).':'.'); toast(lastMsg);
 }
 function finishCalib(x,sr,pre){
   const ons=removeClickBleed(detectOnsets(biquad(biquad(x,'notch',1500,4,sr),'notch',2000,4,sr), sr, 60, 0.12), pre).ons;
