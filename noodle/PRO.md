@@ -62,17 +62,17 @@ Status: **confirmed** (owner agreed) or **proposed** (waiting on the owner).
 | Crash cymbal in the drum kit (a long “k-shhh” when beatboxing). Suggest Free | proposed |
 | Finish song: one tap adds whatever a song is missing (drums, bass, chords, a melody, transitions, a mix effect) in its key and tempo | confirmed |
 | Draw notes: draw a line in the note editor and it becomes notes, on the beat and in the key. Suggest Free | proposed |
-| Drum pads (Add track → Tap it in): a pad per kit sound, tapped along with the song into a drum part; Add more layers another pass. Suggest Free | proposed |
-| Chord pads (Add track → Tap it in): six pads with the key's chords, tapped along with the song into a chord part. Suggest Free | proposed |
-| Note pads (Add track → Tap it in): a pad per note of the key, tapped along with the song into a melody; Add more for a second line. Suggest Free | proposed |
-| Play pad (Add track → Tap it in): the default pad (two octaves, snapped to the key, up = brighter), recorded with each note's brightness. Free | confirmed (owner, 25 Nov) |
+| Drum pads (Record on a drum track → How do you want to record?): a pad per kit sound, tapped along with the song into a drum part; Add more layers another pass. Suggest Free | proposed |
+| Chord pads (Record on a keys, pad or arp track): six pads with the key's chords, tapped along with the song into a chord part. Suggest Free | proposed |
+| Note pads (Record on an instrument track): a pad per note of the key, tapped along with the song into a melody; Add more for a second line. Suggest Free | proposed |
+| Play pad (Record on a lead or bass track): the default pad (two octaves, snapped to the key, up = brighter), recorded with each note's brightness. Free | confirmed (owner, 25 Nov) |
 | Play pad settings (range, snap off, arpeggio mode, anything beyond the default pad): Pro, like Mix effects (two free, the rest Pro). Not built yet | confirmed Pro (owner, 25 Nov) |
 | Draw chords: in Draw, a line above or below notes adds a second voice (over a line redoes it). Suggest Free | proposed |
 | Note editor: scroll through every octave, Octave − / + for selected notes, drag a note's front edge, same-pitch overlap rule. Suggest Free (basic editing) | proposed |
 | Paste here (an empty spot in a track, after Copy to another song): part of copying a part between songs, which is Pro | Pro (as copying) |
 | Section types (Intro, Verse, Pre-chorus, Chorus, Drop, Bridge, Solo, Breakdown, Outro) with automatic numbering. Suggest Free | proposed |
 | Continue this (note editor •••): a short part grows into a phrase with a variation, an answer and an ending. Suggest Free | proposed |
-| Tap a rhythm (Add track → Tap it in): tapped timing becomes a melody in the key, fitted to the chords; Other notes. Suggest Free | proposed |
+| Tap a rhythm (Record on a lead or bass track): tapped timing becomes a melody in the key, fitted to the chords; Other notes. Suggest Free | proposed |
 | Song sections: name, loop and duplicate Intro / Verse / Chorus / Bridge / Outro | proposed |
 | Your presets: vocal presets, track-effect presets, your own drum kits (any drum from any kit + your taught noises), saved on the phone and in backups (a preset with Pro parts is tried) | confirmed |
 | Beats: one per style (Night Drive trap, Dusty Steps boom bap, Rainy Window lo-fi, Night Bus drill, Sunny Side pop, Velvet R&B) | confirmed |

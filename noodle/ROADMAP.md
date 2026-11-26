@@ -146,7 +146,7 @@ Draft copy is in `noodle-ios/APP_STORE_LISTING.md`.
 - [x] Note preview sounds as the finger lands; the playhead follows what's heard (sound lagged the picture by ~1/8 note on the speaker).
 - [ ] Check the sound delay on the next build (hold the position counter); if it's still large, look at the app's audio session (it stays in
   play-and-record mode all the time).
-- [ ] Pads as ways to record into a track (owner, 26 Nov): Record on an instrument track asks once "How do you want to record?" (Mic, Drum pads,
+- [x] Pads as ways to record into a track (owner, 26 Nov): Record on an instrument track asks once "How do you want to record?" (Mic, Drum pads,
   Chord pads, Note pads, Tap a rhythm, Play pad, by track type), remembered per track, changed with Record with in the track sheet; takes run
   from the playhead until Stop (up to 16 bars) like mic takes; Tap it in leaves Add track.
 - [x] Mix effects track header: M and S in the same right-hand spot as other tracks (no R).

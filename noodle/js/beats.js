@@ -173,29 +173,35 @@ function harmBass(chords, K, bars, oct){ if(!HARM||!HARM.bass) return null; cons
       p+=12*Math.max(-1,Math.min(1,n.o)); if(p<oct-5) p+=12; if(p>oct+19) p-=12;
       out.push({s:st, l:Math.max(1,Math.min(n.l,(bar+1)*16-st)), p, v:n.s%4===0?0.88:0.78}); } }
   return out.sort((a,b)=>a.s-b.s).filter((n,i,a)=>!i||n.s>a[i-1].s); }
-/* Tap it in (round 26): Chord pads and Tap a rhythm, from Add track. A full-screen pad: four count-in clicks, then the song plays for
-   4 bars from the playhead's bar while you tap. Chord pads: six pads with the key's chords; each tap starts that chord, held until the
-   next tap, on the nearest 8th. Tap a rhythm: one big pad; your taps (nearest 16th) are the rhythm and Noodle picks the notes (the
-   melody model, genMelody), fitted to the song's chords. Nothing is added until Keep, so one Undo takes the part out. */
-const TAP_BARS=4;
+/* Ways to record with pads (round 26-27; round 29, owner: they are ways to record into a track, not track types). Record on an instrument
+   track asks once how to record into it (Mic or pads; remembered per track as tr.rin, changed with Record with in the track's sheet). A pad
+   screen covers the Studio: four count-in clicks, then the song plays from the playhead's bar while you play, until Stop (up to 16 bars).
+   Drum pads: one per kit sound, hits on the nearest 16th. Chord pads: the key's six chords, each held until the next tap, on the nearest 8th.
+   Note pads: the key's notes over an octave. Tap a rhythm: one pad; the taps are the rhythm and Noodle picks the notes (genMelody), fitted to
+   the song's chords. Play pad: across = notes in the key, up = brighter. The take becomes a new part on that track, in its sound and octave;
+   nothing is added until Keep (one Undo). */
+const TAP_MAX=16;
+const REC_WAYS={kit:['mic','drums'], keys:['mic','chords','notes'], pad:['mic','chords','notes'], arp:['mic','chords','notes'], lead:['mic','notes','rhythm','xy'], bass:['mic','notes','rhythm','xy']};
+const recWays=inst=>REC_WAYS[inst]||['mic'];
+const TAP_NAMES={mic:'Mic',drums:'Drum pads',chords:'Chord pads',notes:'Note pads',rhythm:'Tap a rhythm',xy:'Play pad'};
+const TAP_INFO={mic:'Hum, sing, whistle or beatbox.',drums:'A big pad for each drum in your kit.',chords:'The key’s chords as big pads.',notes:'A pad for each note in the key.',rhythm:'Tap any rhythm. Noodle picks the notes, in the key.',xy:'Slide across for notes, up for a brighter sound.'};
+const TAP_CENTER={bass:40, lead:64, keys:60, pad:57, arp:62};   /* where each instrument's notes sound best (MIDI) */
 let tapIn=null;
-function padChords(K){ const sc=SCALES[PARENT[K.scale]||K.scale]||SCALES.major, out=[];
-  for(let d=0;d<7&&out.length<6;d++){ const root=48+((K.tonic+sc[d])%12), ps=chordTones(root,'triad'), third=((ps[1]-ps[0])%12+12)%12, fifth=((ps[2]-ps[0])%12+12)%12;
+function padChords(K,T){ const sc=SCALES[PARENT[K.scale]||K.scale]||SCALES.major, out=[], zone=(CHORD_ZONE[T.inst]||60)-12*T.oct;
+  for(let d=0;d<7&&out.length<6;d++){ const pc=(K.tonic+sc[d])%12; let root=zone-6+(((pc-(zone-6))%12)+12)%12; const ps=chordTones(root,'triad'), third=((ps[1]-ps[0])%12+12)%12, fifth=((ps[2]-ps[0])%12+12)%12;
     if(fifth===6) continue;   /* the diminished chord is left off */
-    out.push({root, name:NOTE_NAMES[root%12]+(third===3?'m':'')}); }
+    out.push({root, name:NOTE_NAMES[pc]+(third===3?'m':'')}); }
   return out; }
-/* Drum pads: one per sound in your kit (the kit's own sounds, any you added), up to 8; the sound of the song's drum kit if it has one */
+/* Drum pads: one per sound in your kit (the kit's own sounds, any you added), up to 8 */
 function tapDrumPads(){ return S.kit.slots.slice(0,8).map(sl=>({id:sl.id, name:slotLabel(sl.id), v:sl.sound==='kick'?1:sl.sound==='hat'?0.75:0.9})); }
-function tapKitSound(){ const k=S.tracks.find(t=>t.inst==='kit'&&!t.guide&&!t._pvTemp); let snd=k?k.sound:mkTrack('kit').sound; if(proLocked(snd)) snd=INST.kit.sounds.find(x=>!proLocked(x)); return snd; }
-const TAP_NAMES={drums:'Drum pads',chords:'Chord pads',notes:'Note pads',rhythm:'Tap a rhythm',xy:'Play pad'};
-/* Note pads: the key's notes over an octave (8 pads in a 7-note key), low to high from the bottom left, like a keypad */
-function tapNotePads(K){ const t=60+((K.tonic-60)%12+12)%12, base=t>66?t-12:t, out=[];   /* the tonic between F#3 and F4 */
-  for(let p=base;out.length<9&&p<=base+12;p++) if(K.set.includes(((p-K.tonic)%12+12)%12)) out.push({p, name:NOTE_NAMES[p%12]});
+/* Note pads: the key's notes over an octave (8 pads in a 7-note key), low to high from the bottom left, like a keypad; around where this
+   instrument sounds best (a bass's pads are low) */
+function tapNotePads(K,T){ const c=(TAP_CENTER[T.inst]||64)-12*T.oct, base=c-5+(((K.tonic-(c-5))%12)+12)%12, out=[];
+  for(let p=base;out.length<9&&p<=base+12;p++) if(K.set.includes(((p-K.tonic)%12+12)%12)) out.push({p, name:NOTE_NAMES[((p%12)+12)%12]});
   const cols=Math.ceil(out.length/2); out.forEach((n,i)=>{ n.row=i<cols?2:1; n.col=i<cols?i+1:i-cols+1; }); out.cols=cols; return out; }   /* the low half on the bottom row */
-function tapLeadSound(){ const l=S.tracks.find(t=>t.inst==='lead'&&!t.guide&&!t._pvTemp&&!t._tapTemp); let snd=l?l.sound:'Bell'; if(proLocked(snd)) snd=INST.lead.sounds.find(x=>!proLocked(x)); return snd; }
-/* one held note on the lead sound: returns a release function */
-function leadNote(T,p,dur,tone=0.5,dest){ ensureCtx(); const g=ctx.createGain(), now=ctx.currentTime+0.005; g.gain.value=0.55; g.connect(dest||chain.input); VOICE_INST='lead';
-  try{ voice(ctx,g,T.lead,now,dur,p,0.8,tone); }catch(e){} finally{ VOICE_INST=null; }
+/* one held note on the track's sound: returns a release function */
+function leadNote(T,p,dur,tone=0.5,dest){ ensureCtx(); const g=ctx.createGain(), now=ctx.currentTime+0.005; g.gain.value=0.55; g.connect(dest||chain.input); VOICE_INST=T.inst;
+  try{ voice(ctx,g,T.sound,now,dur,p+12*T.oct,0.8,tone); }catch(e){} finally{ VOICE_INST=null; }
   return ()=>{ const t=ctx.currentTime; g.gain.cancelScheduledValues(t); g.gain.setValueAtTime(g.gain.value,t); g.gain.linearRampToValueAtTime(0,t+0.06); setTimeout(()=>{ try{ g.disconnect(); }catch(e){} },400); }; }
 /* taps into notes: the nearest 16th, each lasting until the next tap (at most 2 beats); two pads at once make a chord */
 function tapNoteList(taps,span){ const by=new Map(); taps.forEach(x=>{ const s=Math.min(span-1,Math.round(x.st)); by.set(s+':'+x.p,{s,p:x.p}); });
@@ -203,12 +209,12 @@ function tapNoteList(taps,span){ const by=new Map(); taps.forEach(x=>{ const s=M
   return ns.map(n=>{ const nx=starts.find(s=>s>n.s); return {s:n.s, l:Math.max(1,Math.min(8,(nx??span)-n.s)), p:n.p, v:n.s%4===0?0.85:0.75, x:true}; }); }
 /* Play pad: across = the key's notes over two octaves (snapped), up = brighter. While a finger is down the note sounds; in a take, each note
    is kept with where it started and ended and how bright it was (nt.tn) */
-function xyMount(T){ const box=$('tiXY'), cv=box.querySelector('canvas'); const K=T.K, lo=55+((K.tonic-55)%12+12)%12, ps=[]; for(let p=lo;p<=lo+24;p++) if(K.set.includes(((p-K.tonic)%12+12)%12)) ps.push(p);
+function xyMount(T){ const box=$('tiXY'), cv=box.querySelector('canvas'); const K=T.K, c=(TAP_CENTER[T.inst]||64)-12*T.oct, lo=c-9+(((K.tonic-(c-9))%12)+12)%12, ps=[]; for(let p=lo;p<=lo+24;p++) if(K.set.includes(((p-K.tonic)%12+12)%12)) ps.push(p);
   T.xy={ps, down:false, cur:null, rel:null, ev:[]};
   const draw=(fx,fy)=>{ const r=box.getBoundingClientRect(), dpr=Math.min(2,window.devicePixelRatio||1); if(cv.width!==Math.round(r.width*dpr)){ cv.width=Math.round(r.width*dpr); cv.height=Math.round(r.height*dpr); }
     const g=cv.getContext('2d'); g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,r.width,r.height); const W=r.width/ps.length, cs=getComputedStyle(box), ink=cs.getPropertyValue('--s2-muted').trim()||'#9299a8', amb=cs.getPropertyValue('--s2-amber').trim()||'#f1c75b';
     g.font='600 11px '+(cs.getPropertyValue('--f-display').trim()||'sans-serif'); g.textAlign='center';
-    ps.forEach((p,i)=>{ const tonic=((p-K.tonic)%12+12)%12===0; g.fillStyle=tonic?'rgba(128,128,128,.16)':'rgba(128,128,128,.06)'; if(i%2===0||tonic) g.fillRect(i*W,0,W,r.height); g.fillStyle=ink; g.fillText(NOTE_NAMES[p%12],i*W+W/2,r.height-8); });
+    ps.forEach((p,i)=>{ const tonic=((p-K.tonic)%12+12)%12===0; g.fillStyle=tonic?'rgba(128,128,128,.16)':'rgba(128,128,128,.06)'; if(i%2===0||tonic) g.fillRect(i*W,0,W,r.height); g.fillStyle=ink; g.fillText(NOTE_NAMES[((p%12)+12)%12],i*W+W/2,r.height-8); });
     g.textAlign='left'; g.fillText('Brighter',8,16);
     if(fx!=null){ g.fillStyle=amb; g.beginPath(); g.arc(fx,fy,18,0,7); g.globalAlpha=0.35; g.fill(); g.globalAlpha=1; g.beginPath(); g.arc(fx,fy,7,0,7); g.fill(); } };
   T.xy.draw=draw; requestAnimationFrame(()=>draw());
@@ -224,24 +230,26 @@ function xyMount(T){ const box=$('tiXY'), cv=box.querySelector('canvas'); const 
 function tapMark(T,p,tn,e){ if(T.state!=='take'&&T.state!=='count'||!T.start) return; const late=Math.min(0.1,Math.max(0,(performance.now()-(e&&e.timeStamp||performance.now()))/1000)), at=ctx.currentTime-late-T.lat;
   if(at<T.start-0.15||at>=T.end) return; T.taps.push({st:Math.max(0,(at-T.start)/stepDur()), p, tn}); }
 function xyOff(T,e){ const X=T&&T.xy; if(!X) return; if(X.rel){ X.rel(); X.rel=null; } if(X.cur!=null){ tapMark(T,null,null,e); X.cur=null; } }
-function xyNotes(T){ const span=TAP_BARS*16, out=[]; let cur=null;
+function xyNotes(T,span){ const out=[]; let cur=null;
   for(const ev of T.taps){ const s=Math.min(span,Math.round(ev.st)); if(cur){ cur.l=s-cur.s; if(cur.l<1&&ev.p==null) cur.l=1;   /* a quick tap is a 16th */ if(cur.l>=1) out.push(cur); cur=null; }
     if(ev.p!=null&&s<span) cur={s, l:1, p:ev.p, v:0.8, tn:ev.tn, x:true}; }
   if(cur){ cur.l=Math.max(1,span-cur.s); out.push(cur); }
   /* fast slides: a note shorter than a 16th gave its step to the next one; same pitch twice in a row is one note */
   const m=[]; for(const n of out){ const pv=m[m.length-1]; if(pv&&pv.p===n.p&&pv.s+pv.l===n.s){ pv.l+=n.l; continue; } if(pv&&pv.s+pv.l>n.s) pv.l=Math.max(1,n.s-pv.s); m.push(n); }
-  return m.filter(n=>n.l>=1); }
+  return m.filter(n=>n.l>=1&&n.s<span).map(n=>({...n,l:Math.min(n.l,span-n.s)})); }
 function tapKeyName(K){ return NOTE_NAMES[K.tonic]+' '+(K.set.includes(3)&&!K.set.includes(4)?'minor':'major'); }
-async function tapOpen(kind){ if(tapIn) tapClose(); ensureCtx(); pvEnd(true); flushSave(); if(playing) await togglePlay();
-  const T=tapIn={kind, state:'ready', taps:[], tr:null, cur0:s2.cur||0, bars0:S.bars, key0:[S.key,S.scale], sec0:s2.sec, timers:[]};
+/* the pad screen for one track (laneId): kind is how it records (drums, chords, notes, rhythm, xy) */
+async function tapOpen(kind, laneId){ if(tapIn) tapClose(); const L=s2Lane(laneId); if(!L) return; ensureCtx(); pvEnd(true); flushSave(); if(playing) await togglePlay();
+  const first=L.tracks[0], T=tapIn={kind, L, first, inst:first.inst, sound:first.sound, oct:first.oct||0, state:'ready', taps:[], tr:null, cur0:s2.cur||0, bars0:S.bars, key0:[S.key,S.scale], sec0:s2.sec, timers:[]};
+  if(proLocked(T.sound)) T.sound=INST[T.inst].sounds.find(x=>!proLocked(x));
   { const K0=currentKey(), pitched=S.tracks.some(t=>!t.guide&&t.notes&&t.notes.length&&INST[t.inst].kind==='pitched');
     if(kind!=='drums'&&(K0.none||!pitched)){ S.key=String(K0.none?0:K0.tonic); S.scale=K0.none?'major':K0.scale; keyCache=null; scaleCache=null; } }   /* nothing pitched yet: the key is set now, so the chords don't change once notes arrive (kept only with the part) */
   s2.sec=null;   /* a looping section must not jump back during the take */
-  T.P=clamp(Math.floor((s2.cur||0)+1e-6),0,64-TAP_BARS); if(S.bars<T.P+TAP_BARS){ S.bars=T.P+TAP_BARS; }
-  const K=currentKey(); T.K={...K, set:SCALES[PARENT[K.scale]||K.scale]||K.set}; T.pads=kind==='drums'?tapDrumPads():kind==='notes'?tapNotePads(T.K):kind==='xy'?[]:padChords(T.K); T.kitSound=kind==='drums'?tapKitSound():null; T.lead=kind==='notes'||kind==='xy'?tapLeadSound():null;
+  T.P=clamp(Math.floor((s2.cur||0)+1e-6),0,63); T.max=Math.min(TAP_MAX,64-T.P); T.nb=T.max;
+  const K=currentKey(); T.K={...K, set:SCALES[PARENT[K.scale]||K.scale]||K.set}; T.pads=kind==='drums'?tapDrumPads():kind==='notes'?tapNotePads(T.K,T):kind==='chords'?padChords(T.K,T):[];
   let el=$('tapIn'); if(!el){ el=document.createElement('div'); el.className='s2-ed tapin'; el.id='tapIn'; $('s2Ed').insertAdjacentElement('afterend',el); }
   el.innerHTML=`<div class="s2-top s2-g"><button class="s2-ib" id="tiBack" aria-label="Back to the timeline"><svg class="nx-ico" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
-    <div class="s2-edt"><b>${TAP_NAMES[kind]}</b><small>${kind==='drums'?S.bpm+' BPM':tapKeyName(T.K)} · bars ${T.P+1}–${T.P+TAP_BARS}</small></div>
+    <div class="s2-edt"><b>${nxEsc(s2Name(L))}</b><small>${TAP_NAMES[kind]} · ${kind==='drums'?S.bpm+' BPM':tapKeyName(T.K)} · from bar ${T.P+1}</small></div>
     <button class="s2-ib" id="tiPlay" aria-label="Play the take" hidden></button></div>
     <div class="ti-body">${kind==='xy'?'<div class="ti-xy" id="tiXY" role="application" aria-label="Play pad: across for notes, up for a brighter sound"><canvas></canvas></div>':kind!=='rhythm'?`<div class="ti-pads"${kind==='notes'?` style="grid-template-columns:repeat(${T.pads.cols},1fr)"`:''}>${T.pads.map((c,i)=>`<button class="ti-pad" data-i="${i}"${c.row?` style="grid-row:${c.row};grid-column:${c.col}"`:''} aria-label="${nxEsc(c.name)}${kind==='chords'?' chord':''}">${nxEsc(c.name)}</button>`).join('')}</div>`:'<button class="ti-pad ti-one" id="tiOne" aria-label="Tap pad">Tap</button>'}</div>
     <div class="s2-edh s2-g" id="tiHint"></div><div class="ti-bar s2-g" id="tiBar"></div>`;
@@ -251,7 +259,7 @@ async function tapOpen(kind){ if(tapIn) tapClose(); ensureCtx(); pvEnd(true); fl
   $('tiBack').onclick=()=>tapClose();
   $('tiPlay').onclick=()=>{ if(T.playing) tapStopPlay(); else tapPlay(); };
   $('tiBar').onclick=e=>{ const b=e.target.closest('button'); if(!b) return; const a=b.dataset.a;
-    if(a==='rec') tapRec(); else if(a==='stop') tapCancelTake(); else if(a==='keep') tapKeep(); else if(a==='again') tapRec(); else if(a==='more') tapRec(true); else if(a==='other') tapOther(); };
+    if(a==='rec') tapRec(); else if(a==='stop') tapStopTake(); else if(a==='keep') tapKeep(); else if(a==='again') tapRec(); else if(a==='more') tapRec(true); else if(a==='other') tapOther(); };
   tapUI();
   if(kind==='rhythm'){ try{ await loadMusical(); }catch(e){} try{ await loadHarmony(); }catch(e){} }
   renderDirty(); }
@@ -261,16 +269,16 @@ function tapUI(msg){ const T=tapIn; if(!T) return; const hint=$('tiHint'), bar=$
   if(msg!=null) hint.textContent=msg; else if(H[T.state]) hint.textContent=H[T.state];
   const busy=T.state==='count'||T.state==='take'; document.getElementById('tapIn').classList.toggle('live',busy);
   bar.innerHTML= busy?'<button class="nx-ghost" data-a="stop">Stop</button>'
-    : T.state==='review'?`<button class="nx-primary" data-a="keep">Keep</button><div class="ti-row"><button class="nx-ghost" data-a="again">Tap again</button>${T.kind==='rhythm'?'<button class="nx-ghost" data-a="other">Other notes</button>':T.kind==='drums'||T.kind==='notes'?'<button class="nx-ghost" data-a="more">Add more</button>':''}</div>`
+    : T.state==='review'?`<button class="nx-primary" data-a="keep">Keep</button><div class="ti-row"><button class="nx-ghost" data-a="again">Retake</button>${T.kind==='rhythm'?'<button class="nx-ghost" data-a="other">Other notes</button>':T.kind==='drums'||T.kind==='notes'?'<button class="nx-ghost" data-a="more">Add more</button>':''}</div>`
     : '<button class="nx-primary" data-a="rec">Record</button>';
   pl.hidden=T.state!=='review'; pl.setAttribute('aria-label',T.playing?'Stop':'Play the take');
   pl.innerHTML=T.playing?'<svg class="nx-ico" viewBox="0 0 24 24"><path d="M7 5v14M17 5v14" stroke-width="3"/></svg>':'<svg class="nx-ico" viewBox="0 0 24 24"><path d="M7 4l13 8-13 8V4z" fill="currentColor"/></svg>'; }
-/* a pad's own sound: the chord on the keys sound, or a soft click for the rhythm pad (its notes aren't chosen yet) */
+/* a pad's own sound, on the track's sound: the chord, the note or the drum; a soft click for the rhythm pad (its notes aren't chosen yet) */
 function tapSound(c){ ensureCtx(); const T=tapIn, now=ctx.currentTime+0.005;
   if(T.kind==='notes'){ leadNote(T,c.p,0.45); return; }
-  if(T.kind==='drums'){ const out=ctx.createGain(); out.gain.value=0.7; out.connect(chain.input); try{ drumHit(ctx,out,c.id,now,c.v,T.kitSound,0.5); }catch(e){} return; }
-  if(T.kind==='chords'){ const tr=mkTrack('keys'); if(proLocked(tr.sound)) tr.sound=INST.keys.sounds.find(s=>!proLocked(s))||'Piano'; const out=ctx.createGain(); out.gain.value=0.5; out.connect(chain.input); VOICE_INST='keys';
-    const dur=T.state==='take'?Math.min(2,4*60/S.bpm):0.7; try{ chordTones(c.root+12,'triad').forEach(m=>voice(ctx,out,tr.sound,now,dur,m,0.7,0.5)); }catch(e){} finally{ VOICE_INST=null; } return; }
+  if(T.kind==='drums'){ const out=ctx.createGain(); out.gain.value=0.7; out.connect(chain.input); try{ drumHit(ctx,out,c.id,now,c.v,T.sound,0.5); }catch(e){} return; }
+  if(T.kind==='chords'){ const out=ctx.createGain(); out.gain.value=0.5; out.connect(chain.input); VOICE_INST=T.inst;
+    const dur=T.state==='take'?Math.min(2,4*60/S.bpm):0.7; try{ chordTones(c.root,'triad').forEach(m=>voice(ctx,out,T.sound,now,dur,m+12*T.oct,0.7,0.5)); }catch(e){} finally{ VOICE_INST=null; } return; }
   const o=ctx.createOscillator(), g=ctx.createGain(); o.frequency.value=1800; g.gain.setValueAtTime(0,now); g.gain.linearRampToValueAtTime(0.18,now+0.002); g.gain.exponentialRampToValueAtTime(0.001,now+0.04); o.connect(g); g.connect(chain.input); o.start(now); o.stop(now+0.05); }
 function tapHit(b,e){ const T=tapIn; if(!T) return; b.classList.remove('hit'); void b.offsetWidth; b.classList.add('hit');
   const c=T.kind==='rhythm'?null:T.pads[+b.dataset.i]; tapSound(c);
@@ -280,25 +288,30 @@ function tapHit(b,e){ const T=tapIn; if(!T) return; b.classList.remove('hit'); v
   T.taps.push({st:Math.max(0,(at-T.start)/stepDur()), root:c?c.root:null, d:c?c.id:null, v:c?c.v:null, p:c?c.p:null}); }
 function tapClick(when,first){ const o=ctx.createOscillator(), g=ctx.createGain(); o.frequency.value=first?2000:1500; g.gain.setValueAtTime(0,when); g.gain.linearRampToValueAtTime(first?0.5:0.32,when+0.002); g.gain.exponentialRampToValueAtTime(0.001,when+0.03); o.connect(g); g.connect(ctx.destination); o.start(when); o.stop(when+0.04); return o; }
 function tapClear(){ const T=tapIn; if(!T) return; T.timers.forEach(clearTimeout); T.timers=[]; if(T.clicks){ T.clicks.forEach(o=>{ try{ o.stop(); }catch(e){} }); T.clicks=null; } }
+/* a take: from the playhead's bar until Stop (up to 16 bars); Add more records over the part you have, as long as it is */
 async function tapRec(more){ const T=tapIn; if(!T||T.state==='count'||T.state==='take') return; ensureCtx(); try{ await ctx.resume(); }catch(e){}
-  T.more=!!(more&&T.tr); tapStopPlay(); if(!T.more) tapDrop();   /* Add more (drums): the take so far plays while you tap another layer */ T.state='count'; T.taps=[]; T.start=null; tapUI('Get ready');
+  T.more=!!(more&&T.tr); tapStopPlay(); if(!T.more){ tapDrop(); T.nb=T.max; }   /* Add more: the take so far plays while you tap another layer */ T.state='count'; T.taps=[]; T.start=null; T.stopAt=null; tapUI('Get ready');
+  if(S.bars<T.P+T.nb) S.bars=T.P+T.nb;   /* room to keep going (the song's length is put back unless the take is kept) */
   try{ await renderDirty(); }catch(e){}
   if(tapIn!==T||T.state!=='count') return;   /* closed or stopped while the song was being made */
-  const bar=4*60/S.bpm, beat=bar/4, when=ctx.currentTime+0.15; T.start=when+bar; T.end=T.start+TAP_BARS*bar;
+  const bar=4*60/S.bpm, beat=bar/4, when=ctx.currentTime+0.15; T.start=when+bar; T.end=T.start+T.nb*bar;
   T.lat=outDelay()+0.01;   /* you tap to what you hear, which comes out a little after it's played */
   T.clicks=[0,1,2,3].map(i=>tapClick(when+i*beat,i===0));
   startAll(T.start, T.P*bar, {metro:true}); playing=true;
-  if(feelBeat()) native({type:'metro', ...metroAt(when), beatMs:beat*1000, beats:4+TAP_BARS*4, perBar:4});
+  if(feelBeat()) native({type:'metro', ...metroAt(when), beatMs:beat*1000, beats:4+T.nb*4, perBar:4});
   haptic('medium');
   const at=(t,f)=>T.timers.push(setTimeout(f,Math.max(0,(t-ctx.currentTime)*1000)));
   for(let i=0;i<4;i++) at(when+i*beat-0.02,()=>tapUI('Get ready · '+(4-i)));
-  for(let k=0;k<TAP_BARS;k++) at(T.start+k*bar-0.02,()=>{ T.state='take'; tapUI(`Tap along · bar ${k+1} of ${TAP_BARS}`); });
+  for(let k=0;k<T.nb;k++) at(T.start+k*bar-0.02,()=>{ T.state='take'; tapUI(T.more?`Bar ${k+1} of ${T.nb}`:`Bar ${k+1} · tap Stop when you’re done`); });
   at(T.end+0.05,()=>tapFinish()); }
 function tapHalt(){ const T=tapIn; tapClear(); if(T) xyOff(T); native({type:'metroStop'}); if(playing){ stopAll(ctx.currentTime+0.02); playing=false; } if(T){ s2.cur=T.cur0; s2.pos=-1; playFrom=Math.min(T.cur0,S.bars)*16*stepDur(); } }
-function tapCancelTake(){ const T=tapIn; if(!T) return; tapHalt(); haptic('medium'); T.state=T.more&&T.tr?'review':'ready'; T.more=false; T.taps=[]; tapUI(); }   /* Stop during Add more: back to the take you had */
+function tapCancelTake(){ const T=tapIn; if(!T) return; tapHalt(); haptic('medium'); T.state=T.more&&T.tr?'review':'ready'; T.more=false; T.taps=[]; if(!T.tr) S.bars=T.bars0; tapUI(); }   /* Stop during the count-in, or during Add more: back to what you had */
+function tapStopTake(){ const T=tapIn; if(!T) return; if(T.state==='take'&&!T.more){ T.stopAt=ctx.currentTime; tapFinish(); } else tapCancelTake(); }
 async function tapFinish(){ const T=tapIn; if(!T||T.state!=='take') return; tapHalt(); haptic('medium');
-  const span=TAP_BARS*16; let notes;
-  if(T.kind==='notes'||T.kind==='xy'){ const nw=T.kind==='xy'?xyNotes(T):tapNoteList(T.taps,span);
+  if(!T.more){ const bar=4*60/S.bpm, beat=bar/4, heard=(T.stopAt??T.end)-T.lat-T.start, last=T.taps.reduce((m,x)=>Math.max(m,x.st),0);
+    T.nb=clamp(Math.max(Math.ceil((heard-0.5*beat)/bar), Math.ceil((last+1)/16)),1,T.max); }   /* the bars you played (a Stop just after a bar line ends at that line) */
+  const span=T.nb*16; let notes; T.taps=T.taps.filter(x=>x.st<span);
+  if(T.kind==='notes'||T.kind==='xy'){ const nw=T.kind==='xy'?xyNotes(T,span):tapNoteList(T.taps,span);
     if(T.more&&T.tr){ T.more=false; if(!nw.length){ T.state='review'; tapUI('No taps came in. That layer is left out.'); return; }
       const key=n=>n.s+':'+n.p, have=new Set(nw.map(key)); T.tr.notes=T.tr.notes.filter(n=>!have.has(key(n))).concat(nw).sort((a,b)=>a.s-b.s); T.tr._dirty=true; T.state='review'; tapUI(); tapPlay(); return; }
     notes=nw; }
@@ -309,33 +322,36 @@ async function tapFinish(){ const T=tapIn; if(!T||T.state!=='take') return; tapH
   else if(T.kind==='chords'){ const by=new Map(); T.taps.forEach(x=>{ const s=Math.min(span-2,Math.round(x.st/2)*2); by.set(s,x.root); });   /* the nearest 8th; two taps there: the later one */
     const ss=[...by.keys()].sort((a,b)=>a-b); notes=ss.map((s,i)=>({s, l:(i<ss.length-1?ss[i+1]:span)-s, p:by.get(s), v:0.74, x:true})); }
   else { const ons=[...new Set(T.taps.map(x=>Math.min(span-1,Math.round(x.st))))].sort((a,b)=>a-b); T.ons=ons; notes=ons.length>=2?tapMelody(T):[]; }
-  if(!notes||!notes.length||T.kind==='rhythm'&&T.ons.length<2){ T.state='ready'; tapUI(T.taps.length?'Tap at least two notes, then try again.':'No taps came in. Record and tap along with the song.'); return; }
-  const tr=T.kind==='notes'||T.kind==='xy'?mkTrack('lead',{id:S.nextId++, off:T.P*16, len:TAP_BARS, lenSet:true, rep:false, sound:T.lead, vol:T.lead==='Saw'||T.lead==='Supersaw'?40:48, send:35, picked:true, notes})
-    :T.kind==='drums'?mkTrack('kit',{id:S.nextId++, off:T.P*16, len:TAP_BARS, lenSet:true, rep:false, sound:T.kitSound, picked:true, hits:notes})
-    :T.kind==='chords'?mkTrack('keys',{id:S.nextId++, off:T.P*16, len:TAP_BARS, lenSet:true, rep:false, chordType:'triad', vol:60, send:30, picked:true, notes})
-    :mkTrack('lead',{id:S.nextId++, off:T.P*16, len:TAP_BARS, lenSet:true, rep:false, sound:pickOne(['Bell','Square','Saw','Guitar'].filter(s=>!proLocked(s))), vol:46, send:35, picked:true, notes});
-  if(proLocked(tr.sound)) tr.sound=INST[tr.inst].sounds.find(s=>!proLocked(s));
-  if(tr.sound==='Saw') tr.vol=40;
-  tr._tapTemp=true; S.tracks.push(tr); tr._dirty=true; try{ autoOct(tr); }catch(e){} keyCache=null; T.tr=tr; T.state='review'; tapUI(); tapPlay(); }
+  if(!notes||!notes.length||T.kind==='rhythm'&&T.ons.length<2){ T.state='ready'; S.bars=T.bars0; tapUI(T.taps.length?'Tap at least two notes, then try again.':'No taps came in. Record and tap along with the song.'); return; }
+  const f=T.first, tr=mkTrack(T.inst,{id:S.nextId++, lane:T.L.id, off:T.P*16, len:T.nb, lenSet:true, rep:false, sound:T.sound, vol:f.vol, mute:f.mute, solo:f.solo, send:f.send, tone:f.tone, oct:T.oct, ...(f.chordType!=null?{chordType:f.chordType}:{}), ...(T.inst==='kit'?{hits:notes}:{notes})});
+  if(f.adsr) tr.adsr=f.adsr; if(f.fx) tr.fx=Object.assign({},f.fx); if(f.octSet) tr.octSet=true;
+  S.bars=Math.max(T.bars0,T.P+T.nb);
+  tr._tapTemp=true; S.tracks.push(tr); tr._dirty=true; keyCache=null; T.tr=tr; T.state='review'; tapUI(); tapPlay(); }
 /* the chords under the part: the song's own, else a progression learned from real songs, else I V vi IV */
-function tapChordAt(T){ const CM=songChordMap(), base=T.P*16, span=TAP_BARS*16; let any=false; for(let s=base;s<base+span;s++) if(CM.get(s)&&CM.get(s).size){ any=true; break; }
+function tapChordAt(T){ const CM=songChordMap(), base=T.P*16, span=T.nb*16; let any=false; for(let s=base;s<base+span;s++) if(CM.get(s)&&CM.get(s).size){ any=true; break; }
   if(any) return st=>{ const a=CM.get(base+st); return a&&a.size?a:null; };
   if(!T.prog){ T.prog=(HARM&&harmProg(T.K))||[0,4,5,3].map((d,b)=>({s:b*16, l:16, p:48+((T.K.tonic+T.K.set[d%T.K.set.length])%12)})); }
-  return st=>{ const c=T.prog.find(n=>st>=n.s&&st<n.s+n.l); return c?new Set(chordTones(Math.round(c.p),'triad').map(x=>((x%12)+12)%12)):null; }; }
-function tapMelody(T){ if(typeof genMelody!=='function'||!MZ) return T.ons.map((s,i,a)=>({s, l:Math.max(1,Math.min(8,(a[i+1]??TAP_BARS*16)-s)), p:72, v:0.8, x:true}));
-  const ns=genMelody(T.K,TAP_BARS,tapChordAt(T),{onsets:T.ons}); return (ns||[]).map(n=>({...n,x:true})); }
+  return st=>{ const q=st%64, c=T.prog.find(n=>q>=n.s&&q<n.s+n.l); return c?new Set(chordTones(Math.round(c.p),'triad').map(x=>((x%12)+12)%12)):null; }; }
+function tapMelody(T){ const c=(TAP_CENTER[T.inst]||64)-12*T.oct, lo=T.inst==='bass'?c-4:c, hi=T.inst==='bass'?c+12:c+17;   /* a bass line stays low */
+  if(typeof genMelody!=='function'||!MZ) return T.ons.map((s,i,a)=>({s, l:Math.max(1,Math.min(8,(a[i+1]??T.nb*16)-s)), p:lo+8, v:0.8, x:true}));
+  const ns=genMelody(T.K,T.nb,tapChordAt(T),{onsets:T.ons,lo,hi}); return (ns||[]).map(n=>({...n,x:true})); }
 async function tapPlay(){ const T=tapIn; if(!T||!T.tr) return; ensureCtx(); try{ await ctx.resume(); }catch(e){} try{ await renderDirty(); }catch(e){}
   if(tapIn!==T||T.state!=='review') return; const bar=4*60/S.bpm, when=ctx.currentTime+0.05;
   startAll(when, T.P*bar); playing=true; T.playing=true; tapUI();
-  T.timers.push(setTimeout(()=>{ if(tapIn===T&&T.playing) tapStopPlay(); },(TAP_BARS*bar+0.1)*1000)); }
+  T.timers.push(setTimeout(()=>{ if(tapIn===T&&T.playing) tapStopPlay(); },(T.nb*bar+0.1)*1000)); }
 function tapStopPlay(){ const T=tapIn; if(!T) return; const was=T.playing; T.playing=false; if(was) tapHalt(); if(T.state==='review') tapUI(); }
 async function tapOther(){ const T=tapIn; if(!T||!T.tr||T.kind!=='rhythm') return; tapStopPlay(); const ns=tapMelody(T); if(!ns.length) return; T.tr.notes=ns; T.tr._dirty=true; tapPlay(); }
 function tapDrop(){ const T=tapIn; if(!T||!T.tr) return; const i=S.tracks.indexOf(T.tr); if(i>=0) S.tracks.splice(i,1); try{ disposeTrack(T.tr); }catch(e){} T.tr=null; keyCache=null; }
-function tapKeep(){ const T=tapIn; if(!T||!T.tr) return; tapStopPlay(); const tr=T.tr; delete tr._tapTemp; T.tr=null; T.kept=true; S.activeId=tr.id; keyCache=null; save(); haptic('light');
-  tapClose(); toast(`Added ${{chords:'chords',rhythm:'a melody',drums:'drums',notes:'notes',xy:'notes'}[T.kind]}. Undo takes ${T.kind==='rhythm'?'it':'them'} out.`,3500); }
+function tapKeep(){ const T=tapIn; if(!T||!T.tr) return; tapStopPlay(); const tr=T.tr; delete tr._tapTemp; T.tr=null; T.kept=true; S.activeId=tr.id; s2.selId=tr.id; keyCache=null; save(); haptic('light');
+  tapClose(); toast(`Added a part to ${s2Name(T.L)}. Undo takes it out.`,3500); }
 function tapClose(){ const T=tapIn; if(!T) return; tapClear(); xyOff(T); if(T.state==='count'||T.state==='take'||T.playing){ T.playing=false; tapHalt(); } tapDrop();
   if(!T.kept){ S.bars=T.bars0; S.key=T.key0[0]; S.scale=T.key0[1]; keyCache=null; scaleCache=null; }
   s2.sec=T.sec0; tapIn=null; const el=$('tapIn'); if(el){ el.hidden=true; el.innerHTML=''; } renderTracks(); scheduleRender(); }
+/* Record on an instrument track: the first time, how to record into it (Mic or pads); afterwards straight in. Record with in the track's sheet changes it. */
+function recWaySheet(L, then){ const ws=recWays(L.tracks[0].inst), cur=L.tracks[0].rin;
+  nxSheet(`<h2>How do you want to record?</h2><div class="sh-list">${ws.map(w=>`<div class="sh-row"><button class="nx-act sh-a" data-rin="${w}" aria-pressed="${w===cur}"><span>${TAP_NAMES[w]}</span>${w===cur?'<svg class="nx-ico pk-ok" viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></svg>':''}</button>${s2Inf(TAP_INFO[w])}</div>`).join('')}</div>`);
+  $('nxSheet').onclick=e=>{ const ib=e.target.closest('[data-info]'); if(ib){ e.preventDefault(); infoPop(ib); return; } const b=e.target.closest('[data-rin]'); if(!b) return;
+    flushSave(); L.tracks.forEach(t=>{ t.rin=b.dataset.rin; }); save(); nxClose(); if(then) then(); }; }
 /* Continue this (round 27): a short part (up to 4 bars) grows to four times its length, as a phrase: the part, a variation (the same
    rhythm, new notes in its second half), an answer (the same rhythm, new notes: the melody model, fitted to the chords there) and the part
    again with an ending on the key's home note. Chord parts repeat and end on the home chord. Less room after it: 3 (part, answer, ending)
