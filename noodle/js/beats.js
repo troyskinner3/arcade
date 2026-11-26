@@ -96,53 +96,129 @@ function songRoles(){ const real=S.tracks.filter(t=>!t.guide&&!t._pvTemp&&hasCon
     melody:has(t=>t.inst==='lead'||t.inst==='arp'||(t.inst==='vox'&&t.va!=null)), fx:has(t=>t.inst==='fx'), mix:has(t=>t.inst==='mix')}; }
 const finishMissing=()=>{ const r=songRoles(); return r.any?['drums','bass','chords','melody','fx','mix'].filter(k=>!r[k]):[]; };
 const pickOne=a=>a[Math.floor(Math.random()*a.length)];
-async function finishSong(){ const miss=finishMissing(); if(!miss.length) return false; if(miss.includes('melody')) try{ await loadMusical(); }catch(e){}   /* the melody tables (lead melodies) */
-  if(miss.includes('chords')||miss.includes('bass')) try{ await loadHarmony(); }catch(e){}   /* chords, comping and bass learned from real songs */
+/* Finish song, round 29 (owner, 26 Nov): it works on the song's real length and its sections. The length is where your own parts end; a song
+   shorter than 8 bars grows to 8 (your parts repeat; the second half lifts), empty bars after your parts are never filled. Sections come
+   from the Sections row (their types: Intro, Verse, Pre-chorus, Chorus, Drop, Bridge, Solo, Breakdown, Outro), else they're worked out from
+   where parts start and stop (and marked there). Each section is filled for its job: energy decides the drums (sparse to full, a fill into
+   a chorus), the chords (progressions and harmonic rhythm learned per genre and section type: genre.json), the comping and bass rhythm
+   (plain or syncopated: GROOVES), and whether there's a lead (the hook is in the chorus; the same one each time). Transitions go where
+   sections change, the mix effect on a real moment. Your own parts are never changed. One Undo takes it all out. */
+let GEN=null, genLoad=null;
+function loadGenre(){ return genLoad||(genLoad=fetch(new URL('genre.json',location.href)).then(r=>r.ok?r.json():null).then(j=>{ GEN=j; return j; }).catch(()=>{ genLoad=null; return null; })); }
+const SEC_ROLE={Intro:{k:'intro',e:0.3},Verse:{k:'verse',e:0.55},'Pre-chorus':{k:'pre',e:0.7},Chorus:{k:'chorus',e:1},Drop:{k:'chorus',e:1},Bridge:{k:'bridge',e:0.6},Solo:{k:'solo',e:0.8},Breakdown:{k:'bridge',e:0.25},Outro:{k:'outro',e:0.35}};
+const STYLE_GENRE={Trap:'hiphop',Drill:'hiphop','Boom bap':'hiphop','Lo-fi':'rnb',Pop:'pop','R&B':'rnb',Afrobeats:'latin'};
+const GENRE_DRUMS={hiphop:'hiphop',pop:'pop',rnb:'funk',latin:'latin',rock:'rock',country:'country',electronic:'pop'};
+/* livelier rhythms (round 29, owner: "a little more lively and less computer generated"): syncopated 1-bar patterns used next to the learned
+   ones (which come mostly from hymns and folk tunes, so they sit on the beat). Steps of a 16-step bar. */
+const GROOVES={comp:[[0,3,10],[0,3,6,10],[0,3,8,11],[0,6,10],[0,3,6],[0,3,6,8,11,14],[0,6,8,14],[2,6,10,14],[0,3,10,12]],
+  bass:[[0,3,6,10],[0,3,10],[0,6,8,14],[0,3,6,8,11,14],[0,10],[0,7,10]]};
+function genProg(K, role, genre, avoid){ const md=K.set.includes(3)&&!K.set.includes(4)?'min':'maj', rk=(SEC_ROLE[role]||SEC_ROLE.Verse).k;
+  const g=GEN&&GEN.prog, list=g&&((g[genre]&&g[genre][rk]&&g[genre][rk][md])||(g.pop&&g.pop[rk]&&g.pop[rk][md])||(g.pop&&g.pop.verse&&g.pop.verse[md]));
+  if(!list||!list.length){ const p=harmProg(K); return p||[0,4,5,3].map((d,b)=>({s:b*16,l:16,p:48+((K.tonic+K.set[d%K.set.length])%12)})); }
+  let loop=null; for(let k=0;k<8;k++){ loop=wpick(list,x=>x[1]*(new Set(x[0].split(',')).size>=3?1.5:1))[0]; if(!avoid||loop.split(',')[0]!==avoid) break; }
+  const rl=(GEN.rhythm&&(GEN.rhythm[rk]||GEN.rhythm.verse))||[['0,16,32,48',1]], starts=wpick(rl)[0].split(',').map(Number), rs=loop.split(',').map(Number);
+  return starts.map((s,i)=>({s, l:(i<starts.length-1?starts[i+1]:64)-s, p:48+((K.tonic+rs[i%rs.length])%12), r:rs[i%rs.length]})); }
+/* drums for a section, from the beat's own pattern, by energy: a breakdown has none, an intro only hats, a bridge goes half-time, a chorus is
+   full with a crash on its first beat; the last bar before a chorus or drop gets a fill (learned from drummers, else a snare roll) */
+function genDrums(b, role, bars, fillInto, genre){ const e=(SEC_ROLE[role]||SEC_ROLE.Verse).e, slot=d=>(S.kit.slots.find(x=>x.sound===d)||S.kit.slots.find(x=>x.id===d)||{id:d}).id, hits=[];
+  if(e<0.3) return hits;
+  const L=Math.max(...Object.values(b.drums).map(p=>p.length));
+  for(let s=0;s<bars*16;s++) for(const [d,p] of Object.entries(b.drums)){ const ch=p[s%L]; if(ch!=='x'&&ch!=='o') continue; const st=s%16;
+    if(role==='Intro'&&d!=='hat'&&!(d==='kick'&&st===0)) continue;
+    if(role==='Bridge'&&(d==='snare'||d==='clap')&&st!==8) continue; if(role==='Bridge'&&d==='kick'&&st!==0) continue;
+    if(role==='Outro'&&Math.floor(s/16)===bars-1&&d!=='kick'&&d!=='hat') continue;
+    if(e<0.6&&(d==='openhat'||d==='clap')) continue;
+    hits.push({s, d:slot(d), v:ch==='o'?0.5:d==='hat'?0.7:0.95}); }
+  if(e>=1){ for(let s=0;s<bars*16;s+=16) if(!hits.some(h=>h.s===s&&h.d==='kick')) hits.push({s,d:slot('kick'),v:0.95}); hits.push({s:0,d:slot('crash'),v:0.8}); }
+  if(fillInto&&bars>=1){ const f0=(bars-1)*16+8; for(let i=hits.length-1;i>=0;i--) if(hits[i].s>=f0) hits.splice(i,1);
+    const fs=GEN&&GEN.drums&&GEN.drums[GENRE_DRUMS[genre]||'pop']&&GEN.drums[GENRE_DRUMS[genre]||'pop'].fill; let used=false;
+    if(fs&&fs.length){ const pat=wpick(fs)[0]; pat.split('|').forEach(part=>{ const [d,steps]=part.split(':'); (steps?steps.split(','):[]).map(Number).filter(x=>x>=8).forEach(x=>{ used=true; hits.push({s:(bars-1)*16+x, d:slot(d==='k'?'kick':d==='s'?'snare':'hat'), v:d==='s'?0.85:0.75}); }); }); }
+    if(hits.filter(h=>h.s>=f0&&h.d===slot('snare')).length<2) used=false;   /* learned fills are often on toms (a Noodle kit has none): then a snare roll */
+    if(!used) for(let x=8;x<16;x++) if((x%2===0||x>=12)&&!hits.some(h=>h.s===(bars-1)*16+x&&h.d===slot('snare'))) hits.push({s:(bars-1)*16+x, d:slot('snare'), v:+(0.45+0.4*(x-8)/7).toFixed(2)}); }
+  return hits.sort((a,c)=>a.s-c.s); }
+/* strike chords in a rhythm: learned (mostly on the beat) or a groove (syncopated); a high-energy section leans on the grooves */
+function genComp(chords, bars, e){ if(e<0.45) return chords.map(c=>({...c}));   /* calm sections hold */
+  if(Math.random()<(e>=0.9?0.65:0.3)){ const on=pickOne(GROOVES.comp), out=[]; for(const c of chords){ const hits=[]; for(let s=c.s;s<c.s+c.l;s++) if(on.includes(s%16)||s===c.s) hits.push(s);
+      hits.forEach((s,i)=>out.push({s, l:(i<hits.length-1?hits[i+1]:c.s+c.l)-s, p:c.p})); } return out.filter(n=>n.s<bars*16); }
+  return harmComp(chords, bars); }
+/* the bass: none in a calm intro or breakdown, held roots in an outro, a learned line in a verse, and in a chorus it locks to the kick
+   (a note on each kick, the chord's root) or a syncopated groove */
+function genBass(chords, K, bars, oct, role, kicks){ const e=(SEC_ROLE[role]||SEC_ROLE.Verse).e, root=c=>oct+((Math.round(c.p)-oct)%12+12)%12, at=st=>chords.find(c=>st>=c.s&&st<c.s+c.l);
+  if(e<0.3) return []; if(role==='Intro') return [];
+  if(role==='Outro'||role==='Bridge') return chords.map(c=>({s:c.s,l:c.l,p:root(c),v:0.8}));
+  let on=null; if(e>=0.9&&kicks&&kicks.length>=bars*2&&Math.random()<0.6) on=kicks; else if(e>=0.7||Math.random()<0.3){ const g=pickOne(GROOVES.bass); on=[]; for(let b=0;b<bars;b++) g.forEach(x=>on.push(b*16+x)); }
+  if(!on){ const h=harmBass(chords,K,bars,oct); if(h&&h.length) return h; on=[]; for(let b=0;b<bars;b++) on.push(b*16,b*16+8); }
+  on=[...new Set(on)].sort((a,c)=>a-c); chords.forEach(c=>{ if(!on.includes(c.s)) on.push(c.s); }); on.sort((a,c)=>a-c);   /* a chord change always lands on its root */
+  return on.filter(s=>s<bars*16&&at(s)).map((s,i,a)=>({s, l:Math.max(1,Math.min(8,(a[i+1]??bars*16)-s)), p:root(at(s)), v:s%4===0?0.88:0.78})); }
+/* the song's sections: the ones on the Sections row (gaps count as verses), else worked out from where parts start and stop */
+function finishSections(N, E, grown){ const typed=(S.secs||[]).filter(x=>x.a<N&&SEC_ROLE[x.name]).map(x=>({a:x.a,b:Math.min(x.b,N),name:x.name})).sort((x,y)=>x.a-y.a);
+  if(typed.length){ const out=[]; let at=0; for(const x of typed){ if(x.a>at) out.push({a:at,b:x.a,name:'Verse',gap:true}); out.push(x); at=Math.max(at,x.b); } if(at<N) out.push({a:at,b:N,name:'Verse',gap:true}); return {secs:out, marked:false}; }
+  if(grown){ const h=Math.max(1,Math.round(N/2)); return {secs:[{a:0,b:h,name:'Verse'},{a:h,b:N,name:'Chorus'}], marked:true}; }
+  const own=S.tracks.filter(t=>!t.guide&&!t._pvTemp&&hasContent(t)&&t.inst!=='mix'), blk=Math.max(1,Math.min(4,Math.floor(N/4)||1)), sig=[];
+  for(let a=0;a<N;a+=blk){ const lanes=new Set(); own.forEach(t=>{ const o=(t.off||0)/16, e=o+pBars(t)*pLoops(t); if(o<a+blk&&e>a) lanes.add(s2LaneId(t)); }); sig.push({a,b:Math.min(N,a+blk),k:[...lanes].sort().join(','),n:lanes.size}); }
+  const segs=[]; for(const x of sig){ const l=segs[segs.length-1]; if(l&&l.k===x.k&&l.b-l.a<8) l.b=x.b; else segs.push({...x}); }
+  const mean=segs.reduce((s,x)=>s+x.n*(x.b-x.a),0)/N, top=Math.max(...segs.map(x=>x.n));
+  if(segs.length<2||segs.every(x=>x.n===segs[0].n)){ const out=[], step=N>=16?8:4; let k=0; for(let a=0;a<N;a+=step,k++) out.push({a,b:Math.min(N,a+step),name:k%2?'Chorus':'Verse'}); return {secs:out, marked:true}; }
+  segs.forEach((x,i)=>{ x.name= i===0&&x.n<mean*0.8&&x.b-x.a<=4?'Intro' : i===segs.length-1&&x.n<mean*0.8?'Outro' : x.n===top?'Chorus':'Verse'; });
+  return {secs:segs.map(x=>({a:x.a,b:x.b,name:x.name})), marked:true}; }
+async function finishSong(){ const miss=finishMissing(); if(!miss.length) return false;
+  try{ await Promise.all([loadMusical(),loadHarmony(),loadGenre()]); }catch(e){}
   pvEnd(true); flushSave();
-  const free=BEATS.filter(b=>!b.pro), near=free.filter(b=>Math.abs(b.bpm-S.bpm)<=20), b=pickOne(near.length?near:free);
-  const pitched=S.tracks.some(t=>!t.guide&&t.notes&&t.notes.length&&INST[t.inst].kind==='pitched');
-  let K=currentKey(); if(K.none||!pitched){ S.key=String(b.tonic); S.scale=b.scale; keyCache=null; scaleCache=null; K=currentKey(); }   /* nothing pitched yet: the song takes the beat's key, so it doesn't change once notes arrive */
-  K={...K, set:SCALES[PARENT[K.scale]||K.scale]||K.set};   /* the melody, chords and bass all use the same scale */
-  if(S.bars<4) S.bars=4;
-  const base=beatTracks(b,K.tonic,K.scale), add=[], got=[], ok=snd=>!proLocked(snd);
-  const fromBeat=k=>base.find(t=>k==='drums'?t.inst==='kit':k==='bass'?t.name==='Bass':t.name==='Chords');
-  /* the chords to follow: the song's own chord part, else chords made from its melody, else the beat's progression */
-  const real=S.tracks.filter(t=>!t.guide&&hasContent(t)), chordPart=real.find(t=>(t.inst==='keys'||t.inst==='pad')&&t.notes&&t.notes.length), mel=real.find(t=>(t.inst==='lead'||t.inst==='vox'||t.inst==='arp')&&melodyNotes(t).length);
-  let chords=chordPart;
-  if(miss.includes('chords')){ const c=b.chords; let t;
-    const comp=ns=>c.inst==='keys'?harmComp(ns,64):ns;   /* keys strike in a learned rhythm; pads hold */
-    if(mel){ const ch=harmonize(melodyNotes(mel),K,pSteps(mel),16);   /* one chord a bar (16 steps), as the chord sheet does */ if(ch&&ch.length) t=mkTrack(c.inst,{id:S.nextId++, off:mel.off||0, len:mel.len, lenSet:true, rep:mel.rep, sound:c.sound, vol:c.vol||55, send:c.send??30, chordType:c.type||'triad', notes:comp(ch.map(x=>({s:x.s,l:x.l,p:x.root}))).map(n=>({...n,v:0.72,x:true}))}); }
-    if(!t&&HARM){ const pr=harmProg(K); if(pr) t=mkTrack(c.inst,{id:S.nextId++, off:0, len:4, lenSet:true, rep:true, sound:c.sound, vol:c.vol||55, send:c.send??30, chordType:c.type||'triad', notes:comp(pr).map(n=>({...n,v:n.s%16===0?0.76:0.68,x:true})), _prog:pr}); }   /* a progression learned from real songs, with its rhythm */
-    if(!t) t=fromBeat('chords');
-    if(t){ if(c.tfx) t.tfx={...c.tfx}; t.picked=true; delete t.name; add.push(t); chords=t; got.push('chords'); } }
-  const roots=chords&&chords.notes&&chords.notes.length?{off:chords.off||0, len:chords.len||4, rep:chords.rep!==false, notes:(chords._prog||chords.notes).slice().sort((a,c)=>a.s-c.s)}:null; if(chords) delete chords._prog;
-  if(miss.includes('bass')){ let t;
-    if(roots&&HARM){ const n=harmBass(roots.notes,K,Math.max(1,Math.round(roots.len)),b.bass.oct); if(n&&n.length) t=mkTrack('bass',{id:S.nextId++, off:roots.off, len:roots.len, lenSet:true, rep:roots.rep, sound:b.bass.sound, vol:74, notes:n}); }   /* a bass line learned from real songs */
-    if(!t&&roots){ const rh=b.bass.rhythm, n=[]; for(const c of roots.notes){ const root=b.bass.oct+((Math.round(c.p)-b.bass.oct)%12+12)%12; let cur=null;
-        for(let s=c.s;s<c.s+c.l;s++){ const ch=rh[s%16]; if(ch==='x'){ cur={s,l:1,p:root,v:0.85}; n.push(cur); } else if(ch==='='&&cur) cur.l++; else cur=null; } }
-      if(n.length) t=mkTrack('bass',{id:S.nextId++, off:roots.off, len:roots.len, lenSet:true, rep:roots.rep, sound:b.bass.sound, vol:74, notes:n}); }
-    if(!t) t=fromBeat('bass');
-    if(t){ t.picked=true; delete t.name; add.push(t); got.push('bass'); } }
-  if(miss.includes('drums')){ const t=fromBeat('drums'); if(t){ t.picked=true; delete t.name; add.push(t); got.push('drums'); } }
-  if(miss.includes('melody')){ const src0=roots||null;
-    /* a lead melody written over the chords, most of the time (genMelody: learned from real tunes); otherwise an arp playing the chords */
-    const leadSrc=src0||{off:0,len:4,rep:true,notes:(fromBeat('chords')||{notes:[]}).notes};
-    if(typeof genMelody==='function'&&MZ&&leadSrc.notes.length&&Math.random()<0.7){ const bars=Math.max(1,Math.round(leadSrc.len)), span=bars*16, ns=leadSrc.notes;
-      const chordAt=st=>{ const q=((st%span)+span)%span, c=ns.find(n=>q>=n.s&&q<n.s+n.l); return c?new Set(chordTones(Math.round(c.p),'triad').map(x=>((x%12)+12)%12)):null; };
-      const notes=genMelody(K,bars,chordAt);
-      if(notes&&notes.length){ const snd=pickOne(['Bell','Square','Saw','Supersaw','Guitar'].filter(ok)); add.push(mkTrack('lead',{id:S.nextId++, off:leadSrc.off, len:leadSrc.len, lenSet:true, rep:leadSrc.rep, sound:snd, vol:snd==='Supersaw'||snd==='Saw'?40:48, send:35, picked:true, notes:notes.map(n=>({...n,x:true}))})); got.push('a melody'); } }
-  }
-  if(miss.includes('melody')&&!got.includes('a melody')){ const src=roots||{off:0,len:4,rep:true,notes:b.prog.map((d,bar)=>({s:bar*16,l:16,p:48+(((K.tonic+((SCALES[PARENT[K.scale]||K.scale]||SCALES[b.scale])[d%7]))%12)+12)%12}))};
-    const snd=pickOne(['Pluck','Bell','Square','Glass'].filter(ok)), t=mkTrack('arp',{id:S.nextId++, off:src.off, len:src.len, lenSet:true, rep:src.rep, sound:snd, vol:42, send:35, chordType:'triad', picked:true, notes:src.notes.map(n=>({s:n.s,l:n.l,p:62+((Math.round(n.p)-62)%12+12)%12,v:0.7,x:true}))});
-    add.push(t); got.push('a melody'); }
-  if(miss.includes('fx')){ const fxs=[]; for(let bar=0;bar<S.bars;bar+=4){ fxs.push({...fxNew('sweepDown',bar*16,S.bars*16),l:8,v:0.3}); const end=Math.min(S.bars,bar+4); fxs.push({...fxNew('sweepUp',(end-1)*16,S.bars*16),v:0.3}); }
-    const t=mkTrack('fx',{id:S.nextId++, off:0, len:S.bars, lenSet:true, rep:false}); t.fxs=fxs; add.push(t); got.push('transitions'); }
-  if(miss.includes('mix')){ const t=mkTrack('mix',{id:S.nextId++, off:(S.bars-1)*16, len:1, lenSet:true, rep:false}); t.mfx={k:'lp', curve:{nodes:[{t:0,v:0},{t:0.85,v:0.28},{t:1,v:0}], curves:[null,null]}, params:{}}; t.picked=true; add.push(t); got.push('a mix effect'); }   /* a gentle low-pass dip into the loop */
-  if(!add.length) return false;
-  S.tracks.push(...add); add.forEach(t=>{ t._dirty=true; try{ autoOct(t); }catch(e){} }); keyCache=null; S.tracks.forEach(t=>{ t._dirty=true; });
+  const own=S.tracks.filter(t=>!t.guide&&!t._pvTemp&&hasContent(t));
+  const E=Math.max(1,Math.ceil(Math.max(...own.filter(t=>t.inst!=='mix').map(t=>(t.off||0)/16+pBars(t)*pLoops(t)),1)-1e-6)), grown=E<8, N=grown?8:E;
+  /* a short song grows: your parts repeat to fill 8 bars (copies, so each can be changed on its own); looping parts simply keep looping */
+  if(grown){ for(const t of own.filter(t=>!pRep(t)&&t.inst!=='mix')){ for(let k=1;k*E<N;k++){ const off=(t.off||0)+k*E*16; if(off>=N*16) break;
+      const c=JSON.parse(JSON.stringify(t,(kk,v)=>kk[0]==='_'?undefined:v)); c.id=S.nextId++; c.lane=s2LaneId(t); c.off=off; c.len=Math.min(pBars(t),N-off/16); c.lenSet=true; c.rep=false; delete c.sid; delete c.sidAt; delete c.sidHeard; delete c.ed; c.copyOf=t.id; c._dirty=true;
+      if(t._raw){ c._raw=t._raw; try{ storeVox(c); }catch(e){} } S.tracks.push(c); } } }
+  if(S.bars<N) S.bars=N;
+  const free=BEATS.filter(b=>!b.pro), near=free.filter(b=>Math.abs(b.bpm-S.bpm)<=20), b=pickOne(near.length?near:free), genre=STYLE_GENRE[b.style]||'pop';
+  const pitched=own.some(t=>t.notes&&t.notes.length&&INST[t.inst].kind==='pitched');
+  let K=currentKey(); if(K.none||!pitched){ S.key=String(b.tonic); S.scale=b.scale; keyCache=null; scaleCache=null; K=currentKey(); }
+  K={...K, set:SCALES[PARENT[K.scale]||K.scale]||K.set};
+  const {secs, marked}=finishSections(N,E,grown); if(marked) S.secs=secs.map(x=>({a:x.a,b:x.b,name:x.name}));
+  const ok=snd=>!proLocked(snd), add=[], got=[], lanes={};
+  const part=(key,inst,o,sec,payload)=>{ const first=lanes[key], t=mkTrack(inst,{id:S.nextId++, ...(first?{lane:first.id}:{}), off:sec.a*16, len:sec.b-sec.a, lenSet:true, rep:false, picked:true, ...o, ...payload}); if(!first) lanes[key]=t; add.push(t); return t; };
+  const mel=own.find(t=>(t.inst==='lead'||t.inst==='vox'||t.inst==='arp')&&melodyNotes(t).length), chordPart=own.find(t=>(t.inst==='keys'||t.inst==='pad')&&t.notes&&t.notes.length);
+  const hasHook=secs.some(x=>['Chorus','Drop','Solo'].includes(x.name)), progs={}, hooks={};
+  const chordsIn=(sec,role)=>{ const bars=sec.b-sec.a;
+    if(mel){ const ms=melodyNotes(mel).map(n=>({...n,s:n.s+(mel.off||0)})).filter(n=>n.s>=sec.a*16&&n.s<sec.b*16).map(n=>({...n,s:n.s-sec.a*16}));   /* your melody here: chords that fit it */
+      if(ms.length>=3){ const h=harmonize(ms,K,bars*16,16); if(h&&h.length) return h.map(x=>({s:x.s,l:x.l,p:x.root})); } }
+    const key=role==='Drop'?'Chorus':role; if(!progs[key]) progs[key]=genProg(K,role,genre,role==='Bridge'&&progs.Chorus?String(progs.Chorus[0].r):null);
+    const p=progs[key], out=[]; for(let s=0;s<bars*16;s+=64) p.forEach(c=>{ if(s+c.s<bars*16) out.push({s:s+c.s, l:Math.min(c.l,bars*16-s-c.s), p:c.p}); }); return out; };
+  const secChords=secs.map(x=>chordsIn(x,x.name));
+  secs.forEach((sec,i)=>{ const role=sec.name, e=(SEC_ROLE[role]||SEC_ROLE.Verse).e, bars=sec.b-sec.a, next=secs[i+1], fillInto=!!next&&(SEC_ROLE[next.name]||{}).e>=1&&e<1, ch=secChords[i];
+    let kicks=null;
+    if(miss.includes('drums')){ const hits=genDrums(b,role,bars,fillInto,genre); kicks=hits.filter(h=>h.d===(S.kit.slots.find(x=>x.sound==='kick')||{id:'kick'}).id).map(h=>h.s);
+      if(hits.length) part('drums','kit',{sound:b.kit, vol:b.kitVol||80},sec,{hits}); }
+    if(miss.includes('chords')&&ch.length){ const c=b.chords, notes=(c.inst==='keys'?genComp(ch,bars,e):ch).map(n=>({...n,v:+((n.s%16===0?0.76:0.68)*(0.8+0.2*e)).toFixed(2),x:true}));
+      const t=part('chords',c.inst,{sound:c.sound, vol:c.vol||55, send:c.send??30, chordType:c.type||'triad'},sec,{notes}); if(c.tfx) t.tfx={...c.tfx}; }
+    if(miss.includes('bass')&&ch.length){ const n=genBass(ch,K,bars,b.bass.oct,role,kicks); if(n.length) part('bass','bass',{sound:b.bass.sound, vol:74},sec,{notes:n}); }
+    if(miss.includes('melody')&&typeof genMelody==='function'&&MZ&&ch.length&&(['Chorus','Drop','Solo'].includes(role)||(!hasHook&&role==='Verse'))){
+      const key=role==='Drop'?'Chorus':role; let notes=hooks[key];
+      if(!notes){ const span=bars*16, chordAt=st=>{ const c=ch.find(n=>st%span>=n.s&&st%span<n.s+n.l); return c?new Set(chordTones(Math.round(c.p),'triad').map(x=>((x%12)+12)%12)):null; };
+        notes=genMelody(K,Math.min(bars,8),chordAt,role==='Solo'?{lo:67,hi:86}:role==='Verse'?{lo:62,hi:76}:{}); if(notes) hooks[key]=notes; }   /* the hook: the same melody every chorus */
+      if(notes&&notes.length){ const span=Math.min(bars,8)*16, full=[]; for(let s=0;s<bars*16;s+=span) notes.forEach(n=>{ if(s+n.s<bars*16) full.push({...n,s:s+n.s,l:Math.min(n.l,bars*16-s-n.s),x:true}); });
+        if(!lanes.lead){ const snd=pickOne(['Bell','Square','Saw','Supersaw','Guitar'].filter(ok)); lanes._leadSnd=snd; }
+        part('lead','lead',{sound:lanes._leadSnd, vol:lanes._leadSnd==='Supersaw'||lanes._leadSnd==='Saw'?40:48, send:35},sec,{notes:full}); } } });
+  if(miss.includes('melody')&&!lanes.lead){ const snd=pickOne(['Pluck','Bell','Square','Glass'].filter(ok));   /* no melody model here: an arp plays the chords where a hook would go */
+    secs.forEach((sec,i)=>{ if(!(['Chorus','Drop','Solo'].includes(sec.name)||(!hasHook&&sec.name==='Verse'))||!secChords[i].length) return;
+      const t=part('lead','arp',{sound:snd, vol:42, send:35, chordType:'triad'},sec,{notes:secChords[i].map(n=>({s:n.s,l:n.l,p:62+((Math.round(n.p)-62)%12+12)%12,v:0.7,x:true}))}); }); }
+  ['drums','chords','bass','lead'].forEach(k=>{ if(lanes[k]) got.push({drums:'drums',chords:'chords',bass:'bass',lead:'a melody'}[k]); });
+  if(miss.includes('fx')){ const fxs=[], P=N*16;
+    secs.forEach((sec,i)=>{ const e=(SEC_ROLE[sec.name]||SEC_ROLE.Verse).e, prev=secs[i-1];
+      if(prev&&e>=1){ fxs.push({...fxNew('riser',Math.max(prev.a*16,sec.a*16-16),P),l:Math.min(16,sec.a*16-prev.a*16),v:0.32}); fxs.push({...fxNew('impact',sec.a*16,P),v:0.35}); }   /* building into a chorus or drop, a hit on its first beat */
+      else if(prev) fxs.push({...fxNew('sweepDown',sec.a*16,P),l:8,v:0.28}); });
+    if(!fxs.length) fxs.push({...fxNew('sweepUp',(N-1)*16,P),v:0.3});
+    const t=mkTrack('fx',{id:S.nextId++, off:0, len:N, lenSet:true, rep:false}); t.fxs=fxs.sort((a,c)=>a.s-c.s); add.push(t); got.push('transitions'); }
+  if(miss.includes('mix')){ const intro=secs.find(x=>x.name==='Intro'), outro=secs.find(x=>x.name==='Outro');   /* on a real moment: an intro opening up, an outro closing, else the last bar */
+    const [a,len,nodes]=intro?[intro.a,intro.b-intro.a,[{t:0,v:0.55},{t:1,v:0}]]:outro?[outro.a,outro.b-outro.a,[{t:0,v:0},{t:1,v:0.55}]]:[N-1,1,[{t:0,v:0},{t:0.85,v:0.28},{t:1,v:0}]];
+    const t=mkTrack('mix',{id:S.nextId++, off:a*16, len, lenSet:true, rep:false}); t.mfx={k:'lp', curve:{nodes, curves:nodes.slice(1).map(()=>null)}, params:{}}; t.picked=true; add.push(t); got.push('a mix effect'); }
+  if(!add.length&&!grown) return false;
+  S.tracks.push(...add); keyCache=null; S.tracks.forEach(t=>{ t._dirty=true; }); Object.values(lanes).forEach(t=>{ if(t&&t.id) try{ autoOct(t); }catch(e){} });
   warmSounds(); save(); renderTracks(); scheduleRender();
-  const list=got.length>1?got.slice(0,-1).join(', ')+' and '+got[got.length-1]:got[0];
-  toast(`Added ${list}. Undo takes them out.`,5200); return true; }
+  const list=got.length>1?got.slice(0,-1).join(', ')+' and '+got[got.length-1]:got[0]||'nothing new', names=[...new Set(secs.map(x=>x.name))];
+  toast(`Added ${list}${marked?`, in sections: ${names.join(', ')}`:''}. Undo takes it out.`,5600); return true; }
+
 /* ---- Chords and bass from data (round 24; owner: "account for rhythm, not just the progression"). noodle/harmony.json is learned from
    ~15,000 public-domain and CC0 songs in 4/4 (PDMX; modern genres weighted up; eval/musical_train/extract_harm.py, train_harm.py):
      prog: 4-bar progressions with their own harmonic rhythm (where each chord starts and how long it lasts), per mode, in semitones above

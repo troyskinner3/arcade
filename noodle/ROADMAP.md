@@ -157,9 +157,15 @@ Draft copy is in `noodle-ios/APP_STORE_LISTING.md`.
 - [x] Teaching the crash: it's kept (it was thrown away as metronome bleed); nothing plays after teaching.
 - [x] Beats: Use this beat pinned after a pick; closing puts the playhead back; a free beat is no longer called Pro.
 - [x] Buzz timing range ±300 ms. Revisit the default (−15; the owner found +50 right after a fresh start) once the delay fix is on a build.
-- [ ] Livelier rhythms (syncopation, pushes, genre grooves) in everything Noodle writes.
-- [ ] Finish song: the song's real length, its sections (marked or worked out), each filled for its role; no filling empty bars.
-- [ ] Modern-genre data (hip hop, pop, rock, country, reggaeton): a shortlist with licences for the owner to approve.
+- [x] Livelier rhythms (syncopation, pushes, genre grooves) in everything Noodle writes (round 29: GROOVES; chorus comping and bass syncopated, bass can lock to the kick).
+- [x] Finish song: the song's real length, its sections (marked or worked out), each filled for its role; no filling empty bars (round 29).
+- [x] Modern-genre data: Chordonomicon (MIT), McGill Billboard (CC0), Groove MIDI (CC BY 4.0), approved by the owner 26 Nov; genre.json; credited in More → Credits.
+- [ ] More free beats for the genres the data covers but the beat list doesn't (rock, country, reggaeton with a hand-written dembow); then Finish song can pick a genre beyond hip hop, pop and R&B.
+- [ ] Desktop web app tied to the phone account (songs synced; export the DAW pack straight on the laptop). Later; needs accounts and sync.
+- [ ] Laptop layout: use the width (taller curve editor, effect list as a column). Later.
+- [x] Count-in chord moved to Mic and timing → More settings.
+- [x] Timeline lines at the snap size (merging to beats, then bars, zoomed out).
+- [x] Pro badges on the Mix effect buttons no longer cut off.
 
 ## Faster beat making (owner, 25 Nov; build in small chunks, test each)
 - [x] Finish song: one tap fills in what's missing (drums, bass, chords, a melody, transitions, a mix effect). Free.

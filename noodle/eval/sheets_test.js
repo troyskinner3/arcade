@@ -9,7 +9,7 @@ const {chromium,devices}=require('playwright');
   await p.tap('#s2Key'); await p.tap('[data-pick="key"]'); await p.tap('.pk-row[data-v="7"]'); await p.tap('.pk-done'); await p.tap('[data-pick="scale"]'); await p.tap('.pk-row[data-v="lydian"]'); await p.tap('.pk-done'); await p.waitForTimeout(300);
   await p.evaluate(()=>nxClose()); await p.waitForTimeout(150); out.key=await p.evaluate(()=>({key:S.key, scale:S.scale, snap:S.snapStr, chip:$('s2Key').textContent.trim()}));
   await p.tap('#s2Key'); out.keyReopen=await p.evaluate(()=>[...document.querySelectorAll('#nxSheet .s2-row b')].map(b=>b.textContent).join('|')); await p.evaluate(()=>nxClose());
-  await p.tap('#s2Bpm'); await set('s2T',120,'change'); const arp0=await p.evaluate(()=>!!S.keyRef); await set('s2Arp',!arp0,'change');
+  await p.tap('#s2Bpm'); await set('s2T',120,'change'); const arp0=await p.evaluate(()=>!!S.keyRef); await p.evaluate(()=>{ nxClose(); $('nxTiming').click(); $('nxMtMore').click(); }); await set('nxKr',!arp0,'change');   /* round 29: Count-in chord is in Mic and timing → More settings */
   out.arpFlipped=(await p.evaluate(()=>!!S.keyRef))!==arp0; await p.evaluate(()=>nxClose()); await p.waitForTimeout(150); out.tempo=await p.evaluate(()=>({bpm:S.bpm, chip:$('s2Bpm').textContent.trim()}));
   await p.tap('#s2Metro'); out.metro=await p.evaluate(()=>S.metro); await p.waitForTimeout(100); out.metroBtn=await p.$eval('#s2Metro',e=>e.getAttribute('aria-pressed'));
   await p.tap('#s2Back'); await p.waitForTimeout(300); await p.evaluate(()=>nxGo('more')); await p.waitForTimeout(300); const before=await p.evaluate(()=>({la:!!S.latAuto, pa:!!S.playAlong, ec:!!S.ec}));
