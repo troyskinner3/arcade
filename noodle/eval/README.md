@@ -1014,3 +1014,6 @@ the note editor's Today / Tap notes button flips one take between them. The fing
   Nights (reggaeton, 95, A minor: four-on-the-floor kick, the dembow snare and clap on the 4th and 7th 16th of each half bar, an 808 bass and
   key stabs on the dembow). Finish song maps them to rock, country and Latin material (genre.json).
 - Tests: `beats_test` counts 15 beats; `b2_test` plays each new beat (sound, free sounds, in key).
+- Hardening (before the security session's check): a track's `rin` that isn't one of its record methods asks again (an older or odd song
+  file can't open an unknown pad screen); section names are looked up as own keys only (a section named "constructor" counts as a verse).
+  `b2_test` checks both.
