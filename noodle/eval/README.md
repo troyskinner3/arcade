@@ -917,3 +917,32 @@ the note editor's Today / Tap notes button flips one take between them. The fing
 - Tests: `tapin_test.js` (Note pads: names, rows, a timed take, Add more; Play pad: range, a timed slide with brightness, quick tap, nothing
   left sounding), `draw_test.js` (redo over a line keeps what sticks out; a line above adds a voice), `continue_test.js` (new);
   `musical_test.js` now checks there is no Version choice before a take (the ••• itself shows for Continue this).
+
+## Round 28 (owner's TestFlight notes, 26 Nov: editor and screens)
+- No page zoom: `html{touch-action:manipulation}` stops double-tap zoom everywhere; in the iPhone app the page's viewport adds
+  `maximum-scale=1,user-scalable=no` and the web view's pinch gesture is off (the website keeps pinch zoom for accessibility).
+- Another version: grey (disabled) when the part has no other likely version (`verAvail`: worked out once per state of the notes,
+  refreshed 0.4 s after an edit), instead of a message after tapping; it and its ⓘ moved to the right end of the bar.
+- Note editor: rows cover C1–C8 (the key's notes, or all 12) as a window that scrolls: swipe the grid up or down (sideways still scrolls
+  time) or drag the key column; it opens centred on the part's notes and leaves room under it for the selected note's bar. Dragging a note
+  past the top or bottom edge scrolls. Octave − / + under Velocity moves the selected note(s) an octave.
+- Both ends of a note drag (front: the start, the end stays; short notes: left 40% / right 60%). Same pitch, no overlap: the note run into
+  is pushed later from its front and removed once covered, the one run back into ends where this starts; live while dragging, dragging
+  back restores them (`overlapFix` from a snapshot taken at the start of the drag). Different pitches overlap freely.
+- Track sheet: More settings is closed every time a sheet opens (it was remembered); inside: Chord (a dropdown opening the list, keys,
+  pad and arp), Octave, Brightness (+ Expression on sung takes), Reverb, Left / right; then sections that open in place with a summary:
+  Effects ("Off" or what's on; Pro badge and ⓘ beside it), Your kit (drums), Voice (vocals). No single-control headings.
+- Sections: a type from a list of 9 (Intro, Verse, Pre-chorus, Chorus, Drop, Bridge, Solo, Breakdown, Outro), from a dropdown in the
+  section's sheet and in the marking bar; repeats are numbered on screen (Verse 1, Verse 2); stored as the type.
+- Style check (iPhone 13, dark and light): the first version of the scrolling editor filled the screen and hid the selected note's bar;
+  the grid now leaves room for it.
+- Tests: `editor28_test.js` (new: octave window and both ways of scrolling, octave stepper, front edge, overlap live and restored,
+  Another version grey and last, zoom on web and in the app); `draw_test`, `sections_test`, `presets_test`, `tfx_test`, `s2_extras`
+  updated; `round3b_test` and `round3c_test` now check the new More settings order (they only printed it before).
+- Later in the round (owner): the note preview felt late. A tapped note now sounds as the finger lands (it waited for the lift); the key
+  column too. Then: the whole app's sound lagged the picture by about an eighth note on the phone's speaker. The playhead (and the record
+  count-in display) now follows `heardNow()`, the moment being heard (Web Audio's output timestamp; else currentTime minus outputLatency),
+  not what's being sent out; the pads' tap timing uses the same delay (it assumed at most 0.15 s). The iPhone app asks iOS for a 5 ms audio
+  buffer (`setPreferredIOBufferDuration`). Press and hold the position counter to see the delay the phone reports (to check on the next build).
+- The scrolling editor first showed only 7 rows on the smallest phone (iPhone SE); rows shrink there (to 20 px) so about 10 fit.
+- `corr_test` and `keyroll_test` updated for the scrolling window (the full row lists are compared).

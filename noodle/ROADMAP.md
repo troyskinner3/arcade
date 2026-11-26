@@ -135,6 +135,26 @@ Draft copy is in `noodle-ios/APP_STORE_LISTING.md`.
 - [ ] Launch posts and a short demo video for TikTok, Reels and Shorts.
 - [ ] First-week plan: read reviews and crash reports daily, ship a quick fix build if needed.
 
+## Owner's TestFlight notes, 26 Nov (round 28 = A, round 29 = B)
+- [x] No page zoom (double-tap anywhere; pinch in the app).
+- [x] Another version greyed out when there's none; it and its ⓘ at the right end of the editor bar.
+- [x] Same-pitch overlap: stretching or moving into a note at the same pitch pushes it later / removes it (live, like Ableton).
+- [x] A note's front edge can be dragged too.
+- [x] Note editor scrolls through every octave (swipe the grid or drag the keys); Octave − / + for selected notes.
+- [x] Track sheet: More settings starts closed; only everyday controls; Effects, Your kit and Voice open in place; Chord is a proper dropdown.
+- [x] Section types from a list (9 types) with automatic numbering (Verse 1, Verse 2).
+- [x] Note preview sounds as the finger lands; the playhead follows what's heard (sound lagged the picture by ~1/8 note on the speaker).
+- [ ] Check the sound delay on the next build (hold the position counter); if it's still large, look at the app's audio session (it stays in
+  play-and-record mode all the time).
+- [ ] Pads as ways to record into a track (owner, 26 Nov): Record on an instrument track asks once "How do you want to record?" (Mic, Drum pads,
+  Chord pads, Note pads, Tap a rhythm, Play pad, by track type), remembered per track, changed with Record with in the track sheet; takes run
+  from the playhead until Stop (up to 16 bars) like mic takes; Tap it in leaves Add track.
+- [ ] Mix effects track header: M and S in the same right-hand spot as other tracks (no R).
+- [ ] The copy button on an empty spot does nothing: hide it there (show Paste here when something is copied); clearer copy icon.
+- [ ] Livelier rhythms (syncopation, pushes, genre grooves) in everything Noodle writes.
+- [ ] Finish song: the song's real length, its sections (marked or worked out), each filled for its role; no filling empty bars.
+- [ ] Modern-genre data (hip hop, pop, rock, country, reggaeton): a shortlist with licences for the owner to approve.
+
 ## Faster beat making (owner, 25 Nov; build in small chunks, test each)
 - [x] Finish song: one tap fills in what's missing (drums, bass, chords, a melody, transitions, a mix effect). Free.
 - [x] Finish song writes real lead melodies (most of the time; otherwise an arp), from the tables Musical mode learned from ~45,000

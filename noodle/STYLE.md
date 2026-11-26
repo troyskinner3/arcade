@@ -40,6 +40,28 @@ The owner's rules, gathered from reviews. Read this before any UI or copy change
   Where it's applied: Mic and timing (two basics; the rest under More settings), every Mix effect's own settings, a Transition's left /
   right and octave, Musical / As heard in the note editor's •••, the DAW pack last in Share, and first run (straight to the Studio; each
   question asked once, when it makes sense).
+- **More settings starts closed every time** a sheet opens (it isn't remembered), and inside it only the everyday controls show; groups such as
+  Effects, Your kit and Voice are sections that open in place with a summary of what's on ("Off", "Echo, Drive"), not another screen
+  (owner, 26 Nov). No heading over a single control.
+- **A button that can't do anything right now is greyed out**, not tappable with an error message after ("This part has no other likely
+  version"). Its ⓘ stays tappable.
+- **An ⓘ sits right after the control it explains**, never between two controls.
+- **Note editing follows the big editors:** both ends of a note can be dragged; a note stretched or moved into another at the same pitch
+  pushes that one's start later (and removes it once covered), live while dragging; different pitches overlap freely. The grid scrolls
+  up and down through every octave with the keys, and Octave − / + moves selected notes.
+- **Features live where they're used:** a way to record (pads, Play pad, Tap a rhythm) belongs to Record on a track, not to Add track as if it
+  were another track type. Ask at the moment it matters (the first Record on a track), remember the answer, and let it be changed in the
+  track's sheet (owner, 26 Nov).
+- **Name the input, not the activity:** "Mic" (people hum, sing, whistle or beatbox into it), not "Sing".
+- **Lists of options are compact rows, not big cards:** an icon, a plain name and at most a short muted tag ("WAV", "Audio + MIDI"); no
+  sentence under each, no marketing copy ("For TikTok, Reels and YouTube: ..."). Anything more goes behind an ⓘ (owner, 26 Nov: the Share
+  sheet looked AI-generated).
+- **Things Noodle reads are picked, not typed:** a section's type comes from a list (Finish song uses it); repeats are numbered for you.
+- **Rows line up:** a control that one row doesn't have leaves its space empty, so the others stay in the same column (a Mix effects track
+  has no R, and its M and S sit where every other track's are).
+- **Don't show a button that has nothing to act on** (Copy on an empty spot); show the action that fits instead (Paste here).
+- **The screen shows what you hear:** the playhead follows the sound coming out of the phone, not the audio being prepared.
+- **No page zoom:** no double-tap zoom anywhere; no pinch zoom in the app (the website keeps pinch for people who need it).
 - **A tool that changes what a finger does shows it's on:** Draw turns amber, the hint line says what to do, and it turns off when you
   leave the editor.
 - **Plain names for effect settings:** Speed, Tone, Echo length, Repeats (not LFO rate, center frequency, delay time, feedback).

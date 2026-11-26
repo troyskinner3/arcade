@@ -89,13 +89,14 @@ function buildCard(tr){
     const d=INST[tr.inst];
     const el=document.createElement('article'); el.className='track'; el.style.setProperty('--c',d.color); tr._el=el;
     const pitched=d.kind==='pitched';
-    el.innerHTML=`<div class="gridbox"><div class="gridwrap"><div class="gridin">${tr.inst==="vox"?"":`<div class="edrul" aria-label="Bar numbers: tap or drag to move the playhead"><i class="edrul-ph"></i></div>`}<canvas></canvas><div class="ph"></div><div class="nsel" hidden></div></div></div><div class="glabels"></div></div><div class="selbar" hidden><span class="sb-n"></span><span class="sb-mv"><button class="btn sb-l" aria-label="Earlier"><svg class="nx-ico" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><button class="btn sb-r" aria-label="Later"><svg class="nx-ico" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button></span><span class="sb-pt"><button class="btn sb-dn" aria-label="Lower"><svg class="nx-ico" viewBox="0 0 24 24"><path d="M5 9l7 7 7-7"/></svg></button><button class="btn sb-up" aria-label="Higher"><svg class="nx-ico" viewBox="0 0 24 24"><path d="M5 15l7-7 7 7"/></svg></button></span><button class="btn sb-split" title="Split into repeats (or double-tap the note)">Split</button><button class="btn sb-join" hidden aria-pressed="false"><svg class="nx-ico" viewBox="0 0 24 24"><path d="M10 14a4 4 0 005.7 0l3-3a4 4 0 00-5.7-5.7l-1 1M14 10a4 4 0 00-5.7 0l-3 3a4 4 0 005.7 5.7l1-1"/></svg><span>Join</span></button><span class="sb-sp" hidden>Into <button class="btn" data-n="2">2</button><button class="btn" data-n="3">3</button><button class="btn" data-n="4">4</button></span><button class="btn sb-del">Delete</button><label class="sb-vel"><span>Velocity</span><input type="range" min="5" max="100" step="1" aria-label="Velocity: how hard this note or hit is played"><output></output></label></div><div class="ovrow"><div class="ovw" hidden aria-hidden="true"><canvas></canvas><div class="ovw-win"></div></div></div>`;
+    el.innerHTML=`<div class="gridbox"><div class="gridwrap"><div class="gridin">${tr.inst==="vox"?"":`<div class="edrul" aria-label="Bar numbers: tap or drag to move the playhead"><i class="edrul-ph"></i></div>`}<canvas></canvas><div class="ph"></div><div class="nsel" hidden></div></div></div><div class="glabels"></div></div><div class="selbar" hidden><span class="sb-n"></span><span class="sb-mv"><button class="btn sb-l" aria-label="Earlier"><svg class="nx-ico" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><button class="btn sb-r" aria-label="Later"><svg class="nx-ico" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button></span><span class="sb-pt"><button class="btn sb-dn" aria-label="Lower"><svg class="nx-ico" viewBox="0 0 24 24"><path d="M5 9l7 7 7-7"/></svg></button><button class="btn sb-up" aria-label="Higher"><svg class="nx-ico" viewBox="0 0 24 24"><path d="M5 15l7-7 7 7"/></svg></button></span><button class="btn sb-split" title="Split into repeats (or double-tap the note)">Split</button><button class="btn sb-join" hidden aria-pressed="false"><svg class="nx-ico" viewBox="0 0 24 24"><path d="M10 14a4 4 0 005.7 0l3-3a4 4 0 00-5.7-5.7l-1 1M14 10a4 4 0 00-5.7 0l-3 3a4 4 0 005.7 5.7l1-1"/></svg><span>Join</span></button><span class="sb-sp" hidden>Into <button class="btn" data-n="2">2</button><button class="btn" data-n="3">3</button><button class="btn" data-n="4">4</button></span><button class="btn sb-del">Delete</button><label class="sb-vel"><span>Velocity</span><input type="range" min="5" max="100" step="1" aria-label="Velocity: how hard this note or hit is played"><output></output></label><div class="sb-oct"><span>Octave</span><button class="btn sb-o-dn" aria-label="Octave down">−</button><button class="btn sb-o-up" aria-label="Octave up">+</button></div></div><div class="ovrow"><div class="ovw" hidden aria-hidden="true"><canvas></canvas><div class="ovw-win"></div></div></div>`;
     if(tr._sel && !evs(tr).includes(tr._sel)) tr._sel=null;
     const cv=el.querySelector('canvas');
     const hs=el.querySelector('.nsel'); tr._nsel=hs; 
     tr._selbar=el.querySelector('.selbar'); tr._ndel=null; tr._nsplit=null;
     if(tr._selbar){ const sb=tr._selbar; sb.querySelector('.sb-del').onclick=()=>tr._msel&&tr._msel.length?deleteGroup(tr):deleteSelNote(tr); sb.querySelector('.sb-split').onclick=()=>splitAsk(tr); sb.querySelector('.sb-join').onclick=()=>joinToggle(tr);
       sb.querySelector('.sb-sp').onclick=e=>{ const b=e.target.closest('[data-n]'); if(b) splitInto(tr,+b.dataset.n); };
+      sb.querySelector('.sb-o-up').onclick=()=>octShift(tr,1); sb.querySelector('.sb-o-dn').onclick=()=>octShift(tr,-1);
       sb.querySelector('.sb-up').onclick=()=>nudge(tr,0,1); sb.querySelector('.sb-dn').onclick=()=>nudge(tr,0,-1); sb.querySelector('.sb-l').onclick=()=>nudge(tr,-1,0); sb.querySelector('.sb-r').onclick=()=>nudge(tr,1,0);
       const vs=tr._selbar.querySelector('.sb-vel input'), vo=tr._selbar.querySelector('.sb-vel output');   /* velocity of the selected note or hit: how hard it is played (louder; brighter for some sounds) */
       vs.oninput=()=>{ vo.textContent=vs.value; }; vs.onchange=()=>{ if(tr._msel&&tr._msel.length){ const to=+vs.value/100; tr._msel.forEach(n=>{ logEdit(tr,{k:'vel',s:n.s,from:+(n.v??0.85).toFixed(2),to}); n.v=to; }); evChanged(tr); return; } const n=tr._sel; if(!n||!evs(tr).includes(n)) return; const to=+vs.value/100; logEdit(tr,{k:'vel',s:n.s,from:+(n.v??0.85).toFixed(2),to}); n.v=to; evChanged(tr); if(!playing) previewEv(tr,n); }; }
@@ -123,7 +124,15 @@ function gridRows(tr){
   tr._range={lo,hi};
   const rows=[]; for(let m=hi;m>=lo;m--) rows.push(m);
   /* key notes only (the note editor's default when the song has a key): rows for notes in the key, plus any note already placed outside it */
-  const K=currentKey(); if(!K.none && !s2.chrom && s2.edId===tr.id){ const ink=m=>K.set.includes(((m-K.tonic)%12+12)%12), used=new Set(ps); let a=lo, z=hi; const pick=()=>{ const r=[]; for(let m=z;m>=a;m--) if(ink(m)||used.has(m)) r.push(m); return r; }; let kr=pick(); while(kr.length<10){ a--; z++; kr=pick(); } return {rows:kr, rh:kr.length>14?10:12}; }
+  const K=currentKey();
+  /* the note editor (round 28, owner): every octave from C1 to C8 (the key's notes, or all 12 with + All notes), shown as a window of rows that
+     scrolls up and down with the key column; it opens centred on the part's notes. tr._vTop: the pitch on the top row */
+  if(s2.edId===tr.id&&ps!=null){ const used=new Set(ps), all=K.none||s2.chrom, ok=m=>all||K.set.includes(((m-K.tonic)%12+12)%12)||used.has(m), full=[];
+    for(let m=Math.max(108,...ps);m>=Math.min(24,...ps);m--) if(ok(m)) full.push(m);
+    const room=Math.max(140,GRID_H-130), RH=clamp(Math.floor(room/10),20,Math.max(20,GRID_RH)), V=Math.max(7,Math.min(full.length,Math.floor(room/RH))); tr._edRH=RH;   /* room under the grid for the selected note's bar (velocity, octave); rows shrink on small phones so about 10 fit */ let top=full.indexOf(tr._vTop);
+    if(top<0){ const mid=ps.length?median(ps):64; let ci=0; full.forEach((m,i)=>{ if(Math.abs(m-mid)<Math.abs(full[ci]-mid)) ci=i; }); top=ci-Math.floor(V/2); }
+    top=clamp(top,0,full.length-V); tr._vTop=full[top]; tr._rowsAll=full; return {rows:full.slice(top,top+V), rh:12}; }
+  if(!K.none && !s2.chrom && s2.edId===tr.id){ const ink=m=>K.set.includes(((m-K.tonic)%12+12)%12), used=new Set(ps); let a=lo, z=hi; const pick=()=>{ const r=[]; for(let m=z;m>=a;m--) if(ink(m)||used.has(m)) r.push(m); return r; }; let kr=pick(); while(kr.length<10){ a--; z++; kr=pick(); } return {rows:kr, rh:kr.length>14?10:12}; }
   return {rows, rh:rows.length>20?9:11};
 }
 function cssVar(n){ return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
@@ -154,12 +163,13 @@ function edRulerWire(tr,R,grid){ if(R._wired) return; R._wired=true; let drag=fa
   R.addEventListener('pointerdown',e=>{ e.stopPropagation(); drag=true; try{ R.setPointerCapture(e.pointerId); }catch(_){} set(e,false); });
   R.addEventListener('pointermove',e=>{ if(drag){ e.stopPropagation(); set(e,false); } });
   R.addEventListener('pointerup',e=>{ if(!drag) return; drag=false; set(e,true); }); R.addEventListener('pointercancel',()=>{ drag=false; }); }
-function drawGrid(tr){
+let verUITimer=0;
+function drawGrid(tr){ if(tr&&s2.edId===tr.id&&INST[tr.inst].kind==='pitched'&&tr.inst!=='arp'){ clearTimeout(verUITimer); verUITimer=setTimeout(()=>{ if(s2.edId===tr.id) try{ verUI(tr); }catch(e){} },400); }   /* Another version greys out when an edit leaves no other version */
   if(tr.inst==='vox'){ if(tr._cv) drawVox(tr); return; }
   if(!tr._ovRaf) tr._ovRaf=requestAnimationFrame(()=>{ tr._ovRaf=0; drawOverview(tr); });
   const cv=tr._cv; if(!cv) return; const wrap=cv.parentElement.parentElement; const n=pSteps(tr); const VN=(tr.notes||[]).filter(nt=>nt.s>=0&&nt.s<n), VH=(tr.hits||[]).filter(h=>h.s>=0&&h.s<n);   /* only what is inside the part's window (a trim keeps the rest) */
   const pitched=INST[tr.inst].kind==='pitched';
-  const gr=gridRows(tr), rows=gr.rows, rh=pitched?clamp(Math.floor(GRID_H/Math.max(1,rows.length)),8,GRID_RH):Math.round(gr.rh*GRID_DRUM); const gut=pitched?40:(rows.length>1?52:0);
+  const gr=gridRows(tr), rows=gr.rows, rh=pitched?(s2.edId===tr.id&&tr._edRH?tr._edRH:clamp(Math.floor(GRID_H/Math.max(1,rows.length)),8,GRID_RH)):Math.round(gr.rh*GRID_DRUM); const gut=pitched?40:(rows.length>1?52:0);
   const VW=Math.max(200,wrap.clientWidth||320), fit=(VW-gut)/n, cw=Math.max(fit, Math.min(zoomCW(),40)), W=Math.ceil(gut+n*cw);
   const sPL=n, lines=1, lineH=rows.length*rh+2, gapH=0, H=lineH;
   tr._grid={cw,rh,rows,W,gut,sPL,lineH,gapH,lines,fit};
@@ -170,7 +180,12 @@ function drawGrid(tr){
       ? rows.map((r,i)=>{ const m=r+12*(tr.oct||0), pc=((m%12)+12)%12, blk=[1,3,6,8,10].includes(pc), nm=NOTE_NAMES[pc]+(Math.floor(m/12)-1), show=rh>=10||pc===0;
           return `<span class="pkey${blk?' blk':''}${pc===0?' c':''}" data-m="${r}" style="top:${1+i*rh}px;height:${rh}px;width:${gut}px">${show?nm:''}</span>`; }).join('')
       : rows.map((r,i)=>`<span style="top:${1+i*rh}px;height:${rh}px;width:${gut}px">${slotLabel(r).slice(0,8)}</span>`).join('');
-    lab.classList.toggle('keys',pitched); if(pitched && !lab._wired){ lab._wired=true; lab.addEventListener('pointerdown',e=>{ const k=e.target.closest('.pkey'); if(!k) return; k.classList.add('hit'); setTimeout(()=>k.classList.remove('hit'),160); previewNote(tr,+k.dataset.m); }); } }
+    lab.classList.toggle('keys',pitched); if(pitched && !lab._wired){ lab._wired=true; lab.style.touchAction='none'; let ly=null, lt=null, moved=false;
+      lab.addEventListener('pointerdown',e=>{ ly=e.clientY; lt=tr._rowsAll?tr._rowsAll.indexOf(tr._vTop):null; moved=false; try{ lab.setPointerCapture(e.pointerId); }catch(_){} const kk=e.target.closest('.pkey'); if(kk){ kk.classList.add('hit'); setTimeout(()=>kk.classList.remove('hit'),160); previewNote(tr,+kk.dataset.m); } });   /* a key sounds as the finger lands; dragging scrolls */
+      lab.addEventListener('pointermove',e=>{ if(ly==null||lt==null||!tr._grid) return; const dy=e.clientY-ly; if(!moved&&Math.abs(dy)<8) return; moved=true;   /* drag the keys up or down: other octaves */
+        const j=clamp(lt-Math.round(dy/tr._grid.rh),0,tr._rowsAll.length-tr._grid.rows.length); if(tr._rowsAll[j]!==tr._vTop){ tr._vTop=tr._rowsAll[j]; drawGrid(tr); placeHandle(tr); } });
+      lab.addEventListener('pointerup',()=>{ ly=null; moved=false; });
+      lab.addEventListener('pointercancel',()=>{ ly=null; moved=false; }); } }
   const g=cv.getContext('2d'); g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,W,H);
   const cCell=cssVar('--cell'), cBeat=cssVar('--beat'), cBar=cssVar('--barline'), cPanel=cssVar('--panel'), col=INST[tr.inst].color, mono=cssVar('--f-mono');
   const X=s=>gut+(s%sPL)*cw, Y=s=>Math.floor(s/sPL)*(lineH+gapH);
@@ -211,7 +226,7 @@ function drawGrid(tr){
     (tr._msel||[]).forEach(nt=>{ if(!VN.includes(nt)) return; const i=rows.indexOf(pitchOf(nt)); if(i<0) return; g.strokeStyle=cssVar('--ink'); g.lineWidth=2; rr(g,X(nt.s)+1,Y(nt.s)+1+i*rh+0.5,Math.max(cw*Math.min(nt.l,n-nt.s)-2,3),rh-1,1.5); g.stroke(); });
     if(selN && tr.notes.includes(selN)){ const i=rows.indexOf(pitchOf(selN)); if(i>=0){ g.strokeStyle=cssVar('--ink'); g.lineWidth=2;
       let s2=selN.s, left=selN.l; while(left>0){ const room=sPL-(s2%sPL), seg=Math.min(left,room); rr(g,X(s2)+1,Y(s2)+1+i*rh+0.5,Math.max(cw*seg-2,3),rh-1,1.5); g.stroke(); s2=(s2+seg)%n; left-=seg; }
-      const e=selN.s+selN.l-1; g.fillStyle=cssVar('--ink'); g.fillRect(X(e)+cw-5,Y(e)+1+i*rh+2,3,Math.max(3,rh-5)); } }
+      const e=selN.s+selN.l-1; g.fillStyle=cssVar('--ink'); g.fillRect(X(e)+cw-5,Y(e)+1+i*rh+2,3,Math.max(3,rh-5)); if(selN.l*cw>=14) g.fillRect(X(selN.s)+2,Y(selN.s)+1+i*rh+2,3,Math.max(3,rh-5)); } }   /* grips at both ends: drag either to trim or extend */
     placeHandle(tr);
   }
 }
@@ -316,36 +331,44 @@ function noteDown(tr,e,onSel){
   const q=S.quant==8?2:1; tr._touchT=Date.now();
   if(onSel && tr._sel){ const n=tr._sel, c=cellAt(tr,e,true); if(!c) return;
     try{ tr._nsel.setPointerCapture(e.pointerId); }catch(_){}
-    tr._drag={note:n, mode:(isPitchedTr(tr)&&c.s>=n.s+n.l-q)?'resize':'move', s0:c.s, row0:c.row, ns:n.s, np:evRow(tr,n), moved:false, created:false, rec:isPitchedTr(tr)&&!n.x};
+    let mode='move'; if(isPitchedTr(tr)){ const r=tr._cv.getBoundingClientRect(), G=tr._grid, x=e.clientX-r.left, a=G.gut+n.s*G.cw, b=a+evLen(n)*G.cw;
+      if(b-a<42){ mode=x<a+(b-a)*0.4?'start':'resize'; } else { const z=Math.min(Math.max(G.cw*q,14),(b-a)/3); mode=x>=b-z?'resize':x<=a+z?'start':'move'; } }   /* the front edge moves the start, the back edge the end (owner, 26 Nov) */
+    tr._drag={note:n, mode, s0:c.s, row0:c.row, ns:n.s, end:n.s+n.l, np:evRow(tr,n), moved:false, created:false, rec:isPitchedTr(tr)&&!n.x, base:isPitchedTr(tr)?tr.notes.filter(o=>o!==n).map(o=>({o,s:o.s,l:o.l})):null};
     previewEv(tr,n); return; }
   const c=cellAt(tr,e); if(!c||!c.inRow) return;
   if(groupHit(tr,e)){ try{ tr._cv.setPointerCapture(e.pointerId); }catch(_){} tr._drag={group:true, s0:c.s, row0:c.row, orig:tr._msel.map(n=>({n,s:n.s,p:evRow(tr,n),x:n.x,r0:n.r0,pv:n.p})), moved:false, id:e.pointerId}; return; }
   // the grid only reacts to a tap (so a swipe always scrolls): tap a note to select it, tap empty space to deselect or add a note
   const n=evs(tr).find(nt=>evRow(tr,nt)===c.row && nt.s>=0 && nt.s<pSteps(tr) && c.s>=nt.s && c.s<nt.s+evLen(nt));
-  tr._drag={pending:true, c, hit:n||null, x0:e.clientX, y0:e.clientY, id:e.pointerId};
+  tr._drag={pending:true, c, hit:n||null, x0:e.clientX, y0:e.clientY, id:e.pointerId, heard:!!n};
+  if(n) previewEv(tr,n);   /* the note sounds as the finger lands, not when it lifts (owner, 26 Nov: the preview felt late) */
   if(!n){ const dd=tr._drag; dd.hold=setTimeout(()=>{ if(tr._drag!==dd) return; dd.pending=false; dd.box={c0:c, c1:c}; haptic('light'); try{ tr._cv.setPointerCapture(dd.id); }catch(_){} tr._sel=null; tr._msel=[]; drawGrid(tr); drawBox(tr); },380); }   /* hold still on an empty spot, then drag: select several */
 }
 function startNewNote(tr,c){ haptic('light'); if(!isPitchedTr(tr)){ const q=S.quant==8?2:1, h={s:Math.floor(c.s/q)*q, d:c.row, v:0.85}; tr.hits.push(h); tr._drag={note:h,mode:'move',s0:c.s,row0:c.row,ns:h.s,np:c.row,moved:false,created:true}; tr._sel=h; drawGrid(tr); previewHit(tr,c.row); return; }
   const q=S.quant==8?2:1, kp=snap(c.row); const nt={s:Math.floor(c.s/q)*q,l:q,p:kp,v:0.85,x:true}; tr.notes.push(nt); keyCache=null;
-  tr._drag={note:nt,mode:'resize',s0:c.s,row0:c.row,ns:nt.s,np:kp,moved:false,created:true}; tr._sel=nt; drawGrid(tr); previewNote(tr,kp); }
+  tr._drag={note:nt,mode:'resize',s0:c.s,row0:c.row,ns:nt.s,end:nt.s+nt.l,np:kp,moved:false,created:true,base:tr.notes.filter(o=>o!==nt).map(o=>({o,s:o.s,l:o.l}))}; tr._sel=nt; drawGrid(tr); previewNote(tr,kp); }
 function noteMove(tr,e){
   if(tr._pen){ drawMove(tr,e); return; }
   let d=tr._drag; if(!d) return;
-  if(d.pending){ const dx=Math.abs(e.clientX-d.x0), dy=Math.abs(e.clientY-d.y0); if(dx>=8||dy>=8){ clearTimeout(d.hold); tr._drag=null; } return; }   // a swipe scrolls
+  if(d.pending){ const dx=Math.abs(e.clientX-d.x0), dy=Math.abs(e.clientY-d.y0); if(dx>=8||dy>=8){ clearTimeout(d.hold);
+      if(dy>dx&&tr._rowsAll&&s2.edId===tr.id){ tr._drag={vs:true, y0:e.clientY, top0:tr._rowsAll.indexOf(tr._vTop)}; try{ tr._cv.setPointerCapture(e.pointerId); }catch(_){} } else tr._drag=null; } return; }   // a swipe scrolls: sideways natively, up and down through the octaves here
+  if(d.vs){ const G=tr._grid, j=clamp(d.top0-Math.round((e.clientY-d.y0)/G.rh),0,tr._rowsAll.length-G.rows.length); if(tr._rowsAll[j]!==tr._vTop){ tr._vTop=tr._rowsAll[j]; drawGrid(tr); placeHandle(tr); } return; }
   if(d.box){ const c=cellAt(tr,e,true); if(c){ d.box.c1=c; boxSelect(tr,d.box); } return; }
   if(d.group){ const c=cellAt(tr,e,true); if(!c) return; const ds=Math.round((c.s-d.s0)/(S.quant==8?2:1))*(S.quant==8?2:1), G=tr._grid, dr=isPitchedTr(tr)?keyIndex(snap(c.row))-keyIndex(snap(d.row0)):0;
     if(!d.moved && !ds && !dr) return; d.moved=true; groupPlace(tr,d,ds,isPitchedTr(tr)?dr:0, isPitchedTr(tr)?0:G.rows.indexOf(c.row)-G.rows.indexOf(d.row0)); return; }
   tr._touchT=Date.now(); const c=cellAt(tr,e,true); if(!c) return; const n=pSteps(tr), q=S.quant==8?2:1;
   if(c.s!==d.s0 || c.row!==d.row0) d.moved=true; if(!d.moved) return;
+  if(d.mode==='move'&&isPitchedTr(tr)&&tr._rowsAll){ const r=tr._cv.getBoundingClientRect(), now=Date.now(); if(now-(d.as||0)>110){ if(e.clientY<r.top+6){ if(vScroll(tr,-1)) d.as=now; } else if(e.clientY>r.bottom-6){ if(vScroll(tr,1)) d.as=now; } } }   /* dragging past the top or bottom edge scrolls to the next notes */
   if(d.mode==='resize') d.note.l=clamp(Math.floor((c.s-d.note.s)/q)*q+q, q, n-d.note.s);
+  else if(d.mode==='start'){ const st=clamp(Math.floor(c.s/q)*q,0,d.end-q); d.note.s=st; d.note.l=d.end-st; }
   else { d.note.s=clamp(d.ns+Math.round((c.s-d.s0)/q)*q, 0, n-evLen(d.note));
     if(!isPitchedTr(tr)){ if(c.row!==d.note.d){ d.note.d=c.row; previewHit(tr,c.row); } drawGrid(tr); return; }   /* a hit moves in time and to another drum */
     const np=snap(c.row); if(np!==pitchOf(d.note)){ if(!d.note.x && d.note.r0==null) d.note.r0=+(+d.note.p).toFixed(2);   /* keep what was sung */ d.note.p=np; d.note.x=true; previewNote(tr,np); } }
+  if(d.base) overlapFix(tr,d);
   drawGrid(tr);
 }
 function noteUp(tr,e,cancel){
   if(tr._pen){ drawEnd(tr,e,cancel); return; }
-  const d=tr._drag; if(!d) return; tr._drag=null; clearTimeout(d.hold);
+  const d=tr._drag; if(!d) return; tr._drag=null; clearTimeout(d.hold); if(d.vs) return;
   if(d.box){ drawBox(tr,true); if(!tr._msel.length){ tr._msel=null; } else if(tr._msel.length===1){ tr._sel=tr._msel[0]; tr._msel=null; } drawGrid(tr); renderNoteBar(tr); return; }
   if(d.group){ if(d.moved){ d.orig.forEach(o=>logEdit(tr,isPitchedTr(tr)?{k:'move',s:o.n.s,from:o.s,group:1}:{k:'hitmove',s:o.n.s,from:o.s,d:o.n.d,fromD:o.p})); evChanged(tr); } else { tr._msel=null; drawGrid(tr); renderNoteBar(tr); } return; }
   if(d.pending){ if(cancel) return;
@@ -354,14 +377,14 @@ function noteUp(tr,e,cancel){
       if(o!=null){ tr._sel=d.hit; tr._lastTap=null; splitSelNote(tr, d.hit.s+o); return; } }   /* tap a split hint: split there */
     if(d.hit){ const lt=tr._lastTap, now=Date.now(); tr._lastTap={n:d.hit,t:now};
       if(isPitchedTr(tr) && lt && lt.n===d.hit && now-lt.t<400){ tr._sel=d.hit; tr._lastTap=null; splitSelNote(tr, d.c?d.c.s:null); return; }   /* double-tap: split where tapped */
-      selectNote(tr,d.hit); previewEv(tr,d.hit); }
+      selectNote(tr,d.hit); if(!d.heard) previewEv(tr,d.hit); }
     else if(tr._sel) selectNote(tr,null);
     else { startNewNote(tr,d.c); tr._drag=null; if(!isPitchedTr(tr)) logEdit(tr,{k:'hitadd',s:tr._sel.s,d:tr._sel.d}); evChanged(tr); }
     return; }
   if(!isPitchedTr(tr)){ if(d.created) logEdit(tr,{k:'hitadd',s:d.note.s,d:d.note.d}); else if(d.moved) logEdit(tr,{k:'hitmove',s:d.note.s,from:d.ns,d:d.note.d,fromD:d.np});
     if(d.moved||d.created) hitsChanged(tr); else { drawGrid(tr); renderNoteBar(tr); } return; }
   if(d.moved && d.rec && d.mode==='move') learnFromPitchFix(d.np, pitchOf(d.note));
-  if(d.moved && !d.created){ const to=pitchOf(d.note); if(d.mode==='move' && to!==d.np) logEdit(tr,{k:'pitch',s:d.note.s,from:d.np,to,raw:d.note.r0??null}); if(d.mode==='move' && d.note.s!==d.ns) logEdit(tr,{k:'move',s:d.note.s,from:d.ns}); if(d.mode==='resize') logEdit(tr,{k:'len',s:d.note.s,to:d.note.l}); }
+  if(d.moved && !d.created){ const to=pitchOf(d.note); if(d.mode==='move' && to!==d.np) logEdit(tr,{k:'pitch',s:d.note.s,from:d.np,to,raw:d.note.r0??null}); if(d.mode==='move' && d.note.s!==d.ns) logEdit(tr,{k:'move',s:d.note.s,from:d.ns}); if(d.mode==='resize') logEdit(tr,{k:'len',s:d.note.s,to:d.note.l}); if(d.mode==='start') logEdit(tr,{k:'start',s:d.note.s,from:d.ns}); }
   if(d.created) logEdit(tr,{k:'add',s:d.note.s,to:pitchOf(d.note),l:d.note.l});
   if(d.created) noteDrawn(tr,d.note);
   if(d.moved||d.created) noteChanged(tr);
@@ -371,6 +394,22 @@ function noteUp(tr,e,cancel){
 }
 /* ---- faster fixes: nudge with arrows, split into 2-4 repeats, select several notes (hold an empty spot, then drag) and move them together ---- */
 const qStep=()=>S.quant==8?2:1;
+/* same pitch, no overlap (owner, 26 Nov; as Ableton does): a note stretched or moved into another at the same pitch pushes that one's start
+   later (and removes it once covered); one it runs back into ends where this one starts. Live while dragging; dragging back restores them.
+   Different pitches overlap freely (chords, harmonies). */
+function overlapFix(tr,d){ const n=d.note, p=pitchOf(n), a=n.s, b=n.s+n.l, keep=[n];
+  for(const x of d.base){ const o=x.o; o.s=x.s; o.l=x.l;
+    if(pitchOf(o)===p&&o.s<b&&o.s+o.l>a){ if(o.s>=a){ const cut=b-o.s; o.s=b; o.l-=cut; if(o.l<1) continue; } else o.l=a-o.s; }
+    keep.push(o); }
+  if(tr._sel&&!keep.includes(tr._sel)) tr._sel=n; tr.notes=keep.sort((x,y)=>x.s-y.s); }
+/* the note editor's rows scroll through the octaves: by rows (+ lower, − higher); vShow brings a pitch into view */
+function vScroll(tr,dr){ const f=tr._rowsAll, G=tr._grid; if(!f||!G) return false; const i=f.indexOf(tr._vTop), j=clamp(i+dr,0,f.length-G.rows.length); if(j===i) return false; tr._vTop=f[j]; drawGrid(tr); placeHandle(tr); return true; }
+function vShow(tr,p){ const f=tr._rowsAll, G=tr._grid; if(!f||!G||G.rows.includes(p)) return; let ci=0; f.forEach((m,i)=>{ if(Math.abs(m-p)<Math.abs(f[ci]-p)) ci=i; }); tr._vTop=f[clamp(ci-Math.floor(G.rows.length/2),0,f.length-G.rows.length)]; }
+/* Octave − / + under the note bar: the selected note or notes, a whole octave */
+function octShift(tr,dir){ const ms=(tr._msel||[]).filter(x=>evs(tr).includes(x)), list=ms.length>1?ms:(tr._sel&&evs(tr).includes(tr._sel)?[tr._sel]:[]); if(!list.length) return;
+  if(list.some(n=>pitchOf(n)+12*dir<24||pitchOf(n)+12*dir>108)) return; haptic('light');
+  list.forEach(n=>{ const from=pitchOf(n); n.p=+n.p+12*dir; if(n.r0!=null) n.r0=+n.r0+12*dir; logEdit(tr,{k:'octave',s:n.s,from,to:from+12*dir}); });
+  const lead=list[0]; vShow(tr,pitchOf(lead)); previewNote(tr,pitchOf(lead),lead.v??0.8); if(ms.length>1) evChanged(tr); else noteChanged(tr); }
 function groupHit(tr,e){ const ms=tr._msel; if(!ms||ms.length<2) return false; const c=cellAt(tr,e); if(!c||!c.inRow) return false; return ms.some(n=>evRow(tr,n)===c.row && c.s>=n.s && c.s<n.s+evLen(n)); }
 function boxSelect(tr,b){ const G=tr._grid, s0=Math.min(b.c0.s,b.c1.s), s1=Math.max(b.c0.s,b.c1.s), i0=Math.min(G.rows.indexOf(b.c0.row),G.rows.indexOf(b.c1.row)), i1=Math.max(G.rows.indexOf(b.c0.row),G.rows.indexOf(b.c1.row));
   tr._msel=evs(tr).filter(n=>{ const i=G.rows.indexOf(evRow(tr,n)); return i>=i0&&i<=i1 && n.s<=s1 && n.s+evLen(n)>s0; }); drawGrid(tr); drawBox(tr); renderNoteBar(tr); }
@@ -414,6 +453,7 @@ const joinable=(tr,n)=>!!window.NOODLE_DEV&&TAP_MONO.has(tr.inst)&&!!n&&!!joinPr
 function joinToggle(tr){ const n=tr._sel; if(!n||!joinable(tr,n)) return; if(n.lg) delete n.lg; else n.lg=1; haptic('light'); noteChanged(tr); renderNoteBar(tr); toast(n.lg?'Joined to the note before':'Its own note again'); }
 function renderNoteBar(tr){
   const sb=tr._selbar; if(sb){ const n=tr._sel, ms=(tr._msel||[]).filter(x=>evs(tr).includes(x)), many=ms.length>1, on=many||!!(n&&evs(tr).includes(n)); sb.hidden=!on;
+    sb.querySelector('.sb-oct').hidden=!on||!isPitchedTr(tr);
     if(on){ sb.querySelector('.sb-mv').hidden=!many; sb.querySelector('.sb-pt').hidden=!isPitchedTr(tr)&&!many; sb.querySelector('.sb-sp').hidden=true; sb.querySelector('.sb-del').hidden=false; }
     if(many){ const vs=sb.querySelector('.sb-vel input'); sb.querySelector('.sb-n').textContent=ms.length+(isPitchedTr(tr)?' notes':' hits'); sb.querySelector('.sb-split').hidden=true; if(vs&&document.activeElement!==vs){ vs.value=Math.round(ms.reduce((a,x)=>a+(x.v??0.85),0)/ms.length*100); sb.querySelector('.sb-vel output').textContent=vs.value; } }
     else
@@ -467,6 +507,10 @@ function init(){
   native({type:'ready'});   /* the iPhone app sends a song link it was opened with (if any) once the page is ready */
   try{ if('serviceWorker' in navigator && (location.protocol==='https:'||location.hostname==='localhost')) navigator.serviceWorker.register('sw.js').then(()=>navigator.serviceWorker.ready).then(r=>r.active&&r.active.postMessage('prune')).catch(()=>{}); }catch(e){}   /* so the web version opens without a connection (the iPhone app carries its own copy) */
   // iOS only lets audio start on a finger lift (touchend/click), not on touch-down: unlock (or re-wake) on every such gesture while it's suspended
+  /* hidden check (owner, 26 Nov: sound lagged the picture): press and hold the position counter to see the delay the phone reports */
+  { let hold=0; const pos=$('s2Pos'); if(pos){ pos.addEventListener('pointerdown',()=>{ clearTimeout(hold); hold=setTimeout(()=>{ if(!ctx) ensureCtx(); const ms=x=>Math.round((x||0)*1000);
+      toast(`Sound delay ${ms(outDelay())} ms (output ${ms(ctx.outputLatency)} ms, buffer ${ms(ctx.baseLatency)} ms, ${ctx.sampleRate} Hz)`,6000); },700); });
+    ['pointerup','pointercancel','pointerleave'].forEach(ev=>pos.addEventListener(ev,()=>clearTimeout(hold))); } }
   const unlockAudio=()=>{ if(ctx && ctx.state!=='running' && !document.hidden){ try{ ctx.resume(); }catch(e){} } };
   ['touchend','click','keydown'].forEach(ev=>document.addEventListener(ev,unlockAudio,{capture:true,passive:true}));
   // build every part's sound right away (the audio stays silent until the first tap), so the first Play starts instantly
@@ -475,7 +519,7 @@ function init(){
 function tick(){
   requestAnimationFrame(tick);
   if(!ctx){ try{ s2Tick((playFrom%loopLen())/loopLen()); }catch(e){} return; }
-  const now=ctx.currentTime, L=loopLen();
+  const now=heardNow(), L=loopLen();   /* what's being heard, not what's being sent: the playhead matches the sound */
   const showPh = (playing||recState) && now>=t0;
   const ph = showPh ? (((now-t0)/L)%1+1)%1 : 0;
 

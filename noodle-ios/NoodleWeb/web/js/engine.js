@@ -30,6 +30,12 @@ function audioHeal(){ const was=playing, at=was&&ctx?((ctx.currentTime-t0)%loopL
 /* the one place the audio context is made (ensureCtx, and the warm-up at start): master chain, the Bitcrusher's worklet, the watchdog */
 function ctxMake(){ const AC=window.AudioContext||window.webkitAudioContext; ctx=new AC({latencyHint:'interactive'});
   chain=buildChain(ctx, true); applyMaster(); fxWorklet(ctx); audioWatch(); S.tracks.forEach(t=>{ t._dirty=true; }); }
+/* the moment of the song being heard right now: currentTime is what's being sent out, which reaches the ears later (the output delay: small on the
+   speaker, 0.15-0.3 s or more on Bluetooth). The playhead and tap timing use this so the picture matches the sound (owner, 26 Nov). */
+function heardNow(){ const c=ctx; if(!c) return 0; const t=c.currentTime;
+  try{ const ts=c.getOutputTimestamp&&c.getOutputTimestamp(); if(ts&&ts.contextTime>0&&ts.performanceTime>0){ const h=ts.contextTime+(performance.now()-ts.performanceTime)/1000; if(h>t-1&&h<t+0.05) return Math.min(h,t); } }catch(e){}
+  return t-Math.min(0.5,c.outputLatency||c.baseLatency||0); }
+const outDelay=()=>ctx?clamp(ctx.currentTime-heardNow(),0,0.6):0;
 function ensureCtx(){
   playThroughSilentSwitch();
   if(!ctx) ctxMake();
@@ -194,7 +200,7 @@ function mfxEdMount(tr, host){ const pro=true,   /* everyone shapes curves; the 
       return `<label class="mfx-sl"><span>${lb}</span><input type="range" data-pk="${pm.key}" min="${pm.min}" max="${pm.max}" step="${pm.step}" value="${v}"><b>${fmt(v,pm)}</b></label>`; };
     box.innerHTML=ps.filter(pm=>!pm.adv).map(one).join('')+(adv.length?`<button class="mfx-btn mfx-more" data-a="mfxmore" aria-expanded="${!!s2.more}" style="width:100%;margin-top:8px;display:flex;justify-content:space-between">More settings<span aria-hidden="true">${s2.more?'▴':'▾'}</span></button>${s2.more?adv.map(one).join(''):''}`:''); };   /* settings few people need wait under More settings (progressive disclosure) */
   w.addEventListener('click',ev=>{ const inf=ev.target.closest('[data-info]'); if(inf){ ev.preventDefault(); infoPop(inf); return; } const b=ev.target.closest('button'); if(!b) return;
-    if(b.dataset.a==='mfxmore'){ s2.more=!s2.more; try{ localStorage.setItem('noodle.more',s2.more?'1':'0'); }catch(e){} params(); return; }
+    if(b.dataset.a==='mfxmore'){ s2.more=!s2.more; params(); return; }
     if(b.dataset.k){ const k=b.dataset.k; if(!isPro()){ if(MFX[k].free){ pvForget(tr,['mfx']); } else if(!tr._pvOrig||!('mfx' in tr._pvOrig)){ tr._pvOrig=tr._pvOrig||{}; tr._pvOrig.mfx=pvCopy(tr.mfx); } }   /* a free effect is kept; a Pro one is tried */
       tr.mfx.k=k; tr.mfx.params={}; tr.picked=true;   /* the track is named after its effect (s2Auto) */ try{ mfxHintSet(tr); }catch(e){} w.querySelectorAll('.mfx-k button').forEach(x=>x.setAttribute('aria-pressed',String(x.dataset.k===k))); params(); changed(); return; }
     if(b.dataset.pk){ tr.mfx.params[b.dataset.pk]=+b.dataset.pv; params(); changed(); return; }
