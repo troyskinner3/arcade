@@ -285,7 +285,7 @@ async function tapRec(more){ const T=tapIn; if(!T||T.state==='count'||T.state===
   try{ await renderDirty(); }catch(e){}
   if(tapIn!==T||T.state!=='count') return;   /* closed or stopped while the song was being made */
   const bar=4*60/S.bpm, beat=bar/4, when=ctx.currentTime+0.15; T.start=when+bar; T.end=T.start+TAP_BARS*bar;
-  T.lat=Math.min(0.15,ctx.outputLatency||ctx.baseLatency||0)+0.01;   /* you tap to what you hear, which comes out a little after it's played */
+  T.lat=outDelay()+0.01;   /* you tap to what you hear, which comes out a little after it's played */
   T.clicks=[0,1,2,3].map(i=>tapClick(when+i*beat,i===0));
   startAll(T.start, T.P*bar, {metro:true}); playing=true;
   if(feelBeat()) native({type:'metro', ...metroAt(when), beatMs:beat*1000, beats:4+TAP_BARS*4, perBar:4});

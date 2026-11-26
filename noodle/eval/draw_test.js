@@ -23,7 +23,7 @@ const {chromium,devices}=require('playwright');
     const K=currentKey(); out.inKey=drawn.every(n=>K.set.includes(((Math.round(n.p)-K.tonic)%12+12)%12));   /* sung notes far from the line stay (a second voice) */
     flushSave(); undo(); await w(300); const ld2=S.tracks.find(t=>t.inst==='lead'); out.undone=!str(ld2.notes.filter(n=>n.s<16)).includes(out.drawn)||out.drawn==='';
     // Draw chords (round 27): over the same line redoes it; a line above adds a second voice
-    { ld2.notes=[{s:0,l:16,p:60,v:.8,x:true}]; ld2._dirty=true; s2EdMount(); await w(300); const cv2=ld2._cv, R2=cv2.getBoundingClientRect(), G2=ld2._grid, row=q=>G2.rows.indexOf(q);
+    { ld2.notes=[{s:0,l:16,p:60,v:.8,x:true}]; ld2._dirty=true; ld2._vTop=null; s2EdMount(); await w(300); const cv2=ld2._cv, R2=cv2.getBoundingClientRect(), G2=ld2._grid, row=q=>G2.rows.indexOf(q);
       const line=(q)=>{ const x=s=>R2.left+G2.gut+s*G2.cw+G2.cw/2, y=R2.top+1+(row(q)+0.5)*G2.rh; cv2.dispatchEvent(new PointerEvent('pointerdown',{...o,clientX:x(0)-G2.cw/2+1,clientY:y})); for(let s=0;s<8;s++) cv2.dispatchEvent(new PointerEvent('pointermove',{...o,clientX:x(s),clientY:y})); cv2.dispatchEvent(new PointerEvent('pointerup',{...o,clientX:x(7)+G2.cw/2-1,clientY:y})); };
       const r62=G2.rows.includes(62)?62:G2.rows.find(q=>q>60&&q<=62); line(r62); await w(200); out.redo=str(ld2.notes);
       const up=G2.rows.filter(q=>q>=r62+5).sort((a,b)=>a-b)[0]; line(up); await w(200); out.harm=str(ld2.notes)===`0:8:${r62} 0:8:${up} 8:8:60`||str(ld2.notes)===`0:8:${up} 0:8:${r62} 8:8:60`; out.harmStr=str(ld2.notes); }

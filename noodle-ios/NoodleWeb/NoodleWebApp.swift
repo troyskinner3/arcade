@@ -206,6 +206,7 @@ struct NoodleWebApp: App {
     let s = AVAudioSession.sharedInstance()
     try? s.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker, .allowBluetoothA2DP])
     try? s.setAllowHapticsAndSystemSoundsDuringRecording(true)   // the felt metronome buzzes while the mic records
+    try? s.setPreferredIOBufferDuration(0.005)   // the shortest audio buffer iOS allows: sound comes out sooner after a tap (owner: notes sounded late)
     try? s.setActive(true)
   }
   var body: some Scene {
@@ -235,6 +236,7 @@ struct NoodleWeb: UIViewRepresentable {
     web.allowsBackForwardNavigationGestures = false
     web.scrollView.contentInsetAdjustmentBehavior = .never
     web.scrollView.bounces = false   // an app, not a page: nothing rubber-bands (the timeline frame stays put)
+    web.scrollView.pinchGestureRecognizer?.isEnabled = false   // no pinch zoom: the page also says user-scalable=no in the app
     web.isOpaque = false
     web.backgroundColor = UIColor { $0.userInterfaceStyle == .dark ? UIColor(red: 0.07, green: 0.08, blue: 0.09, alpha: 1) : UIColor(red: 0.95, green: 0.95, blue: 0.96, alpha: 1) }   // behind the page while it loads: matches light or dark
     #if DEBUG

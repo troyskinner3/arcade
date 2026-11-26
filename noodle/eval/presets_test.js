@@ -7,7 +7,7 @@ const {chromium,devices}=require('playwright');
   await p.evaluate(()=>{ localStorage.removeItem('noodle.presets'); localStorage.removeItem('noodle.more'); s2.more=false; PRO.owned=true; S.bars=2;
     const v=mkTrack('vox',{id:S.nextId++,off:0,len:2,lenSet:true,rep:false,sound:'Hard tune'}); v.fx=Object.assign({},VOX_PRESETS['Hard tune'],{air:80,harm:30}); S.tracks.push(v); save(); renderTracks(); s2TrackSheet(s2Lane(s2LaneId(v))); });
   await p.waitForTimeout(200); out.basic=await p.evaluate(()=>({tune:!!document.querySelector('#s2Fx_tune'), harm:!!document.querySelector('#s2Fx_harm'), vol:!!document.querySelector('#s2Vol'), airHidden:!!document.querySelector('.nx-adv[hidden] #s2Fx_air'), revHidden:!!document.querySelector('.nx-adv[hidden] #s2Rev')}));
-  await p.tap('[data-more]'); out.moreOpen=await p.evaluate(()=>!document.querySelector('.nx-adv').hidden&&localStorage.getItem('noodle.more')==='1'); await p.tap('[data-more]');
+  await p.tap('[data-more]'); out.moreOpen=await p.evaluate(()=>!document.querySelector('.nx-adv').hidden);   /* round 28: not remembered between opens */ await p.tap('[data-more]');
   await p.evaluate(()=>document.querySelector('[data-a="save:vox"]').click()); await p.fill('#prName','Radio voice'); await p.tap('#prOk'); await p.waitForTimeout(200);
   out.saved=await p.evaluate(()=>{ const x=presetsAll().vox[0]; return x&&{name:x.name,sound:x.sound,air:x.fx.air,harm:x.fx.harm}; }); out.chip=await p.evaluate(()=>{ s2PickSheet(s2Lanes().find(L=>L.tracks[0].inst==='vox'),'sound'); return !!document.querySelector('#s2Snd [data-pre]'); });
   // another vocal track: apply it
@@ -18,6 +18,7 @@ const {chromium,devices}=require('playwright');
   await p.evaluate(()=>document.querySelector('[data-a="save:fx"]').click()); await p.fill('#prName','Wide'); await p.tap('#prOk'); await p.waitForTimeout(150); out.fxSaved=await p.evaluate(()=>JSON.stringify(presetsAll().fx[0].tfx));
   // your kit: snare from Brushes, saved
   await p.evaluate(()=>{ nxClose(); const k=mkTrack('kit',{id:S.nextId++,off:0,len:1,lenSet:true,rep:false,sound:'808',hits:[{s:0,d:'kick',v:1},{s:4,d:'snare',v:1}]}); S.tracks.push(k); renderTracks(); s2TrackSheet(s2Lane(s2LaneId(k))); });
+  await p.tap('[data-more]'); await p.tap('[data-sub="kit"]');   /* round 28: More settings starts closed; Your kit opens in place */
   await p.selectOption('#kd_snare','Brushes'); await p.waitForTimeout(200); out.slotKit=await p.evaluate(()=>S.kit.slots.find(x=>x.id==='snare').kit);
   out.brushSnare=await p.evaluate(async()=>{ await loadSmp('brushkit'); const r=async st=>{ const oc=new OfflineAudioContext(1,22050,44100); drumHit(oc,oc.destination,'snare',0.01,1,'808',0.5); const d=(await oc.startRendering()).getChannelData(0); let q=0; for(let i=0;i<d.length;i++) q+=d[i]*d[i]; return q; };
     const a=await r(); const sl=S.kit.slots.find(x=>x.id==='snare'); delete sl.kit; const b2=await r(); sl.kit='Brushes'; return a!==b2; });

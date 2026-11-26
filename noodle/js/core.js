@@ -42,6 +42,8 @@ const soundOf=d=>{ const sl=slotOf(d); return sl?sl.sound:d; };
 function slotLabel(d){ const sl=slotOf(d), snd=sl?sl.sound:d, base=SOUNDS[snd]||{label:d};
   const same=S.kit.slots.filter(x=>x.sound===snd); const nm=base.short||base.label;
   return same.length>1 && sl ? nm+' '+(same.indexOf(sl)+1) : nm; }
+/* in the iPhone app the page doesn't zoom at all (it's an app, not a web page); the website keeps pinch zoom for people who need it */
+try{ if(window.webkit&&window.webkit.messageHandlers&&window.webkit.messageHandlers.noodleNative){ const m=document.querySelector('meta[name=viewport]'); if(m&&!/user-scalable/.test(m.content)) m.content+=',maximum-scale=1,user-scalable=no'; } }catch(e){}
 const NOTE_NAMES = ['C','C♯','D','E♭','E','F','F♯','G','A♭','A','B♭','B'];
 const SCALES = {major:[0,2,4,5,7,9,11], minor:[0,2,3,5,7,8,10], 'pent-minor':[0,3,5,7,10], 'pent-major':[0,2,4,7,9], blues:[0,3,5,6,7,10], dorian:[0,2,3,5,7,9,10],
   mixolydian:[0,2,4,5,7,9,10], lydian:[0,2,4,6,7,9,11], phrygian:[0,1,3,5,7,8,10], locrian:[0,1,3,5,6,8,10], 'harm-minor':[0,2,3,5,7,8,11], 'mel-minor':[0,2,3,5,7,9,11], 'phryg-dom':[0,1,4,5,7,8,10]};
@@ -283,7 +285,7 @@ function nxSheetSwipe(){ const sh=$('nxSheet'); let y0=null, dy=0;
 function sheetAboveTransport(){ const sc=$('nxScrim'), tr=document.querySelector('.s2-tr'); let b=0;
   try{ if(s2On() && $('s2Ed').hidden && tr && tr.offsetParent){ b=Math.max(0,window.innerHeight-tr.getBoundingClientRect().top); } }catch(e){}
   sc.style.bottom=b?b+'px':''; document.body.classList.toggle('s2-sheet',!!b); }
-function nxClose(){ try{ pvEnd(); }catch(e){} $('nxScrim').hidden=true; $('nxScrim').style.bottom=''; document.body.classList.remove('s2-sheet'); $('nxSheet').onclick=null; $('nxSheet').oninput=null; $('nxSheet').onchange=null; }
+function nxClose(){ try{ pvEnd(); }catch(e){} if(typeof s2!=='undefined'){ s2.more=false; s2.subs=null; }   /* More settings (and its sections) start closed every time (owner, 26 Nov) */ $('nxScrim').hidden=true; $('nxScrim').style.bottom=''; document.body.classList.remove('s2-sheet'); $('nxSheet').onclick=null; $('nxSheet').oninput=null; $('nxSheet').onchange=null; }
 async function nxMenu(id){ const p=(await projList()).find(x=>x.id===id); if(!p) return; const name=p.title||'Untitled';
   nxSheet(`<h2>${nxEsc(name)}</h2><button class="nx-act" data-a="rename">Rename</button><button class="nx-act" data-a="dup">Duplicate</button><button class="nx-act" data-a="file">Back up this song<small>A file you can keep, or open on another phone</small></button><button class="nx-act danger" data-a="del">Delete</button>`);
   $('nxSheet').onclick=async e=>{ const a=e.target.closest('[data-a]'); if(!a) return; const k=a.dataset.a;

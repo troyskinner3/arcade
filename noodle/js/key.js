@@ -102,7 +102,10 @@ function verNext(tr){ if(!tr._versions || verSig(tr)!==tr._verSig){ tr._mine={no
   const i=((tr._vi||0)+1)%V.length;
   if(i===0){ verMine(tr); return; }
   applyVersion(tr,i); verUI(tr); toast(`Version ${i+1} of ${V.length}. Tap again for the next, or Mine to go back.`); }
-function verUI(tr){ const on=!!(tr&&tr._vi); $('s2EdMine').hidden=!on; $('s2EdFill').hidden=on||!(INST[tr.inst].kind==='pitched'&&tr.inst!=='arp'); $('s2EdVer').textContent=on?`Version ${tr._vi+1} of ${tr._versions.length}`:'Another version'; }
+/* whether a part has another likely version (worked out once per state of its notes): the button is grey without one */
+function verAvail(tr){ if(!tr||!tr.notes||!tr.notes.some(n=>!n.x)) return false; const sg=verSig(tr); if(tr._verAv&&tr._verAv.sig===sg) return tr._verAv.n>1;
+  let n=0; try{ n=takeVersions(tr).length; }catch(e){} tr._verAv={sig:sg,n}; return n>1; }
+function verUI(tr){ const on=!!(tr&&tr._vi); $('s2EdVer').disabled=!on&&!verAvail(tr); $('s2EdMine').hidden=!on; $('s2EdFill').hidden=on||!(INST[tr.inst].kind==='pitched'&&tr.inst!=='arp'); $('s2EdVer').textContent=on?`Version ${tr._vi+1} of ${tr._versions.length}`:'Another version'; }
 function applyVersion(tr, i){
   const V=tr._versions; if(!V||!V[i]) return; tr._vi=i; const v=V[i], rec=tr.notes.filter(n=>!n.x).sort((a,b)=>a.s-b.s);
   if(v.q){ rec.forEach((n,k)=>{ n.q=v.q[k]; n.qk='V'; }); tr.reading={tonic:v.tonic,scale:v.scale,squeeze:v.squeeze};
