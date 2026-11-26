@@ -305,3 +305,9 @@ test('a take older than its year (stored under the old 3-year rule) is deleted w
   assert.equal((await call(env, 'PUT', `/v1/takes/${I}/take02/meta`, meta())).status, 410);
   assert.equal(env.TAKES.m.has(`takes/${I}/take02/meta.json`), false);
 });
+
+test('usage events: finish_song is counted; unknown names are still skipped', async () => {
+  const pts = [], env = { TAKES: bucket(), EVENTS: { writeDataPoint: (d) => pts.push(d) } };
+  const r = await (await call(env, 'POST', '/v1/events', JSON.stringify({ app: 'ios', build: 'b1', plan: 'free', id: 'x'.repeat(20), ev: [{ e: 'finish_song' }, { e: 'nope' }] }))).json();
+  assert.equal(r.n, 1); assert.equal(pts[0].blobs[0], 'finish_song');
+});
