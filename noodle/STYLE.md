@@ -49,6 +49,9 @@ The owner's rules, gathered from reviews. Read this before any UI or copy change
 - **Note editing follows the big editors:** both ends of a note can be dragged; a note stretched or moved into another at the same pitch
   pushes that one's start later (and removes it once covered), live while dragging; different pitches overlap freely. The grid scrolls
   up and down through every octave with the keys, and Octave − / + moves selected notes.
+- **After a pick, the next step is pinned:** when choosing something in a sheet has an obvious next step ("Use this beat"), that button is
+  pinned to the bottom of the sheet as soon as something is picked (as Get Pro is in the Pro sheet), so finishing never needs a scroll
+  (owner, 26 Nov).
 - **Features live where they're used:** a way to record (pads, Play pad, Tap a rhythm) belongs to Record on a track, not to Add track as if it
   were another track type. Ask at the moment it matters (the first Record on a track), remember the answer, and let it be changed in the
   track's sheet (owner, 26 Nov).
