@@ -163,7 +163,7 @@ function genBass(chords, K, bars, oct, role, kicks){ const e=(SEC_ROLE[role]||SE
   on=[...new Set(on)].sort((a,c)=>a-c); chords.forEach(c=>{ if(!on.includes(c.s)) on.push(c.s); }); on.sort((a,c)=>a-c);   /* a chord change always lands on its root */
   return on.filter(s=>s<bars*16&&at(s)).map((s,i,a)=>({s, l:Math.max(1,Math.min(8,(a[i+1]??bars*16)-s)), p:root(at(s)), v:s%4===0?0.88:0.78})); }
 /* the song's sections: the ones on the Sections row (gaps count as verses), else worked out from where parts start and stop */
-function finishSections(N, E, grown){ const typed=(S.secs||[]).filter(x=>x.a<N&&SEC_ROLE[x.name]).map(x=>({a:x.a,b:Math.min(x.b,N),name:x.name})).sort((x,y)=>x.a-y.a);
+function finishSections(N, E, grown){ const typed=(S.secs||[]).filter(x=>x&&x.a<N&&Object.prototype.hasOwnProperty.call(SEC_ROLE,x.name)).map(x=>({a:x.a,b:Math.min(x.b,N),name:x.name})).sort((x,y)=>x.a-y.a);
   if(typed.length){ const out=[]; let at=0; for(const x of typed){ if(x.a>at) out.push({a:at,b:x.a,name:'Verse',gap:true}); out.push(x); at=Math.max(at,x.b); } if(at<N) out.push({a:at,b:N,name:'Verse',gap:true}); return {secs:out, marked:false}; }
   if(grown){ const h=Math.max(1,Math.round(N/2)); return {secs:[{a:0,b:h,name:'Verse'},{a:h,b:N,name:'Chorus'}], marked:true}; }
   const own=S.tracks.filter(t=>!t.guide&&!t._pvTemp&&hasContent(t)&&t.inst!=='mix'), blk=Math.max(1,Math.min(4,Math.floor(N/4)||1)), sig=[];
