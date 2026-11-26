@@ -49,6 +49,18 @@ const BEATS=[
   drums:{kick:'x------x--x-----x-----x---x-----', snare:'----x-------x-------x-------x---', clap:'----x-------x-------x-------x---', hat:'x-xxx-x-x-xxx-x-x-xxx-x-x-xxx-x-'},
   bass:{sound:'Sub', rhythm:'x=====x===x=====', oct:41}, chords:{inst:'keys', sound:'E-piano', type:'ninth', vol:56, send:40},
   master:{drive:15,punch:50,rev:55}},
+ {id:'rock1', name:'Garage Lights', style:'Rock', bpm:122, tonic:4, scale:'minor', swing:0, kit:'Rock', prog:[0,5,2,6],   /* round 29 (owner: more free beats): rock, country, reggaeton */
+  drums:{kick:'x-------x-x-----', snare:'----x-------x---', hat:'x-x-x-x-x-x-x-x-', crash:'x-------------------------------'},
+  bass:{sound:'Rock bass', rhythm:'x=x=x=x=x=x=x=x=', oct:40}, chords:{inst:'keys', sound:'Organ', type:'power', vol:50, rhythm:'x===x===x===x==='},
+  master:{drive:45,punch:60,rev:25}},
+ {id:'country1', name:'Open Road', style:'Country', bpm:100, tonic:7, scale:'major', swing:0, kit:'Punchy', prog:[0,3,4,0],
+  drums:{kick:'x-------x-------', snare:'o-o-x-o-o-o-x-o-'},
+  bass:{sound:'Rock bass', rhythm:'x===----x===----', oct:43}, chords:{inst:'keys', sound:'Piano', type:'triad', vol:54, rhythm:'--x=--x=--x=--x='},
+  extra:{inst:'arp', sound:'Pluck', type:'triad', vol:36}, master:{drive:15,punch:45,rev:35}},
+ {id:'regg1', name:'Dembow Nights', style:'Reggaeton', bpm:95, tonic:9, scale:'minor', swing:0, kit:'808', prog:[0,5,2,6],
+  drums:{kick:'x---x---x---x---', snare:'---x--x----x--x-', clap:'---x--x----x--x-', hat:'x-x-x-x-x-x-x-x-'},   /* the dembow: snare on the 4th and 7th 16ths of each half bar */
+  bass:{sound:'808 glide', rhythm:'x==x==x=x==x==x=', oct:33}, chords:{inst:'keys', sound:'Stab', type:'triad', vol:46, rhythm:'---x--x----x--x-'},
+  master:{drive:25,punch:65,rev:35}},
  {id:'afro1', name:'Lagos Sun', style:'Afrobeats', pro:true, bpm:106, tonic:9, scale:'major', swing:12, kit:'Punchy', prog:[0,3,5,4],
   drums:{kick:'x--x--x---x--x--', snare:'------x-------x-', rim:'--x--x----x--x--', hat:'x-xxx-xxx-xxx-xx', conga:'---x---x-x-x---x'},
   bass:{sound:'Synth bass', rhythm:'x==x==x=--x==x==', oct:33}, chords:{inst:'keys', sound:'Guitar', type:'triad', vol:52, rhythm:'--x--x--x--x--x-', tfx:{echo:30}},
@@ -106,7 +118,7 @@ const pickOne=a=>a[Math.floor(Math.random()*a.length)];
 let GEN=null, genLoad=null;
 function loadGenre(){ return genLoad||(genLoad=fetch(new URL('genre.json',location.href)).then(r=>r.ok?r.json():null).then(j=>{ GEN=j; return j; }).catch(()=>{ genLoad=null; return null; })); }
 const SEC_ROLE={Intro:{k:'intro',e:0.3},Verse:{k:'verse',e:0.55},'Pre-chorus':{k:'pre',e:0.7},Chorus:{k:'chorus',e:1},Drop:{k:'chorus',e:1},Bridge:{k:'bridge',e:0.6},Solo:{k:'solo',e:0.8},Breakdown:{k:'bridge',e:0.25},Outro:{k:'outro',e:0.35}};
-const STYLE_GENRE={Trap:'hiphop',Drill:'hiphop','Boom bap':'hiphop','Lo-fi':'rnb',Pop:'pop','R&B':'rnb',Afrobeats:'latin'};
+const STYLE_GENRE={Trap:'hiphop',Drill:'hiphop','Boom bap':'hiphop','Lo-fi':'rnb',Pop:'pop','R&B':'rnb',Afrobeats:'latin',Rock:'rock',Country:'country',Reggaeton:'latin'};
 const GENRE_DRUMS={hiphop:'hiphop',pop:'pop',rnb:'funk',latin:'latin',rock:'rock',country:'country',electronic:'pop'};
 /* livelier rhythms (round 29, owner: "a little more lively and less computer generated"): syncopated 1-bar patterns used next to the learned
    ones (which come mostly from hymns and folk tunes, so they sit on the beat). Steps of a 16-step bar. */
