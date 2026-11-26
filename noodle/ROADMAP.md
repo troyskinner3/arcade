@@ -115,6 +115,12 @@ Draft copy is in `noodle-ios/APP_STORE_LISTING.md`.
      (the key becomes the Cloudflare secret `KIT_API_KEY`) and moves the addresses already collected over, asking each to confirm once.
   If no confirmation arrives: the service can post to Kit's public form like a website form does (no key; not a documented API),
   or switch to Brevo (300 emails a day free; its double opt-in sign-up still to be checked).
+- [ ] Usage event `finish_song` is allowed by the service from 26 Nov; it counts only once the takes service is deployed. The app
+      session then turns the event back on and updates the privacy text.
+- [ ] Shared songs are limited to 8 MB, and nearly all of that is the kept recordings (about 125 KB a second at 48 kHz, so about
+      65 seconds in total). A 32-bar song with a full-length hummed part can't be shared, and every copy of a recorded part stores its
+      whole recording again. App side (app session): share each recording once (copies point to it) and/or at 24 kHz. Raising the server
+      limit instead would let fewer songs fit the daily storage budget.
 - [x] Cloudflare token given only to the deploy step (Fan to See `noodle-takes.yml`, on its `main` since 25 Nov).
 - [x] Hardening (25 Nov): strict WAV check, nosniff on every reply, report emails only on a song's first report (30 a day at most),
       reports stop being stored after 10, Pro codes marked when handed out (no double handout), `GET /v1/admin/usage` storage meter.

@@ -50,7 +50,7 @@ const MAX_AUDIO = 3 * 1024 * 1024, MAX_META = 256 * 1024, MAX_TAKES_PER_DAY = 30
 const ID = /^[A-Za-z0-9_-]{22,64}$/, TAKE = /^[A-Za-z0-9_-]{6,96}$/;
 const INVITE = /^[A-Z2-9]{6}$/, INVITES_FOR_PRO = 3, REWARDS_PER_DAY = 25;
 const EVENTS = new Set(['first_open', 'first_take', 'first_song', 'first_export', 'first_share', 'open', 'take', 'song_parts', 'export',
-  'share_link', 'part_used', 'session', 'pro_sheet', 'pro_try', 'pro_buy', 'pro_result', 'restore']);
+  'share_link', 'part_used', 'session', 'pro_sheet', 'pro_try', 'pro_buy', 'pro_result', 'restore', 'finish_song']);
 const STATS_ID = /^[A-Za-z0-9_-]{16,40}$/, MAX_EVENTS = 50, LABEL = /^[A-Za-z0-9 _.+\-]{0,40}$/;
 const SONG = /^[A-Za-z0-9_-]{10,32}$/, SONG_DAYS = 2 * 365, MAX_SONG = 8 * 1024 * 1024, MAX_PREVIEW = 1536 * 1024, MAX_SONGS_PER_DAY = 250, REPORTS_TO_HIDE = 1;   // hidden on the first report while the owner looks (owner, Nov 2026: Apple asks reports be acted on within 24 h)
 // Daily storage budgets for the whole service (all phones together), so no one can fill the free plan's 1 GB in a day.
