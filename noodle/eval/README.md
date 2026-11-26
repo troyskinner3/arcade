@@ -981,3 +981,29 @@ the note editor's Today / Tap notes button flips one take between them. The fing
 - Tests: `tapin_test.js` rewritten for the Record flow (the question once, straight in after, Record with, vocals never ask, chord take
   stopped in bar 3, drum layers, bass range, rhythm, Play pad, nothing saved before Keep).
 - Recording tests (review1, kitoffer, s2_test, s2_linear, s2_replace, s2_rest) pick Mic at the new question.
+
+## Round 29 B2b (owner, 26 Nov: Finish song by sections; livelier rhythms; modern-genre data)
+- Data (`eval/musical_train/train_genre.py`, 2 min): `genre.json` (60 KB) from Chordonomicon (213,588 songs with a genre we map: pop, rock,
+  country, hip hop, R&B, Latin, electronic; 4-chord loops per genre, section type and mode, only ones Noodle plays as written), McGill
+  Billboard (831 songs in 4/4: where in 4 bars the chord changes, per section type) and Groove MIDI (1,138 performances: 1-bar kick, snare
+  and hat patterns and fills per style). Pop verse: I-IV most; pop chorus: I-V-vi-IV most; harmonic rhythm: a chord a bar or every 2 bars.
+  Credited in More → Credits (renamed from Sound credits; Groove MIDI and PDMX ask for credit). In the offline cache (noodle-v6) and the
+  iPhone app's copy.
+- Finish song: the length is where your own parts end (looping parts: the song's length); under 8 bars it grows to 8 (your parts are copied
+  to fill; looping ones keep looping); bars after your parts are never filled. Sections: the Sections row's types (gaps count as verses),
+  else worked out from which tracks play where (4-bar blocks; sparse first = Intro, sparse last = Outro, fullest = Chorus; all alike: Verse
+  and Chorus in turn) and marked on the row; a grown song is Verse then Chorus. Per section, by energy (Intro .3, Verse .55, Pre-chorus .7,
+  Chorus/Drop 1, Bridge .6, Solo .8, Breakdown .25, Outro .35): drums from the free beat's pattern (none in a breakdown, hats in an intro,
+  half-time bridge, a crash and kicks on each bar in a chorus, a fill in the last half bar before a chorus: learned, else a snare roll);
+  chords from your melody there, else a learned loop for the genre (from the beat's style) and section type with a learned harmonic rhythm,
+  the same progression for every section of a type, a bridge starting elsewhere; keys comp (held when calm, syncopated grooves often in a
+  chorus); bass (none in an intro, held roots in a bridge or outro, a learned line in a verse, locked to the kick or a groove in a chorus);
+  the lead hook only in choruses (the same melody each time; verses if there's no chorus), an arp if the melody tables can't load; risers
+  and an impact into each chorus, a down-sweep at other section changes; the mix effect opens an intro, closes an outro, else dips the last
+  bar of music. One track per instrument, a part per section. One Undo.
+- Livelier rhythms: GROOVES (syncopated 1-bar comping and bass patterns: 3+3+2, pushes, the owner's 0-3-10) used next to the learned ones,
+  more in high-energy sections.
+- Small items: Count-in chord moved from Tempo to Mic and timing → More settings; the timeline draws lines at the snap size when at least 9 px
+  apart (merging to beats, then bars only); room above the Mix effect buttons for the Pro badge.
+- Tests: `finish_test.js` rewritten (grown drums-only song, the example song, marked sections with a melody, liveliness, genre data, the
+  melody model); `b2_test.js` (new).

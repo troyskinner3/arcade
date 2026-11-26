@@ -328,6 +328,7 @@ input[type=range]::-moz-range-thumb{width:10px;height:18px;border-radius:1px;bac
 .s2-ms[aria-pressed="true"]{background:var(--s2-ink)!important;color:var(--s2-bg)!important}
 .s2-ms.so[aria-pressed="true"]{background:var(--s2-amber)!important;color:var(--s2-amber-ink)!important;border-color:var(--s2-amber)!important}
 .s2-ln{position:relative;flex:none;width:calc(var(--s2-view) * var(--s2-barw));background-image:linear-gradient(90deg,var(--s2-line) 1px,transparent 1px);background-size:var(--s2-barw) 100%}
+.s2.s2-sub .s2-ln{background-image:linear-gradient(90deg,var(--s2-line) 1px,transparent 1px),linear-gradient(90deg,color-mix(in srgb,var(--s2-line) 45%,transparent) 1px,transparent 1px);background-size:var(--s2-barw) 100%,var(--s2-subw) 100%}
 .s2-ln canvas{position:absolute;left:0;top:0;height:100%;width:calc(var(--s2-bars) * var(--s2-barw));display:block}
 .s2-trk.dim canvas{opacity:.35}
 /* the selected part: an outline you can drag, with a grip on each end to trim or extend it */
@@ -443,6 +444,7 @@ input[type=range]::-moz-range-thumb{width:10px;height:18px;border-radius:1px;bac
 .s2-lk{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 2px;color:var(--muted);font-size:14px}.s2-lk button{border:1px solid var(--line);border-radius:8px;padding:6px 12px;background:transparent;color:var(--rec);font:600 14px var(--f-body)}
 /* the Pro badge (free users only): an amber sparkle; on option buttons it sits on the top-right corner */
 .pro-b{display:inline-flex;width:13px;height:13px;margin-left:5px;vertical-align:-1px;flex:none}.pro-b svg{width:100%;height:100%;fill:#f1c75b;stroke:rgba(20,16,4,.45);stroke-width:1.2;stroke-linejoin:round}
+.mfx-k{padding-top:7px;padding-right:7px}   /* room for the Pro badge above each effect (it was cut off; owner, 26 Nov) */
 .s2-opts button,.mfx-k button{position:relative}.s2-opts button .pro-b,.mfx-k button .pro-b,.s2-clip button .pro-b{position:absolute;top:-6px;right:-6px;width:15px;height:15px;margin:0}
 .s2-clip button{position:relative}
 .pv-line{display:flex;align-items:center;gap:8px;margin:8px 0 4px;padding:8px 10px;border-radius:10px;background:color-mix(in srgb,#f1c75b 14%,transparent);font-size:13px}.pv-line span{flex:1}.pv-line .pro-b{margin:0}
