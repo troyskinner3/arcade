@@ -18,6 +18,8 @@ Started 27 Nov 2026. Launch tasks that are product or store work stay in `ROADMA
       publishes only the site's files, never the notes. **Owner** then: adds the address in Cloudflare, makes the repo private in GitHub
       settings. GitHub's free plan serves sites only from public repos, so the old `github.io` addresses stop working at that point:
       do it before App Store submission and before any outside testers.
+- [ ] **Owner:** pick the handle for Noodle's social accounts (same on TikTok, Instagram, YouTube, X), then reserve them.
+- [ ] **Owner:** pick the web address for the move above (e.g. `noodle.tuttii.io`, or another domain you own).
 
 ## Goal and the number we count
 - **North star: people who made a song** (first song with 2+ parts, `first_song2`). Installs are tracked but are not the goal. (agreed)
@@ -54,7 +56,7 @@ No launch date yet: the owner is polishing the core first (agreed). Each phase s
 
 ### Phase 0: get ready (now, while polishing)
 Exit check: funnel tracking live, accounts reserved, the landing page collects emails.
-- [ ] **Owner:** reserve handles for Noodle (TikTok, Instagram, YouTube, X), same name everywhere, from a tuttii.io email.
+- [ ] **Owner:** reserve the handles once picked (see Top of the list), from a tuttii.io email.
 - [ ] **Owner:** Kit email list (steps already in `ROADMAP.md` §7).
 - [ ] Funnel tracking: see **Measurement** below (Claude, in the app and takes-service folders; coordinate with those sessions).
 - [ ] Landing page: one line, a 15-second demo, App Store button (until launch, a TestFlight or email sign-up), "Try it in your browser".
@@ -95,14 +97,30 @@ In order of expected effect:
    photo-library access). Every shared song becomes an ad, and the same videos are our own faceless content.
 2. **Listen page → "Make your own" / "Remix this".** Every song link page gets an install button (with a source tag, so installs from
    song links are counted) and, on the web, "Open in your browser".
-3. **Founding-member Pro.** The first 1,000 song-makers get Pro free for life (App Store offer codes or a launch-period unlock; check
+3. **Founding-member Pro (agreed 27 Nov; number: Claude suggests 250, owner to confirm).** The first founders who make a song get Pro free for life (App Store offer codes or a launch-period unlock; check
    Apple's code limits). Cost: a few % of 1,000 × $4.99, small next to what we gain from the goodwill and the shares. Producers get the DAW pack, so they
    can show their Noodle ideas finished in their DAW.
-4. **Easier invite reward** for the launch period: 1 friend who makes a song (instead of 3) earns Pro, or both sides get something.
+4. **Easier invite reward (agreed 27 Nov), after the founding spots run out**, for a limited time: 1 friend who makes a song (instead of 3)
+   earns Pro. Then back to 3. Founders already own Pro, so an invite reward means nothing to them: instead each founder gets a few
+   Pro gifts for friends (proposed; how many is for the owner), which keeps them inviting. Apple offer codes allow 1 million codes per app per
+   quarter (all purchase types, non-consumables included); one-time codes expire after at most 6 months, so hand each out when it's earned.
 5. **Remix chain:** "finish my hook": send a hum, a friend adds a part, it comes back. Song links mostly already do this; make it obvious.
 6. **Web as the free trial.** No-install "try it" for Reddit, Product Hunt and press, which avoids the App Store step that puts people off.
 7. **Android** through Google Play (wrapping the web app). Costs the $25 developer fee (**owner** to approve) and the 12-tester rule
-   above. Recommend: after the iOS beta, once the core is settled.
+   above. **After the iOS beta (agreed 27 Nov).**
+8. **Phone as a MIDI controller for a real DAW (owner idea, 27 Nov; its own session will scope it).** Play, hum or draw on the phone and the
+   notes go straight into Ableton, Logic or FL, with no export step. Possibly the biggest differentiator. Notes from a first look:
+   - MIDI only, no plugin needed: iPhone apps can send MIDI over Bluetooth LE (built into macOS; Windows support is still in preview,
+     per Microsoft, Feb 2026) and over Wi-Fi network MIDI (built into macOS; Windows needs the free rtpMIDI driver). The DAW records it like a keyboard.
+     Noodle runs in a web view, so this needs a small native CoreMIDI bridge in the Swift shell. Tempo sync with MIDI clock or Ableton Link.
+   - Easiest first version: Noodle plays a take's MIDI out in time with the DAW while the DAW records. Live hum-to-MIDI (note out
+     while singing) is harder: detection needs some look-ahead, so it adds delay.
+   - Audio straight into the DAW needs a desktop companion (plugin or small app) over Wi-Fi or USB; Bluetooth is too slow and narrow
+     for good audio. Real work: desktop builds, signing (Windows code signing costs money), support. StudioMux does USB audio/MIDI
+     today, with mixed reviews about reliability.
+   - Closest rival: Vochlea Dubler 2 (desktop voice-to-MIDI into a DAW, about $99–249, needs a dynamic mic; reviewers say the MIDI
+     usually needs editing). That shows producers pay for this; Noodle's edge would be phone in pocket + touch + free.
+   - Marketing: a big feature for producers and press; a natural "big update" story after launch.
 
 ## Measurement (proposed): every step of the funnel visible
 Already sent (`noodle/js/takes.js`, dashboard "Noodle Usage"): first open, takes, 2-part song, export, share link, sessions, Pro sheet /
@@ -114,6 +132,8 @@ try / buy / restore, day-1/7/30 returns. Missing pieces, in order:
 4. **Self-reported source:** the one-tap "How did you find Noodle?" answer as an event. iPhone attribution is incomplete; this fills the gaps.
 5. **Funnel view on the dashboard:** store views → installs (from App Store Connect, entered by hand weekly) → first open → first take →
    first song → share → day-7 return → Pro, per week and per source.
+Standing rule (owner, 27 Nov): analytics are built with every product change. Each new or changed feature gets its events (and
+the dashboard and privacy files updated) in the same piece of work. Also in `CLAUDE.md`.
 Privacy: each new event or page count needs the three privacy files updated (CLAUDE.md rule).
 
 ## Channels (free)
@@ -147,6 +167,7 @@ Privacy: each new event or page count needs the three privacy files updated (CLA
 - Google Play developer fee $25 (if Android).
 
 ## Decisions for the owner
+Answered 27 Nov: 1 yes, 2 yes (number open), 3 yes (after founders, limited time), 4 after iOS beta, 5 standing rule, 6–7 on the owner's list.
 1. Share video (Product change 1) as the next big product item after polishing? (Claude recommends yes.)
 2. Founding-member Pro for the first 1,000: yes / no / a different number?
 3. Invite reward at 1 friend for the launch period?
@@ -165,6 +186,10 @@ Date · what we tried · source tag · result · keep / drop.
 - 27 Nov 2026 · plan written · – · – · –
 
 ## Sources (checked 27 Nov 2026)
+- Apple offer codes: https://developer.apple.com/help/app-store-connect/manage-in-app-purchases/create-offer-codes-for-in-app-purchases
+- Windows BLE MIDI status: https://devblogs.microsoft.com/windows-music-dev/windows-midi-services-rollout-known-issues-and-workarounds
+- Dubler 2 review: https://musictech.net/reviews/software-instruments/vochlea-dubler-2-review/
+- StudioMux: https://apps.apple.com/us/app/studiomux/id966554837
 - Google Play testing rule: https://support.google.com/googleplay/android-developer/answer/14151465
 - Apple featuring nominations: https://developer.apple.com/app-store/getting-featured/
 - Apple Ads cost by category: https://www.apptweak.com/en/aso-blog/apple-ads-benchmarks
