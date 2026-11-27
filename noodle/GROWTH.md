@@ -30,8 +30,12 @@ Started 27 Nov 2026. Launch tasks that are product or store work stay in `ROADMA
 2. **Teens and casual makers** (second, bigger): beats, loops and raps to send to friends. Reachable through short video and sharing
    between friends. This is where volume comes from, if the share loop works.
 
-Positioning: a hummed idea becomes a whole song (beatbox → drums, written chords and bass, Finish song), not just a pitch-to-MIDI tool.
-No account, no ads, one-time Pro. Don't call it AI (r/WeAreTheMusicMakers bans AI posts; a lot of producers dislike "AI music").
+Positioning (owner, 27 Nov): **new, quick, fun ways to make music that only a touchscreen phone allows**: voice (hum, beatbox,
+sing), Play Pad, draw-to-MIDI, and whatever comes next. The aim is to get the song in your head out, with fewer hoops than a DAW.
+Against AI music generators: they come up with the ideas for you; Noodle turns *your* ideas into music. (Copy still to be written;
+drafts to try: "Make the song in your head." / "Your idea, not a prompt.") Hum → song stays the hook in demos and the store page,
+because it is the easiest thing to show in 3 seconds; the breadth is what makes people stay.
+No account, no ads, one-time Pro. Don't call it AI (r/WeAreTheMusicMakers bans AI posts; many producers dislike "AI music").
 
 Competitors seen 27 Nov (all on iPhone): Nada, HumTrack (Jun 2026), Hum2MIDI (Jul 2026), ToneScribe Pro, AnySing, Humming Note, HumBeatz.
 The space is crowded, but no app in it is the clear leader.
