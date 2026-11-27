@@ -10,6 +10,15 @@ Reddit from mid-December (a new account is building karma); ads only after free 
 
 Started 27 Nov 2026. Launch tasks that are product or store work stay in `ROADMAP.md`; this file is the marketing side.
 
+## Top of the list
+- [ ] **Owner + Claude, first: make everything private (option A, agreed 27 Nov).** The repo `troyskinner3/arcade` is public, so the
+      code, these notes and their history can be read by anyone, and the website serves the `.md` files too.
+      Plan: Claude first moves every hard-coded `troyskinner3.github.io` address (about 10 files: app, iPhone Swift code, takes service,
+      App Store privacy and listing drafts) to a new address on Cloudflare (free; e.g. `noodle.tuttii.io`), and sets up a deploy that
+      publishes only the site's files, never the notes. **Owner** then: adds the address in Cloudflare, makes the repo private in GitHub
+      settings. GitHub's free plan serves sites only from public repos, so the old `github.io` addresses stop working at that point:
+      do it before App Store submission and before any outside testers.
+
 ## Goal and the number we count
 - **North star: people who made a song** (first song with 2+ parts, `first_song2`). Installs are tracked but are not the goal. (agreed)
 - Target: 1,000 song-makers. Growth over money for this cohort: generous Pro, no paywall pressure. (agreed)
@@ -81,8 +90,8 @@ Exit check: about a week with no bad crashes, and the store page converts visits
 
 ## Product changes for growth (proposed, waiting on the owner; Pro changes also go into `PRO.md`)
 In order of expected effect:
-1. **Share video built for TikTok and Reels.** Vertical, shows the hum first and then the finished song (that before/after is the
-   pitch), a small "Made with Noodle" tag with the link. Then direct posting to TikTok (TikTok Share Kit, free; the app needs
+1. **Share video built for TikTok and Reels** (owner loves it, 27 Nov). Vertical. Starts with the raw input (hum, beatbox, singing,
+   a Play Pad take) and cuts to the full song exactly on a downbeat: that before/after is the pitch. Will need several rounds to feel right. A small "Made with Noodle" tag with the link. Then direct posting to TikTok (TikTok Share Kit, free; the app needs
    photo-library access). Every shared song becomes an ad, and the same videos are our own faceless content.
 2. **Listen page → "Make your own" / "Remix this".** Every song link page gets an install button (with a source tag, so installs from
    song links are counted) and, on the web, "Open in your browser".
