@@ -140,7 +140,7 @@ function metroAt(when){ const now=performance.now(); let heardIn;
   try{ const ts=ctx.getOutputTimestamp&&ctx.getOutputTimestamp(); if(ts&&ts.contextTime>0&&ts.performanceTime>0&&Math.abs(now-ts.performanceTime)<1000) heardIn=ts.performanceTime+(when-ts.contextTime)*1000-now; }catch(e){}
   if(heardIn==null) heardIn=(when-ctx.currentTime+Math.min(0.15,ctx.outputLatency||ctx.baseLatency||0))*1000;
   return {inMs:Math.round(heardIn+(Number.isFinite(+S.buzzMs)&&S.buzzMs!=null?+S.buzzMs:BUZZ_MS)), sentMs:Date.now()}; }
-const BUZZ_MS=-15;   /* the default nudge: the owner's iPhone felt right at −15 ms (Nov 2026); Buzz timing changes it */
+const BUZZ_MS=50;   /* the default nudge: the owner's iPhone felt right at +50 ms on the 27 Nov build (it was −15 before the playhead and buzz followed the heard sound); Buzz timing changes it */
 /* the felt metronome runs only in the iPhone app (the web can't buzz an iPhone) */
 const feelBeat=()=>S.feelBeat!==false&&!!(window.webkit&&window.webkit.messageHandlers&&window.webkit.messageHandlers.noodleNative);
 const REC_ALONG=0.6;   /* about −4 dB */

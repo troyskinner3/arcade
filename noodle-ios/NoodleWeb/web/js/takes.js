@@ -83,8 +83,7 @@ async function renderFx(tr){ await fxLoadPack(tr.sound);
   const off=tr.off||0, ps=pSteps(tr), end=Math.round(L/stepDur());
   for(const e of inWin(tr.fxs||[],ps)){ if(e.s+off>=end) continue; try{ fxPlay(oc,out,tr,e,stepTime(e.s+off)+0.002); }catch(err){} }
   const r=await oc.startRendering(), b=ctx.createBuffer(2,n,sr);
-  for(let ch=0;ch<2;ch++){ const src=r.getChannelData(ch), dst=b.getChannelData(ch); for(let i=0;i<src.length;i++) dst[i%n]+=src[i]; }
-  return b; }
+  return foldTail(b,r,n); }
 async function addVocalTake(x, sr, opt){
   let pk=0; for(let i=0;i<x.length;i++) pk=Math.max(pk,Math.abs(x[i]));
   if(pk<0.003){ toast('Noodle couldn’t hear any singing. Move closer to the mic and try again.'); return; }

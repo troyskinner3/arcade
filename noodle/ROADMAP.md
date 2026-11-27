@@ -161,7 +161,7 @@ Draft copy is in `noodle-ios/APP_STORE_LISTING.md`.
 - [x] Track sheet: More settings starts closed; only everyday controls; Effects, Your kit and Voice open in place; Chord is a proper dropdown.
 - [x] Section types from a list (9 types) with automatic numbering (Verse 1, Verse 2).
 - [x] Note preview sounds as the finger lands; the playhead follows what's heard (sound lagged the picture by ~1/8 note on the speaker).
-- [ ] Check the sound delay on the next build (hold the position counter); if it's still large, look at the app's audio session (it stays in
+- [x] (27 Nov: 3 ms on the speaker, still small after switching apps; Buzz timing default now +50, the owner's setting.) Check the sound delay on the next build (hold the position counter); if it's still large, look at the app's audio session (it stays in
   play-and-record mode all the time).
 - [x] Pads as ways to record into a track (owner, 26 Nov): Record on an instrument track asks once "How do you want to record?" (Mic, Drum pads,
   Chord pads, Note pads, Tap a rhythm, Play pad, by track type), remembered per track, changed with Record with in the track sheet; takes run
@@ -173,15 +173,19 @@ Draft copy is in `noodle-ios/APP_STORE_LISTING.md`.
 - [x] Usage stats ⓘ says "anonymous ID" plainly.
 - [x] Teaching the crash: it's kept (it was thrown away as metronome bleed); nothing plays after teaching.
 - [x] Beats: Use this beat pinned after a pick; closing puts the playhead back; a free beat is no longer called Pro.
-- [x] Buzz timing range ±300 ms. Revisit the default (−15; the owner found +50 right after a fresh start) once the delay fix is on a build.
+- [x] Buzz timing range ±300 ms; default +50 ms (owner, 27 Nov: right on the build with the delay fix).
+- [x] A short pluck at bar 1 when the song's last note rings past the end (first pass now clean; exports too).
+- [x] No sound from tapping notes or keys after Pause (fixed).
 - [x] Livelier rhythms (syncopation, pushes, genre grooves) in everything Noodle writes (round 29: GROOVES; chorus comping and bass syncopated, bass can lock to the kick).
 - [x] Finish song: the song's real length, its sections (marked or worked out), each filled for its role; no filling empty bars (round 29).
 - [x] Modern-genre data: Chordonomicon (MIT), McGill Billboard (CC0), Groove MIDI (CC BY 4.0), approved by the owner 26 Nov; genre.json; credited in More → Credits.
 - [x] Beats reworked (owner, 27 Nov): rock, country and Afrobeats removed (the Guitar sound isn't a convincing rhythm or acoustic guitar,
   and a weak Afrobeats risked disrespecting the music); Slow Steam replaces the Pro lo-fi (swung hip-hop lo-fi on dotted eighths); Dembow
   Nights has a plucky, spaced bass on dotted eighths; new Pro beats Silk (R&B) and Neon Dembow (reggaeton). Every genre: one free, one Pro.
-- [ ] A clean electric and an acoustic guitar sound (the current Guitar is gritty, like a metal bass); then rock and country beats could
-  come back. Finish song doesn't pick Guitar for now.
+- [x] A clean electric and an acoustic guitar sound (round 30): Acoustic guitar (Meta, CC0, free), Nylon guitar (Meta, CC0) and Clean
+  guitar (FreePats, CC0), strummed on chords; plus Finger bass (Karoryfer, CC0) and eight synths in the spirit of modern pop, hip-hop and
+  EDM sounds; Envelope (Pro).
+- [ ] Rock and country beats again, with the new guitars (ask the owner to listen first).
 - [ ] Desktop web app tied to the phone account (songs synced; export the DAW pack straight on the laptop). Post-launch; needs accounts and sync.
 - [ ] Laptop layout: use the width (taller curve editor, effect list as a column). Post-launch (owner, 26 Nov).
 - [x] Count-in chord moved to Mic and timing → More settings.

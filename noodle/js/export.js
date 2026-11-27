@@ -53,7 +53,8 @@ async function renderMix(K, fade){
   const sr=ctx.sampleRate, L=loopLen(), n=Math.round(L*sr), len=n*K+Math.round(2.5*sr);
   const oc=new OfflineAudioContext(2,len,sr); const ch=buildChain(oc,false); if(mfxParts().some(p=>p.mfx.k==='crush')) await fxWorklet(oc); mfxOffline(oc,ch,K);
   S.tracks.forEach(tr=>{ if(!tr._buf) return; const g=oc.createGain(), p=oc.createStereoPanner(), s2=oc.createGain(); g.gain.value=trackGain(tr); p.pan.value=tr.pan/100; s2.gain.value=Math.pow(tr.send/100,1.5);
-    g.connect(p); p.connect(ch.input); p.connect(s2); s2.connect(ch.revIn); const src=oc.createBufferSource(); src.buffer=tr._buf; src.loop=true; src.connect(g); src.start(0); src.stop(n*K/sr); });
+    g.connect(p); p.connect(ch.input); p.connect(s2); s2.connect(ch.revIn); const src=oc.createBufferSource(); src.buffer=tr._buf; src.loop=true; src.connect(g); src.start(0); src.stop(n*K/sr);
+    if(tr._buf._cut){ const c=oc.createBufferSource(); c.buffer=tr._buf._cut; c.connect(g); c.start(0); } });   /* no ring-over before the first note (startSrc) */
   const mix=await oc.startRendering();
   if(fade){ const f0=n*K, f1=Math.min(mix.length, f0+Math.round(2.2*sr)); for(let c=0;c<2;c++){ const d=mix.getChannelData(c); for(let i=f0;i<mix.length;i++) d[i]*= i<f1 ? Math.pow(1-(i-f0)/(f1-f0),2) : 0; } }
   return mix;
@@ -69,7 +70,7 @@ async function exportZip(){ pvEnd(true);
     const files=[{name:top+'Audio/00 Full mix.wav',data:wavBytes(mix,24)}];
     const midiFiles=[]; const parts=S.tracks.filter(tr=>tr._buf);
     parts.forEach((tr,i)=>{ const num=String(i+1).padStart(2,'0'), nm=fileSafe(partName(tr)); const b=ctx.createBuffer(2,len,sr);
-      for(let c=0;c<2;c++){ const s2=tr._buf.getChannelData(c), d=b.getChannelData(c); for(let k=0;k<K;k++) d.set(s2,k*n); }
+      for(let c=0;c<2;c++){ const s2=tr._buf.getChannelData(c), d=b.getChannelData(c); for(let k=0;k<K;k++) d.set(s2,k*n); const C=tr._buf._cut; if(C){ const cc=C.getChannelData(c); for(let i=0;i<cc.length&&i<len;i++) d[i]+=cc[i]; } }
       files.push({name:`${top}Audio/${num} ${nm} (${tr.sound}).wav`,data:wavBytes(b,24)});
       if(tr.inst==='vox' && tr._raw){ const {x,sr:rs}=tr._raw, va=tr.va||0, rb=ctx.createBuffer(1,len,sr), d=rb.getChannelData(0);
         for(let k=0;k<K;k++) for(let i=0;i<n;i++){ const p=(va+i/sr)*rs, i0=Math.floor(p), fr=p-i0; d[k*n+i]=(x[i0]||0)*(1-fr)+(x[i0+1]||0)*fr; }
