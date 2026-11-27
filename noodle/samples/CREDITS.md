@@ -11,6 +11,10 @@ public domain (CC0) and attribution (CC BY) material is used. CC BY libraries ar
 | E-piano | Wurlitzer EP200, from Greg Sullivan's E-Pianos | Greg Sullivan (SFZ mapping by kinwie) | [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/) | https://github.com/sfzinstruments/GregSullivan.E-Pianos (originally http://www.sullivang.net/) |
 | Rock bass | Growlybass (electric bass, clean) | Karoryfer Samples | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | https://github.com/sfzinstruments/karoryfer.growlybass |
 | Guitar | Emilyguitar (electric guitar, clean) | Karoryfer Samples | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | https://github.com/sfzinstruments/karoryfer.emilyguitar |
+| Acoustic guitar | Meta Steel Guitar (Meta Open Sound): steel-string acoustic | Meta | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | https://github.com/facebookincubator/Meta-open-sound |
+| Nylon guitar | Meta Nylon Guitar (Meta Open Sound): classical guitar, picked | Meta | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | https://github.com/facebookincubator/Meta-open-sound |
+| Clean guitar | Electric Guitar FSBS (clean, bridge pickup, small amp) | FreePats | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | https://freepats.zenvoid.org/ElectricGuitar/clean-electric-guitar.html |
+| Finger bass | Fashionbass (Killer KB-Simmony bass, fingers, direct) | Karoryfer Samples (D. Smolken) | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | https://github.com/sfzinstruments/karoryfer.fashionbass |
 | Rock drums | Big Rusty Drums (24" rock kit) | Karoryfer Samples | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | https://github.com/sfzinstruments/karoryfer.big-rusty-drums |
 | Brushes kit | Swirly Drums (a kit played with brushes) | Karoryfer Samples | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | https://github.com/sfzinstruments/karoryfer.swirly-drums |
 | Glass, Chip, Theremin, Vowel pad, Digital pad, Growl | Adventure Kid Waveforms (AKWF), single-cycle waves from its own `AKWF/` folders (not the folders named after other products) | Kristoffer Ekstrand | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | https://github.com/KristofferKarlAxelEkstrand/AKWF-FREE |
@@ -20,5 +24,7 @@ layers were kept, and the files were converted to MP3 (`build_samples.py`). Stri
 
 AKWF waves are embedded in the app as their first 48 harmonics (no sample files); which wave each sound uses is listed in index.html next to `WT`.
 
-Considered and not used: jRhodes3d (its samples are CC BY-NC, non-commercial only); Splendid Grand Piano (labelled public domain,
+Acoustic and Nylon guitar (round 30): the first-position layout (channel 1) of each SFZ, the picked style of the nylon guitar, every third recorded note (each stretched over the notes between), two of three velocity layers, 3-4 s per note, mono MP3 at 128 kbps. Clean guitar: all 13 notes of the small set, 3.5 s, mono. Finger bass: the p and f layers, first round robin, 3 s, mono. Levels matched to Piano (guitars), Saw (leads) and the other basses, measured before the master (eval/instruments30_test.js). Chords on guitars are strummed in the app (13 ms between strings).
+
+Considered and not used: FreePats Steel-String Acoustic Guitar (GPL 3, not ideal in an App Store app); jRhodes3d (its samples are CC BY-NC, non-commercial only); Splendid Grand Piano (labelled public domain,
 but listed as made by AKAI, so its origin is unclear); SM Drums (its repository has no license file).

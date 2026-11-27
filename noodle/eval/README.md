@@ -1034,3 +1034,26 @@ the note editor's Today / Tap notes button flips one take between them. The fing
   Plane. Dembow Nights: a Pluck bass on dotted eighths (0, 3, 8, 11) with room between notes. New Pro: Silk (R&B, 88, B-flat minor, E-piano
   9ths over a chorus pad, dotted bass) and Neon Dembow (reggaeton, 98, C-sharp minor, EDM kit, off-beat hats, pump pad and a pluck arp).
 - Every genre (Trap, Boom bap, Lo-fi, Drill, Pop, R&B, Reggaeton) has one free and one Pro beat; `b2_test` checks it and plays the new ones.
+
+## Round 30, instruments (owner, 27 Nov)
+- Recorded, all CC0 (each LICENSE file read): Acoustic guitar (Meta Steel Guitar, free), Nylon guitar (Meta, picked), Clean guitar (FreePats
+  FSBS clean), Finger bass (Karoryfer Fashionbass); `samples/build_samples.py` gained channel (`chan`), key-switch (`sw`) and every-Nth-note
+  (`every`) options and a bitrate; 5.6 MB in all. Offered on lead, keys and arp (guitars) and bass. Guitar chords strum (13 ms per string).
+- Synths, Noodle's own oscillators (types common in modern pop, hip hop and EDM; no presets copied): Glide lead and Whistle lead (slide into
+  touching notes), Sine lead, Juno chords (saw and pulse through a chorus), Future chords (wide saws pumping on the beat), Island pluck
+  (short mallet-like pluck), Moog bass (two low-pass filters in a row), FM bass. Free: Acoustic guitar, Glide lead, Sine lead, Juno chords,
+  Moog bass; the rest Pro.
+- Levels measured on the track before the master (the master's limiter hid differences at first): each within 2.5 dB of Piano (keys),
+  Saw (leads) or the basses; sine leads 2 dB hotter (a pure tone sounds quieter).
+- Envelope (Pro; owner: "Envelope", with Attack, Decay, Sustain and Release, plain words behind each ⓘ): a section in More settings for
+  pitched tracks, starting from the sound's own envelope (read by playing the synth silently once; recordings: as recorded), a drawing of
+  the shape, Reset; recordings follow it too now. Free users preview it while the sheet is open.
+- Tests: `instruments30_test.js` (new).
+- Owner's check on the 27 Nov build: sound delay 3 ms on the speaker (the phone reports 0 ms output, 3 ms buffer), still small after switching apps back and forth; metronome and buzz feel right at +50 ms, now the default (`BUZZ_MS`; `haptic_test` checks it).
+- Owner's bugs on the same build: (1) a 2-bar lead with its notes in bar 2 played a sudden short pluck when started at bar 1. The ring after
+  the last note is folded into the loop's start so the loop is seamless, and it was heard on the first pass too (and at the start of every
+  export). Each part now carries that fold negated (`_cut`), played once with the loop (`startSrc`) and added to exports and stems, so the
+  first pass is clean and later passes keep the ring-over; sidechain ducking applies to it too. The same fold was in vocal takes (reverb and echo past the end) and
+  sound-effect parts; all three now share `foldTail`. Sounds that skip the gate (metronome, count-in arpeggio) were never affected. (2) After Pause, tapping notes or keys made no
+  sound until Play: Pause closes the output gate (to cut the reverb) and only Play opened it. Sounds made on the spot (note and key taps,
+  drum hits, pads, beat previews) now open it (`liveIn`). `tailcut_test.js` (new) fails on the old code for both and passes now.

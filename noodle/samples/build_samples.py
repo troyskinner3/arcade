@@ -74,7 +74,7 @@ def parse_sfz(path, defines=None):
         key = num(o['key']) if 'key' in o else None
         lo = num(o.get('lokey', key if key is not None else 0)); hi = num(o.get('hikey', key if key is not None else 127))
         root = num(o.get('pitch_keycenter', key if key is not None else 60)) - float(o.get('tune', 0)) / 100 - num(o.get('transpose', 0))   # SFZ: no keycenter means 60
-        out.append(dict(sample=os.path.join(base, o['sample']).replace('\\', '/'), lo=lo, hi=hi, root=round(root, 3), vol=float(o.get('volume', 0)),
+        out.append(dict(sw=o.get('sw_last'), chan=(num(o.get('lochan', 1)), num(o.get('hichan', 16))), sample=os.path.join(base, o['sample']).replace('\\', '/'), lo=lo, hi=hi, root=round(root, 3), vol=float(o.get('volume', 0)),
                         lovel=num(o.get('lovel', 1)), hivel=num(o.get('hivel', 127)), seq=num(o.get('seq_position', 1)) if float(o.get('lorand', 0)) == 0 else 2))   # round robins (seq or rand): keep the first
     return out
 
@@ -104,17 +104,24 @@ def build_sfz(root, key, cfg):
         sfz = os.path.join(root, path); folder = os.path.dirname(sfz)
         for r in parse_sfz(sfz, cfg.get('defines')):
             if r['seq'] != 1 or r['hi'] < klo or r['lo'] > khi or (cfg.get('exclude') and re.search(cfg['exclude'], r['sample'])): continue
+            if cfg.get('chan') and not (r['chan'][0] <= cfg['chan'] <= r['chan'][1]): continue   # an SFZ with several channel layouts: just one
+            if cfg.get('sw') is not None and r['sw'] is not None and str(r['sw']) != str(cfg['sw']): continue   # a key-switched SFZ: one playing style
             r['lo'] = max(r['lo'], klo); r['hi'] = min(r['hi'], khi); r['sample'] = os.path.join(folder, r['sample']); regs.append(r)
     folder = ''
     vels = sorted({r['hivel'] for r in regs}); keep = cfg.get('velocities') or vels
     layers = []; done = {}
     for hv in keep:
-        rs = []
-        for r in sorted([r for r in regs if r['hivel'] == hv], key=lambda r: r['lo']):
+        rs = []; lr = sorted([r for r in regs if r['hivel'] == hv], key=lambda r: r['lo'])
+        if cfg.get('every'):   # every Nth recorded note, each stretched to cover the ones left out (fewer files; a semitone or two of re-pitching)
+            lo0, hi0 = lr[0]['lo'], lr[-1]['hi']; lr = [r for i, r in enumerate(lr) if i % cfg['every'] == 0]
+            for i, r in enumerate(lr):
+                r['lo'] = lo0 if i == 0 else int((lr[i - 1]['root'] + r['root']) // 2) + 1
+                r['hi'] = hi0 if i == len(lr) - 1 else int((r['root'] + lr[i + 1]['root']) // 2)
+        for r in lr:
             src = r['sample']; name = re.sub(r'[^A-Za-z0-9_.-]+', '_', os.path.splitext(os.path.basename(r['sample']))[0]) + '.mp3'
             if name not in done:
                 secs = secs_for(int(r['root']), cfg['trim'])
-                done[name] = encode_loop(src, os.path.join(out, name), secs, cfg['loop'], cfg.get('gain_db', 0), mono=cfg.get('mono', False)) if cfg.get('loop') else encode(src, os.path.join(out, name), secs, cfg.get('gain_db', 0), mono=cfg.get('mono', False))
+                done[name] = encode_loop(src, os.path.join(out, name), secs, cfg['loop'], cfg.get('gain_db', 0), mono=cfg.get('mono', False)) if cfg.get('loop') else encode(src, os.path.join(out, name), secs, cfg.get('gain_db', 0), mono=cfg.get('mono', False), kbps=cfg.get('kbps', 192))
             sh = cfg.get('shift', 0)   # some libraries are mapped an octave away from the true pitch (measured, see below)
             rr = {'lo': r['lo'] + sh, 'hi': r['hi'] + sh, 'root': round(r['root'] + sh, 3), 'file': name, 'db': r['vol']}
             if cfg.get('retune'):   # a note recorded out of tune (a low string plucked hard rings sharp): tune it by measuring it
@@ -212,6 +219,19 @@ SOURCES = {
     'guitar': dict(   # Epiphone electric guitar, recorded direct (the app adds a light amp): 4 velocity layers, first round robin
         sfz='karoryfer.emilyguitar/emily_clean.sfz', exclude=r'noises|release', mono=True,
         trim=[(127, 4.0)], retune=True, release=0.15, gain=0.24, amp={'drive': 0.45, 'pre': 2.0, 'hp': 90, 'lp': 4800}, name='Electric guitar', credit='Emilyguitar by Karoryfer Samples (CC0)'),
+    # round 30 (owner, 27 Nov: a real acoustic guitar, a clean electric, another bass): all CC0, each LICENSE file checked
+    'acoustic': dict(   # Meta Steel Guitar (Meta Open Sound): steel-string acoustic, its first-position layout (channel 1), every 3rd note, 2 of 3 layers
+        sfz='meta/systems/instruments/meta-steel-guitar/meta-steel-guitar.sfz', chan=1, every=3, velocities=[96, 127], mono=True, kbps=128,
+        trim=[(52, 4.0), (127, 3.0)], retune=True, release=0.25, gain=4.3, name='Acoustic guitar', credit='Meta Steel Guitar by Meta (CC0)'),
+    'nylon': dict(   # Meta Nylon Guitar: classical guitar, first position, every 3rd note, the picked layers
+        sfz='meta/systems/instruments/meta-nylon-guitar/meta-nylon-guitar.sfz', chan=1, sw=24, every=3, velocities=[93, 127], mono=True, kbps=128,
+        trim=[(52, 4.0), (127, 3.0)], retune=True, release=0.3, gain=9.8, name='Nylon guitar', credit='Meta Nylon Guitar by Meta (CC0)'),
+    'cleangtr': dict(   # FreePats Electric Guitar FSBS (clean, bridge pickup, small amp): one layer, already played through a clean amp
+        sfz='fsbs/EGuitarFSBS-clean bridge small SFZ+FLAC-20260807/EGuitarFSBS-clean bridge small 20260807.sfz', mono=True, kbps=128,
+        trim=[(127, 3.5)], retune=True, release=0.25, gain=0.46, name='Clean electric guitar', credit='Electric Guitar FSBS by FreePats (CC0)'),
+    'fingerbass': dict(   # Fashionbass (Karoryfer): a jazz-style bass played with fingers, recorded direct; the p and f layers, first round robin
+        sfz='karoryfer.fashionbass/fashionbass_clean.sfz', exclude=r'release|noises', velocities=[65, 127], mono=True, kbps=128,
+        trim=[(127, 3.0)], retune=True, release=0.12, gain=2.33, name='Finger bass', credit='Fashionbass by Karoryfer Samples (CC0)'),
     'rockkit': dict(   # Big Rusty Drums: a 24" rock kit. 4 velocity layers per drum (of the 4-14 recorded); mic levels from its SFZ defaults (amplitude x default CC / 127)
         src='karoryfer.big-rusty-drums/Samples', kit=True, gain=1.0, name='Rock kit', credit='Big Rusty Drums by Karoryfer Samples (CC0)',
         slots={'kick': ('kick_24/kick', 'k', {'kick': .787}, 1.2),

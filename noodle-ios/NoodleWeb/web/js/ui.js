@@ -252,7 +252,7 @@ const isPitchedTr=tr=>INST[tr.inst].kind==='pitched';
 const evs=tr=>(isPitchedTr(tr)?tr.notes:tr.hits)||[];          /* what the editor edits: notes, or drum hits */
 const evRow=(tr,e)=>isPitchedTr(tr)?pitchOf(e):e.d;               /* its row: a pitch, or a drum */
 const evLen=e=>e.l??1;                                            /* a hit is one step long on the grid */
-function previewHit(tr,d,v=0.85){ if(playing) return; ensureCtx(); const out=ctx.createGain(); out.gain.value=trackGain(tr)||0.6; out.connect(chain.input); drumHit(ctx,out,d,ctx.currentTime+0.01,v,tr.sound,(tr.tone??50)/100); }
+function previewHit(tr,d,v=0.85){ if(playing) return; ensureCtx(); const out=ctx.createGain(); out.gain.value=trackGain(tr)||0.6; out.connect(liveIn()); drumHit(ctx,out,d,ctx.currentTime+0.01,v,tr.sound,(tr.tone??50)/100); }
 const previewEv=(tr,e)=>isPitchedTr(tr)?previewNote(tr,pitchOf(e),e.v??0.8):previewHit(tr,e.d,e.v??0.85);
 function hitsChanged(tr){ tr.hits.sort((a,b)=>a.s-b.s); tr._dirty=true; save(); redrawTrack(tr); renderNoteBar(tr); scheduleRender(); }
 const evChanged=tr=>isPitchedTr(tr)?noteChanged(tr):hitsChanged(tr);
@@ -465,7 +465,7 @@ function renderNoteBar(tr){
   bar.hidden=false; const nm=m=>NOTE_NAMES[((m%12)+12)%12]+(Math.floor(m/12)-1);
   bar.querySelector('.nb-info').textContent=`${nm(pitchOf(n)+12*tr.oct)} · step ${n.s+1} · ${n.l} step${n.l>1?'s':''} long`;
 }
-function previewNote(tr,row,v=0.8){ if(playing) return; ensureCtx(); const out=ctx.createGain(); out.gain.value=trackGain(tr)||0.6; out.connect(chain.input); ENV_OVR=tr.adsr||null; VOICE_INST=tr.inst; try{ voice(ctx,out,tr.sound,ctx.currentTime+0.01,0.25,row+12*tr.oct,v,tr.tone/100); } finally{ ENV_OVR=null; } }
+function previewNote(tr,row,v=0.8){ if(playing) return; ensureCtx(); const out=ctx.createGain(); out.gain.value=trackGain(tr)||0.6; out.connect(liveIn()); ENV_OVR=tr.adsr||null; VOICE_INST=tr.inst; try{ voice(ctx,out,tr.sound,ctx.currentTime+0.01,0.25,row+12*tr.oct,v,tr.tone/100); } finally{ ENV_OVR=null; } }
 /* tempo, length and metronome live in S; the Studio draws them */
 const SCALE_OPTS='<option value="auto">Auto (major or minor)</option><option value="major">Major</option><option value="minor">Minor</option><option value="pent-minor">Minor pentatonic</option><option value="pent-major">Major pentatonic</option><option value="blues">Blues</option><option value="dorian">Dorian</option><option value="mixolydian">Mixolydian</option><option value="lydian">Lydian</option><option value="phrygian">Phrygian</option><option value="phryg-dom">Phrygian dominant</option><option value="harm-minor">Harmonic minor</option><option value="mel-minor">Melodic minor</option><option value="locrian">Locrian</option><option value="chromatic">Chromatic (no snapping)</option>';
 const keyOpts=()=>'<option value="auto">Auto-detect</option>'+NOTE_NAMES.map((n,i)=>`<option value="${i}">${n}</option>`).join('');

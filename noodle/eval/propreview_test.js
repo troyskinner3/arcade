@@ -35,7 +35,7 @@ const {chromium,devices}=require('playwright');
   // buying Pro while trying keeps it, and badges go
   await p.evaluate(()=>{ s2PickSheet(s2Lane(s2LaneId(S.tracks[0])),'sound'); }); await p.tap('#s2Snd [data-x="Clarinet"]'); await p.evaluate(()=>noodlePro(true)); await p.waitForTimeout(200);
   out.bought=(await saved())[0].sound; await p.evaluate(()=>{ nxClose(); s2TrackSheet(s2Lane(s2LaneId(S.tracks[0]))); }); out.proBadges=await p.evaluate(()=>document.querySelectorAll('.pro-b').length);
-  const want={badges:'Glass,Chip,Theremin,Flute,Trumpet,Clarinet,Glockenspiel,Your voice',tryLive:'Trumpet',trySaved:'Saw',playing:true,line:true,freeKept:'Square',tfxLive:'{"echo":60}',tfxSaved:null,
+  const want={badges:'Glass,Chip,Theremin,Whistle lead,Flute,Trumpet,Clarinet,Glockenspiel,Nylon guitar,Clean guitar,Your voice',tryLive:'Trumpet',trySaved:'Saw',playing:true,line:true,freeKept:'Square',tfxLive:'{"echo":60}',tfxSaved:null,
     after:{sound:'Square',tfx:null,playing:false,toast:'Trumpet and Track effects are Pro. Get Pro to keep them.',act:true},undoSame:1,chordTry:1,chordSaved:1,chordBadge:true,chordGoPro:true,chordAfter:1,
     harmLive:70,harmSaved:0,harmAfter:0,lpSaved:'lp:4',fxBadges:9,phLive:'phaser',phSaved:'lp:4',fxAfter:'lp:4',bought:'Clarinet',proBadges:0};
   for(const [k,v] of Object.entries(want)) if(JSON.stringify(out[k])!==JSON.stringify(v)) errs.push(k+': '+JSON.stringify(out[k])+' want '+JSON.stringify(v));

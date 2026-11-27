@@ -9,7 +9,7 @@ const {chromium,devices}=require('playwright');
       await startRecord(); const r=recState; if(!r) return {started:false}; const beat=60/S.bpm, at=x=>{ const g=metroGain.gain; return +g.value.toFixed(2); };
       await new Promise(q=>setTimeout(q,(r.start-ctx.currentTime)*1000+300)); const after=+metroGain.gain.value.toFixed(2);
       const mm=window.__m.find(m=>m.type==='metro'), timing=!!mm&&Math.abs(mm.sentMs-Date.now())<5000&&mm.inMs>-50&&mm.inMs<(r.countStart-ctx.currentTime)*1000+3000;   /* when the first click is heard, from the page's clock (the app takes off the trip) */
-      const md=metroAt(ctx.currentTime+1).inMs; S.buzzMs=0; const m0=metroAt(ctx.currentTime+1).inMs; S.buzzMs=40; const m1=metroAt(ctx.currentTime+1).inMs; delete S.buzzMs; const dflt=Math.abs(m0-md-15)<=15;   /* the default nudge is −15 ms */
+      const md=metroAt(ctx.currentTime+1).inMs; S.buzzMs=0; const m0=metroAt(ctx.currentTime+1).inMs; S.buzzMs=40; const m1=metroAt(ctx.currentTime+1).inMs; delete S.buzzMs; const dflt=Math.abs(md-m0-50)<=15;   /* the default nudge is +50 ms (owner, 27 Nov) */
       const startTap=window.__m.filter(m=>m.type==='haptic'&&m.style==='medium').length;   /* no extra tap on the first beat */
       cancelRecord(); return {started:true, timing, nudge:Math.abs(m1-m0-40)<=15, dflt, startTap, after, msgs:window.__m.filter(m=>['metro','metroStop','metroWarm'].includes(m.type)).map(m=>m.type==='metro'?`metro:${m.beats}:${Math.round(m.beatMs)}:${m.perBar}`:m.type)}; });
     out[app?'app':'web']=r; await c.close(); }

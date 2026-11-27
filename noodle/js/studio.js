@@ -387,10 +387,13 @@ function s2TrackSheet(L){ if(L.tracks[0].inst==='mix') return s2MixSheet(L); con
     ${s2Fld('s2Rev','Reverb',0,100,tr.send??0)}${s2Fld('s2Pan','Left / right',-100,100,tr.pan??0)}
     ${tr.inst==='vox'?(()=>{ const fx=fxOf(tr), L={form:'Voice character',low:'Low cut',pres:'Presence',air:'Air',comp:'Compression',dbl:'Double',echo:'Echo'}; return s2Sub('voice','Voice','Character, EQ, compression, double, echo','',VOX_KNOBS.filter(([k])=>k!=='tune').map(([k])=>s2Fld('s2Fx_'+k,L[k]||k,0,100,fx[k])).join('')); })():''}
     ${(pit||I.kind==='drums'||I.kind==='drum')?s2Sub('fx','Effects',fxSummary(tr),isPro()?'':s2Inf('Free to preview while this menu is open.')+PRO_LOCK,`${presetChips('fx',tr.fp)}${TFX.map(([k,l])=>s2Fld('s2Tfx_'+k,l,0,100,(tr.tfx&&tr.tfx[k])||0)).join('')}${tr._pvOrig&&'tfx' in tr._pvOrig?pvLine('Previewing effects'):''}`,tr._pvOrig&&'tfx' in tr._pvOrig):''}
+    ${pit?(()=>{ const E=tr.adsr||envDefault(tr.sound), u=(sec,lo,rg)=>Math.round(100*Math.sqrt(Math.max(0,Math.min(1,(sec-lo)/rg)))), pv=tr._pvOrig&&'adsr' in tr._pvOrig;   /* Envelope (Pro; owner, 27 Nov): attack, decay, sustain, release; plain words behind each ⓘ */
+      return s2Sub('env','Envelope',tr.adsr?'Custom':'As the sound',isPro()?'':s2Inf('Free to preview while this menu is open.')+PRO_LOCK,`<canvas class="env-cv" id="s2EnvCv" width="600" height="120" aria-hidden="true"></canvas>${s2Fld('s2Env_a','Attack'+s2Inf('How long a note takes to reach full volume after it starts. Low: it hits at once. High: it fades in.'),0,100,u(E.a,0.002,2))}${s2Fld('s2Env_d','Decay'+s2Inf('How long it takes to fall from full volume to the Sustain level.'),0,100,u(E.d,0.02,3))}${s2Fld('s2Env_s','Sustain'+s2Inf('The volume a held note stays at after the decay. 100 stays at full volume.'),0,100,Math.round(E.s*100))}${s2Fld('s2Env_r','Release'+s2Inf('How long a note takes to fade out after it ends.'),0,100,u(E.r,0.02,4))}<button class="nx-ghost" data-a="envreset" style="width:auto;padding:0 16px;margin:4px 0 8px">Reset</button>${pv?pvLine('Previewing the envelope'):''}`,pv); })():''}
     ${tr.inst==='kit'?s2Sub('kit','Your kit',(()=>{ const n=S.kit.slots.filter(sl=>sl.kit).length; return n?n+(n>1?' drums':' drum')+' from other kits':'All from '+tr.sound; })(),s2Inf('Take each drum from any kit. Save the result as a preset under •••.'),`${S.kit.slots.map(sl=>`<div class="s2-fld"><label for="kd_${nxEsc(sl.id)}">${nxEsc(slotLabel(sl.id))}</label><select class="nx-txt" id="kd_${nxEsc(sl.id)}" data-kd="${nxEsc(sl.id)}"><option value="">${nxEsc(tr.sound)} (this kit)</option>${DRUM_SOUNDS.filter(k=>k!==tr.sound).map(k=>`<option value="${k}" ${sl.kit===k?'selected':''}>${k}${proLocked(k)?' ✦':''}</option>`).join('')}</select></div>`).join('')}${S._pvOrig&&'kit' in S._pvOrig?pvLine('Previewing drums from another kit'):''}`,S._pvOrig&&'kit' in S._pvOrig):''}
     </div>
     `);
   const each=f=>all().forEach(f), rerender=()=>{ save(); scheduleRender(); };
+  { const cv=$('s2EnvCv'); if(cv) envDraw(cv, tr.adsr||envDefault(tr.sound)); }
   $('s2Tn').onchange=e=>{ const v=e.target.value.trim().slice(0,32)||undefined; each(t=>{ t.name=v; }); save(); renderTracks(); };
   $('nxSheet').onclick=e=>{ let b;
     if(b=e.target.closest('[data-info]')){ e.preventDefault(); infoPop(b); }
@@ -399,6 +402,7 @@ function s2TrackSheet(L){ if(L.tracks[0].inst==='mix') return s2MixSheet(L); con
     else if((b=e.target.closest('[data-a]'))&&b.dataset.a.startsWith('save:')){ if(b.dataset.a==='save:fx'&&!tfxOn(tr)) toast('Turn on an effect first (More settings, Effects).'); else s2SavePreset(L,b.dataset.a.slice(5)); }
     else if(b=e.target.closest('[data-pre]')){ const [k,id]=b.dataset.pre.split(':'), part=all().find(t=>t.id===s2.selId)||all().find(hasContent); presetApply(k,id,all(),part); s2TrackSheet(s2Lane(L.id)); }
     else if(b=e.target.closest('[data-pre-edit]')){ presetEditSheet(b.dataset.preEdit,()=>s2TrackSheet(s2Lane(L.id))); }
+    else if(e.target.closest('[data-a="envreset"]')){ each(t=>{ pvForget(t,['adsr']); delete t.adsr; t._dirty=true; }); save(); scheduleRender(); s2TrackSheet(s2Lane(L.id)); }
     else if(b=e.target.closest('[data-sub]')){ const id=b.dataset.sub; s2.subs=s2.subs||{}; s2.subs[id]=!s2.subs[id]; const bd=$('nxSheet').querySelector(`[data-subb="${id}"]`); if(bd) bd.hidden=!s2.subs[id]; b.setAttribute('aria-expanded',String(!!s2.subs[id])); }
     else if(e.target.closest('[data-more]')){ s2.more=!s2.more; const a=$('nxSheet').querySelector('.nx-adv'), m=$('nxSheet').querySelector('[data-more]'); a.hidden=!s2.more; m.setAttribute('aria-expanded',String(s2.more)); }
     else if(e.target.closest('[data-a="pvpro"]')){ proSheet(); }
@@ -408,6 +412,9 @@ function s2TrackSheet(L){ if(L.tracks[0].inst==='mix') return s2MixSheet(L); con
     else if((b=e.target.closest('[data-a]')) && b.dataset.a==='dup'){ nxClose(); const nl=s2DupTrack(L); if(nl){ s2.selId=null; renderTracks(); setTimeout(()=>s2TrackSheet(s2Lane(nl)),80); toast('Track duplicated. Pick its instrument, e.g. Keys or Pad for chords.'); } }
     else if((b=e.target.closest('[data-a]'))&&b.dataset.a==='del'){ nxClose(); const ms=all(); ms.slice(1).forEach(t=>{ disposeTrack(t); }); S.tracks=S.tracks.filter(t=>!ms.slice(1).includes(t)); deletePart(ms[0]); } };
   $('nxSheet').oninput=e=>{ const id=e.target.id, v=+e.target.value;
+    if(id.startsWith('s2Env_')){ const q=k=>+($('s2Env_'+k).value)/100, E={a:+(0.002+2*q('a')**2).toFixed(3), d:+(0.02+3*q('d')**2).toFixed(3), s:+q('s').toFixed(2), r:+(0.02+4*q('r')**2).toFixed(3)}; envDraw($('s2EnvCv'),E);
+      if(!isPro()){ const part=all().find(t=>t.id===s2.selId)||all().find(hasContent); each(t=>pvTry(t,{adsr:E},'Envelope',part)); if(!$('nxSheet').querySelector('.pv-line')) s2TrackSheet(s2Lane(L.id)); return; }
+      each(t=>{ t.adsr=E; t._dirty=true; }); rerender(); return; }
     if(id==='s2Vol'){ each(t=>{ t.vol=v; }); applyAllMix(); save(); } if(id==='s2Rev'){ each(t=>{ t.send=v; }); applyAllMix(); save(); } if(id==='s2Pan'){ each(t=>{ t.pan=v; }); applyAllMix(); save(); } };
   $('nxSheet').onchange=e=>{ const id=e.target.id, v=e.target.value;
     if(id==='s2Tone'){ each(t=>{ t.tone=+v; t._dirty=true; }); rerender(); }
@@ -443,6 +450,10 @@ function s2SavePreset(L,k){ const all=S.tracks.filter(t=>s2LaneId(t)===L.id), tr
 /* a section inside More settings that opens in place (owner, 26 Nov: not another screen): closed each time the sheet opens, with a summary */
 function s2Sub(id,label,summary,info,body,force){ const open=force||!!(s2.subs&&s2.subs[id]);
   return `<div class="nx-subh"><button class="nx-sub" data-sub="${id}" aria-expanded="${open}"><span>${label}</span><small>${nxEsc(summary)}</small><svg class="nx-ico" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>${info||''}</div><div class="nx-subb" data-subb="${id}" ${open?'':'hidden'}>${body}</div>`; }
+/* the envelope as a line: rise (attack), fall to the sustain level (decay), hold, fade (release) */
+function envDraw(cv,E){ if(!cv) return; const g=cv.getContext('2d'), W=cv.width, H=cv.height, pad=8, tot=E.a+E.d+0.6+E.r, X=x=>pad+(W-2*pad)*x/tot, Y=y=>H-pad-(H-2*pad)*y;
+  g.clearRect(0,0,W,H); const cs=getComputedStyle(cv); g.strokeStyle=cs.getPropertyValue('--s2-amber').trim()||'#f1c75b'; g.lineWidth=4; g.lineJoin='round';
+  g.beginPath(); g.moveTo(X(0),Y(0)); g.lineTo(X(E.a),Y(1)); g.lineTo(X(E.a+E.d),Y(E.s)); g.lineTo(X(E.a+E.d+0.6),Y(E.s)); g.lineTo(X(tot),Y(0)); g.stroke(); }
 function fxSummary(tr){ const on=TFX.filter(([k])=>tr.tfx&&tr.tfx[k]>0).map(([,l])=>l); return on.length?on.join(', '):'Off'; }
 function s2PickSheet(L, kind){ const all=()=>S.tracks.filter(t=>s2LaneId(t)===L.id), tr=all()[0], I=INST[tr.inst], part=all().find(t=>t.id===s2.selId)||all().find(hasContent);
   const hear=()=>{ if(!part) return; if(!proPv) proPv={labels:[]}; pvPlay(part); };   /* free choices: hear them too (stops when the menu closes) */
@@ -762,7 +773,7 @@ async function renderVox(tr){
       hh.connect(g); g.connect(p); p.connect(out);
       for(let r=0;r<reps;r++){ const sN=oc.createBufferSource(); sN.buffer=hb; sN.connect(hh); play(sN,r); } }); }
   const r=await oc.startRendering();
-  for(let ch=0;ch<2;ch++){ const s2=r.getChannelData(ch), dst=b.getChannelData(ch); for(let i=0;i<s2.length;i++) dst[i%n]+=s2[i]; }
+  foldTail(b,r,n);   /* the first pass starts clean (foldTail) */
   if(SC) applyDuck(b,tr);
   return b;
 }
@@ -793,7 +804,9 @@ function applyDuck(b,tr){ const hits=scHits(tr.sc.src); if(!hits.length) return;
   for(let k=0;k<env.length;k++){ const t=k*B/sr; while(j+1<ts.length && ts[j+1]<=t) j++; let g=1;
     for(let q=Math.max(0,j-2);q<=Math.min(ts.length-1,j+1);q++){ const dt=t-ts[q]; if(dt<-att) continue; const e=dt<0? (1+dt/att) : Math.exp(-dt/tau); g=Math.min(g,1-depth*e); }
     env[k]=g; }
-  for(let ch=0;ch<b.numberOfChannels;ch++){ const d=b.getChannelData(ch); for(let i=0;i<n;i++){ const k=i/B, k0=k|0, f=k-k0; d[i]*=env[k0]+(env[k0+1]-env[k0])*f; } } }
+  const gAt=i=>{ const k=i/B, k0=k|0, f=k-k0; return env[k0]+(env[k0+1]-env[k0])*f; };
+  for(let ch=0;ch<b.numberOfChannels;ch++){ const d=b.getChannelData(ch); for(let i=0;i<n;i++) d[i]*=gAt(i); }
+  const C=b._cut; if(C) for(let ch=0;ch<C.numberOfChannels;ch++){ const d=C.getChannelData(ch); for(let i=0;i<d.length;i++) d[i]*=gAt(i%n); } }   /* the first-pass correction (renderStem) ducks the same way */
 /* a part's events laid out across the whole song: its own loop, repeated (r>0 marks a repeat) */
 /* the part's events inside its window (a trimmed part keeps what's outside it): starts at 0 or later, before the end, and cut at the end */
 function inWin(list, n){ const out=[]; for(const e of list){ const s0=e.s!==undefined?e.s:e.x; if(s0<0 || s0>=n) continue; out.push(e.l!=null && s0+e.l>n ? Object.assign({},e,{l:n-s0}) : e); } return out; }

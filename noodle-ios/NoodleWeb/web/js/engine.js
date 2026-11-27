@@ -49,6 +49,9 @@ function heardNow(){ const c=ctx; if(!c) return 0; const t=c.currentTime;
   try{ const ts=c.getOutputTimestamp&&c.getOutputTimestamp(); if(ts&&ts.contextTime>0&&ts.performanceTime>0){ const h=ts.contextTime+(performance.now()-ts.performanceTime)/1000; if(h>t-1&&h<t+0.05) return Math.min(h,t); } }catch(e){}
   return t-Math.min(0.5,c.outputLatency||c.baseLatency||0); }
 const outDelay=()=>ctx?clamp(ctx.currentTime-heardNow(),0,0.6):0;
+/* where a sound made on the spot (a note or pad tapped, a beat previewed) goes in: Pause closes the output gate to cut the reverb off, so it's
+   opened again here; otherwise tapping notes after a pause made no sound until Play (owner, 27 Nov) */
+function liveIn(){ if(!playing && !recState) gateOpen(ctx.currentTime); return chain.input; }
 function ensureCtx(){
   playThroughSilentSwitch();
   if(!ctx) ctxMake();
@@ -96,7 +99,8 @@ const PRO={owned:false, price:''}; try{ const app=!!(window.webkit&&window.webki
 /* Builds run from Xcode (DEBUG) set NOODLE_DEV: More then has "Test as: Free / Pro / App Store" to try both versions; App Store and TestFlight builds don't */
 const devAs=()=>{ if(!window.NOODLE_DEV) return ''; try{ return localStorage.getItem('noodle.devAs')||''; }catch(e){ return ''; } };
 const isPro=()=>devAs()?devAs()==='pro':PRO.owned;
-const PRO_SOUNDS=new Set(['Brushes','Vocoder','Talkbox','Trumpet','Clarinet','Xylophone','Marimba','Glockenspiel','Flute','Horns','Your voice','Glass','Chip','Theremin','Vowel pad','Digital pad','Growl','Acid','Wobble','String pluck','Chorus pad','Pump pad']);
+const PRO_SOUNDS=new Set(['Nylon guitar','Clean guitar','Finger bass','Whistle lead','Future chords','Island pluck','FM bass',   /* round 30: the free picks are Acoustic guitar, Glide lead, Sine lead, Juno chords and Moog bass */
+  'Brushes','Vocoder','Talkbox','Trumpet','Clarinet','Xylophone','Marimba','Glockenspiel','Flute','Horns','Your voice','Glass','Chip','Theremin','Vowel pad','Digital pad','Growl','Acid','Wobble','String pluck','Chorus pad','Pump pad']);
 /* a long sound list in groups: synths, recorded instruments (and kits), your voice */
 const soundGroups=list=>{ if(list.length<7||list===INST.vox.sounds) return [['',list]];   /* vocal styles are not instruments: no groups ("Rock" is a vocal style and a kit) */ const rec=x=>!!SAMPLED[x]||!!KIT_SAMPLED[x], g=[['Synths',list.filter(x=>!rec(x)&&x!=='Your voice')],['Recorded',list.filter(rec)],['',list.filter(x=>x==='Your voice')]]; return g.filter(([,xs])=>xs.length); };
 const proLocked=snd=>!isPro()&&PRO_SOUNDS.has(snd);

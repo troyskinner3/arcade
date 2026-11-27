@@ -581,3 +581,4 @@ select.nx-txt{-webkit-appearance:none;appearance:none;height:40px;border-radius:
 .nx-act.sh-a{flex:1;display:flex;flex-direction:row;align-items:center;gap:12px;min-height:50px;padding:0 14px;margin:0!important}
 .nx-act.sh-a .nx-ico{flex:none;width:20px;height:20px;opacity:.85}.nx-act.sh-a span{flex:1;text-align:left;font-weight:600}
 .nx-act.sh-a em{font-style:normal;font:500 13px var(--f-display);color:var(--muted)}
+.env-cv{display:block;width:100%;height:60px;margin:6px 0 4px;border:1px solid var(--s2-line,var(--line));border-radius:8px;background:var(--s2-bg,var(--bg))}

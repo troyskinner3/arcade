@@ -284,7 +284,7 @@ function tapNotePads(K,T){ const c=(TAP_CENTER[T.inst]||64)-12*T.oct, base=c-5+(
   for(let p=base;out.length<9&&p<=base+12;p++) if(K.set.includes(((p-K.tonic)%12+12)%12)) out.push({p, name:NOTE_NAMES[((p%12)+12)%12]});
   const cols=Math.ceil(out.length/2); out.forEach((n,i)=>{ n.row=i<cols?2:1; n.col=i<cols?i+1:i-cols+1; }); out.cols=cols; return out; }   /* the low half on the bottom row */
 /* one held note on the track's sound: returns a release function */
-function leadNote(T,p,dur,tone=0.5,dest){ ensureCtx(); const g=ctx.createGain(), now=ctx.currentTime+0.005; g.gain.value=0.55; g.connect(dest||chain.input); VOICE_INST=T.inst;
+function leadNote(T,p,dur,tone=0.5,dest){ ensureCtx(); const g=ctx.createGain(), now=ctx.currentTime+0.005; g.gain.value=0.55; g.connect(dest||chain.input); liveIn(); VOICE_INST=T.inst;
   try{ voice(ctx,g,T.sound,now,dur,p+12*T.oct,0.8,tone); }catch(e){} finally{ VOICE_INST=null; }
   return ()=>{ const t=ctx.currentTime; g.gain.cancelScheduledValues(t); g.gain.setValueAtTime(g.gain.value,t); g.gain.linearRampToValueAtTime(0,t+0.06); setTimeout(()=>{ try{ g.disconnect(); }catch(e){} },400); }; }
 /* taps into notes: the nearest 16th, each lasting until the next tap (at most 2 beats); two pads at once make a chord */
@@ -303,7 +303,7 @@ function xyMount(T){ const box=$('tiXY'), cv=box.querySelector('canvas'); const 
     if(fx!=null){ g.fillStyle=amb; g.beginPath(); g.arc(fx,fy,18,0,7); g.globalAlpha=0.35; g.fill(); g.globalAlpha=1; g.beginPath(); g.arc(fx,fy,7,0,7); g.fill(); } };
   T.xy.draw=draw; requestAnimationFrame(()=>draw());
   const at=e=>{ const r=box.getBoundingClientRect(), x=clamp(e.clientX-r.left,0,r.width-0.01), y=clamp(e.clientY-r.top,0,r.height); return {x,y,p:ps[Math.floor(x/r.width*ps.length)], tn:+clamp(1-y/r.height,0,1).toFixed(2)}; };
-  const filt=()=>{ if(!T.xy.lp){ const f=ctx.createBiquadFilter(); f.type='lowpass'; f.Q.value=0.7; f.connect(chain.input); T.xy.lp=f; } return T.xy.lp; };
+  const filt=()=>{ if(!T.xy.lp){ const f=ctx.createBiquadFilter(); f.type='lowpass'; f.Q.value=0.7; f.connect(chain.input); T.xy.lp=f; } liveIn(); return T.xy.lp; };
   const play=(c,e)=>{ const X=T.xy; X.tn=c.tn; filt().frequency.setTargetAtTime(400+c.tn*c.tn*9000,ctx.currentTime,0.02);
     if(X.cur!==c.p){ if(X.rel) X.rel(); X.cur=c.p; X.rel=leadNote(T,c.p,8,0.75,filt()); tapMark(T,c.p,c.tn,e); } draw(c.x,c.y); };
   box.addEventListener('pointerdown',e=>{ e.preventDefault(); ensureCtx(); try{ box.setPointerCapture(e.pointerId); }catch(_){} T.xy.down=true; play(at(e),e); });
@@ -360,10 +360,10 @@ function tapUI(msg){ const T=tapIn; if(!T) return; const hint=$('tiHint'), bar=$
 /* a pad's own sound, on the track's sound: the chord, the note or the drum; a soft click for the rhythm pad (its notes aren't chosen yet) */
 function tapSound(c){ ensureCtx(); const T=tapIn, now=ctx.currentTime+0.005;
   if(T.kind==='notes'){ leadNote(T,c.p,0.45); return; }
-  if(T.kind==='drums'){ const out=ctx.createGain(); out.gain.value=0.7; out.connect(chain.input); try{ drumHit(ctx,out,c.id,now,c.v,T.sound,0.5); }catch(e){} return; }
-  if(T.kind==='chords'){ const out=ctx.createGain(); out.gain.value=0.5; out.connect(chain.input); VOICE_INST=T.inst;
+  if(T.kind==='drums'){ const out=ctx.createGain(); out.gain.value=0.7; out.connect(liveIn()); try{ drumHit(ctx,out,c.id,now,c.v,T.sound,0.5); }catch(e){} return; }
+  if(T.kind==='chords'){ const out=ctx.createGain(); out.gain.value=0.5; out.connect(liveIn()); VOICE_INST=T.inst;
     const dur=T.state==='take'?Math.min(2,4*60/S.bpm):0.7; try{ chordTones(c.root,'triad').forEach(m=>voice(ctx,out,T.sound,now,dur,m+12*T.oct,0.7,0.5)); }catch(e){} finally{ VOICE_INST=null; } return; }
-  const o=ctx.createOscillator(), g=ctx.createGain(); o.frequency.value=1800; g.gain.setValueAtTime(0,now); g.gain.linearRampToValueAtTime(0.18,now+0.002); g.gain.exponentialRampToValueAtTime(0.001,now+0.04); o.connect(g); g.connect(chain.input); o.start(now); o.stop(now+0.05); }
+  const o=ctx.createOscillator(), g=ctx.createGain(); o.frequency.value=1800; g.gain.setValueAtTime(0,now); g.gain.linearRampToValueAtTime(0.18,now+0.002); g.gain.exponentialRampToValueAtTime(0.001,now+0.04); o.connect(g); g.connect(liveIn()); o.start(now); o.stop(now+0.05); }
 function tapHit(b,e){ const T=tapIn; if(!T) return; b.classList.remove('hit'); void b.offsetWidth; b.classList.add('hit');
   const c=T.kind==='rhythm'?null:T.pads[+b.dataset.i]; tapSound(c);
   if(T.state!=='take'&&T.state!=='count'||!T.start) return;

@@ -82,7 +82,7 @@ let ENV_OVR=null, ENV_LAST=null;   // a part's own ADSR (replaces the sound's), 
 /* ---- Sampled instruments: real recordings, played back at the right pitch and loudness ----
    Built by samples/build_samples.py from open libraries (see samples/CREDITS.md). Each instrument loads the first time a song uses it;
    until then (or if it can't load) the synthesized sound of the same name plays, so nothing ever goes silent. */
-const SAMPLED={'Piano':'piano','E-piano':'epiano','Strings':'strings','Rock bass':'bass','Guitar':'guitar','Marimba':'marimba','Glockenspiel':'glock','Flute':'flute','Horns':'horn','Trumpet':'trumpet','Clarinet':'clarinet','Xylophone':'xylo'};
+const SAMPLED={'Piano':'piano','E-piano':'epiano','Strings':'strings','Rock bass':'bass','Guitar':'guitar','Acoustic guitar':'acoustic','Nylon guitar':'nylon','Clean guitar':'cleangtr','Finger bass':'fingerbass','Marimba':'marimba','Glockenspiel':'glock','Flute':'flute','Horns':'horn','Trumpet':'trumpet','Clarinet':'clarinet','Xylophone':'xylo'};
 const SOUND_CREDITS=[   /* shown in More > Sound credits (required by CC BY; CC0 libraries are listed too, as thanks) */
   {sound:'Piano', lib:'Salamander Grand Piano', by:'Alexander Holm', lic:'CC BY 3.0', url:'https://creativecommons.org/licenses/by/3.0/'},
   {sound:'Strings, Marimba, Glockenspiel, Flute, Horns', lib:'VS Chamber Orchestra: Community Edition', by:'Versilian Studios', lic:'CC0 (public domain)', url:'https://creativecommons.org/publicdomain/zero/1.0/'},
@@ -91,10 +91,21 @@ const SOUND_CREDITS=[   /* shown in More > Sound credits (required by CC BY; CC0
   {sound:'Rock drums', lib:'Big Rusty Drums', by:'Karoryfer Samples', lic:'CC0 (public domain)', url:'https://creativecommons.org/publicdomain/zero/1.0/'},
   {sound:'Brushes drums', lib:'Swirly Drums', by:'Karoryfer Samples', lic:'CC0 (public domain)', url:'https://creativecommons.org/publicdomain/zero/1.0/'},
   {sound:'Guitar', lib:'Emilyguitar', by:'Karoryfer Samples', lic:'CC0 (public domain)', url:'https://creativecommons.org/publicdomain/zero/1.0/'},
+  {sound:'Acoustic guitar, Nylon guitar', lib:'Meta Steel Guitar and Meta Nylon Guitar (Meta Open Sound)', by:'Meta', lic:'CC0 (public domain)', url:'https://creativecommons.org/publicdomain/zero/1.0/'},
+  {sound:'Clean guitar', lib:'Electric Guitar FSBS', by:'FreePats', lic:'CC0 (public domain)', url:'https://creativecommons.org/publicdomain/zero/1.0/'},
+  {sound:'Finger bass', lib:'Fashionbass', by:'Karoryfer Samples', lic:'CC0 (public domain)', url:'https://creativecommons.org/publicdomain/zero/1.0/'},
   {sound:'Musical mode and Finish song (melodies, chords, bass)', lib:'PDMX: a public-domain MusicXML dataset', by:'Phillip Long, Zachary Novack, Taylor Berg-Kirkpatrick and Julian McAuley', lic:'CC BY 4.0', url:'https://creativecommons.org/licenses/by/4.0/'},
   {sound:'E-piano', lib:'Wurlitzer EP200 from Greg Sullivan’s E-Pianos', by:'Greg Sullivan', lic:'CC BY 3.0', url:'https://creativecommons.org/licenses/by/3.0/'},
 ];   /* sound name -> folder in samples/ */
 const SMP={};
+/* a sound's own envelope (what the Envelope sliders start from): a synth's, read by playing it silently once; a recording's: as recorded */
+const ENV_DEF={};
+function envDefault(sound){ if(ENV_DEF[sound]) return ENV_DEF[sound]; let d=null;
+  if(SAMPLED[sound]) d={a:0.002, d:2.5, s:1, r:(SMP[SAMPLED[sound]]&&SMP[SAMPLED[sound]].meta&&SMP[SAMPLED[sound]].meta.release)||0.25};
+  else { try{ const oc=new OfflineAudioContext(1,128,8000), keep=ENV_OVR; ENV_OVR=null; ENV_LAST=null; voice(oc,oc.destination,sound,0,0.1,60,0.8,0.5); ENV_OVR=keep; d=ENV_LAST; }catch(e){} }
+  return ENV_DEF[sound]=Object.assign({a:0.005,d:0.2,s:0.7,r:0.1},d||{}); }
+const STRUM=new Set(['Acoustic guitar','Nylon guitar','Clean guitar','Guitar']);   /* chords on a guitar are strummed: each string 13 ms after the last */
+const GLIDE=new Set(['Glide lead','Whistle lead']);   /* these slide into any note that starts where the last one ends */
 const KIT_SAMPLED={'Rock':'rockkit','Brushes':'brushkit'};   /* drum kits played from recordings (by kit name; separate from instrument sounds, which reuse some names) */
 function smpReady(sound){ const k=SAMPLED[sound]; return !!(k && SMP[k] && SMP[k].ok); }
 const kitReady=style=>{ const e=SMP[KIT_SAMPLED[style]]; return !!(e&&e.ok); };
@@ -113,11 +124,12 @@ function loadSmp(k){ if(!k) return Promise.resolve(false); if(SMP[k]) return SMP
 function sampleVoice(c,out,sound,t,dur,m,v,T,fromM){ const e=SMP[SAMPLED[sound]], L=e.layers.find(x=>v<=x.maxV+1e-9)||e.layers[e.layers.length-1];
   if(e.meta.fold&&L.regs){ const low=Math.min(...L.regs.map(r=>r.root)); while(m<low-1){ m+=12; if(fromM!==null) fromM+=12; } }   /* below the instrument's range: an octave (or two) up, as a player would */
   let root, buf, rdb=0, loop=null; if(L.regs){ let R=L.regs.find(r=>m>=r.lo&&m<=r.hi); if(!R){ R=L.regs[0]; for(const r of L.regs) if(Math.abs(r.root-m)<Math.abs(R.root-m)) R=r; } root=R.root; buf=R.buf; rdb=R.db||0; loop=R.loop||null; }
-  else { root=L.roots[0]; for(const r of L.roots) if(Math.abs(r-m)<Math.abs(root-m)) root=r; buf=L.map.get(root); } const rel=e.meta.release||0.25;
+  else { root=L.roots[0]; for(const r of L.roots) if(Math.abs(r-m)<Math.abs(root-m)) root=r; buf=L.map.get(root); } const EO=ENV_OVR, rel=EO?EO.r:(e.meta.release||0.25);
   const src=c.createBufferSource(); src.buffer=buf; const rate=Math.pow(2,(m-root)/12);
   if(fromM!==null && fromM!==m){ const gt=Math.min(0.09,Math.max(0.03,dur*0.35)); src.playbackRate.setValueAtTime(rate*Math.pow(2,(fromM-m)/12),t); src.playbackRate.exponentialRampToValueAtTime(rate,t+gt); } else src.playbackRate.value=rate;
   const lp=c.createBiquadFilter(); lp.type='lowpass'; lp.Q.value=0.5; lp.frequency.value=Math.min(20000,1500*Math.pow(13,T));   /* Brightness: 1.5 kHz to the full sound; 50 = about 5.4 kHz */
-  const g=c.createGain(), gv=(e.meta.gain||1)*Math.pow(10,rdb/20)*(0.3+0.7*v); g.gain.setValueAtTime(gv,t); g.gain.setTargetAtTime(0,t+dur,rel/4);
+  const g=c.createGain(), gv=(e.meta.gain||1)*Math.pow(10,rdb/20)*(0.3+0.7*v); if(EO){ g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(gv,t+EO.a); g.gain.setTargetAtTime(gv*EO.s,t+EO.a,EO.d/3); g.gain.setTargetAtTime(0,Math.max(t+dur,t+EO.a+0.01),EO.r/4); }   /* the track's Envelope (Pro), on recorded instruments too */
+  else { g.gain.setValueAtTime(gv,t); g.gain.setTargetAtTime(0,t+dur,rel/4); }
   src.connect(lp); const A=e.meta.amp; if(A){ const pre=c.createGain(), sh=c.createWaveShaper(), hp=c.createBiquadFilter(), cab=c.createBiquadFilter(); pre.gain.value=A.pre||1; sh.curve=driveCurve(A.drive||0.3); hp.type='highpass'; hp.frequency.value=A.hp||80; cab.type='lowpass'; cab.frequency.value=A.lp||5000; cab.Q.value=0.9;   /* a light amp: drive, then a speaker-like band */
     lp.connect(pre); pre.connect(sh); sh.connect(hp); hp.connect(cab); cab.connect(g); } else lp.connect(g); g.connect(out);
   if(loop){ const lead=(buf.off+0.001)-(loop[2]||0); src.loop=true; src.loopStart=Math.max(0,lead+loop[0]); src.loopEnd=Math.min(buf.duration,lead+loop[1]); src.start(t,buf.off); src.stop(t+dur+rel*2+0.01); if(VOICE_DONE) VOICE_DONE.push({n:g,end:t+dur+rel*2+0.01}); return; }   /* a sustained sound: holds as long as the note (the loop's joins were blended when it was built) */
@@ -216,6 +228,20 @@ function voice(c,out,sound,t,dur,m,v,T,fromM=null){
     case 'Pump pad': { const cut=(1200+T*4500)*vb, b=c.createBiquadFilter(), pg=c.createGain(); b.type='lowpass'; b.frequency.value=cut; b.Q.value=0.7; b.connect(pg); pg.connect(g); uni('sawtooth',f,[-14,-5,5,14],[-0.8,-0.3,0.3,0.8],b,0.8);
       const beat=stepDur()*4, b0=Math.floor(t/beat)*beat; pg.gain.setValueAtTime(1,t); for(let bt=b0;bt<t+dur+1;bt+=beat){ if(bt<t) continue; pg.gain.setValueAtTime(0.12,bt); pg.gain.setTargetAtTime(1,bt+0.01,beat*0.3); }   /* ducks on every beat, as if pushed by the kick */
       end=env(0.05,0.5,0.9,0.5,0.205*v); break; }
+    /* round 30 (owner): synths in the spirit of sounds common in modern pop, hip hop and EDM; Noodle's own oscillators, no copied presets */
+    case 'Glide lead': { const cut=(1300+T*5200)*vb, b=lp(cut,1.2); fenv(b,cut*1.6,cut,0.15); uni('sawtooth',f,[-7,7],[-0.35,0.35],b,0.7); osc('square',f/2,0,b,0.18); vib(5.3,10,0.35); end=env(0.01,0.3,0.8,0.14,0.39*v); break; }   /* glides into touching notes (GLIDE) */
+    case 'Sine lead': { osc('sine',f); osc('sine',f*2,0,g,0.12); osc('triangle',f,0,g,0.1); vib(5.0,6,0.45); end=env(0.012,0.4,0.85,0.18,0.24*v); break; }
+    case 'Whistle lead': { const b=lp(3200+T*2500,0.7); osc('sine',f,0,b); osc('triangle',f,0,b,0.08); { const n=noise(c), nf=c.createBiquadFilter(), ng=c.createGain(); nf.type='bandpass'; nf.frequency.value=Math.min(9000,f*2); nf.Q.value=6; ng.gain.value=0.018*v; n.connect(nf); nf.connect(ng); ng.connect(g); n.start(t); n.stop(t+dur+0.6); }   /* a little breath */
+      vib(5.6,22,0.28); end=env(0.035,0.3,0.9,0.2,0.23*v); break; }
+    case 'Juno chords': { const cut=(1000+T*4200)*vb, b=c.createBiquadFilter(); b.type='lowpass'; b.Q.value=1.1; b.frequency.setValueAtTime(cut*2.2,t); b.frequency.setTargetAtTime(cut,t,0.12); osc('sawtooth',f,-4,b,0.7); osc('square',f,4,b,0.45); osc('square',f/2,0,b,0.2); b.connect(g);
+      [[0.0065,0.6,-0.7],[0.0085,0.9,0.7]].forEach(([dt,hz,pan])=>{ const dl=c.createDelay(0.03), l=c.createOscillator(), lg=c.createGain(), dg=c.createGain(); dl.delayTime.value=dt; l.frequency.value=hz; lg.gain.value=0.0018; l.connect(lg); lg.connect(dl.delayTime); dg.gain.value=0.7; b.connect(dl); dl.connect(dg); dg.connect(pn(pan,g)); l._lfo=1; oscs.push(l); });   /* the chorus that makes it wide */
+      end=env(0.006,0.45,0.6,0.35,0.256*v); break; }
+    case 'Future chords': { const cut=(2600+T*7000)*vb, b=c.createBiquadFilter(), pg=c.createGain(); b.type='lowpass'; b.frequency.value=cut; b.Q.value=0.6; b.connect(pg); pg.connect(g); uni('sawtooth',f,[-22,-12,-4,4,12,22],[-0.9,-0.55,-0.2,0.2,0.55,0.9],b,0.6); uni('sawtooth',f*2,[-9,9],[-0.6,0.6],b,0.22);
+      const beat=stepDur()*4, b0=Math.floor(t/beat)*beat; pg.gain.setValueAtTime(1,t); for(let bt=b0;bt<t+dur+1;bt+=beat){ if(bt<t) continue; pg.gain.setValueAtTime(0.05,bt); pg.gain.linearRampToValueAtTime(1,bt+beat*0.55); }   /* the pump: silent on each beat, swelling back */
+      end=env(0.01,0.4,0.92,0.3,0.228*v); break; }
+    case 'Island pluck': { const b=lp(200,2); fenv(b,(2600+T*5000)*vb,500,0.05); osc('sine',f,0,b); osc('triangle',f*2,0,b,0.25); osc('sine',f*4,0,b,0.08); end=env(0.002,0.22,0.0,0.12,0.85*v); break; }
+    case 'Moog bass': { const b1=c.createBiquadFilter(), b2=lp(300,1.6); b1.type='lowpass'; b1.Q.value=0.7; b1.connect(b2); fenv(b1,(900+T*2600)*vb,260,0.1); fenv(b2,(900+T*2600)*vb,260,0.1); osc('sawtooth',f,0,b1); osc('square',f,-5,b1,0.5); osc('square',f/2,0,b1,0.35); end=env(0.004,0.3,0.7,0.09,0.28*v); break; }   /* two filters in a row: a steep, round low-pass */
+    case 'FM bass': { const car=osc('sine',f,0,g), mod=c.createOscillator(), mg=c.createGain(); mod.frequency.value=f; mg.gain.setValueAtTime(f*(2.5+T*3)*vb,t); mg.gain.setTargetAtTime(f*0.4,t,0.06); mod.connect(mg); mg.connect(car.frequency); oscs.push(mod); osc('sine',f/2,0,g,0.35); end=env(0.002,0.25,0.7,0.07,0.33*v); break; }
     case 'Sub': osc('sine',f); osc('triangle',f,0,g,0.22); end=env(0.006,0.25,0.85,0.08,0.62*v); break;
     case 'Reese': { const b=lp(220+T*1900,2.2); osc('sawtooth',f,-9,b); osc('sawtooth',f,9,b); osc('sine',f,0,g,0.5); end=env(0.01,0.3,0.85,0.1,0.32*v); break; }
     case 'Pluck': { const b=lp(200,5); fenv(b,(700+T*5200)*vb,160,0.07); uni('sawtooth',f,[-6,6],[-0.4,0.4],b,0.6); osc('sine',f,0,g,0.4); end=env(0.003,0.3,0.3,0.1,0.792*v); break; }
@@ -312,14 +338,14 @@ async function renderStem(tr){
     const chain=new Map(), inChain=new Set(); if(TAP_MONO.has(tr.inst)) for(const a0 of NL){ if(inChain.has(a0)) continue; const ch=[a0]; let cur=a0;
       for(;;){ const nx=NL.find(o=>o.lg && o!==cur && o.s===cur.s+cur.l && !inChain.has(o)); if(!nx) break; ch.push(nx); inChain.add(nx); cur=nx; } if(ch.length>1) chain.set(a0,ch); }
     for(const nt of NL){ if(inChain.has(nt)) continue; const ch=chain.get(nt);
-    const ts=stepTime(nt.s), dur=Math.max(0.05,(ch?ch[ch.length-1].s+ch[ch.length-1].l-nt.s:nt.l)*stepDur()-0.012); const ps=notePitches(tr,nt); const pv=!ch&&slidesOn(tr)&&nt.g ? NL.find(o=>o!==nt && o.s+o.l===nt.s) : null; const pps=pv?notePitches(tr,pv):null;
+    const ts=stepTime(nt.s), dur=Math.max(0.05,(ch?ch[ch.length-1].s+ch[ch.length-1].l-nt.s:nt.l)*stepDur()-0.012); const ps=notePitches(tr,nt); const pv=!ch&&(slidesOn(tr)&&nt.g||GLIDE.has(tr.sound)) ? NL.find(o=>o!==nt && o.s+o.l===nt.s) : null; const pps=pv?notePitches(tr,pv):null;
     const X=!ch && tr.expr>0 && !nt.x ? exprCurves(tr,nt,dur,pitchOf(nt)) : null; at(ts-0.03,job(()=>{ let nout=out;
     if(ch){ const p0=ps[0], cs=oc.createConstantSource(); cs.offset.setValueAtTime(0,ts); for(const q of ch.slice(1)){ const tq=stepTime(q.s), c=100*(notePitches(tr,q)[0]-p0); cs.offset.setValueAtTime(cs._last??0,tq-0.012); cs.offset.linearRampToValueAtTime(c,tq); cs._last=c; }
       cs.start(ts); cs.stop(ts+dur+1); EXPR_DET=cs; }
     if(X){ const g=oc.createGain(), lpf=oc.createBiquadFilter(); lpf.type='lowpass'; lpf.Q.value=0.8; g.connect(lpf); lpf.connect(out);
       g.gain.setValueCurveAtTime(X.gain,ts+0.002,dur); lpf.frequency.setValueCurveAtTime(X.cut,ts+0.002,dur);
       const cs=oc.createConstantSource(); cs.offset.value=0; cs.offset.setValueCurveAtTime(X.bend,ts+0.002,dur); cs.start(ts); cs.stop(ts+dur+1); EXPR_DET=cs; nout=g; if(VOICE_DONE) VOICE_DONE.push({n:lpf,end:ts+dur+1}); }
-    ps.forEach((pp,j)=>voice(oc,nout,tr.sound,ts+0.002,dur,pp+12*tr.oct,nt.v*(ps.length>1?1.1/Math.sqrt(ps.length+0.2):1),Number.isFinite(nt.tn)?Math.min(1,Math.max(0,nt.tn)):T, pps?pps[Math.min(j,pps.length-1)]+12*tr.oct:null)); EXPR_DET=null; })); } }
+    ps.forEach((pp,j)=>voice(oc,nout,tr.sound,ts+0.002+(STRUM.has(tr.sound)&&ps.length>2?j*0.013:0),dur,pp+12*tr.oct,nt.v*(ps.length>1?1.1/Math.sqrt(ps.length+0.2):1),Number.isFinite(nt.tn)?Math.min(1,Math.max(0,nt.tn)):T, pps?pps[Math.min(j,pps.length-1)]+12*tr.oct:null)); EXPR_DET=null; })); } }
   else { for(const h of (FULL?withFills(tr,songEvents(tr,tr.hits)):inWin(tr.hits,PN)).filter(h=>keep(h.s))){ const t=stepTime(h.s)+0.002; at(t,job(()=>drumHit(oc,out,h.d,t,h.v,tr.sound,T))); } }
   ENV_OVR=null;
   let jobErr=null; if(jobs.length){ const CH=2, LEAD=0.25, total=(n+tail*sr)/sr; jobs.sort((a,b)=>a.t-b.t); let ji=0; const run=lim=>{ while(ji<jobs.length && jobs[ji].t<lim){ try{ jobs[ji++].f(); }catch(e){ jobErr=jobErr||e; } } };   /* an error never stalls the render; it's reported after */   /* a stable sort: same-time notes keep their order */
@@ -327,10 +353,18 @@ async function renderStem(tr){
       run(lim); oc.resume(); }); } }   /* at each pause, add what starts before the next pause (+0.25 s: some start a little early) */
   const r=await oc.startRendering(); if(jobErr) throw jobErr;
   const b=ctx.createBuffer(2,n,sr);
-  for(let ch=0;ch<2;ch++){ const src=r.getChannelData(ch), dst=b.getChannelData(ch); for(let i=0;i<src.length;i++) dst[i%n]+=src[i]; }
+  foldTail(b,r,n);
   if(SC) applyDuck(b,tr);
   return b;
 }
+/* a part's render runs a few seconds past its end; that ring-over is folded into the start so the loop is seamless. The first time through nothing
+   has played yet, so starting at bar 1 began mid-release: a sudden short pluck (owner, 27 Nov). b._cut is that fold, negated, played once from
+   the start alongside the loop (startSrc) and added to exports, so the first pass is clean and every later pass keeps the ring-over.
+   Used for every part: notes and beats (renderStem), vocal takes (renderVox), sound effects (renderFx). */
+function foldTail(b,r,n){ const sr=b.sampleRate, tl=r.length-n, C=tl>0?ctx.createBuffer(2,tl,sr):null; let any=false;
+  for(let ch=0;ch<2;ch++){ const src=r.getChannelData(Math.min(ch,r.numberOfChannels-1)), dst=b.getChannelData(ch), c=C&&C.getChannelData(ch);
+    for(let i=0;i<src.length;i++){ const x=src[i]; dst[i%n]+=x; if(i<n||!x) continue; any=true; for(let t=i%n;t<i&&t<tl;t+=n) c[t]-=x; } }
+  if(any) b._cut=C; return b; }
 async function renderMetro(){
   const sr=ctx.sampleRate, L=loopLen(), n=Math.round(L*sr), oc=new OfflineAudioContext(1,n,sr), beat=60/S.bpm;
   for(let i=0;i<S.bars*4;i++){ const t=i*beat, o=oc.createOscillator(), g=oc.createGain(); o.frequency.value=i%4===0?2000:1500;
@@ -364,7 +398,10 @@ async function renderDirty(){
   } finally { rendering=false; finish(); }
 }
 let metroSrc=null, metroGain=null;
-function startSrc(buf, dest, when, off){ const s=ctx.createBufferSource(); s.buffer=buf; s.loop=true; s.connect(dest); s.start(when, off%buf.duration); return s; }
+/* abs: seconds since the song began playing (the same as off unless it has looped); on the first pass, buf._cut takes out the ring-over */
+function startSrc(buf, dest, when, off, abs=off){ const s=ctx.createBufferSource(); s.buffer=buf; s.loop=true; s.connect(dest); s.start(when, off%buf.duration);
+  const C=buf._cut; if(C && abs>=0 && abs<C.duration-0.001){ const c=ctx.createBufferSource(); c.buffer=C; c.connect(dest); c.start(when, abs); const st=s.stop.bind(s); s.stop=t=>{ try{ c.stop(t); }catch(e){} st(t); }; }
+  return s; }
 function gateOpen(when){ const g=chain&&chain.gate; if(!g) return; g.gain.cancelScheduledValues(0); g.gain.setValueAtTime(1,Math.max(when,ctx.currentTime)); }
 const takeStart=()=>{ const t=S.tracks.find(t=>t.id===S.activeId), L=loopLen(), o=t&&t.off?t.off*stepDur():0; return o<L-0.01?o:0; };   /* seconds into the song where the newest take begins */
 function startAll(when, off=0, opts={}){
@@ -376,7 +413,7 @@ function startAll(when, off=0, opts={}){
   if(metroBuf) metroSrc=startSrc(metroBuf,metroGain,when,off);
 }
 function stopAll(when){ const t=when??ctx.currentTime; mfxStop(); S.tracks.forEach(tr=>{ if(tr._src){ try{tr._src.stop(t);}catch(e){} tr._src=null; } }); if(metroSrc){ try{metroSrc.stop(t);}catch(e){} metroSrc=null; } }
-function swapSource(tr){ const now=ctx.currentTime+0.03, L=loopLen(), off=(((now-t0)%L)+L)%L; const old=tr._src; ensureNodes(tr); tr._src=startSrc(tr._buf,tr._g,now,off); if(old){ try{old.stop(now);}catch(e){} } }
+function swapSource(tr){ const now=ctx.currentTime+0.03, L=loopLen(), off=(((now-t0)%L)+L)%L; const old=tr._src; ensureNodes(tr); tr._src=startSrc(tr._buf,tr._g,now,off,now-t0); if(old){ try{old.stop(now);}catch(e){} } }
 let playFrom=0;   // where Play resumes (seconds into the song), and a seek in progress (0..1)
 async function togglePlay(){
   ensureCtx();
