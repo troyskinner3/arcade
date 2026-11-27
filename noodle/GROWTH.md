@@ -5,6 +5,9 @@ The running plan for getting Noodle's first 1,000 users. Owner + Claude, $0 budg
 **Results log** at the bottom, and add new ideas under **Ideas backlog**. `[ ]` to do, `[~]` started, `[x]` done.
 **Owner** = only the owner can do or decide it. Status: **agreed** (owner confirmed) or **proposed** (waiting on the owner).
 
+Owner's limits (27 Nov): no face on camera if it can be avoided; no personal social accounts; don't ask friends and family;
+Reddit from mid-December (a new account is building karma); ads only after free channels give data, small and capped.
+
 Started 27 Nov 2026. Launch tasks that are product or store work stay in `ROADMAP.md`; this file is the marketing side.
 
 ## Goal and the number we count
