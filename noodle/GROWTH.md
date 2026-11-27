@@ -97,12 +97,16 @@ In order of expected effect:
    photo-library access). Every shared song becomes an ad, and the same videos are our own faceless content.
 2. **Listen page → "Make your own" / "Remix this".** Every song link page gets an install button (with a source tag, so installs from
    song links are counted) and, on the web, "Open in your browser".
-3. **Founding-member Pro (agreed 27 Nov; number: Claude suggests 250, owner to confirm).** The first founders who make a song get Pro free for life (App Store offer codes or a launch-period unlock; check
+3. **Founding 250 (agreed 27 Nov).** The first 250 people who make a song get Pro free for life; a second batch only if it fills fast,
+   and only after looking at how many gifts were used (below) (App Store offer codes or a launch-period unlock; check
    Apple's code limits). Cost: a few % of 1,000 × $4.99, small next to what we gain from the goodwill and the shares. Producers get the DAW pack, so they
    can show their Noodle ideas finished in their DAW.
 4. **Easier invite reward (agreed 27 Nov), after the founding spots run out**, for a limited time: 1 friend who makes a song (instead of 3)
-   earns Pro. Then back to 3. Founders already own Pro, so an invite reward means nothing to them: instead each founder gets a few
-   Pro gifts for friends (proposed; how many is for the owner), which keeps them inviting. Apple offer codes allow 1 million codes per app per
+   earns Pro. Runs for one whole calendar month (agreed 27 Nov), then back to 3. Founders already own Pro, so an invite reward means
+   nothing to them: instead **each founder gets 2 Pro gifts for friends (agreed 27 Nov)**, which keeps them inviting. Worst case 250 + 500 =
+   750 free Pro. Proposed (owner to confirm): gifted friends don't take one of the 250 spots and don't get gifts of their own (no chains).
+   Tracking (proposed events): founder spot claimed, gift sent, gift redeemed (with founder spot number, no personal data), so the
+   dashboard shows spots left, gifts used and how many gifted friends make a song. Apple offer codes allow 1 million codes per app per
    quarter (all purchase types, non-consumables included); one-time codes expire after at most 6 months, so hand each out when it's earned.
 5. **Remix chain:** "finish my hook": send a hum, a friend adds a part, it comes back. Song links mostly already do this; make it obvious.
 6. **Web as the free trial.** No-install "try it" for Reddit, Product Hunt and press, which avoids the App Store step that puts people off.
@@ -167,7 +171,7 @@ Privacy: each new event or page count needs the three privacy files updated (CLA
 - Google Play developer fee $25 (if Android).
 
 ## Decisions for the owner
-Answered 27 Nov: 1 yes, 2 yes (number open), 3 yes (after founders, limited time), 4 after iOS beta, 5 standing rule, 6–7 on the owner's list.
+Answered 27 Nov: 1 yes, 2 yes (250 + 2 gifts each), 3 yes (after founders, limited time), 4 after iOS beta, 5 standing rule, 6–7 on the owner's list.
 1. Share video (Product change 1) as the next big product item after polishing? (Claude recommends yes.)
 2. Founding-member Pro for the first 1,000: yes / no / a different number?
 3. Invite reward at 1 friend for the launch period?
