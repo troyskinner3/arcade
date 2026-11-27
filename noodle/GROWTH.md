@@ -91,6 +91,8 @@ Exit check: about a week with no bad crashes, and the store page converts visits
 - [ ] Month 2: if the free channels have data, consider a small paid test (see **Paid, later**).
 
 ## Product changes for growth (proposed, waiting on the owner; Pro changes also go into `PRO.md`)
+Build order (proposed 27 Nov): 1. share video (now) → 2. growth plumbing (before the beta) → 3. Founding 250 and gifts (before
+launch) → later: remix chain, invite month, Android. DAW connection has its own session. Starting prompts: `noodle/briefs/`.
 In order of expected effect:
 1. **Share video built for TikTok and Reels** (owner loves it, 27 Nov). Vertical. Starts with the raw input (hum, beatbox, singing,
    a Play Pad take) and cuts to the full song exactly on a downbeat: that before/after is the pitch. Will need several rounds to feel right. A small "Made with Noodle" tag with the link. Then direct posting to TikTok (TikTok Share Kit, free; the app needs
