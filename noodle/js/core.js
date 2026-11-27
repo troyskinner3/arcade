@@ -178,9 +178,20 @@ const b64of=u8=>{ let s=''; for(let i=0;i<u8.length;i+=8192) s+=String.fromCharC
 const u8of=b=>{ const s=atob(b), u=new Uint8Array(s.length); for(let i=0;i<s.length;i++) u[i]=s.charCodeAt(i); return u; };
 const packV=v=>v instanceof Int16Array?{__i16:b64of(new Uint8Array(v.buffer,v.byteOffset,v.byteLength))}:v instanceof Float32Array?{__f32:b64of(new Uint8Array(v.buffer,v.byteOffset,v.byteLength))}:Array.isArray(v)?v.map(packV):v&&typeof v==='object'?Object.fromEntries(Object.entries(v).map(([k,x])=>[k,packV(x)])):v;
 const unpackV=v=>v&&typeof v==='object'?(v.__i16!=null?new Int16Array(u8of(v.__i16).buffer):v.__f32!=null?new Float32Array(u8of(v.__f32).buffer):Array.isArray(v)?v.map(unpackV):Object.fromEntries(Object.entries(v).map(([k,x])=>[k,unpackV(x)]))):v;
-async function songFilePack(ids){ if(ids.includes(S.pid)) await projSaveCurrent(); const songs=[];
-  for(const id of ids){ const p=await projDb.get(id); if(!p) continue; const o=JSON.parse(p.json), takes={}; for(const t of o.tracks||[]){ const r=await takeStore.get('vox'+t.id); if(r) takes[t.id]=packV(r); }
-    songs.push({title:p.title||'', createdAt:p.createdAt, updatedAt:p.updatedAt, song:o, takes}); }
+/* a recording made smaller for a song link: 24 kHz (plenty for a voice or a hum; half of 48 kHz). Backups (.noodle files) keep the original. */
+function takeDown(r){ if(!r||!r.pcm||!(r.sr>24000)) return r; const sr=r.sr, R=24000, x=new Float32Array(r.pcm.length); for(let i=0;i<x.length;i++) x[i]=r.pcm[i]/32767;
+  const z=biquad(biquad(x,'lp',10500,0.707,sr),'lp',10500,0.707,sr), n=Math.floor(x.length*R/sr), pcm=new Int16Array(n);
+  for(let i=0;i<n;i++){ const q=i*sr/R, i0=Math.floor(q), fr=q-i0, v=(z[i0]||0)*(1-fr)+(z[i0+1]||0)*fr; pcm[i]=Math.max(-32767,Math.min(32767,Math.round(v*32767))); }
+  return {...r, sr:R, pcm}; }
+const sameTake=(a,b)=>{ if(!a||!b||!a.pcm||!b.pcm||a.sr!==b.sr||a.pcm.length!==b.pcm.length) return false; const x=a.pcm, y=b.pcm; for(let i=0;i<x.length;i++) if(x[i]!==y[i]) return false; return true; };
+/* songs with their recordings. Each recording goes in once: a copy of a recorded part (Duplicate, Split, Finish song's sections) points at
+   the first one (takeRefs) instead of carrying the audio again (security review, 26 Nov: copies filled the 8 MB song-link limit). An older
+   Noodle reading takeRefs plays those copies silent rather than breaking. link: true makes recordings 24 kHz for a song link. */
+async function songFilePack(ids, opt={}){ if(ids.includes(S.pid)) await projSaveCurrent(); const songs=[];
+  for(const id of ids){ const p=await projDb.get(id); if(!p) continue; const o=JSON.parse(p.json), takes={}, takeRefs={}, seen=[];
+    for(const t of o.tracks||[]){ const r=await takeStore.get('vox'+t.id); if(!r) continue; const dup=seen.find(x=>sameTake(x.r,r));
+      if(dup){ takeRefs[t.id]=dup.id; continue; } seen.push({id:t.id, r}); takes[t.id]=packV(opt.link?takeDown(r):r); }
+    songs.push({title:p.title||'', createdAt:p.createdAt, updatedAt:p.updatedAt, song:o, takes, ...(Object.keys(takeRefs).length?{takeRefs}:{})}); }
   return songs; }
 async function songFileSave(ids, name){ const songs=await songFilePack(ids);
   if(!songs.length){ toast('Nothing to save yet: make a song first.'); return false; }
@@ -192,7 +203,7 @@ async function songFileOpen(text){ let f; try{ f=JSON.parse(text); }catch(e){ f=
   for(const g of f.songs){ if(!g||!g.song||!Array.isArray(g.song.tracks)) continue;
     if(have.some(p=>p.createdAt===g.createdAt && (p.title||'')===(g.title||'') && p.updatedAt>=g.updatedAt)) continue;   /* already here (and not older) */
     const o=g.song; o.tracks=o.tracks.filter(t=>t&&typeof t==='object'&&Object.prototype.hasOwnProperty.call(INST,t.inst)&&(t.notes==null||Array.isArray(t.notes))&&(t.hits==null||Array.isArray(t.hits))&&(t.fxs==null||Array.isArray(t.fxs))).map(t=>{ const d=mkTrack(t.inst); for(const k in d) if(typeof d[k]==='number'&&!(typeof t[k]==='number'&&isFinite(t[k]))) t[k]=d[k]; return t; });   /* settings missing or not numbers get the defaults (they reach the audio engine). A part Noodle can't play (an unknown instrument, from a broken or hostile file) is left out, instead of breaking the song on every open (security review, Nov 2026) */
-    for(const t of o.tracks){ const old=t.id; t.id=nid++; if(o.activeId===old) o.activeId=t.id; if(g.takes&&g.takes[old]) await takeStore.put('vox'+t.id, unpackV(g.takes[old])); }   /* each part gets a new id, so nothing here is overwritten */
+    for(const t of o.tracks){ const old=t.id; t.id=nid++; if(o.activeId===old) o.activeId=t.id; const own=(m,k)=>m&&typeof m==='object'&&Object.prototype.hasOwnProperty.call(m,k)?m[k]:null, src=own(g.takes,old)||own(g.takes,own(g.takeRefs,old)); if(src&&typeof src==='object'&&src.pcm&&typeof src.pcm==='object') await takeStore.put('vox'+t.id, unpackV(src)); }   /* a copy's recording: the one it points at (takeRefs) */   /* each part gets a new id, so nothing here is overwritten */
     o.nextId=nid; o.pid=projId(); const now=Date.now();
     await projDb.put({id:o.pid, title:g.title||'', createdAt:g.createdAt||now, updatedAt:g.updatedAt||now, bpm:o.bpm, bars:o.bars, key:'', parts:o.tracks.filter(t=>!t.guide).map(t=>t.inst), json:JSON.stringify(o)}); added++; songFileOpen.last=o.pid; }
   S.nextId=Math.max(S.nextId||10,nid); persist(); return added; }
@@ -207,7 +218,7 @@ function previewWav(mix, secs=30){ const R=22050, sr=mix.sampleRate, L=mix.getCh
   const fade=Math.round(1.5*R); for(let i=0;i<n;i++){ const q=i*sr/R, i0=Math.floor(q), fr=q-i0, v=(z[i0]*(1-fr)+z[i0+1]*fr)*Math.min(1,(n-i)/fade); out.setInt16(44+i*2,Math.max(-32768,Math.min(32767,Math.round(v*32767))),true); }
   return out.buffer; }
 async function songLinkShare(onStep){ pvEnd(true); const owner=ownerId(); if(!owner) throw new Error('storage is off');
-  await projSaveCurrent(); const songs=await songFilePack([S.pid]); if(!songs.length) throw new Error('nothing to share');
+  await projSaveCurrent(); const songs=await songFilePack([S.pid],{link:true}); if(!songs.length) throw new Error('nothing to share');
   const id=(S.link&&S.link.id)||linkId(), H={'Content-Type':'application/json','X-Owner':owner};
   onStep&&onStep('Uploading your song…'); const body=JSON.stringify({noodle:'songs', v:1, build:NOODLE_BUILD, savedAt:new Date().toISOString(), songs});
   let r=await fetch(`${NOODLE_API}/v1/songs/${id}`,{method:'PUT',headers:H,body}); if(r.status===413) throw new Error('this song is too big to share by link (8 MB at most)'); if(!r.ok) throw new Error('the upload didn’t go through ('+r.status+')');

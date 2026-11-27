@@ -144,7 +144,7 @@ const PRO_CARDS=[
   {t:'Effects', d:'On one track or across the whole song', ic:'<circle cx="12" cy="12" r="8"/><path d="M12 12l4-4"/><path d="M12 4v2M4 12h2M18 12h2"/>',
    x:['Echo','Chorus','Drive','Phaser','Washout','Echo throw','Tremolo','Auto-pan','Bitcrusher','Vinyl brake','Reverse swell','Ring mod']},
   {t:'Beats and chords', d:'6 more beats to sing over, 2 more chord styles', ic:'<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
-   x:['Glacier','Corner Store','Paper Plane','Cold Front','Weekend','Lagos Sun','Pulse chords','Arp chords']},
+   x:['Glacier','Corner Store','Slow Steam','Cold Front','Weekend','Silk','Neon Dembow','Pulse chords','Arp chords']},
   {t:'Export and share', d:'Take your song anywhere', ic:'<path d="M12 15V3M7 8l5-5 5 5M5 14v5a2 2 0 002 2h10a2 2 0 002-2v-5"/>',
    x:['MIDI','Stems for your DAW','Videos without the tag','Copy parts between songs']}];
 function proSheet(why){ const have=isPro(); if(!have) track('pro_sheet',why?'prompt':'menu');
