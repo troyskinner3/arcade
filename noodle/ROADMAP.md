@@ -88,12 +88,20 @@ Draft copy is in `noodle-ios/APP_STORE_LISTING.md`.
 - [x] Rate limits on sign-ups, song links and invites, so one person can't fill the storage: reads limited too (240 a minute per address),
       daily storage budgets for song links and take audio (150 MB each), previews 1.5 MB at most, invites closed without DeviceCheck.
       Still true: 1 GB free storage fills in about a week of heavy use (real or not); then move to R2 or clear old takes.
-- [ ] **Owner, before launch, in this order** (the code is all on `main`; nothing is live until step 4):
-  1. Confirm the Cloudflare account is on the Free Workers plan (Workers & Pages → Plans). On Paid, overuse is billed with no cap: then
-     set billing alerts first.
-  2. Set `DC_KEY` (the DeviceCheck .p8 file's text) and `DC_KEY_ID` on the noodle-takes Worker: invite joins are refused until they are set.
-  3. Check `ADMIN_KEY` is long and random (32+ characters); if you replace it, update it where Claude sessions get it.
-  4. Deploy the takes service (Actions → "Noodle takes service" in the Fan to See repo).
+- [ ] **Owner, soon and before launch: deploy the takes service, in this order.** The code is all on `main`; none of it is live until
+  step 4 (new limits, 1-year takes, storage meter, report email cap, `finish_song` count).
+  1. Cloudflare plan: dash.cloudflare.com → Manage Account → Billing → Subscriptions. No "Workers Paid" listed = Free (owner believes
+     Free, 27 Nov; confirm there). On Paid, overuse is billed with no cap: set billing alerts first and tell Claude.
+  2. DeviceCheck key (stops fake friends collecting Pro codes; invite joins are refused until it is set):
+     a. https://developer.apple.com/account/resources/authkeys/list → + → name `Noodle DeviceCheck`, tick DeviceCheck → Continue → Register.
+     b. Download the `.p8` file (only once; keep it safe) and note the Key ID.
+     c. Cloudflare → Workers & Pages → noodle-takes → Settings → Variables and Secrets → Add, type Secret: `DC_KEY` = the whole `.p8`
+        text (with the BEGIN and END lines), `DC_KEY_ID` = the Key ID.
+     d. Same page: check `APPLE_APP_ID` exists, like `TEAMID.io.tuttii.Noodle` (Team ID is top right on developer.apple.com); add it as
+        Text if missing. Don't add `DC_ENV` (TestFlight and the App Store don't use it).
+  3. Same page: check `ADMIN_KEY` is long and random (32+ characters). If you replace it, tell Claude (its sessions use it too).
+  4. Deploy: tell Claude, or https://github.com/Persnickety-Games/fantasy-lab/actions/workflows/noodle-takes.yml → Run workflow.
+     Afterwards: tell the app session so it turns the `finish_song` event back on.
   5. Narrow the Cloudflare API token (My Profile → API Tokens) to Workers Scripts Edit and Workers KV Storage Edit on this account only
      (it also controls Fan to See).
 - [x] **Owner** decided (25 Nov): takes are kept 1 year (was 3; privacy policy updated). Watch storage with `GET /v1/admin/usage`
