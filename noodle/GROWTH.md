@@ -104,7 +104,8 @@ In order of expected effect:
 4. **Easier invite reward (agreed 27 Nov), after the founding spots run out**, for a limited time: 1 friend who makes a song (instead of 3)
    earns Pro. Runs for one whole calendar month (agreed 27 Nov), then back to 3. Founders already own Pro, so an invite reward means
    nothing to them: instead **each founder gets 2 Pro gifts for friends (agreed 27 Nov)**, which keeps them inviting. Worst case 250 + 500 =
-   750 free Pro. Proposed (owner to confirm): gifted friends don't take one of the 250 spots and don't get gifts of their own (no chains).
+   750 free Pro. Gifted friends are standard users, not founders (agreed 27 Nov): they don't take one of the 250 spots and get no founder gifts
+   (no chains), only what every user gets. The month for the invite deal is picked later, when the spots run out.
    Tracking (proposed events): founder spot claimed, gift sent, gift redeemed (with founder spot number, no personal data), so the
    dashboard shows spots left, gifts used and how many gifted friends make a song. Apple offer codes allow 1 million codes per app per
    quarter (all purchase types, non-consumables included); one-time codes expire after at most 6 months, so hand each out when it's earned.
