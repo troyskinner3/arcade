@@ -7,6 +7,10 @@
   there and suggest to the owner whether it should be free or Pro (ask when unsure); mark it "proposed" until the owner confirms.
   The code that enforces it (`PRO_SOUNDS`, `MFX[...].free`, `isPro()` checks) must match the list.
 - **Launch roadmap:** `noodle/ROADMAP.md` is the running pre-launch list. Tick items off and add new ones as work lands.
+- **Growth and marketing:** `noodle/GROWTH.md` is the launch and growth plan (phases, channels, funnel tracking, results log). Read it
+  before any marketing, launch or growth work; log results there.
+- **Analytics with every change** (owner's standing rule): each new or changed Noodle feature gets its usage events in the same
+  piece of work (`track()` in `noodle/js/takes.js`, `EVENTS` in `noodle-api/src/index.js`, the dashboard, and the three privacy files).
 - Before committing Noodle changes, run `noodle-ios/sync-web.sh` so the iPhone app's bundled copy (`noodle-ios/NoodleWeb/web`) matches.
 - Pushing `main` deploys the website (GitHub Pages). The takes service (`noodle-api/`) deploys by hand only: see its README.
 - **Merge to `main` after every round of updates** (owner's standing instruction): once `bash noodle/eval/run.sh` ends ALL PASS, commit,
