@@ -71,7 +71,7 @@ Status: **confirmed** (owner agreed) or **proposed** (waiting on the owner).
 | Note editor: scroll through every octave, Octave − / + for selected notes, drag a note's front edge, same-pitch overlap rule. Suggest Free (basic editing) | proposed |
 | Paste here (an empty spot in a track, after Copy to another song): part of copying a part between songs, which is Pro | Pro (as copying) |
 | Finish song by section and genre (round 29): real length, sections, energy per section, learned progressions and grooves. Part of Finish song: Free | Free (as Finish song) |
-| Beats Garage Lights (rock), Open Road (country), Dembow Nights (reggaeton): free, one per style like the others | confirmed Free (owner, 26 Nov) |
+| Beats: one free and one Pro per genre (owner, 27 Nov). Free: Night Drive, Dusty Steps, Rainy Window, Night Bus, Sunny Side, Velvet, Dembow Nights. Pro: Glacier, Corner Store, Slow Steam, Cold Front, Weekend, Silk, Neon Dembow | confirmed (owner, 27 Nov) |
 | Section types (Intro, Verse, Pre-chorus, Chorus, Drop, Bridge, Solo, Breakdown, Outro) with automatic numbering. Suggest Free | proposed |
 | Continue this (note editor •••): a short part grows into a phrase with a variation, an answer and an ending. Suggest Free | proposed |
 | Tap a rhythm (Record on a lead or bass track): tapped timing becomes a melody in the key, fitted to the chords; Other notes. Suggest Free | proposed |

@@ -648,7 +648,7 @@ function s2Init(){ const _rt=renderTracks; renderTracks=function(){ warmSounds()
   if(nxResume || new URLSearchParams(location.search).has('studio')){ if(s2Use()) s2Show(true); } else { nxGo('projects'); if(!seen) nxOnboard(async()=>{ const r=window.__remixAfterOb; if(r){ window.__remixAfterOb=null; await projOpen(r.pid); nxGo('studio'); toast(`Remixing “${r.title}”. Add your own part: tap + Add track.`,6000); return; } if(!((await projList())||[]).length) await nxExample(true); else await nxGo('projects'); });   /* opened from a song link on first launch: the remix opens after the welcome */ } }
 function reloadRaw(){ S.tracks.filter(t=>((t.inst==='vox' && t.va!=null) || (t.expr>0 && t.exprAlign!=null)) && !t._raw).forEach(tr=>loadVox(tr).then(ok=>{ if(!ok) return; redrawTrack(tr); if(ctx) scheduleRender(); })); }
 function storeVox(tr){ const {x,sr}=tr._raw; const pcm=new Int16Array(x.length); for(let i=0;i<x.length;i++) pcm[i]=Math.max(-32767,Math.min(32767,Math.round(x[i]*32767))); takeStore.put('vox'+tr.id,{sr,pcm}); }
-async function loadVox(tr){ const r=await takeStore.get('vox'+tr.id); if(!r) return false; const x=new Float32Array(r.pcm.length); for(let i=0;i<x.length;i++) x[i]=r.pcm[i]/32767; tr._raw={x,sr:r.sr}; tr._dirty=true; return true; }
+async function loadVox(tr){ const r=await takeStore.get('vox'+tr.id); if(!r||!r.pcm||!r.pcm.length||!(r.sr>0)) return false; const x=new Float32Array(r.pcm.length); for(let i=0;i<x.length;i++) x[i]=r.pcm[i]/32767; tr._raw={x,sr:r.sr}; tr._dirty=true; return true; }
 /* pitch of the take every 10 ms (same hum tracker the melody parts use) */
 function voxPitch(tr){
   if(tr._pitch) return tr._pitch; const {x,sr}=tr._raw, R=16000, ratio=sr/R;

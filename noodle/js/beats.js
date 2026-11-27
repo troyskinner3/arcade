@@ -25,10 +25,10 @@ const BEATS=[
   drums:{kick:'x-------x-x-----x-------x-----x-', snare:'----x-------x-------x-------x---', hat:'x-o-x-o-x-o-x-o-x-o-x-o-x-o-xoo-'},
   bass:{sound:'Sub', rhythm:'x=======x=====x=', oct:39}, chords:{inst:'keys', sound:'E-piano', type:'seventh', vol:58, send:45},
   master:{drive:20,punch:40,rev:60}, fx:{k:'lp', bar:0}},
- {id:'lofi2', name:'Paper Plane', style:'Lo-fi', pro:true, bpm:80, tonic:9, scale:'major', swing:40, kit:'Brushes', kitVol:100, prog:[3,4,2,5],
-  drums:{kick:'x-------x-------x-------x-x-----', snare:'----x-------x-------x-------x---', hat:'x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-', ride:'--------------------------------'},
-  bass:{sound:'Rock bass', rhythm:'x=======x===x===', oct:33}, chords:{inst:'keys', sound:'Piano', type:'ninth', vol:70, tfx:{chorus:40}, send:45},
-  master:{drive:30,punch:45,rev:55}},
+ {id:'lofi2', name:'Slow Steam', style:'Lo-fi', pro:true, bpm:84, tonic:2, scale:'minor', swing:55, kit:'Lo-fi', prog:[0,5,3,6],   /* round 30 (owner): a swung hip-hop lo-fi on dotted eighths, in place of the old one */
+  drums:{kick:'x--x----x-x-----x--x------x-----', snare:'----x-------x-------x-------x---', hat:'x-x-x-x-x-x-x-x-x-x-x-x-x-x-xox-'},
+  bass:{sound:'Sub', rhythm:'x==x====x=x=====', oct:38}, chords:{inst:'keys', sound:'E-piano', type:'seventh', vol:54, rhythm:'x==x==x=========', send:45, tfx:{chorus:30}},
+  master:{drive:30,punch:50,rev:50}, fx:{k:'lp', bar:0}},
  {id:'drill1', name:'Night Bus', style:'Drill', bpm:142, tonic:7, scale:'minor', swing:0, kit:'808', prog:[0,5,6,4],
   drums:{kick:'x------x---x------x---x---x-----', snare:'--------x---------------x---o---', hat:'x--x--x-x--x--x-x--x--x-x-x-x--x'},
   bass:{sound:'808 glide', rhythm:'x======x===x====', oct:31}, chords:{inst:'pad', sound:'Choir', type:'triad', vol:50},
@@ -49,22 +49,18 @@ const BEATS=[
   drums:{kick:'x------x--x-----x-----x---x-----', snare:'----x-------x-------x-------x---', clap:'----x-------x-------x-------x---', hat:'x-xxx-x-x-xxx-x-x-xxx-x-x-xxx-x-'},
   bass:{sound:'Sub', rhythm:'x=====x===x=====', oct:41}, chords:{inst:'keys', sound:'E-piano', type:'ninth', vol:56, send:40},
   master:{drive:15,punch:50,rev:55}},
- {id:'rock1', name:'Garage Lights', style:'Rock', bpm:122, tonic:4, scale:'minor', swing:0, kit:'Rock', prog:[0,5,2,6],   /* round 29 (owner: more free beats): rock, country, reggaeton */
-  drums:{kick:'x-------x-x-----', snare:'----x-------x---', hat:'x-x-x-x-x-x-x-x-', crash:'x-------------------------------'},
-  bass:{sound:'Rock bass', rhythm:'x=x=x=x=x=x=x=x=', oct:40}, chords:{inst:'keys', sound:'Organ', type:'power', vol:50, rhythm:'x===x===x===x==='},
-  master:{drive:45,punch:60,rev:25}},
- {id:'country1', name:'Open Road', style:'Country', bpm:100, tonic:7, scale:'major', swing:0, kit:'Punchy', prog:[0,3,4,0],
-  drums:{kick:'x-------x-------', snare:'o-o-x-o-o-o-x-o-'},
-  bass:{sound:'Rock bass', rhythm:'x===----x===----', oct:43}, chords:{inst:'keys', sound:'Piano', type:'triad', vol:54, rhythm:'--x=--x=--x=--x='},
-  extra:{inst:'arp', sound:'Pluck', type:'triad', vol:36}, master:{drive:15,punch:45,rev:35}},
+ {id:'rnb2', name:'Silk', style:'R&B', pro:true, bpm:88, tonic:10, scale:'minor', swing:25, kit:'Punchy', prog:[0,5,3,4],
+  drums:{kick:'x------x--x-----x-----x--x--x---', snare:'----x-------x-------x-------x---', clap:'----x-------x-------x-------x---', hat:'x-xxx-x-x-xxx-xxx-xxx-x-x-xxx-x-'},
+  bass:{sound:'Sub', rhythm:'x==x==x===x=====', oct:34}, chords:{inst:'keys', sound:'E-piano', type:'ninth', vol:54, send:40},
+  extra:{inst:'pad', sound:'Chorus pad', type:'triad', vol:36}, master:{drive:15,punch:50,rev:55}},
  {id:'regg1', name:'Dembow Nights', style:'Reggaeton', bpm:95, tonic:9, scale:'minor', swing:0, kit:'808', prog:[0,5,2,6],
   drums:{kick:'x---x---x---x---', snare:'---x--x----x--x-', clap:'---x--x----x--x-', hat:'x-x-x-x-x-x-x-x-'},   /* the dembow: snare on the 4th and 7th 16ths of each half bar */
-  bass:{sound:'808 glide', rhythm:'x==x==x=x==x==x=', oct:33}, chords:{inst:'keys', sound:'Stab', type:'triad', vol:46, rhythm:'---x--x----x--x-'},
+  bass:{sound:'Pluck', rhythm:'x--x----x--x----', oct:33}, chords:{inst:'keys', sound:'Stab', type:'triad', vol:46, rhythm:'---x--x----x--x-'},   /* a plucky bass on dotted eighths, room between notes (owner, 27 Nov) */
   master:{drive:25,punch:65,rev:35}},
- {id:'afro1', name:'Lagos Sun', style:'Afrobeats', pro:true, bpm:106, tonic:9, scale:'major', swing:12, kit:'Punchy', prog:[0,3,5,4],
-  drums:{kick:'x--x--x---x--x--', snare:'------x-------x-', rim:'--x--x----x--x--', hat:'x-xxx-xxx-xxx-xx', conga:'---x---x-x-x---x'},
-  bass:{sound:'Synth bass', rhythm:'x==x==x=--x==x==', oct:33}, chords:{inst:'keys', sound:'Guitar', type:'triad', vol:52, rhythm:'--x--x--x--x--x-', tfx:{echo:30}},
-  master:{drive:20,punch:55,rev:40}}];
+ {id:'regg2', name:'Neon Dembow', style:'Reggaeton', pro:true, bpm:98, tonic:1, scale:'minor', swing:0, kit:'EDM', prog:[0,3,5,4],
+  drums:{kick:'x---x---x---x---', snare:'---x--x----x--xx', hat:'--x---x---x---x-', clap:'------x-------x-'},
+  bass:{sound:'Synth bass', rhythm:'x-x--x----x--x--', oct:37}, chords:{inst:'pad', sound:'Pump pad', type:'triad', vol:44},
+  extra:{inst:'arp', sound:'Pluck', type:'triad', vol:38}, master:{drive:30,punch:65,rev:40}}];
 const beatPro=b=>!!b.pro&&!isPro();
 /* the beat's tracks, in a key (tonic, scale): 4 bars of chords, bass and drums, looping through the song */
 function beatTracks(b, tonic, scale){ const par=PARENT[scale]||scale, set=SCALES[par]&&SCALES[par].length===7?SCALES[par]:SCALES[b.scale], root=d=>tonic+set[d%7], out=[], id=()=>S.nextId++;
@@ -118,7 +114,7 @@ const pickOne=a=>a[Math.floor(Math.random()*a.length)];
 let GEN=null, genLoad=null;
 function loadGenre(){ return genLoad||(genLoad=fetch(new URL('genre.json',location.href)).then(r=>r.ok?r.json():null).then(j=>{ GEN=j; return j; }).catch(()=>{ genLoad=null; return null; })); }
 const SEC_ROLE={Intro:{k:'intro',e:0.3},Verse:{k:'verse',e:0.55},'Pre-chorus':{k:'pre',e:0.7},Chorus:{k:'chorus',e:1},Drop:{k:'chorus',e:1},Bridge:{k:'bridge',e:0.6},Solo:{k:'solo',e:0.8},Breakdown:{k:'bridge',e:0.25},Outro:{k:'outro',e:0.35}};
-const STYLE_GENRE={Trap:'hiphop',Drill:'hiphop','Boom bap':'hiphop','Lo-fi':'rnb',Pop:'pop','R&B':'rnb',Afrobeats:'latin',Rock:'rock',Country:'country',Reggaeton:'latin'};
+const STYLE_GENRE={Trap:'hiphop',Drill:'hiphop','Boom bap':'hiphop','Lo-fi':'hiphop',Pop:'pop','R&B':'rnb',Reggaeton:'latin'};
 const GENRE_DRUMS={hiphop:'hiphop',pop:'pop',rnb:'funk',latin:'latin',rock:'rock',country:'country',electronic:'pop'};
 /* livelier rhythms (round 29, owner: "a little more lively and less computer generated"): syncopated 1-bar patterns used next to the learned
    ones (which come mostly from hymns and folk tunes, so they sit on the beat). Steps of a 16-step bar. */
@@ -210,7 +206,7 @@ async function finishSong(){ const miss=finishMissing(); if(!miss.length) return
       if(!notes){ const span=bars*16, chordAt=st=>{ const c=ch.find(n=>st%span>=n.s&&st%span<n.s+n.l); return c?new Set(chordTones(Math.round(c.p),'triad').map(x=>((x%12)+12)%12)):null; };
         notes=genMelody(K,Math.min(bars,8),chordAt,role==='Solo'?{lo:67,hi:86}:role==='Verse'?{lo:62,hi:76}:{}); if(notes) hooks[key]=notes; }   /* the hook: the same melody every chorus */
       if(notes&&notes.length){ const span=Math.min(bars,8)*16, full=[]; for(let s=0;s<bars*16;s+=span) notes.forEach(n=>{ if(s+n.s<bars*16) full.push({...n,s:s+n.s,l:Math.min(n.l,bars*16-s-n.s),x:true}); });
-        if(!lanes.lead){ const snd=pickOne(['Bell','Square','Saw','Supersaw','Guitar'].filter(ok)); lanes._leadSnd=snd; }
+        if(!lanes.lead){ const snd=pickOne(['Bell','Square','Saw','Supersaw'].filter(ok)); lanes._leadSnd=snd; }
         part('lead','lead',{sound:lanes._leadSnd, vol:lanes._leadSnd==='Supersaw'||lanes._leadSnd==='Saw'?40:48, send:35},sec,{notes:full}); } } });
   if(miss.includes('melody')&&!lanes.lead){ const snd=pickOne(['Pluck','Bell','Square','Glass'].filter(ok));   /* no melody model here: an arp plays the chords where a hook would go */
     secs.forEach((sec,i)=>{ if(!(['Chorus','Drop','Solo'].includes(sec.name)||(!hasHook&&sec.name==='Verse'))||!secChords[i].length) return;

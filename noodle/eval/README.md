@@ -1017,3 +1017,20 @@ the note editor's Today / Tap notes button flips one take between them. The fing
 - Hardening (before the security session's check): a track's `rin` that isn't one of its record methods asks again (an older or odd song
   file can't open an unknown pad screen); section names are looked up as own keys only (a section named "constructor" counts as a verse).
   `b2_test` checks both.
+
+## Round 30 (security review, 26 Nov: shared songs hit the 8 MB limit)
+- `songFilePack`: each recording goes into a song once; a copy of a recorded part (Duplicate, Split, Finish song's sections) points at the
+  first one in `takeRefs` (an older build plays those copies silent instead of breaking). Song links carry recordings at 24 kHz (two
+  10.5 kHz low-pass stages, then resampled); backups (.noodle) keep the original rate. Opening looks recordings up as own keys only and
+  needs real audio (`pcm`); `loadVox` skips a recording without one.
+- Measured: 4 copies of a 10 s take: 5.0 MB before, 0.6 MB now. 8 MB holds about 2 minutes of distinct recordings (was about 65 s).
+- Tests: `songsize_test.js` (new: one recording plus three references, 24 kHz in a link, 48 kHz in a backup, every copy gets its audio
+  back, a hostile takeRefs opens without errors).
+
+## Round 30, beats (owner, 27 Nov)
+- Removed: Garage Lights (rock), Open Road (country), Lagos Sun (Afrobeats); the Guitar sound isn't a convincing rock or acoustic guitar, and
+  a weak Afrobeats beat risked disrespecting the music. Finish song no longer picks Guitar for a lead.
+- Slow Steam (Pro lo-fi, 84, D minor, swing 55: kick and bass on dotted eighths, swung hats, E-piano 7ths on a dotted figure) replaces Paper
+  Plane. Dembow Nights: a Pluck bass on dotted eighths (0, 3, 8, 11) with room between notes. New Pro: Silk (R&B, 88, B-flat minor, E-piano
+  9ths over a chorus pad, dotted bass) and Neon Dembow (reggaeton, 98, C-sharp minor, EDM kit, off-beat hats, pump pad and a pluck arp).
+- Every genre (Trap, Boom bap, Lo-fi, Drill, Pop, R&B, Reggaeton) has one free and one Pro beat; `b2_test` checks it and plays the new ones.

@@ -125,10 +125,13 @@ Draft copy is in `noodle-ios/APP_STORE_LISTING.md`.
   or switch to Brevo (300 emails a day free; its double opt-in sign-up still to be checked).
 - [ ] Usage event `finish_song` is allowed by the service from 26 Nov; it counts only once the takes service is deployed. The app
       session then turns the event back on and updates the privacy text.
-- [ ] Shared songs are limited to 8 MB, and nearly all of that is the kept recordings (about 125 KB a second at 48 kHz, so about
+- [x] Shared songs are limited to 8 MB, and nearly all of that is the kept recordings (about 125 KB a second at 48 kHz, so about
       65 seconds in total). A 32-bar song with a full-length hummed part can't be shared, and every copy of a recorded part stores its
       whole recording again. App side (app session): share each recording once (copies point to it) and/or at 24 kHz. Raising the server
       limit instead would let fewer songs fit the daily storage budget.
+      Done (app session, 27 Nov): each recording goes into a song once (copies point at it, takeRefs; older builds play copies silent)
+      and song links carry recordings at 24 kHz (backups keep the original): 4 copies of a 10 s take went from 5.0 MB to 0.6 MB; 8 MB now
+      holds about 2 minutes of distinct recordings. eval/songsize_test.js.
 - [x] Cloudflare token given only to the deploy step (Fan to See `noodle-takes.yml`, on its `main` since 25 Nov).
 - [x] Hardening (25 Nov): strict WAV check, nosniff on every reply, report emails only on a song's first report (30 a day at most),
       reports stop being stored after 10, Pro codes marked when handed out (no double handout), `GET /v1/admin/usage` storage meter.
@@ -174,7 +177,11 @@ Draft copy is in `noodle-ios/APP_STORE_LISTING.md`.
 - [x] Livelier rhythms (syncopation, pushes, genre grooves) in everything Noodle writes (round 29: GROOVES; chorus comping and bass syncopated, bass can lock to the kick).
 - [x] Finish song: the song's real length, its sections (marked or worked out), each filled for its role; no filling empty bars (round 29).
 - [x] Modern-genre data: Chordonomicon (MIT), McGill Billboard (CC0), Groove MIDI (CC BY 4.0), approved by the owner 26 Nov; genre.json; credited in More → Credits.
-- [x] More free beats (owner, 26 Nov): Garage Lights (rock), Open Road (country), Dembow Nights (reggaeton, hand-written dembow); Finish song now also picks rock, country and Latin material.
+- [x] Beats reworked (owner, 27 Nov): rock, country and Afrobeats removed (the Guitar sound isn't a convincing rhythm or acoustic guitar,
+  and a weak Afrobeats risked disrespecting the music); Slow Steam replaces the Pro lo-fi (swung hip-hop lo-fi on dotted eighths); Dembow
+  Nights has a plucky, spaced bass on dotted eighths; new Pro beats Silk (R&B) and Neon Dembow (reggaeton). Every genre: one free, one Pro.
+- [ ] A clean electric and an acoustic guitar sound (the current Guitar is gritty, like a metal bass); then rock and country beats could
+  come back. Finish song doesn't pick Guitar for now.
 - [ ] Desktop web app tied to the phone account (songs synced; export the DAW pack straight on the laptop). Post-launch; needs accounts and sync.
 - [ ] Laptop layout: use the width (taller curve editor, effect list as a column). Post-launch (owner, 26 Nov).
 - [x] Count-in chord moved to Mic and timing → More settings.
