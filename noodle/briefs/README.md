@@ -6,7 +6,7 @@ in `noodle/GROWTH.md` (Product changes). Written 27 Nov 2026.
 
 | Brief | Status |
 |---|---|
-| `share-video.md`: before → after share video | next (recommended) |
+| `share-video.md`: before → after share video | started 28 Nov: `noodle/SHARE_VIDEO.md` |
 | `growth-plumbing.md`: install sources, listen-page button, "How did you find Noodle?" | before the beta |
 | `founding-250.md`: Founding 250, founder gifts, invite deal | before launch |
 | DAW connection | started 27 Nov (its own session; prompt not saved here) |

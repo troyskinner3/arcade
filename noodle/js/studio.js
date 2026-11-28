@@ -285,8 +285,9 @@ function s2EdClose(){ s2.draw=false;   /* Draw is off again next time */ try{ pv
 function s2ShareSheet(){ if(!S.tracks.some(hasContent)){ toast('Record something first'); return; } if(playing) togglePlay();
   nxSheet(`<h2>Share “${nxEsc(S.title||'Untitled')}”</h2>
     <div class="sh-list">${[
+      ['ba','Before and after','Video','One bar of what you recorded, then your song picks up at the next bar. Made for TikTok, Reels and Shorts.','<rect x="3" y="5" width="13" height="14" rx="2"/><path d="M16 10l5-3v10l-5-3"/><path d="M7 12h5M10 9.5l2.5 2.5-2.5 2.5"/>'],
+      ['video','Song video','Video','Your whole song, with your parts moving to the beat.','<rect x="3" y="5" width="13" height="14" rx="2"/><path d="M16 10l5-3v10l-5-3"/>'],
       ['audio','Audio','WAV','','<path d="M4 10v4M8 7v10M12 4v16M16 8v8M20 11v2"/>'],
-      ['video','Video','','A video of the song for TikTok, Reels or YouTube, with your parts moving to the beat.','<rect x="3" y="5" width="13" height="14" rx="2"/><path d="M16 10l5-3v10l-5-3"/>'],
       ['link','Link to remix','','Friends can listen, then add their own part in Noodle.','<path d="M10 14a4 4 0 005.7 0l3-3a4 4 0 00-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 00-5.7 0l-3 3a4 4 0 005.7 5.7l1-1"/>'],
       ['daw','DAW pack','Audio + MIDI','Every track as audio and MIDI, for Logic, Ableton or GarageBand.','<path d="M3 7h7l2 2h9v10H3z"/>']
     ].map(([k,n,tag,info,ico])=>`<div class="sh-row"><button class="nx-act sh-a" data-k="${k}"><svg class="nx-ico" viewBox="0 0 24 24">${ico}</svg><span>${n}${k==='daw'&&!isPro()?PRO_LOCK:''}</span>${tag?`<em>${tag}</em>`:''}</button>${info?s2Inf(info):'<span class="sh-pad" aria-hidden="true"></span>'}</div>`).join('')}</div>
@@ -309,7 +310,7 @@ function s2ShareSheet(){ if(!S.tracks.some(hasContent)){ toast('Record something
     if(k==='daw'&&!isPro()){ proSheet('The DAW pack (every track as audio and MIDI, ready for Logic, Ableton or GarageBand) is part of Noodle Pro.'); return; } S.loops=1; lock(true); $('s2ShGo').hidden=true;
     S.exportedAt=new Date().toISOString(); save(); try{ dropSync(true); }catch(e){}   /* exporting says: these notes are what I meant */
     if(k==='daw'){ st('Preparing your tracks…'); bar('ind'); await exportZip(); bar(null); st('Done. Look for the .zip in your downloads or the share sheet.'); lock(false); return; }
-    st(k==='video'?'Making your video…':'Making your audio…'); bar('ind'); shareFile=null; let total=0; const prog=sec=>{ const left=Math.ceil(sec); total=Math.max(total,left); if(total>1){ bar('pct',1-left/total); st('Making your video… about '+left+' s left'); } };
+    st(k!=='audio'?'Making your video…':'Making your audio…'); bar('ind'); shareFile=null; let total=0; const prog=sec=>{ const left=Math.ceil(sec); total=Math.max(total,left); if(total>1){ bar('pct',1-left/total); st('Making your video… about '+left+' s left'); } };
     await prepareShare(k,prog); bar(null); lock(false); if(!$('s2ShSt')) return;
     if(shareFile){ st(shareMsg); $('s2ShGo').hidden=false; $('s2ShNow').hidden=!shareCan; } else st('That didn’t work here. Try the other option.'); }; }
 /* Report a song that came from someone else's link (offensive, spam, someone else's work...): the takes service hides it on the first report, until the owner looks.
@@ -362,7 +363,7 @@ function s2DupClip(tr){ if(pLoops(tr)>1) return null; const len=pSteps(tr), mate
   if(tr._raw){ c._raw=tr._raw; storeVox(c); } S.tracks.push(c); if(S.bars<(at+len)/16) S.bars=Math.ceil((at+len)/16-1e-9); keyCache=null; save(); scheduleRender(); return c; }
 function s2DeleteClip(tr){ const mates=S.tracks.filter(o=>o!==tr&&s2LaneId(o)===s2LaneId(tr)); s2.selId=null;
   if(mates.length){ if(tr.lane==null) mates.forEach(o=>{ o.lane=mates[0].id; }); s2.recPrev=0; deletePart(tr); }
-  else { tr.blank=false; if(tr.notes) tr.notes=[]; if(tr.hits) tr.hits=[]; if(tr.fxs) tr.fxs=[]; delete tr.mfx; tr._mfxph=null; tr._an=null; tr._takes=null; if(tr._raw){ tr._raw=null; tr.va=null; takeStore.del('vox'+tr.id); } tr._dirty=true; keyCache=null; save(); renderTracks(); scheduleRender(); toast('Part deleted'); } }
+  else { tr.blank=false; if(tr.notes) tr.notes=[]; if(tr.hits) tr.hits=[]; if(tr.fxs) tr.fxs=[]; delete tr.mfx; tr._mfxph=null; tr._an=null; tr._takes=null; if(tr._raw){ tr._raw=null; tr.va=null; takeStore.del('vox'+tr.id); } if(tr.srcAlign!=null){ delete tr.srcAlign; delete tr.srcBpm; takeStore.del('src'+tr.id); } tr._dirty=true; keyCache=null; save(); renderTracks(); scheduleRender(); toast('Part deleted'); } }
 function s2MixSheet(L){ const tr=L.tracks[0], nm=nxEsc(s2Name(L));
   nxSheet(`<input class="s2-tn" id="s2Tn" maxlength="32" value="${nxEsc(tr.name||'')}" placeholder="${nxEsc(s2Auto(L))}" aria-label="Track name (tap to rename)"><p style="color:var(--muted);font-size:14px;margin:0 0 10px">Effects on the whole song. Tap an empty spot in this track to add one.</p><button class="nx-act danger" data-a="del">Delete track</button>`);
   $('s2Tn').onchange=e=>{ const v=e.target.value.trim().slice(0,32)||undefined; S.tracks.forEach(t=>{ if(s2LaneId(t)===L.id) t.name=v; }); save(); renderTracks(); };
