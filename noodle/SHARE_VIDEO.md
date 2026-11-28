@@ -12,14 +12,20 @@ round's decisions here and tick action items off. **agreed** = owner confirmed; 
   white flash on the cut. Caption **"To make this."** (agreed: the owner's wording, to be tuned; custom captions are an idea for later)
 - **After:** the song from that bar, the parts as lanes with a playhead, up to about 15 s in all (2–8 bars), ending on a bar line with the last
   notes ringing out. Near the song's end it carries on from bar 1. (agreed: start of the song)
-- **Fast songs:** when a bar is shorter than 2 s (above 120 BPM) the before is 2 bars, so there is time to hear it. (proposed)
-- **No mic recording** (drawn, Play Pad, typed parts): the before is that part on its own (the first tune part, else the first part), then the
-  whole song comes in. (proposed; owner asked 28 Nov what to do here)
+- **Fast songs:** when a bar is shorter than 2 s (above 120 BPM) the before is 2 bars, so there is time to hear it. (agreed for now; the owner
+  may move the threshold after testing)
+- **Which part comes first** (agreed 28 Nov): parts recorded with the mic first, hummed, then sung, then beatboxed (earliest first within
+  each). With no mic recording (drawn, Play Pad, typed): that part on its own, Lead, then Keys and other tune parts, then Bass, then drums,
+  then the whole song comes in. Every song can make the video.
+- **Choosing it** (agreed 28 Nov): Share → More settings (closed each time; only when there are 2+ choices) → **Starts with**, a list of the
+  song's mic parts ("Lead (hummed)", "Drum kit (beatboxed)"), or of its parts when nothing was recorded. Tapping one plays its bar. The choice
+  is kept with the song (`S.baPart`). Owner will compare hum vs beatbox before-videos on TestFlight to decide whether the default changes.
 - **Size:** 1080×1920 when the phone can encode it, else 720×1280. (agreed)
 - **Free vs Pro:** the video is free. Free videos carry a small see-through Noodle mark (top left, clear of the apps' buttons) and end on a
   1.5 s card ("Free on the App Store"); Pro has neither. No audio tag ever. (agreed 28 Nov; in `PRO.md` as proposed until confirmed there)
 - **Share sheet:** "Before and after" and "Song video" (the whole song, as before) are both rows. (agreed)
-- **Usage events:** `export` with `video ba <hum|beatbox|sing|part>` and the length in seconds; `export` `shared <kind>` when the share sheet
+- **Usage events:** `export` with `video ba <hum|beatbox|sing|part>` and the length in seconds; `export` `video ba pick <type>` when Starts
+  with is changed; `export` `shared <kind>` when the share sheet
   sends it somewhere (iPhone doesn't say where). No new event names, so no takes-service change. Privacy texts say kind and length.
 
 ## How it works (for sessions)
@@ -31,16 +37,17 @@ round's decisions here and tick action items off. **agreed** = owner confirmed; 
 
 ## Action items
 - [x] Step 1: before → after video, 1080×1920, watermark, 1.5 s end card, kept hum and beatbox recordings, events, test. (28 Nov)
+- [x] Step 1b: default order and More settings → Starts with. (28 Nov)
 - [ ] **Owner:** try it on TestFlight with a real hum, a beatbox and a drawn song; send notes (what feels off at the cut, the captions, length).
 - [ ] Step 2: polish rounds with the owner: the hum's pitch line turning into the notes at the cut, caption style and timing, loudness.
 - [ ] Step 3: better "before" pictures for parts with no recording: Play Pad presses, the drawn line being drawn.
 - [ ] Step 4: post straight to TikTok (Share Kit; needs a TikTok developer app, their review and Photos access) and Instagram Reels (Meta app
       ID, "Go Live"). Both free; setup is the owner's. A source tag on the end card's link to count installs.
-- [ ] Later: custom captions; templates; choose which part is the before; include `src` recordings in `.noodle` backups (owner to decide).
+- [ ] Later: custom captions; templates; include `src` recordings in `.noodle` backups (owner to decide).
 
 ## Open questions
-- Is 2 bars right for fast songs, or always exactly 1 bar?
-- For songs with no mic recording: is "that part alone, then the song" enough for now?
+- After TestFlight: hum or beatbox as the default before (the owner wants to hear both)? Does the 2-bar threshold for fast songs feel right?
+- Should "Starts with" offer all your recordings together (a voice-memo of everything, then the song)? Owner leaned to one part (28 Nov).
 
 ## Research notes (28 Nov)
 - The first 1.5–2 s decide whether people keep watching; showing the result early does well (vendor data, not platform data). Many views start

@@ -18,11 +18,16 @@ async function baSource(tr, depth=0){
   const o=tr.copyOf!=null&&depth<4&&S.tracks.find(t=>t.id===tr.copyOf); return o?baSource(o,depth+1):null; }   /* a copy plays the same recording */
 /* what kind of "before" a part gives: hummed, sang, beatboxed (from the mic), or just the part ("part": drawn, Play Pad, typed) */
 const baType=(tr,src)=>!src?'part':tr.inst==='vox'?'sing':INST[tr.inst].kind==='pitched'?'hum':'beatbox';
-/* the part the video starts with: the first part recorded with the mic; with none, the first tune (lead, keys...) part, else the first part */
-async function baPick(){
-  const ps=S.tracks.filter(t=>hasContent(t)&&!t.guide&&!t.mfx&&!t._pvTemp&&INST[t.inst].kind!=='mix'&&t.inst!=='fx').sort((a,b)=>(a.off||0)-(b.off||0));
-  for(const t of ps){ const src=await baSource(t); if(src) return {tr:t, src, type:baType(t,src)}; }
-  const tune=ps.find(t=>INST[t.inst].kind==='pitched'&&t.notes&&t.notes.length); const tr=tune||ps[0]; return tr?{tr, src:null, type:'part'}:null; }
+/* The parts the video can start with, best first (owner, 28 Nov). Parts recorded with the mic: hummed, then sung, then beatboxed, each the
+   earliest first. With none: Lead, then Keys and other tune parts, then Bass, then drums. More settings in Share picks another (S.baPart). */
+const BA_TYPE_RANK={hum:0, sing:1, beatbox:2}, BA_INST_RANK=t=>t.inst==='lead'?0:t.inst==='keys'?1:t.inst==='bass'?3:INST[t.inst].kind==='pitched'?2:4;
+async function baChoices(){
+  const ps=S.tracks.filter(t=>hasContent(t)&&!t.guide&&!t.mfx&&!t._pvTemp&&INST[t.inst].kind!=='mix'&&t.inst!=='fx'&&(t.inst==='vox'||(t.notes&&t.notes.length)||(t.hits&&t.hits.length)));
+  const mic=[]; for(const t of ps){ const src=await baSource(t); if(src) mic.push({tr:t, src, type:baType(t,src)}); }
+  if(mic.length) return mic.sort((a,b)=>BA_TYPE_RANK[a.type]-BA_TYPE_RANK[b.type]||(a.tr.off||0)-(b.tr.off||0));
+  return ps.filter(t=>t.inst!=='vox').map(t=>({tr:t, src:null, type:'part'})).sort((a,b)=>BA_INST_RANK(a.tr)-BA_INST_RANK(b.tr)||(a.tr.off||0)-(b.tr.off||0)); }
+async function baPick(){ const cs=await baChoices(); return cs.find(c=>c.tr.id===S.baPart)||cs[0]||null; }
+const baLabel=c=>partName(c.tr)+({hum:' (hummed)', sing:' (sung)', beatbox:' (beatboxed)'}[c.type]||'');
 const baRms=(d,a,b)=>{ let s=0, n=0; for(let i=Math.max(0,a);i<Math.min(d.length,b);i+=4){ s+=d[i]*d[i]; n++; } return n?Math.sqrt(s/n):0; };
 /* The audio: [bar B of the before part] then the song from bar B+1. A bar shorter than 2 s (fast songs) becomes 2 bars, so there's
    time to hear it. The before is turned up to sit just under the song, so the cut hits harder without jumping in volume. */
@@ -33,11 +38,7 @@ async function baMix(){
   const after=Math.max(2,Math.min(8,Math.floor((BA_MAX_S-nb*bar)/bar)));   /* about 15 s in all */
   const K=cutBar+after<=songBars?1:2;   /* near the song's end it carries on from bar 1 (a song made to loop) */
   const mix=await renderMix(K,false), barN=Math.round(bar*sr), beforeN=nb*barN, tailN=Math.round(0.8*sr), afterN=Math.min(after*barN+tailN, mix.length-cutBar*barN);
-  const out=new AudioBuffer({numberOfChannels:2, length:beforeN+afterN, sampleRate:sr});
-  let before=new Float32Array(beforeN);
-  if(src){ const rel=(B*16-(tr.off||0))*(60/src.bpm/4), x=biquad(src.x,'hp',80,0.707,src.sr);   /* light clean-up: no rumble. Played as recorded (never sped up), so a tempo changed later doesn't change your voice */
-    for(let i=0;i<beforeN;i++){ const p=(src.at+rel+i/sr)*src.sr, i0=Math.floor(p), fr=p-i0; before[i]=(x[i0]||0)*(1-fr)+(x[i0+1]||0)*fr; } }
-  else if(tr._buf){ const L=tr._buf.getChannelData(0), R=tr._buf.numberOfChannels>1?tr._buf.getChannelData(1):L, a=B*barN; for(let i=0;i<beforeN;i++){ const j=(a+i)%L.length; before[i]=0.5*((L[j]||0)+(R[j]||0)); } }
+  const out=new AudioBuffer({numberOfChannels:2, length:beforeN+afterN, sampleRate:sr}), before=baBefore(pick,beforeN,barN,B);
   const mL=mix.getChannelData(0), mR=mix.getChannelData(1), a0=cutBar*barN, ref=Math.max(baRms(mL,a0,a0+2*barN),baRms(mR,a0,a0+2*barN),1e-4), have=baRms(before,0,beforeN);
   let gain=have>1e-5?Math.min(24,0.8*ref/have):1; let pk=0; for(let i=0;i<beforeN;i++) pk=Math.max(pk,Math.abs(before[i]*gain)); if(pk>0.95) gain*=0.95/pk;
   const fadeN=Math.round(0.012*sr); for(let i=0;i<beforeN;i++) before[i]*=gain*(i>beforeN-fadeN?(beforeN-i)/fadeN:1);   /* no click at the cut */
@@ -46,6 +47,17 @@ async function baMix(){
   const f0=beforeN+after*barN; for(let i=f0;i<out.length;i++){ const k=Math.pow(Math.max(0,1-(i-f0)/tailN),2); oL[i]*=k; oR[i]*=k; }   /* ends on a bar line, the last notes ringing out */
   out._ba={cut:beforeN/sr, w0:cutBar*16, w1:(cutBar+after)*16, n16, type, partId:tr.id, before, beforeBars:nb, afterBars:after};
   return out; }
+/* the before as it sounds (not yet turned up): bar B of the part's recording, or of the part itself */
+function baBefore(pick,beforeN,barN,B){ const {tr,src}=pick, sr=ctx.sampleRate, before=new Float32Array(beforeN);
+  if(src){ const rel=(B*16-(tr.off||0))*(60/src.bpm/4), x=biquad(src.x,'hp',80,0.707,src.sr);   /* light clean-up: no rumble. Played as recorded (never sped up), so a tempo changed later doesn't change your voice */
+    for(let i=0;i<beforeN;i++){ const p=(src.at+rel+i/sr)*src.sr, i0=Math.floor(p), fr=p-i0; before[i]=(x[i0]||0)*(1-fr)+(x[i0+1]||0)*fr; } }
+  else if(tr._buf){ const L=tr._buf.getChannelData(0), R=tr._buf.numberOfChannels>1?tr._buf.getChannelData(1):L, a=B*barN; for(let i=0;i<beforeN;i++){ const j=(a+i)%L.length; before[i]=0.5*((L[j]||0)+(R[j]||0)); } }
+  return before; }
+/* More settings → Starts with: play a choice's before, turned up a little, so you can hear which is best */
+let baPrevSrc=null;
+async function baPreview(c){ try{ ensureCtx(); if(baPrevSrc){ try{ baPrevSrc.stop(); }catch(e){} baPrevSrc=null; } await renderDirty(); const sr=ctx.sampleRate, barN=Math.round(16*stepDur()*sr), nb=16*stepDur()<2?2:1;
+  const d=baBefore(c,nb*barN,barN,Math.floor((c.tr.off||0)/16)%Math.max(1,Math.round(steps()/16))); let pk=1e-4; for(let i=0;i<d.length;i++) pk=Math.max(pk,Math.abs(d[i])); const g=Math.min(12,0.8/pk);
+  const ab=ctx.createBuffer(1,d.length,sr), o=ab.getChannelData(0); for(let i=0;i<d.length;i++) o[i]=d[i]*g; const s0=ctx.createBufferSource(); s0.buffer=ab; s0.connect(ctx.destination); s0.start(); baPrevSrc=s0; }catch(e){} }
 /* the picture: the caption, the before as a waveform drawn while you hear it, a flash on the cut, then the song's parts as lanes */
 function baPainter(mix,px){
   const W=720,H=1280, {cv,g}=videoCanvas(px), A=mix._ba, beat=60/S.bpm, bar=4*beat;
