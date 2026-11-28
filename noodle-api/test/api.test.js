@@ -311,3 +311,9 @@ test('usage events: finish_song is counted; unknown names are still skipped', as
   const r = await (await call(env, 'POST', '/v1/events', JSON.stringify({ app: 'ios', build: 'b1', plan: 'free', id: 'x'.repeat(20), ev: [{ e: 'finish_song' }, { e: 'nope' }] }))).json();
   assert.equal(r.n, 1); assert.equal(pts[0].blobs[0], 'finish_song');
 });
+
+test('usage events: daw (Send to computer) is counted with its label', async () => {
+  const pts = [], env = { TAKES: bucket(), EVENTS: { writeDataPoint: (d) => pts.push(d) } };
+  const r = await (await call(env, 'POST', '/v1/events', JSON.stringify({ app: 'ios', build: 'b1', plan: 'free', id: 'x'.repeat(20), ev: [{ e: 'daw', p: 'delay ms', v: 4 }] }))).json();
+  assert.equal(r.n, 1); assert.equal(pts[0].blobs[1], 'delay ms'); assert.equal(pts[0].doubles[0], 4);
+});

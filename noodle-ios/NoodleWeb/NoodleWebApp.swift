@@ -13,6 +13,8 @@ import StoreKit
 import MediaPlayer
 import DeviceCheck
 import CoreHaptics
+import CoreMIDI
+import CoreAudioKit
 
 let liveURL = URL(string: "https://troyskinner3.github.io/arcade/noodle/")!
 let bundledURL = URL(string: "noodle://app/index.html")!
@@ -150,6 +152,7 @@ final class NativeBridge: NSObject, WKScriptMessageHandler {
     c.pauseCommand.addTarget { [weak self] _ in Task { @MainActor in self?.remote("pause") }; return .success }
     c.togglePlayPauseCommand.addTarget { [weak self] _ in Task { @MainActor in self?.remote("toggle") }; return .success }
     UIApplication.shared.beginReceivingRemoteControlEvents()
+    MidiOut.shared.onChange = { Task { @MainActor in NativeBridge.shared.midiState() } }   // a cable or Bluetooth connection came or went
   }
   private func remote(_ cmd: String) { web?.evaluateJavaScript("window.noodleRemote && window.noodleRemote('\(cmd)')") }
   /* Song links: https://<takes service>/s/<id> (universal link) or noodleapp://s/<id> (the listen page's button). Kept until the page says it is ready. */
@@ -160,6 +163,13 @@ final class NativeBridge: NSObject, WKScriptMessageHandler {
     pendingLink = nil
     let s = u.absoluteString.filter { $0.isLetter || $0.isNumber || "-_/:.?=#".contains($0) }   // only URL characters reach the page
     w.evaluateJavaScript("window.noodleOpenLink && window.noodleOpenLink('\(s)')")
+  }
+  /* tells the page what the phone is connected to and the recent touch-to-send delay; also whenever a connection comes or goes */
+  func midiState() {
+    let n = MidiOut.shared.names()
+    let (med, worst, count) = MidiOut.shared.delayStats()
+    let json = (try? JSONSerialization.data(withJSONObject: ["dests": n, "med": med, "worst": worst, "n": count])).flatMap { String(data: $0, encoding: .utf8) } ?? "{}"
+    web?.evaluateJavaScript("window.noodleMidi && window.noodleMidi(\(json))")
   }
   func userContentController(_ c: WKUserContentController, didReceive m: WKScriptMessage) {   // WebKit calls this on the main thread
     guard let d = m.body as? [String: Any], let type = d["type"] as? String else { return }
@@ -182,6 +192,22 @@ final class NativeBridge: NSObject, WKScriptMessageHandler {
                                  MPNowPlayingInfoPropertyElapsedPlaybackTime: (d["pos"] as? NSNumber)?.doubleValue ?? 0]
       if let dur = (d["dur"] as? NSNumber)?.doubleValue { info[MPMediaItemPropertyPlaybackDuration] = dur }
       MPNowPlayingInfoCenter.default().nowPlayingInfo = info
+    case "midi":   // Send to computer: one MIDI message from the pads; sentMs (the page's clock) and lateMs (since the finger landed) give the delay
+      MidiOut.shared.setUp()
+      if let b = d["b"] as? [NSNumber] { MidiOut.shared.send(b.map { UInt8(clamping: $0.intValue) }) }
+      if let sent = (d["sentMs"] as? NSNumber)?.doubleValue, sent > 0 {
+        MidiOut.shared.noteDelay(Date().timeIntervalSince1970 * 1000 - sent + ((d["lateMs"] as? NSNumber)?.doubleValue ?? 0))
+      }
+    case "midiState": MidiOut.shared.setUp(); midiState()
+    case "midiTest":
+      MidiOut.shared.setUp()
+      MidiOut.shared.test(bpm: (d["bpm"] as? NSNumber)?.doubleValue ?? 120, bars: (d["bars"] as? NSNumber)?.intValue ?? 4, note: UInt8(clamping: (d["note"] as? NSNumber)?.intValue ?? 60))
+    case "midiBluetooth":   // Apple's screen that lets a Mac find the phone over Bluetooth
+      MidiOut.shared.setUp()
+      guard let root = UIApplication.shared.connectedScenes.compactMap({ ($0 as? UIWindowScene)?.keyWindow }).first?.rootViewController else { return }
+      let nav = UINavigationController(rootViewController: CABTMIDILocalPeripheralViewController())
+      nav.topViewController?.navigationItem.rightBarButtonItem = UIBarButtonItem(systemItem: .done, primaryAction: UIAction { [weak nav, weak self] _ in nav?.dismiss(animated: true); self?.midiState() })
+      root.present(nav, animated: true)
     case "ready": pageReady = true; deliverLink()
     case "dctoken":   // Apple DeviceCheck token for an invite (proves a real iPhone running Noodle); nil where unsupported (Simulator)
       guard DCDevice.current.isSupported else { web?.evaluateJavaScript("window.noodleDeviceToken && window.noodleDeviceToken(null)"); return }
@@ -196,6 +222,73 @@ final class NativeBridge: NSObject, WKScriptMessageHandler {
         AppStore.requestReview(in: scene)   // StoreKit, iOS 16+
       }
     default: break
+    }
+  }
+}
+
+/* Send to computer (noodle/DAW.md): the pads' notes go out as MIDI to every MIDI destination the phone can see, so a DAW records them like
+   a keyboard. By cable to a Mac: Audio MIDI Setup → MIDI Studio → the iPhone → Enable (Apple's built-in iPhone-to-Mac MIDI, no driver).
+   By Bluetooth: the phone shows Apple's Bluetooth MIDI screen and the Mac connects in Audio MIDI Setup. Also a virtual source called
+   "Noodle" for apps on the phone. Thread-safe: the timing test sends from its own queue. */
+final class MidiOut: @unchecked Sendable {
+  static let shared = MidiOut()
+  private let lock = NSLock()
+  private var client = MIDIClientRef(), port = MIDIPortRef(), source = MIDIEndpointRef(), ready = false
+  private var dests: [(MIDIEndpointRef, String)] = []
+  var onChange: (@Sendable () -> Void)?
+  /* touch-to-send delay of recent notes (ms): how long from the finger landing to the note leaving the phone */
+  private var delays: [Double] = []
+  func setUp() {   // on the main thread only (the bridge); no lock is held while CoreMIDI works, as its notices can arrive at any time
+    lock.lock(); let done = ready; lock.unlock()
+    guard !done, client == 0 else { return }
+    var c = MIDIClientRef(), o = MIDIPortRef(), src = MIDIEndpointRef()
+    guard MIDIClientCreateWithBlock("Noodle" as CFString, &c, { [weak self] _ in self?.refresh(); self?.onChange?() }) == noErr else { return }
+    MIDIOutputPortCreate(c, "Noodle out" as CFString, &o)
+    MIDISourceCreateWithProtocol(c, "Noodle" as CFString, ._1_0, &src)
+    let ds = Self.scan()
+    lock.lock(); client = c; port = o; source = src; dests = ds; ready = true; lock.unlock()
+  }
+  private static func scan() -> [(MIDIEndpointRef, String)] {
+    (0..<MIDIGetNumberOfDestinations()).compactMap { i in
+      let d = MIDIGetDestination(i); guard d != 0 else { return nil }
+      var n: Unmanaged<CFString>?
+      MIDIObjectGetStringProperty(d, kMIDIPropertyDisplayName, &n)
+      return (d, (n?.takeRetainedValue() as String?) ?? "MIDI")
+    }
+  }
+  func refresh() { let d = Self.scan(); lock.lock(); dests = d; lock.unlock() }
+  func names() -> [String] { lock.lock(); defer { lock.unlock() }; return dests.map { $0.1 } }
+  /* one MIDI 1.0 message (2 or 3 bytes), sent now */
+  func send(_ b: [UInt8]) {
+    guard b.count >= 2, b[0] >= 0x80 else { return }
+    lock.lock(); let ok = ready, out = port, src = source, ds = dests.map { $0.0 }; lock.unlock()
+    guard ok else { return }
+    let status = UInt32(b[0]) << 16, d1 = UInt32(b[1] & 0x7f) << 8, d2 = UInt32(b.count > 2 ? b[2] & 0x7f : 0)
+    var word: UInt32 = 0x2000_0000 | status | d1 | d2   // a MIDI 1.0 channel message as one Universal MIDI Packet word (group 1)
+    var list = MIDIEventList()
+    withUnsafeMutablePointer(to: &list) { l in
+      let pkt = MIDIEventListInit(l, ._1_0)
+      _ = MIDIEventListAdd(l, MemoryLayout<MIDIEventList>.size, pkt, 0, 1, &word)
+      for d in ds { MIDISendEventList(out, d, l) }
+      MIDIReceivedEventList(src, l)
+    }
+  }
+  func noteDelay(_ ms: Double) { lock.lock(); delays.append(min(1000, max(0, ms))); if delays.count > 200 { delays.removeFirst(delays.count - 200) }; lock.unlock() }
+  /* median and worst of the recent delays (ms), and how many */
+  func delayStats() -> (Double, Double, Int) {
+    lock.lock(); let d = delays.sorted(); lock.unlock()
+    guard !d.isEmpty else { return (0, 0, 0) }
+    return (d[d.count / 2], d[d.count - 1], d.count)
+  }
+  /* timing test: 16ths at this tempo on one note, sent from a high-priority queue (the page isn't involved), so the recording in the DAW
+     shows how steady the connection itself is */
+  private let testQ = DispatchQueue(label: "noodle.midi.test", qos: .userInteractive)
+  func test(bpm: Double, bars: Int, note: UInt8) {
+    let step = 60 / max(40, min(240, bpm)) / 4, start = DispatchTime.now() + 0.5
+    for i in 0..<max(1, min(16, bars)) * 16 {
+      let t = start + step * Double(i)
+      testQ.asyncAfter(deadline: t) { [weak self] in self?.send([0x90, note, i % 4 == 0 ? 112 : 84]) }
+      testQ.asyncAfter(deadline: t + step * 0.5) { [weak self] in self?.send([0x80, note, 0]) }
     }
   }
 }

@@ -582,3 +582,8 @@ select.nx-txt{-webkit-appearance:none;appearance:none;height:40px;border-radius:
 .nx-act.sh-a .nx-ico{flex:none;width:20px;height:20px;opacity:.85}.nx-act.sh-a span{flex:1;text-align:left;font-weight:600}
 .nx-act.sh-a em{font-style:normal;font:500 13px var(--f-display);color:var(--muted)}
 .env-cv{display:block;width:100%;height:60px;margin:6px 0 4px;border:1px solid var(--s2-line,var(--line));border-radius:8px;background:var(--s2-bg,var(--bg))}
+/* Send to computer (DAW.md): under the pads, in the iPhone app */
+.ti-daw{padding:2px 16px 0}.ti-dawr{display:flex;align-items:center;justify-content:space-between;gap:12px}.ti-daw .nx-chk{padding:4px 0;font-size:15px}
+.ti-dawr .nx-chk{flex:1 1 auto;min-width:0}.ti-dawset{flex:none;width:auto;margin:0;padding:6px 16px;min-height:36px}
+.ti-daw .s2-i{display:inline-grid;width:18px;height:18px;margin-left:6px;border:1px solid currentColor;border-radius:50%;color:var(--s2-muted,var(--muted));font:italic 700 11px Georgia,serif}
+.daw-steps{margin:6px 0 14px;padding-left:22px;line-height:1.45}.daw-steps li{margin:4px 0}
