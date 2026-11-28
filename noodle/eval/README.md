@@ -1089,3 +1089,44 @@ the note editor's Today / Tap notes button flips one take between them. The fing
   privacy page and App Store privacy text updated (Product Interaction, already declared in PrivacyInfo.xcprivacy).
 - Tests: `daw_test.js` (new): browser shows no row; notes, chords, drums, Play pad messages; quiet vs Sound on the phone; all off on close;
   setup sheet; events with no names; off sends nothing.
+
+## Round 31, pads silent when first opened (owner, 28 Nov)
+- Owner: arming a track with the Play pad the first time, touching it made no sound; after one take it did. Cause: opening the pads while
+  the song plays stops it, and stopping shuts the output gate (to cut the reverb); only Play or a take opened it again. Same cause as the
+  silent note taps after Pause, already fixed on 27 Nov (`liveIn`, in the merge after the owner's current build), so no code change here.
+  Ruled out: a recorded instrument not loaded yet (it falls back to a plain tone, never silence).
+- Tests: `padsound_test.js` (new): Play pad (lead and bass), Note pads, Chord pads and Drum pads, each opened while the song plays and
+  touched, listening after the gate. Fails on the owner's current build (all five silent), passes now.
+
+## Round 31, the pads sound like the part they make (owner, 28 Nov)
+- Owner: what's played live on the pad and what the part plays in the timeline didn't sound the same. The live sound skipped the lane's
+  volume, pan, reverb, effects and envelope, had its own loudness (fixed 0.55 / 0.7 / 0.5) and brightness (0.5 or 0.75 plus an extra
+  filter on the Play pad), chords were always triads (the lane's chord type ignored), guitars didn't strum, glides didn't slide, and a
+  lifted finger cut the sound in 60 ms. Now `padVoice` / `padBus` make it as `renderStem` does; mono sounds (drums, recordings) are made
+  stereo before the pan, as a rendered part is (they were 3 dB quieter live). The pad screen loads a recorded instrument first (1.5 s at
+  most; it fell back to a plain tone until loaded). A new part (pads or Mic) now keeps the lane's pan and effects too (it kept volume,
+  reverb, brightness and envelope but not those). Decisions and the open question (brightness sweep while holding) in `PADS.md`.
+- Tests: `padmatch_test.js` (new): Note pads (Saw), Play pad (Glide lead), Chord pads (Acoustic guitar, 7th chords) and Drum pads, each
+  with a lane volume, envelope and drive, live vs rendered within 1 dB, loudness in 20 ms steps within 1 dB on average, brightness within
+  10%. `tapin_test` waits for the pad screen (it now loads the instrument first).
+
+## Round 31, the Play pad sweep is recorded (owner, 28 Nov)
+- Owner: keep the sweep (up and down while holding a note), it's the core of the Play pad, and record every setting a finger moves on any
+  pad, now and in future pad styles. Built as a general mechanism: `MODS` (instruments.js) names each setting's node, mapping, speed and
+  MIDI controller; the pad plays it live (`padBus`, `padMod`) and records it (`T.mod`, kept as `tr.mods`); `renderStem` plays it back
+  through the same node (repeats start the curve again); trims and splits move it (`modsCut`, `modsShift`); MIDI export writes CC 74;
+  `modPts` checks curves from song files. Brightness: a low-pass, 400 Hz to 9.4 kHz (the sweep the pad had before 28 Nov).
+- Usage: a kept pad take sends `take` with `<instrument> <pad>` and the count of notes, or of sweep points for the Play pad (an event
+  that already exists; no takes-service change). Privacy page: "how it was recorded (the mic or a pad), how many notes or pad moves".
+- Tests: `sweep_test.js` (new): a held note swept dark to bright is one note with a rising curve; the part gets brighter over the note
+  (and doesn't without the curve); a trim keeps the curve from its value at the cut; MIDI export has CC 74; a hostile curve is ignored.
+
+## Round 31, sound late after switching apps (owner, 28 Nov)
+- Owner (on the build before 27 Nov): after switching apps, touching the Play pad sounded nearly a second late until the pad was closed
+  and opened again. The audio restarts when its delay has grown (26 Nov), but the check ran only while nothing played, and the pad's take
+  plays on a loop. Now it runs every 2 s and on coming back, playing or not, on every screen: playback carries on from about the same
+  spot (the song, or the pad's take), the pad's own sound is rebuilt on the next touch. Never during a recording (mic take, pad count-in
+  or take, a video being made: `audioBusy`).
+- Tests: `lagfix_test.js` (new, run alone): a grown delay is faked; the audio restarts while stopped, while playing (playback resumes,
+  within 1.5 s of where it was), on the pad screen ready (the next touch sounds) and while its take plays (it plays again); not during a
+  pad take or a video.

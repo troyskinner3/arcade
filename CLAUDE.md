@@ -6,6 +6,7 @@
   chat, so the owner and every Claude session can pick it up. A feature's plan, decisions (agreed / proposed), action items (owner's marked
   **Owner**) and open questions live in its own doc (e.g. `noodle/SHARE_VIDEO.md`, `noodle/DAW.md`); a new topic gets a new doc. Also update
   PRO.md, ROADMAP.md, GROWTH.md and the eval log (`noodle/eval/README.md`, every round of code changes) where they apply.
+- **Questions to the owner go in a numbered list** (owner's rule, 28 Nov), one question per number, so the owner can answer by number.
 - **UI, UX and copy:** follow `noodle/STYLE.md` (the owner's rules: name things plainly with ⓘ for explanations, buttons look like
   buttons, outlined dropdowns, progressive disclosure, no AI-sounding copy or look). Add new rules from reviews there.
 - **Free vs Pro:** `noodle/PRO.md` is the list of what is free and what Noodle Pro unlocks. Every time a feature is added or changed, add it

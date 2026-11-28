@@ -67,6 +67,8 @@ Status: **confirmed** (owner agreed) or **proposed** (waiting on the owner).
 | Chord pads (Record on a keys, pad or arp track): six pads with the key's chords, tapped along with the song into a chord part. Suggest Free | proposed |
 | Note pads (Record on an instrument track): a pad per note of the key, tapped along with the song into a melody; Add more for a second line. Suggest Free | proposed |
 | Play pad (Record on a lead or bass track): the default pad (two octaves, snapped to the key, up = brighter), recorded with each note's brightness. Free | confirmed (owner, 25 Nov) |
+| Play pad sweep (up and down while holding a note changes Brightness; recorded and played back as played, in MIDI export as CC 74). Part of the default pad, so free | confirmed free (owner, 28 Nov) |
+| Editing pad curves (automation) directly in the timeline or note editor: draw and change the brightness sweep and later pad settings. Not built yet | confirmed Pro (owner, 28 Nov) |
 | Play pad settings (range, snap off, arpeggio mode, anything beyond the default pad): Pro, like Mix effects (two free, the rest Pro). Not built yet | confirmed Pro (owner, 25 Nov) |
 | Draw chords: in Draw, a line above or below notes adds a second voice (over a line redoes it). Suggest Free | proposed |
 | Note editor: scroll through every octave, Octave − / + for selected notes, drag a note's front edge, same-pitch overlap rule. Suggest Free (basic editing) | proposed |

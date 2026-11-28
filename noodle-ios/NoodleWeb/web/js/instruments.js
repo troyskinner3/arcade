@@ -328,6 +328,10 @@ async function renderStem(tr){
   ENV_OVR=INST[tr.inst].kind==='pitched'?(tr.adsr||null):null;
   const SC=scOn(tr), FULL=fullSong(tr), SP=spotRanges(), keep=x=>!SP.length||!inSpot(x,SP);
   const NL=(!tr.notes?[]:FULL?songEvents(tr,tr.notes):inWin(tr.notes,PN)).filter(x=>keep(x.s)).map(x=>SP.length?spotClip(x,SP):x);
+  if(d.kind==='pitched') for(const k of Object.keys(MODS)){ const P=modPts(tr,k); if(!P) continue; const M=MODS[k], node=M.make(oc);   /* the part's pad curves, between its sound and its effects */
+    const ev=(FULL?songEvents(tr,P.map(([s,v,j])=>({s,v,j}))):inWin(P.map(([s,v,j])=>({s,v,j})),PN)); let rp=-1;
+    const at=ev.map(e=>{ const j=e.j||(e.r??0)!==rp; rp=e.r??0; return {t:e.s*stepDur(),v:e.v,j}; });   /* each time the part repeats, the curve starts again from its first value */
+    out.disconnect(); out.connect(node); node.connect(sink); modApply(M,M.param(node),at); }
   VOICE_INST=tr.inst; if(tr.sound==='Your voice' && !S.yv) yvCapture();   /* Your voice: made from a take the first time it's needed */
   /* each note or hit is made just before it plays (the render pauses every 2 s to add the next ones): sounds that haven't started would
      otherwise be worked through for the whole song, so a long part took notes x length (a 72 s pad: 45 s). Same sound either way. */
@@ -361,6 +365,18 @@ async function renderStem(tr){
    has played yet, so starting at bar 1 began mid-release: a sudden short pluck (owner, 27 Nov). b._cut is that fold, negated, played once from
    the start alongside the loop (startSrc) and added to exports, so the first pass is clean and every later pass keeps the ring-over.
    Used for every part: notes and beats (renderStem), vocal takes (renderVox), sound effects (renderFx). */
+/* Pad movement kept as curves (owner, 28 Nov: the Play pad's sweep is the fun of it, and every setting a finger moves on a pad, now and in
+   future pad styles, is recorded and plays back as played). tr.mods = {key: [[step, value 0..1, jump?], ...]}, steps from the part's
+   start (like notes). Each key is one setting: the same node and the same mapping make it live on the pad (padBus) and in the part
+   (renderStem), so what you hear while playing is what plays back. A new pad setting = a new entry here, recorded the same way. */
+const MODS={
+  tn:{label:'Brightness', make:c=>{ const f=c.createBiquadFilter(); f.type='lowpass'; f.Q.value=0.7; f.frequency.value=MODS.tn.map(0.5); return f; }, param:n=>n.frequency, map:v=>400+v*v*9000, tau:0.02, cc:74} };   /* cc: the MIDI controller it is in MIDI export */
+/* a part's curve for one setting, checked (song files can come from anywhere): numbers only, values 0..1, in time order, at most 20000 */
+function modPts(tr,k){ const m=tr&&tr.mods, a=m&&typeof m==='object'&&Object.prototype.hasOwnProperty.call(m,k)?m[k]:null; if(!Array.isArray(a)) return null; const o=[];
+  for(const p of a.slice(0,20000)) if(Array.isArray(p)&&Number.isFinite(p[0])&&Number.isFinite(p[1])) o.push([p[0],Math.min(1,Math.max(0,p[1])),p[2]?1:0]);
+  o.sort((x,y)=>x[0]-y[0]); return o.length?o:null; }
+/* moves a value along a curve's points (times in seconds); a finger landing (jump) sets it at once, a moving finger glides to it */
+function modApply(M,param,pts){ if(!pts.length) return; param.setValueAtTime(M.map(pts[0].v),0); for(const q of pts){ const t=Math.max(0,q.t); if(q.j) param.setValueAtTime(M.map(q.v),t); else param.setTargetAtTime(M.map(q.v),t,M.tau); } }
 function foldTail(b,r,n){ const sr=b.sampleRate, tl=r.length-n, C=tl>0?ctx.createBuffer(2,tl,sr):null; let any=false;
   for(let ch=0;ch<2;ch++){ const src=r.getChannelData(Math.min(ch,r.numberOfChannels-1)), dst=b.getChannelData(ch), c=C&&C.getChannelData(ch);
     for(let i=0;i<src.length;i++){ const x=src[i]; dst[i%n]+=x; if(i<n||!x) continue; any=true; for(let t=i%n;t<i&&t<tl;t+=n) c[t]-=x; } }

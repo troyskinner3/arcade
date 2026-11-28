@@ -22,7 +22,7 @@ if(IOS) ['touchend','click'].forEach(ev=>document.addEventListener(ev,()=>{ if(t
    chain and every track's connections, then carry on playing. */
 let audioWatchT=0;
 let audioWatchN=0;
-function audioWatch(){ if(audioWatchT) return; audioWatchT=setInterval(()=>{ if(!ctx||!chain) return; if(!playing&&(++audioWatchN%5===0)) audioLagCheck(); if(playing&&ctx.state!=='running'&&ctx.state!=='closed'){ try{ ctx.resume(); }catch(e){} }
+function audioWatch(){ if(audioWatchT) return; audioWatchT=setInterval(()=>{ if(!ctx||!chain) return; if(++audioWatchN%2===0) audioLagCheck(); if(playing&&ctx.state!=='running'&&ctx.state!=='closed'){ try{ ctx.resume(); }catch(e){} }
   if(!playing||!chain.mon) return; const a=new Float32Array(chain.mon.fftSize); chain.mon.getFloatTimeDomainData(a); if(a.every(Number.isFinite)) return; audioHeal(); },1000); }
 function audioHeal(){ const was=playing, at=was&&ctx?((ctx.currentTime-t0)%loopLen()+loopLen())%loopLen():playFrom; try{ if(playing){ stopAll(); playing=false; } }catch(e){} try{ mfxStop(); }catch(e){}
   try{ (chain.parts||[]).forEach(n=>{ try{ n.disconnect(); }catch(_){} }); }catch(e){}
@@ -32,13 +32,20 @@ function audioHeal(){ const was=playing, at=was&&ctx?((ctx.currentTime-t0)%loopL
    context fixed it). While nothing plays, the delay the phone reports is compared with what this context started with; if it has clearly grown,
    a new context replaces it (the song is kept; its sound is rebuilt). Checked on coming back to the app and every few seconds while stopped. */
 let audioRestarts=0;
-function audioLagCheck(){ if(!ctx||playing||recState||ctx.state!=='running'||document.hidden) return; const d=outDelay();
+/* 28 Nov (owner): on the Play pad the sound came nearly a second after the touch after switching apps, until the pad was closed: the check
+   only ran while nothing played, and the pad's take plays on a loop. It now runs every 2 s and on coming back, playing or not, on every
+   screen; playback (the song, a pad's take) carries on from the same spot. Never while something is being recorded (a take, a pad take,
+   a video). */
+let audioBusy=0;   /* a video is being recorded from the live sound */
+function audioLagCheck(){ if(!ctx||recState||audioBusy||ctx.state!=='running'||document.hidden) return; if(tapIn&&(tapIn.state==='count'||tapIn.state==='take')) return; const d=outDelay();
   if(ctx._base==null){ if(ctx.currentTime>1.5) ctx._base=d; return; }
   if(d>Math.max(0.12,ctx._base+0.08)) audioRestart(); }
-function audioRestart(){ const old=ctx; try{ stopAll(); }catch(e){} playing=false; try{ mfxStop(); }catch(e){}
+function audioRestart(){ const old=ctx, T=tapIn, padWas=!!(T&&T.playing), was=playing&&!padWas, L0=loopLen(), at=was?(((ctx.currentTime-t0)%L0)+L0)%L0:playFrom; try{ stopAll(); }catch(e){} playing=false; try{ mfxStop(); }catch(e){}
   S.tracks.forEach(t=>{ try{ disposeTrack(t); }catch(e){} t._g=null; t._p=null; t._snd=null; t._src=null; t._dirty=true; });
   metroGain=null; metroSrc=null; metroBuf=null; metroDirty=true; renderedLen=0; ctx=null; chain=null; audioRestarts++;
-  try{ old.close(); }catch(e){} ctxMake(); try{ applyAllMix(); }catch(e){} scheduleRender(); }
+  try{ old.close(); }catch(e){} ctxMake(); try{ applyAllMix(); }catch(e){} scheduleRender();
+  if(T){ T.bus=null; T.playing=false; if(T.xy){ T.xy.rel=null; T.xy.cur=null; T.xy.down=false; } if(padWas) tapPlay(); }   /* the pad's sound is rebuilt on the next touch (padBus) */
+  else if(was){ playFrom=at; togglePlay(); } }
 document.addEventListener('visibilitychange',()=>{ if(!document.hidden) setTimeout(audioLagCheck,800); });
 /* the one place the audio context is made (ensureCtx, and the warm-up at start): master chain, the Bitcrusher's worklet, the watchdog */
 function ctxMake(){ const AC=window.AudioContext||window.webkitAudioContext; ctx=new AC({latencyHint:'interactive'});

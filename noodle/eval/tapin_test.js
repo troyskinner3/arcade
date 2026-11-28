@@ -16,7 +16,7 @@ const {chromium,devices}=require('playwright');
     // the question, once
     const keys=add('keys'); s2.armId=keys.id; s2Record(); await w(200); out.ask=[...document.querySelectorAll('#nxSheet [data-rin]')].map(x=>x.textContent).join('|');
     const vox=add('vox'); out.voxWays=recWays('vox').length; out.kitWays=recWays('kit').join(','); out.bassWays=recWays('bass').join(',');
-    document.querySelector('#nxSheet [data-rin="chords"]').click(); await w(400); out.remembered=keys.rin; out.padsOpen=!$('tapIn').hidden;
+    document.querySelector('#nxSheet [data-rin="chords"]').click(); for(let i=0;i<40&&!($('tapIn')&&!$('tapIn').hidden);i++) await w(100); await w(200); out.remembered=keys.rin; out.padsOpen=!$('tapIn').hidden;
     out.padsC=[...document.querySelectorAll('#tapIn .ti-pad')].map(x=>x.textContent).join(' '); out.title=document.querySelector('#tapIn .s2-edt b').textContent;
     // a chord take, stopped in bar 3
     const u0=hist.undo.length; tapRec(); await until(()=>tapIn.start);
