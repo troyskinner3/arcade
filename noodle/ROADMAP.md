@@ -177,6 +177,11 @@ Draft copy is in `noodle-ios/APP_STORE_LISTING.md`.
 - [x] Buzz timing range ±300 ms; default +50 ms (owner, 27 Nov: right on the build with the delay fix).
 - [x] A short pluck at bar 1 when the song's last note rings past the end (first pass now clean; exports too).
 - [x] No sound from tapping notes or keys after Pause (fixed).
+- [x] Pads silent when opened while the song plays (owner, 28 Nov: the Play pad the first time); same fix, `padsound_test` checks every pad.
+- [x] Pads sound the same live as the part they make (owner, 28 Nov; see `PADS.md`).
+- [x] Play pad sweep kept as a curve and played back (owner, 28 Nov); the rule for every future pad setting is in `PADS.md`.
+- [x] Sound late after switching apps on the pad screen or while playing: the delay check now runs everywhere (owner, 28 Nov).
+- [ ] Edit pad curves (automation) in the timeline or note editor, Pro only (owner, 28 Nov; `PADS.md`). Not started.
 - [x] Livelier rhythms (syncopation, pushes, genre grooves) in everything Noodle writes (round 29: GROOVES; chorus comping and bass syncopated, bass can lock to the kick).
 - [x] Finish song: the song's real length, its sections (marked or worked out), each filled for its role; no filling empty bars (round 29).
 - [x] Modern-genre data: Chordonomicon (MIT), McGill Billboard (CC0), Groove MIDI (CC BY 4.0), approved by the owner 26 Nov; genre.json; credited in More → Credits.

@@ -41,9 +41,15 @@ function s2DrawLane(lane,cv){ const W=cv.clientWidth, H=cv.clientHeight; if(!W||
     else { const raw=tr._raw; const N=Math.max(8,Math.floor(iw/3)); for(let i=0;i<N;i++){ let a=0.25; if(raw&&raw.x){ const a0=(tr.va||0)*raw.sr, span=ps*stepDur()*raw.sr, i0=Math.floor(a0+i/N*span), i1=Math.min(raw.x.length,Math.floor(a0+(i+1)/N*span)); let m=0; for(let j=i0;j<i1;j+=16) m=Math.max(m,Math.abs(raw.x[j])); a=Math.min(1,m*2.2); } const bh=Math.max(2,a*(h-2*pad)); g.fillRect(ix+i*(iw/N), top+h/2-bh/2, 1.6, bh); } } } }
   g.globalAlpha=1; }
 /* A new take replaces whatever it overlaps in its lane: covered parts go, partly covered parts are cut back, and a part it lands inside is split in two. */
+/* a part's pad curves (tr.mods, MODS) move and cut with its notes: kept steps [from,to) start at 0, the value at the cut carried over */
+function modsCut(tr,from,to){ if(!tr.mods) return; for(const k of Object.keys(MODS)){ const P=modPts(tr,k); if(!P){ continue; } let before=null; const o=[];
+    for(const q of P){ if(q[0]<from) before=q; else if(q[0]<to) o.push([+(q[0]-from).toFixed(3),q[1],q[2]]); }
+    if(before&&!(o.length&&o[0][0]===0)) o.unshift([0,before[1],1]); if(o.length) tr.mods[k]=o; else delete tr.mods[k]; } }
+function modsShift(tr,k){ if(!tr.mods) return; for(const m of Object.keys(MODS)){ const P=modPts(tr,m); if(P) tr.mods[m]=P.map(q=>[+(q[0]+k).toFixed(3),q[1],q[2]]); } }
 function s2Cut(tr, from, to){   /* keep steps [from,to) of a part (in its own steps), as a part starting at its old start + from */
   const fix=e=>{ const s0=e.s, e0=e.s+(e.l||1); if(e0<=from||s0>=to) return null; const o={...e, s:Math.max(s0,from)-from}; if(e.l!=null) o.l=Math.min(e0,to)-Math.max(s0,from); return o; };
   if(tr.notes) tr.notes=tr.notes.map(fix).filter(Boolean); if(tr.hits) tr.hits=tr.hits.map(fix).filter(Boolean); if(tr.fxs) tr.fxs=tr.fxs.map(fix).filter(Boolean);
+  modsCut(tr,from,to);
   if(tr.inst==='vox'){ tr.va=+((tr.va||0)+from*stepDur()).toFixed(4); if(tr.vn) tr.vn=tr.vn.map(v=>({...v,t:v.t-from*stepDur()})).filter(v=>v.t>=0&&v.t<(to-from)*stepDur()); tr._tuned=null; tr._pitch=null; }
   tr.cutAt=Date.now();   /* its notes were cut by a later take or a trim, not corrected */
   tr.off=(tr.off||0)+from; tr.len=Math.max(1/16,(to-from)/16); tr.lenSet=true; tr.rep=false; tr._an=null; tr._takes=null; tr._versions=null; tr._dirty=true; if(tr.expr) tr.expr=0; }
@@ -192,7 +198,7 @@ function s2Record(){ ensureCtx(); s2.selId=null; if(recState){ const r=recState;
   if(first.inst==='kit' && kitOfferDue()){ kitOffer(); return; }
   { const P=clamp(Math.floor(s2.cur+1e-6),0,63);
     tr=L.tracks.find(t=>!hasContent(t));
-    if(!tr){ tr=mkTrack(first.inst,{id:S.nextId++, lane:L.id, sound:first.sound, vol:first.vol, mute:first.mute, solo:first.solo, send:first.send, tone:first.tone, oct:first.oct, sens:first.sens}); if(first.adsr) tr.adsr=first.adsr; if(first.fx) tr.fx=Object.assign({},first.fx); S.tracks.push(tr); }
+    if(!tr){ tr=mkTrack(first.inst,{id:S.nextId++, lane:L.id, sound:first.sound, vol:first.vol, mute:first.mute, solo:first.solo, send:first.send, pan:first.pan||0, tone:first.tone, oct:first.oct, sens:first.sens, ...(first.tfx?{tfx:Object.assign({},first.tfx)}:{})}); if(first.adsr) tr.adsr=first.adsr;   /* a new part keeps the lane's settings, pan and effects too */ if(first.fx) tr.fx=Object.assign({},first.fx); S.tracks.push(tr); }
     s2.preRec=s2.cur; s2.recPrev=S.bars; s2.recLen=Math.min(S2_MAX,64-P);   /* where the playhead was: Discard puts it back */ tr.off=P*16; tr.rep=false; tr.len=s2.recLen; tr.lenSet=true; if(S.bars<P+tr.len){ S.bars=P+tr.len; } save(); }
   s2.recId=tr.id; s2.post=true; S.activeId=tr.id; recordInto(tr.id); }
 /* An FX part's events: change what each one is, how long it lasts, or remove it */
@@ -340,7 +346,7 @@ function emptyLen(L, e){ const room=Math.min(64*16,...L.tracks.filter(t=>hasCont
 function newPartLen(L, at){ const next=Math.min(64*16,...L.tracks.filter(t=>hasContent(t)&&(t.off||0)>at).map(t=>t.off||0)); return Math.max(1,Math.min(L.tracks[0].inst==='mix'?64:16,next-at)); }
 function s2NewPart(){ const e=s2.empty; if(!e) return; const L=s2Lane(e.lane); s2.empty=null; if(!L) return; const first=L.tracks[0], len=emptyLen(L,e);
   let tr=L.tracks.find(t=>!hasContent(t));
-  if(!tr){ tr=mkTrack(first.inst,{id:S.nextId++, lane:L.id, sound:first.sound, vol:first.vol, mute:first.mute, solo:first.solo, send:first.send, tone:first.tone, oct:first.oct, sens:first.sens}); if(first.adsr) tr.adsr=first.adsr; if(first.chordType) tr.chordType=first.chordType; S.tracks.push(tr); }
+  if(!tr){ tr=mkTrack(first.inst,{id:S.nextId++, lane:L.id, sound:first.sound, vol:first.vol, mute:first.mute, solo:first.solo, send:first.send, pan:first.pan||0, tone:first.tone, oct:first.oct, sens:first.sens, ...(first.tfx?{tfx:Object.assign({},first.tfx)}:{})}); if(first.adsr) tr.adsr=first.adsr;   /* a new part keeps the lane's settings, pan and effects too */ if(first.chordType) tr.chordType=first.chordType; S.tracks.push(tr); }
   tr.off=e.at; tr.len=len/16; tr.lenSet=true; tr.rep=false; tr.blank=true; if(tr.notes) tr.notes=[]; if(tr.hits) tr.hits=[]; if(tr.fxs) tr.fxs=[]; tr._dirty=true;
   if(tr.inst==='mix'){ const last=L.tracks.filter(t=>t.mfx&&t!==tr).pop(); tr.mfx={k:last&&(isPro()||MFX[last.mfx.k].free)?last.mfx.k:'lp', curve:null, params:{}}; tr.blank=false; }   /* the lane's last effect, else Low pass */
   const end=Math.ceil((e.at+len)/16-1e-9); if(S.bars<end) S.bars=Math.min(64,end); S.activeId=tr.id; s2.selId=tr.id; save(); renderTracks(); scheduleRender();
@@ -359,7 +365,7 @@ function s2ResizeClip(tr, ds, de){ if(pLoops(tr)>1 || (!ds&&!de)) return false; 
   if(b-a<Math.round(16*Math.min(1,snapBars())) || a<0 || b>64*16) return false; if(S.tracks.some(t=>t!==tr&&s2LaneId(t)===s2LaneId(tr)&&hasContent(t)&&(t.off||0)<b&&(t.off||0)+pSteps(t)*pLoops(t)>a)) return false;
   if(tr.inst!=='vox' && !tr.mfx){ const lo=Math.max(0,16*ds), hi=n+Math.min(0,16*de); if(![...(tr.notes||[]),...(tr.hits||[]),...(tr.fxs||[])].some(x=>x.s<hi&&x.s+(x.l||1)>lo)) return false; }   /* a trim never leaves a part with nothing in it */
   tr.len=pBars(tr); tr.lenSet=true; tr.rep=false; if(S.bars<b/16) S.bars=Math.ceil(b/16-1e-9);
-  if(ds){ const k=-ds*16;   /* the window's start moves by -k steps: the content shifts by +k so it stays where it was in the song (nothing is removed) */ if(tr.notes) tr.notes.forEach(x=>{ x.s+=k; }); if(tr.hits) tr.hits.forEach(x=>{ x.s+=k; }); if(tr.fxs) tr.fxs.forEach(x=>{ x.s+=k; }); if(tr.inst==='vox'){ tr.va=+((tr.va||0)-k*stepDur()).toFixed(4); if(tr.vn) tr.vn.forEach(v=>{ v.t+=k*stepDur(); }); tr._tuned=null; tr._pitch=null; } tr.off=off-k; tr.len+=-ds; }
+  if(ds){ const k=-ds*16;   /* the window's start moves by -k steps: the content shifts by +k so it stays where it was in the song (nothing is removed) */ if(tr.notes) tr.notes.forEach(x=>{ x.s+=k; }); if(tr.hits) tr.hits.forEach(x=>{ x.s+=k; }); if(tr.fxs) tr.fxs.forEach(x=>{ x.s+=k; }); modsShift(tr,k); if(tr.inst==='vox'){ tr.va=+((tr.va||0)-k*stepDur()).toFixed(4); if(tr.vn) tr.vn.forEach(v=>{ v.t+=k*stepDur(); }); tr._tuned=null; tr._pitch=null; } tr.off=off-k; tr.len+=-ds; }
   tr.len+=de;   /* the window's end: whatever is past it stays, unheard, until you extend again */
   tr._an=null; tr._takes=null; tr._dirty=true;
   if(S.tracks.filter(hasContent).every(t=>t.off!=null&&t.len)) S.bars=Math.ceil(Math.max(1,...S.tracks.filter(hasContent).map(t=>t.off/16+t.len))-1e-9);

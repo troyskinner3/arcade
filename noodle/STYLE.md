@@ -104,6 +104,7 @@ The owner's rules, gathered from reviews. Read this before any UI or copy change
 - **Outlined buttons stay outlined everywhere**, in the Studio and in sheets ("Start from a beat", "Tap the beat").
 - **Feedback:** a light haptic for placing things, medium for record start and stop.
 - **Big targets while recording:** anything you touch while singing (the tap pad) is huge and easy to hit without looking.
+- What you play live (pads, tapped notes) sounds exactly like what plays back afterwards: same sound, level, effects and settings (owner, 28 Nov).
 
 ## Process
 - Before and after screenshots of every changed screen.

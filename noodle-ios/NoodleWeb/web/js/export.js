@@ -29,6 +29,8 @@ function midiBytes(list){
       if(pitched && tr.inst==='arp') songEvents(tr,arpEvents(tr)).filter(keepM).map(e=>SP.length?spotClip(e,SP,'x'):e).forEach(e=>{ const t=base+Math.round(e.x*tick16)+sw(Math.floor(e.x)), p=clamp(e.p+12*tr.oct,0,127); ev.push({t,o:1,b:[0x90|ch,p,Math.round(e.v*120)]},{t:t+Math.max(2,Math.round(e.l*tick16)),o:0,b:[0x80|ch,p,0]}); });
       else if(pitched){ const NE=songEvents(tr,tr.notes).filter(keepM).map(e=>SP.length?spotClip(e,SP):e), joined=new Set(TAP_MONO.has(tr.inst)?NE.filter(e=>e.lg).map(e=>e.s):[]);   /* joined notes overlap a little, so a DAW's mono legato ties them */
         NE.forEach(nt=>{ const t=base+nt.s*tick16+sw(nt.s), end=joined.has(nt.s+nt.l)?t+nt.l*tick16+Math.round(tick16/4):t+nt.l*tick16-2; notePitches(tr,nt).forEach(pp=>{ const p=clamp(pp+12*tr.oct,0,127); ev.push({t,o:1,b:[0x90|ch,p,Math.round(nt.v*120)]},{t:end,o:0,b:[0x80|ch,p,0]}); }); }); }
+      if(pitched) for(const k of Object.keys(MODS)){ const P=modPts(tr,k), cc=MODS[k].cc; if(!P||cc==null) continue;   /* the pad's sweep as a MIDI controller (Brightness: CC 74, as Send to computer sends it live) */
+        let lastV=-1; songEvents(tr,P.map(([s,v])=>({s,v}))).forEach(e=>{ const v=Math.round(e.v*127); if(v===lastV) return; lastV=v; ev.push({t:base+Math.round(e.s*tick16),o:0,b:[0xB0|ch,cc,v]}); }); }
       else withFills(tr,songEvents(tr,tr.hits)).filter(keepM).forEach(h=>{ const t=base+h.s*tick16+sw(h.s); ev.push({t,o:1,b:[0x99,drumNote(h.d),Math.round(h.v*120)]},{t:t+12,o:0,b:[0x89,drumNote(h.d),0]}); }); }
     tracks.push(trk(ev)); });
   const head=[0x4d,0x54,0x68,0x64,0,0,0,6,0,1,0,tracks.length,0,PPQ];
@@ -212,7 +214,8 @@ function videoPainter(mix,px){
   };
   return {cv,draw,W:cv.width,H:cv.height};
 }
-async function recordVideoRT(mix, onProgress, painter=videoPainter){
+async function recordVideoRT(mix, onProgress, painter=videoPainter){ audioBusy++; try{ return await recordVideoRT1(mix,onProgress,painter); } finally{ audioBusy--; } }
+async function recordVideoRT1(mix, onProgress, painter){
   const mime=['video/mp4;codecs=avc1.42E01E,mp4a.40.2','video/mp4','video/webm;codecs=vp9,opus','video/webm'].find(m=>window.MediaRecorder && MediaRecorder.isTypeSupported(m));
   if(!mime) throw new Error('this browser can’t record video');
   const {cv,draw}=painter(mix,720);
