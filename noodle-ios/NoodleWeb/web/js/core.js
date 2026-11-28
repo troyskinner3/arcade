@@ -166,10 +166,10 @@ async function projRename(id,title){ title=String(title||'').slice(0,80); if(id=
   const p=await projDb.get(id); if(!p) return false; const o=JSON.parse(p.json); o.title=title; await projDb.put({...p, title, json:JSON.stringify(o), updatedAt:Date.now()}); return true; }
 /* recordings kept as sound belong to one part each, so a copy gets its own */
 async function projDuplicate(id){ if(id===S.pid) await projSaveCurrent(); const p=await projDb.get(id); if(!p) return null; const o=JSON.parse(p.json), now=Date.now(); let nid=Math.max(S.nextId||10, o.nextId||10);
-  for(const t of o.tracks||[]){ const old=t.id; t.id=nid++; if(o.activeId===old) o.activeId=t.id; const raw=await takeStore.get('vox'+old); if(raw) await takeStore.put('vox'+t.id,raw); }
+  for(const t of o.tracks||[]){ const old=t.id; t.id=nid++; if(o.activeId===old) o.activeId=t.id; const raw=await takeStore.get('vox'+old); if(raw) await takeStore.put('vox'+t.id,raw); const src=await takeStore.get('src'+old); if(src) await takeStore.put('src'+t.id,src); }
   o.nextId=nid; S.nextId=nid; persist(); o.pid=projId(); o.title=(p.title||'Untitled')+' copy';
   await projDb.put({...p, id:o.pid, title:o.title, createdAt:now, updatedAt:now, json:JSON.stringify(o)}); return o.pid; }
-async function projDelete(id){ const p=await projDb.get(id); if(!p) return false; try{ for(const t of JSON.parse(p.json).tracks||[]) await takeStore.del('vox'+t.id); }catch(e){}
+async function projDelete(id){ const p=await projDb.get(id); if(!p) return false; try{ for(const t of JSON.parse(p.json).tracks||[]){ await takeStore.del('vox'+t.id); await takeStore.del('src'+t.id); } }catch(e){}
   await projDb.del(id); if(id===S.pid){ const o=defaultState(); o.tracks=[]; o.pid=projId(); projSaved=''; await projLoadState(o); } return true; }
 function projKeyLabel(){ try{ const has=S.tracks.some(t=>(INST[t.inst].kind==='pitched'&&t.notes&&t.notes.length)||(t.inst==='vox'&&(t.vn||[]).length)); if(!has) return ''; const K=currentKey(); if(K.none) return 'No key';
   return NOTE_NAMES[K.tonic]+' '+(SCALE_LABEL[K.scale]||''); }catch(e){ return ''; } }

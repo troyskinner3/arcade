@@ -170,6 +170,7 @@ Draft copy is in `noodle-ios/APP_STORE_LISTING.md`.
 - [x] The copy button on an empty spot does nothing: hide it there (show Paste here when something is copied); clearer copy icon.
 - [x] Sound delay grown after switching apps: the audio restarts by itself (checked on return and every few seconds while stopped).
 - [x] Share sheet: compact rows (icon, name, a short tag; details behind ⓘ).
+- [x] Before and after share video, step 1 (28 Nov): one bar of your recording, then the song; 1080x1920; see `SHARE_VIDEO.md`.
 - [x] Usage stats ⓘ says "anonymous ID" plainly.
 - [x] Teaching the crash: it's kept (it was thrown away as metronome bleed); nothing plays after teaching.
 - [x] Beats: Use this beat pinned after a pick; closing puts the playhead back; a free beat is no longer called Pro.
