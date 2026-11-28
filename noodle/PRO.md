@@ -45,7 +45,7 @@ Status: **confirmed** (owner agreed) or **proposed** (waiting on the owner).
 | Recorded E-piano, Rock bass and Guitar (the Hip hop and Rock styles use them by default, so every style sounds right for free) | confirmed |
 | Mix: volume, pan, reverb, drive, punch; Expression (follows your voice) | proposed |
 | Export a mixdown (WAV) and video, with a small see-through Noodle mark on video (no tag in the audio) | proposed |
-| Before and after video (one bar of what you recorded, then the song): free, it is marketing (owner, 28 Nov) | proposed |
+| Before and after video (one bar of what you recorded, then the song; choose which part starts it): free, it is marketing (owner, 28 Nov) | proposed |
 | Song list, song files (save, back up all, open), sharing takes, email news, crash reports | proposed |
 | Usage stats (anonymous counts; More → Send usage stats turns them off). Suggest Free: not a feature people pay for | proposed |
 | Change key moves the whole song (transpose), loop a section (one Loop button: the selected part, or the whole song), tap tempo, lock-screen controls, haptic taps | confirmed |

@@ -291,6 +291,7 @@ function s2ShareSheet(){ if(!S.tracks.some(hasContent)){ toast('Record something
       ['link','Link to remix','','Friends can listen, then add their own part in Noodle.','<path d="M10 14a4 4 0 005.7 0l3-3a4 4 0 00-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 00-5.7 0l-3 3a4 4 0 005.7 5.7l1-1"/>'],
       ['daw','DAW pack','Audio + MIDI','Every track as audio and MIDI, for Logic, Ableton or GarageBand.','<path d="M3 7h7l2 2h9v10H3z"/>']
     ].map(([k,n,tag,info,ico])=>`<div class="sh-row"><button class="nx-act sh-a" data-k="${k}"><svg class="nx-ico" viewBox="0 0 24 24">${ico}</svg><span>${n}${k==='daw'&&!isPro()?PRO_LOCK:''}</span>${tag?`<em>${tag}</em>`:''}</button>${info?s2Inf(info):'<span class="sh-pad" aria-hidden="true"></span>'}</div>`).join('')}</div>
+    <div id="s2BaMore"></div>
     ${S.link?`<div class="s2-lk"><span>Shared by link</span><button id="s2LkStop">Stop sharing</button></div>`:''}
     ${S.remixOf&&S.remixOf.id?`<div class="s2-lk"><span>From a shared link: “${nxEsc(S.remixOf.title||'a song')}”</span><button id="s2Rep">Report</button></div>`:''}
     <div class="s2-shst" id="s2ShSt" hidden></div><div class="nx-bar s2-shbar" id="s2ShBar" hidden><i></i></div><div class="s2-shgo" id="s2ShGo" hidden><button class="go" id="s2ShNow">Share</button><button id="s2ShSave">Save to Files</button></div>`);
@@ -301,7 +302,15 @@ function s2ShareSheet(){ if(!S.tracks.some(hasContent)){ toast('Record something
   const linkGo=async()=>{ lock(true); $('s2ShGo').hidden=true; bar('ind'); shareFile=null; shareUrl=null;
     try{ shareUrl=await songLinkShare(st); bar(null); st('Your link is ready. Anyone with it can listen, and open it in Noodle to add their own part.'); $('s2ShGo').hidden=false; $('s2ShNow').hidden=!navigator.share; $('s2ShSave').textContent='Copy link'; }
     catch(e){ bar(null); st('The link couldn’t be made: '+(e&&e.message||e)+'.'); } lock(false); };
-  $('nxSheet').onclick=async e=>{ { const ib=e.target.closest('[data-info]'); if(ib){ e.preventDefault(); infoPop(ib); return; } } if(e.target.closest('#s2LkOk')){ try{ localStorage.setItem('noodle.linkOk','1'); }catch(_){} return linkGo(); }
+  /* More settings (closed each time): which part the before and after video starts with, when there's a choice (owner, 28 Nov) */
+  let baCs=[]; baChoices().then(cs=>{ baCs=cs; const el=$('s2BaMore'); if(!el||cs.length<2) return; const cur=cs.find(c=>c.tr.id===S.baPart)||cs[0];
+    el.innerHTML=`<button class="nx-more" data-more aria-expanded="false"><span>More settings<small>Before and after</small></span><svg class="nx-ico" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
+      <div class="nx-adv" hidden><button class="s2-row" data-pick="baStart"><span>Starts with</span><b>${nxEsc(baLabel(cur))}</b><svg class="nx-ico" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></button></div>`; }).catch(()=>{});
+  $('nxSheet').onclick=async e=>{ { const ib=e.target.closest('[data-info]'); if(ib){ e.preventDefault(); infoPop(ib); return; } }
+    { const m=e.target.closest('[data-more]'); if(m){ const a=$('nxSheet').querySelector('#s2BaMore .nx-adv'), open=a.hidden; a.hidden=!open; m.setAttribute('aria-expanded',String(open)); return; } }
+    if(e.target.closest('[data-pick="baStart"]')){ const cur=(baCs.find(c=>c.tr.id===S.baPart)||baCs[0]).tr.id;
+      nxList('Starts with',[['',baCs.map(c=>[String(c.tr.id),baLabel(c)])]],String(cur),v=>{ const c=baCs.find(x=>String(x.tr.id)===v); if(!c) return; S.baPart=c.tr.id; save(); baPreview(c); track('export','video ba pick '+c.type); },()=>s2ShareSheet()); return; }
+    if(e.target.closest('#s2LkOk')){ try{ localStorage.setItem('noodle.linkOk','1'); }catch(_){} return linkGo(); }
     const b=e.target.closest('[data-k]'); if(!b||b.disabled) return; const k=b.dataset.k; $('s2ShSave').textContent='Save to Files'; shareUrl=null;
     if(k==='link'){ let ok=null; try{ ok=localStorage.getItem('noodle.linkOk'); }catch(_){} if(ok) return linkGo();
       st('Anyone with the link can listen to this song and copy it into their own Noodle (your recordings included). You can stop sharing it here any time.'); $('s2ShGo').hidden=true;

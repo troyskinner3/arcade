@@ -1069,6 +1069,10 @@ the note editor's Today / Tap notes button flips one take between them. The fing
 - `ba_test`: the before is the hum where it was sung (each note's bar position), the cut lands on the bar, the kept recording works after a
   reload, a drawn part gives a "part" before, rows, watermark free only, end card 1.5 / 0 s, the export event. Frames in `results/ba_*.png`.
   `endcard_test` and `b1_test` updated for 1.5 s and the new rows.
+- Step 1b (owner, 28 Nov): the before is chosen hummed > sung > beatboxed; with no mic recording Lead > Keys > Bass > drums. Share → More
+  settings → Starts with picks another (kept with the song, plays the bar when tapped). `ba_test` adds a beatbox take (hum still first, the
+  beatbox can be chosen, the list and the row) and a drawn Lead at bar 3 beating a Bass at bar 1.
+
 ## DAW round 1, Send to computer (28 Nov; plan in `DAW.md`)
 - In the iPhone app, the pad screen (Note pads, Chord pads, Drum pads, Play pad) has **Send to computer** (ⓘ) and **Set up**. On: each pad
   sends MIDI as you play (note on at the touch, off on release; chords as 3 notes; drums on channel 10 with the MIDI export's General MIDI
