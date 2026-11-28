@@ -31,6 +31,6 @@ const {chromium,devices}=require('playwright');
     old.getOutputTimestamp=()=>({contextTime:old.currentTime-0.35, performanceTime:performance.now()}); audioLagCheck(); await w(200); o.restarted=ctx!==old&&old.state==='closed'&&audioRestarts===1;
     await renderDirty(); if(!playing) await togglePlay(); await w(800); const a=new Float32Array(chain.mon.fftSize); chain.mon.getFloatTimeDomainData(a); let q=0; for(const v of a) q+=v*v; o.playsAfter=playing&&q>0; if(playing) await togglePlay();
     return o; });
-  const want={msAligned:true, copyOnPart:true, emptyBar:'true:true', pasted:true, share:'Audio|Video|Link to remix|DAW pack:0:3', shareRowsEqual:true, stats:true, noButtonYet:true, pinned:true, back:true, noProNote:true, proBtn:'Get Pro to use this beat', buzz:'-300..300', baseSet:true, restarted:true, playsAfter:true};
+  const want={msAligned:true, copyOnPart:true, emptyBar:'true:true', pasted:true, share:'Before and after|Song video|Audio|Link to remix|DAW pack:0:4', shareRowsEqual:true, stats:true, noButtonYet:true, pinned:true, back:true, noProNote:true, proBtn:'Get Pro to use this beat', buzz:'-300..300', baseSet:true, restarted:true, playsAfter:true};
   for(const [k,v] of Object.entries(want)) if(r[k]!==v) errs.push(k+': '+JSON.stringify(r[k]));
   console.log(JSON.stringify({...r,errs})); await b.close(); })();

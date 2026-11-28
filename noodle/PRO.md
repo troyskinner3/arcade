@@ -44,7 +44,8 @@ Status: **confirmed** (owner agreed) or **proposed** (waiting on the owner).
 | Recorded Piano, Strings and Rock drum kit (the first impression) | confirmed |
 | Recorded E-piano, Rock bass and Guitar (the Hip hop and Rock styles use them by default, so every style sounds right for free) | confirmed |
 | Mix: volume, pan, reverb, drive, punch; Expression (follows your voice) | proposed |
-| Export a mixdown (WAV) and video, with a small "Made with Noodle" tag on video | proposed |
+| Export a mixdown (WAV) and video, with a small see-through Noodle mark on video (no tag in the audio) | proposed |
+| Before and after video (one bar of what you recorded, then the song): free, it is marketing (owner, 28 Nov) | proposed |
 | Song list, song files (save, back up all, open), sharing takes, email news, crash reports | proposed |
 | Usage stats (anonymous counts; More → Send usage stats turns them off). Suggest Free: not a feature people pay for | proposed |
 | Change key moves the whole song (transpose), loop a section (one Loop button: the selected part, or the whole song), tap tempo, lock-screen controls, haptic taps | confirmed |
@@ -84,7 +85,7 @@ Status: **confirmed** (owner agreed) or **proposed** (waiting on the owner).
 | Tidy in the note editor (joins tiny blips, lines notes up on the beat, fills gaps) | proposed |
 | Song links: share a song by link; friends listen and remix it in Noodle (growth: always free) | proposed |
 | Invite friends: 3 friends who make a song earn you Noodle Pro (an App Store offer code) | proposed |
-| Free videos end on a 2.5 s Noodle card ("Free on the App Store"); Pro videos end with the music | proposed |
+| Free videos end on a 1.5 s Noodle card ("Free on the App Store") and carry the small mark throughout; Pro videos have neither (owner, 28 Nov) | proposed |
 
 ### Pro
 | Feature | Status |
@@ -93,7 +94,7 @@ Status: **confirmed** (owner agreed) or **proposed** (waiting on the owner).
 | Your voice (Lead and Pad made from your own singing) | proposed |
 | Wavetable sounds: Glass, Chip, Theremin, Vowel pad, Digital pad, Growl | proposed |
 | Coded sounds: Acid, Wobble, String pluck, Chorus pad, Pump pad | proposed |
-| MIDI export, stems (each part as its own file), video without the tag | proposed |
+| MIDI export, stems (each part as its own file), video without the mark or end card | proposed |
 | Send to computer: play Noodle's pads into a DAW (Ableton, Logic…) by cable or Bluetooth (see `DAW.md`). Built 28 Nov, **not gated yet** (open to everyone in the app while the owner tests); Claude suggests Pro with a Pro try, free is the alternative | proposed |
 | Copy a part to another song (Paste part in Add track) | confirmed |
 | Chords from your melody in the Pulse and Arp styles | proposed |

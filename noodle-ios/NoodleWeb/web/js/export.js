@@ -120,17 +120,19 @@ ${map}
 `:''}`;
 }
 /* ---- share your song: audio (WAV) or a vertical video, through the phone's share sheet ---- */
-let shareFile=null, shareMsg='', shareCan=false, shareUrl=null;
+let shareFile=null, shareMsg='', shareCan=false, shareUrl=null, shareKind='';
+/* kind: 'audio', 'video' (the whole song) or 'ba' (before and after, beforeafter.js) */
 async function prepareShare(kind,onProg){
   pvEnd(true); ensureCtx(); if(!S.tracks.length){ toast('Add a part first'); return; }
   try{
-    const mix=await renderMix(S.loops,true), base=fileSafe(songTitle());
+    const ba=kind==='ba', mix=ba?(await renderDirty(),await baMix()):await renderMix(S.loops,true), base=fileSafe(songTitle())+(ba?' before and after':'');
     if(kind==='audio'){ shareFile=new File([wavBytes(mix,16)], base+'.wav', {type:'audio/wav'}); }
-    else { const blob=await recordVideo(mix, sec=>{ if(onProg) onProg(sec); }); const ext=blob.type.includes('mp4')?'mp4':'webm'; shareFile=new File([blob], base+'.'+ext, {type:blob.type}); }
-    track('export',kind); trackOnce('first_export',kind); statsParts();
+    else { const blob=await recordVideo(mix, sec=>{ if(onProg) onProg(sec); }, ba?baPainter:videoPainter); const ext=blob.type.includes('mp4')?'mp4':'webm'; shareFile=new File([blob], base+'.'+ext, {type:blob.type}); }
+    /* usage: which video (before and after: what the before was, hum / beatbox / sing / part) and how long, in seconds */
+    shareKind=ba?'video ba '+mix._ba.type:kind; track('export',shareKind,kind==='audio'?0:Math.round(mix.duration+(isPro()?0:END_CARD_S))); trackOnce('first_export',ba?'video ba':kind); statsParts();
     const canShare=!!(navigator.canShare && navigator.canShare({files:[shareFile]}));
-    shareCan=canShare; shareMsg=`Your ${kind==='audio'?'audio':'video'} is ready (${(shareFile.size/1048576).toFixed(1)} MB, ${Math.round(mix.duration)} s). `+(canShare?(kind==='video'?'Tap Share to save it to Photos or send it to Messages, CapCut, TikTok and more.':'Tap Share to send it to Messages, CapCut, TikTok and more.'):'Save it, then add it to any app.');
-  } catch(e){ toast((kind==='video'?'Video export':'Export')+' didn’t work here: '+(e&&e.message||e)); }
+    shareCan=canShare; shareMsg=`Your ${kind==='audio'?'audio':'video'} is ready (${(shareFile.size/1048576).toFixed(1)} MB, ${Math.round(mix.duration+(kind!=='audio'&&!isPro()?END_CARD_S:0))} s). `+(canShare?(kind!=='audio'?'Tap Share to save it to Photos or send it to Messages, CapCut, TikTok and more.':'Tap Share to send it to Messages, CapCut, TikTok and more.'):'Save it, then add it to any app.');
+  } catch(e){ toast((kind!=='audio'?'Video export':'Export')+' didn’t work here: '+(e&&e.message||e)); }
 }
 /* After a song is shared (a happy moment), the iPhone app may ask for a rating with Apple's own prompt: at most once every 120 days from here,
    and Apple shows it at most 3 times a year. Never on the web. */
@@ -138,18 +140,21 @@ async function prepareShare(kind,onProg){
 function statsParts(){ try{ emailAskDue(); }catch(e){} const ps=S.tracks.filter(t=>hasContent(t)&&!t.guide&&!t.mfx&&!t._pvTemp); track('song_parts','',ps.length); ps.slice(0,12).forEach(t=>track('part_used',t.inst+' '+(t.sound||''))); }
 function askRating(){ try{ if(!(window.webkit&&window.webkit.messageHandlers&&window.webkit.messageHandlers.noodleNative)) return; const k='noodle.rateAt', last=+localStorage.getItem(k)||0;
   if(Date.now()-last<120*864e5) return; localStorage.setItem(k,String(Date.now())); setTimeout(()=>native({type:'rate'}),1200); }catch(e){} }
-async function shareNow(){ if(shareUrl){ try{ await navigator.share({url:shareUrl, title:songTitle(), text:'I made this with Noodle. Open it to add your own part:'}); askRating(); }catch(e){} return; } if(!shareFile) return; try{ await navigator.share({files:[shareFile], title:songTitle(), text:'Made with Noodle'}); askRating(); } catch(e){ if(e&&e.name!=='AbortError') toast('Sharing didn’t open. Tap Save to Files instead.'); } }
+async function shareNow(){ if(shareUrl){ try{ await navigator.share({url:shareUrl, title:songTitle(), text:'I made this with Noodle. Open it to add your own part:'}); askRating(); }catch(e){} return; } if(!shareFile) return; try{ await navigator.share({files:[shareFile], title:songTitle(), text:'Made with Noodle'}); track('export','shared '+shareKind); askRating(); } catch(e){ if(e&&e.name!=='AbortError') toast('Sharing didn’t open. Tap Save to Files instead.'); } }
 /* real-time render of a 720x1280 clip: the parts as lanes with a moving playhead, pulsing on each beat */
 /* Video export. Preferred: encode frame by frame (WebCodecs) into a regular MP4: faster than real time, silent, and the
    file has a correct length everywhere (Photos included). Fallback: record the canvas and audio in real time (MediaRecorder). */
 async function videoEncodeConfig(sr){
   if(!window.VideoEncoder||!window.AudioEncoder||!window.VideoFrame||!window.AudioData) return null;
-  try{ const v={codec:'avc1.42001f',width:720,height:1280,bitrate:3000000,framerate:30}, a={codec:'mp4a.40.2',sampleRate:sr,numberOfChannels:2,bitrate:160000};
-    if(!(await VideoEncoder.isConfigSupported(v)).supported || !(await AudioEncoder.isConfigSupported(a)).supported) return null; return {v,a}; }catch(e){ return null; } }
+  try{ const a={codec:'mp4a.40.2',sampleRate:sr,numberOfChannels:2,bitrate:160000}; if(!(await AudioEncoder.isConfigSupported(a)).supported) return null;
+    /* 1080x1920 (what TikTok, Reels and Shorts expect) when this phone can encode it, else 720x1280 */
+    for(const [codec,width,height,bitrate] of [['avc1.640028',1080,1920,8000000],['avc1.4d0028',1080,1920,8000000],['avc1.42002a',1080,1920,8000000],['avc1.42001f',720,1280,3000000]]){
+      const v={codec,width,height,bitrate,framerate:30}; try{ if((await VideoEncoder.isConfigSupported(v)).supported) return {v,a}; }catch(e){} }
+    return null; }catch(e){ return null; } }
 let muxerLoad=null;
 function loadMuxer(){ return muxerLoad||(muxerLoad=new Promise((res,rej)=>{ if(window.Mp4Muxer) return res(); const sc=document.createElement('script'); sc.src=new URL('vendor/mp4-muxer.min.js',location.href).href; sc.onload=res; sc.onerror=()=>{ muxerLoad=null; rej(new Error('couldn’t load the video maker')); };   /* mp4-muxer 5.1.3 (MIT), bundled */ document.head.appendChild(sc); })); }
-async function encodeVideo(mix, cfg, onProgress){
-  await loadMuxer(); const FPS=30, sr=mix.sampleRate, {cv,draw,W,H}=videoPainter(mix);
+async function encodeVideo(mix, cfg, onProgress, painter){
+  await loadMuxer(); const FPS=30, sr=mix.sampleRate, {cv,draw,W,H}=painter(mix,cfg.v.width);
   const muxer=new Mp4Muxer.Muxer({target:new Mp4Muxer.ArrayBufferTarget(), video:{codec:'avc',width:W,height:H,frameRate:FPS}, audio:{codec:cfg.a.codec.startsWith('mp4a')?'aac':'opus',sampleRate:sr,numberOfChannels:2}, fastStart:'in-memory', firstTimestampBehavior:'offset'});
   let err=null; const fail=e=>{ err=err||e; };
   const ve=new VideoEncoder({output:(c,m)=>muxer.addVideoChunk(c,m), error:fail}); ve.configure(cfg.v);
@@ -163,18 +168,30 @@ async function encodeVideo(mix, cfg, onProgress){
     if(ve.encodeQueueSize>8 || f%15===0){ onProgress&&onProgress((frames-f)/FPS); await new Promise(r=>setTimeout(r,0)); } }
   await ve.flush(); await ae.flush(); if(err) throw err; ve.close(); ae.close(); muxer.finalize();
   return new Blob([muxer.target.buffer],{type:'video/mp4'}); }
-/* Free videos end on a card (about 2.5 s after the music): the Noodle name and "Free on the App Store". Pro videos end with the music. */
-const END_CARD_S=2.5;
+/* Free videos end on a card (1.5 s after the music; owner, 28 Nov): the Noodle name and "Free on the App Store". Pro videos end with the music. */
+const END_CARD_S=1.5;
 function withEndCard(mix){ if(isPro()) return mix; const n=mix.length+Math.round(END_CARD_S*mix.sampleRate), out=new AudioBuffer({numberOfChannels:mix.numberOfChannels,length:n,sampleRate:mix.sampleRate});
-  for(let c=0;c<mix.numberOfChannels;c++) out.copyToChannel(mix.getChannelData(c),c); out._songEnd=mix.duration; return out; }
-async function recordVideo(mix, onProgress){
+  for(let c=0;c<mix.numberOfChannels;c++) out.copyToChannel(mix.getChannelData(c),c); out._songEnd=mix.duration; out._ba=mix._ba; return out; }
+async function recordVideo(mix, onProgress, painter=videoPainter){
   mix=withEndCard(mix);
   const cfg=await videoEncodeConfig(mix.sampleRate);
-  if(cfg){ try{ return await encodeVideo(mix,cfg,onProgress); }catch(e){ console.warn('frame-by-frame video failed, recording in real time instead',e); } }
-  return recordVideoRT(mix,onProgress); }
+  if(cfg){ try{ return await encodeVideo(mix,cfg,onProgress,painter); }catch(e){ console.warn('frame-by-frame video failed, recording in real time instead',e); } }
+  return recordVideoRT(mix,onProgress,painter); }
 /* the video's picture at time tt: the parts as lanes with a moving playhead, pulsing on each beat */
-function videoPainter(mix){
-  const W=720,H=1280, cv=document.createElement('canvas'); cv.width=W; cv.height=H; const g=cv.getContext('2d');
+/* a canvas for video frames: drawn in 720x1280 units, stored at the encoder's size (1080x1920 on most phones) */
+function videoCanvas(px){ px=px||720; const cv=document.createElement('canvas'); cv.width=px; cv.height=Math.round(px*16/9); const g=cv.getContext('2d'); g.scale(px/720,px/720); return {cv,g,W:cv.width,H:cv.height}; }
+/* the Noodle word mark: "oo" in amber */
+function vLogo(g,x,y,size,center){ g.font=`700 ${size}px Unbounded, Arial Black, sans-serif`; g.textAlign='left'; const w1=g.measureText('N').width, w2=g.measureText('oo').width, w3=g.measureText('dle').width, tx=center?x-(w1+w2+w3)/2:x;
+  const a=g.globalAlpha; g.fillStyle='#eceef2'; g.fillText('N',tx,y); g.fillText('dle',tx+w1+w2,y); g.fillStyle='#f1c75b'; g.fillText('oo',tx+w1,y); g.globalAlpha=a; g.textAlign='center'; }
+/* free videos: a small see-through Noodle mark in the top left, clear of TikTok's, Reels' and Shorts' buttons (owner, 28 Nov); Pro has none */
+function vWatermark(g){ if(isPro()) return; g.save(); g.globalAlpha=0.45; vLogo(g,44,122,26,false); g.restore(); }
+/* the end card of free videos (after the music, see withEndCard) */
+function vEndCard(g,mix,tt){ if(mix._songEnd==null || tt<=mix._songEnd) return; const W=720,H=1280, a=Math.min(1,(tt-mix._songEnd)/0.3); g.globalAlpha=a; g.fillStyle='#121418'; g.fillRect(0,0,W,H);
+  g.fillStyle='rgba(241,199,91,0.14)'; g.beginPath(); g.arc(W/2,H*0.42,190,0,7); g.fill(); g.globalAlpha=a; vLogo(g,W/2,H*0.42+36,104,true);
+  g.textAlign='center'; g.fillStyle='#c9ced6'; g.font='500 36px Barlow, sans-serif'; g.fillText('Hum it. Get a song.',W/2,H*0.42+120);
+  g.fillStyle='#eceef2'; g.font='700 34px Barlow, sans-serif'; g.fillText('Free on the App Store',W/2,H*0.42+250); g.globalAlpha=1; }
+function videoPainter(mix,px){
+  const W=720,H=1280, {cv,g}=videoCanvas(px);
   const parts=S.tracks.filter(t=>t._buf), L=loopLen(), beat=60/S.bpm, title=S.title?S.title:songTitle().replace('Noodle ','');
   const draw=tt=>{
     g.fillStyle='#121418'; g.fillRect(0,0,W,H);
@@ -191,20 +208,14 @@ function videoPainter(mix){
       g.globalAlpha=1; });
     g.fillStyle='#eceef2'; g.fillRect(x0+ph*lw,top-4,3,parts.length*laneH-14);
     g.fillStyle='#2f343d'; g.fillRect(x0,H-120,lw,6); g.fillStyle='#ef4a3c'; g.fillRect(x0,H-120,lw*Math.min(1,tt/mix.duration),6);
-    if(!isPro()){ g.fillStyle='#5d6470'; g.font='500 24px Barlow, sans-serif'; g.textAlign='center'; g.fillText('made with Noodle',W/2,H-60); }   /* the free version's tag */
-    if(mix._songEnd!=null && tt>mix._songEnd){ const a=Math.min(1,(tt-mix._songEnd)/0.4); g.globalAlpha=a; g.fillStyle='#121418'; g.fillRect(0,0,W,H);
-      g.fillStyle='rgba(241,199,91,0.14)'; g.beginPath(); g.arc(W/2,H*0.42,190,0,7); g.fill();
-      g.font='700 104px Unbounded, Arial Black, sans-serif'; g.textAlign='left'; const a1=g.measureText('N').width, a2=g.measureText('oo').width, a3=g.measureText('dle').width, x1=(W-a1-a2-a3)/2, y1=H*0.42+36;
-      g.fillStyle='#eceef2'; g.fillText('N',x1,y1); g.fillText('dle',x1+a1+a2,y1); g.fillStyle='#f1c75b'; g.fillText('oo',x1+a1,y1);
-      g.textAlign='center'; g.fillStyle='#c9ced6'; g.font='500 36px Barlow, sans-serif'; g.fillText('Hum it. Get a song.',W/2,H*0.42+120);
-      g.fillStyle='#eceef2'; g.font='700 34px Barlow, sans-serif'; g.fillText('Free on the App Store',W/2,H*0.42+250); g.globalAlpha=1; }   /* the end card (free videos) */
+    vWatermark(g); vEndCard(g,mix,tt);
   };
-  return {cv,draw,W,H};
+  return {cv,draw,W:cv.width,H:cv.height};
 }
-async function recordVideoRT(mix, onProgress){
+async function recordVideoRT(mix, onProgress, painter=videoPainter){
   const mime=['video/mp4;codecs=avc1.42E01E,mp4a.40.2','video/mp4','video/webm;codecs=vp9,opus','video/webm'].find(m=>window.MediaRecorder && MediaRecorder.isTypeSupported(m));
   if(!mime) throw new Error('this browser can’t record video');
-  const {cv,draw}=videoPainter(mix);
+  const {cv,draw}=painter(mix,720);
   const dest=ctx.createMediaStreamDestination(), src=ctx.createBufferSource(), mon=ctx.createGain(); src.buffer=mix; src.connect(dest); mon.gain.value=0; src.connect(mon); mon.connect(ctx.destination);   // silent: keeps the graph running, nothing plays out loud
   const stream=new MediaStream([...cv.captureStream(30).getVideoTracks(), ...dest.stream.getAudioTracks()]);
   const rec=new MediaRecorder(stream,{mimeType:mime, videoBitsPerSecond:3000000}); const chunks=[]; rec.ondataavailable=e=>{ if(e.data&&e.data.size) chunks.push(e.data); };

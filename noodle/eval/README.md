@@ -1058,6 +1058,17 @@ the note editor's Today / Tap notes button flips one take between them. The fing
   sound until Play: Pause closes the output gate (to cut the reverb) and only Play opened it. Sounds made on the spot (note and key taps,
   drum hits, pads, beat previews) now open it (`liveIn`). `tailcut_test.js` (new) fails on the old code for both and passes now.
 
+## Share video, step 1 (owner, 28 Nov: before and after)
+- New Share row **Before and after** (`js/beforeafter.js`; plan and decisions in `noodle/SHARE_VIDEO.md`): one bar of the first part recorded
+  with the mic, as heard (light clean-up, turned up to sit just under the song), then a hard cut to the song from the next bar. Fast songs
+  (a bar under 2 s) get 2 bars. With no mic part, the before is the first tune part alone. Captions "So I went like this…" / "To make this.".
+- Hum and beatbox recordings are now kept on the phone with their part (`src`+id in the takes store; not in song links or backups), so the
+  video works after Noodle reopens. Duplicate and delete carry them along.
+- All videos: 1080x1920 when the phone can encode it (else 720x1280); the free tag is a small see-through Noodle mark top left; the free end
+  card is 1.5 s (was 2.5). The whole-song video is the **Song video** row.
+- `ba_test`: the before is the hum where it was sung (each note's bar position), the cut lands on the bar, the kept recording works after a
+  reload, a drawn part gives a "part" before, rows, watermark free only, end card 1.5 / 0 s, the export event. Frames in `results/ba_*.png`.
+  `endcard_test` and `b1_test` updated for 1.5 s and the new rows.
 ## DAW round 1, Send to computer (28 Nov; plan in `DAW.md`)
 - In the iPhone app, the pad screen (Note pads, Chord pads, Drum pads, Play pad) has **Send to computer** (ⓘ) and **Set up**. On: each pad
   sends MIDI as you play (note on at the touch, off on release; chords as 3 notes; drums on channel 10 with the MIDI export's General MIDI
