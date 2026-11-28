@@ -1,6 +1,10 @@
 # arcade (Noodle and small games)
 
 ## Noodle (`noodle/`, iPhone shell `noodle-ios/`)
+- **Document everything in the repo** (owner's standing rule, 28 Nov): every decision, agreed action item, open question and round of work is
+  written into the repo in the same piece of work, never only in chat, so the owner and every Claude session can pick it up. A feature's plan,
+  decisions (agreed / proposed), action items (owner's marked **Owner**) and open questions live in its own doc (e.g. `noodle/SHARE_VIDEO.md`,
+  `noodle/DAW.md`); also update PRO.md, ROADMAP.md, GROWTH.md and the eval log (`noodle/eval/README.md`) where they apply.
 - **UI, UX and copy:** follow `noodle/STYLE.md` (the owner's rules: name things plainly with ⓘ for explanations, buttons look like
   buttons, outlined dropdowns, progressive disclosure, no AI-sounding copy or look). Add new rules from reviews there.
 - **Free vs Pro:** `noodle/PRO.md` is the list of what is free and what Noodle Pro unlocks. Every time a feature is added or changed, add it

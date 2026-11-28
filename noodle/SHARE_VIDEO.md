@@ -39,10 +39,11 @@ round's decisions here and tick action items off. **agreed** = owner confirmed; 
 - [x] Step 1: before → after video, 1080×1920, watermark, 1.5 s end card, kept hum and beatbox recordings, events, test. (28 Nov)
 - [x] Step 1b: default order and More settings → Starts with. (28 Nov)
 - [ ] **Owner:** try it on TestFlight with a real hum, a beatbox and a drawn song; send notes (what feels off at the cut, the captions, length).
+- [ ] **Owner:** make one song both ways (More settings → Starts with: the hum, then the beatbox) and say which lands better.
 - [ ] Step 2: polish rounds with the owner: the hum's pitch line turning into the notes at the cut, caption style and timing, loudness.
 - [ ] Step 3: better "before" pictures for parts with no recording: Play Pad presses, the drawn line being drawn.
 - [ ] Step 4: post straight to TikTok (Share Kit; needs a TikTok developer app, their review and Photos access) and Instagram Reels (Meta app
-      ID, "Go Live"). Both free; setup is the owner's. A source tag on the end card's link to count installs.
+      ID, "Go Live"). Both free; **Owner:** create the TikTok developer app and the Meta app when we get there (Claude writes the steps). A source tag on the end card's link to count installs.
 - [ ] Later: custom captions; templates; include `src` recordings in `.noodle` backups (owner to decide).
 
 ## Open questions
