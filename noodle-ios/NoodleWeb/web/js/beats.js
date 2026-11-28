@@ -305,7 +305,9 @@ function xyMount(T){ const box=$('tiXY'), cv=box.querySelector('canvas'); const 
   const at=e=>{ const r=box.getBoundingClientRect(), x=clamp(e.clientX-r.left,0,r.width-0.01), y=clamp(e.clientY-r.top,0,r.height); return {x,y,p:ps[Math.floor(x/r.width*ps.length)], tn:+clamp(1-y/r.height,0,1).toFixed(2)}; };
   const filt=()=>{ if(!T.xy.lp){ const f=ctx.createBiquadFilter(); f.type='lowpass'; f.Q.value=0.7; f.connect(chain.input); T.xy.lp=f; } liveIn(); return T.xy.lp; };
   const play=(c,e)=>{ const X=T.xy; X.tn=c.tn; filt().frequency.setTargetAtTime(400+c.tn*c.tn*9000,ctx.currentTime,0.02);
-    if(X.cur!==c.p){ if(X.rel) X.rel(); X.cur=c.p; X.rel=leadNote(T,c.p,8,0.75,filt()); tapMark(T,c.p,c.tn,e); } draw(c.x,c.y); };
+    if(X.cur!==c.p){ if(X.rel) X.rel(); X.cur=c.p; X.rel=dawQuiet()?null:leadNote(T,c.p,8,0.75,filt()); tapMark(T,c.p,c.tn,e); if(dawLive()) dawOn('xy',[c.p+12*T.oct],100,e); }
+    if(dawLive()){ const v=Math.round(c.tn*127); if(v!==DAW.cc){ DAW.cc=v; dawSend([0xB0,74,v]); } }
+    draw(c.x,c.y); };
   box.addEventListener('pointerdown',e=>{ e.preventDefault(); ensureCtx(); try{ box.setPointerCapture(e.pointerId); }catch(_){} T.xy.down=true; play(at(e),e); });
   box.addEventListener('pointermove',e=>{ if(!T.xy.down) return; play(at(e),e); });
   const up=e=>{ if(!T.xy.down) return; T.xy.down=false; xyOff(T,e); draw(); };
@@ -313,7 +315,7 @@ function xyMount(T){ const box=$('tiXY'), cv=box.querySelector('canvas'); const 
 /* in a take: a note starts (p) or the finger lifts (p null), at the moment it was heard */
 function tapMark(T,p,tn,e){ if(T.state!=='take'&&T.state!=='count'||!T.start) return; const late=Math.min(0.1,Math.max(0,(performance.now()-(e&&e.timeStamp||performance.now()))/1000)), at=ctx.currentTime-late-T.lat;
   if(at<T.start-0.15||at>=T.end) return; T.taps.push({st:Math.max(0,(at-T.start)/stepDur()), p, tn}); }
-function xyOff(T,e){ const X=T&&T.xy; if(!X) return; if(X.rel){ X.rel(); X.rel=null; } if(X.cur!=null){ tapMark(T,null,null,e); X.cur=null; } }
+function xyOff(T,e){ dawOff('xy',e); const X=T&&T.xy; if(!X) return; if(X.rel){ X.rel(); X.rel=null; } if(X.cur!=null){ tapMark(T,null,null,e); X.cur=null; } }
 function xyNotes(T,span){ const out=[]; let cur=null;
   for(const ev of T.taps){ const s=Math.min(span,Math.round(ev.st)); if(cur){ cur.l=s-cur.s; if(cur.l<1&&ev.p==null) cur.l=1;   /* a quick tap is a 16th */ if(cur.l>=1) out.push(cur); cur=null; }
     if(ev.p!=null&&s<span) cur={s, l:1, p:ev.p, v:0.8, tn:ev.tn, x:true}; }
@@ -321,6 +323,48 @@ function xyNotes(T,span){ const out=[]; let cur=null;
   /* fast slides: a note shorter than a 16th gave its step to the next one; same pitch twice in a row is one note */
   const m=[]; for(const n of out){ const pv=m[m.length-1]; if(pv&&pv.p===n.p&&pv.s+pv.l===n.s){ pv.l+=n.l; continue; } if(pv&&pv.s+pv.l>n.s) pv.l=Math.max(1,n.s-pv.s); m.push(n); }
   return m.filter(n=>n.l>=1&&n.s<span).map(n=>({...n,l:Math.min(n.l,span-n.s)})); }
+/* Send to computer (noodle/DAW.md): in the iPhone app, the pads also send MIDI, so a DAW on a computer (Ableton, Logic…) records what you
+   play, like a keyboard. Notes, chords and the Play pad on channel 1 (the Play pad's up = brightness as CC 74), drums on channel 10 with the
+   MIDI export's General MIDI notes. While it's on, the pads are quiet on the phone unless Sound on the phone is on. The app sends the MIDI
+   (MidiOut in NoodleWebApp.swift) and says what it's connected to and the touch-to-send delay (window.noodleMidi). */
+const dawOk=()=>!!(window.webkit&&window.webkit.messageHandlers&&window.webkit.messageHandlers.noodleNative);
+const DAW={on:false, here:false, dests:null, med:0, worst:0, n:0, sent:0, held:new Map(), cc:-1, linked:false, wantMs:false};
+try{ DAW.on=localStorage.getItem('noodle.daw')==='1'; DAW.here=localStorage.getItem('noodle.dawHere')==='1'; }catch(e){}
+const dawLive=()=>dawOk()&&DAW.on&&!!tapIn&&tapIn.kind!=='rhythm';
+const dawQuiet=()=>dawLive()&&!DAW.here;   /* the pad's own sound stays off: the DAW plays it */
+function dawSend(b,e){ const m={type:'midi', b}; if(e&&e.timeStamp){ m.sentMs=performance.timeOrigin+performance.now(); m.lateMs=Math.min(100,Math.max(0,performance.now()-e.timeStamp)); } native(m); }
+function dawOn(key,notes,vel,e,ch=0){ dawOff(key,e); DAW.held.set(key,{notes,ch}); notes.forEach(n=>dawSend([0x90|ch,clamp(Math.round(n),0,127),vel],e)); DAW.sent+=notes.length; }
+function dawOff(key,e){ const h=DAW.held.get(key); if(!h) return; DAW.held.delete(key); h.notes.forEach(n=>dawSend([0x80|h.ch,clamp(Math.round(n),0,127),0],e)); }
+function dawAllOff(){ [...DAW.held.keys()].forEach(k=>dawOff(k)); DAW.cc=-1; }
+/* a pad pressed: what it sends (the same notes it sounds) */
+function dawPad(T,c,i,e){ if(!dawLive()||!c) return;
+  if(T.kind==='notes') dawOn('p'+i,[c.p+12*T.oct],100,e);
+  else if(T.kind==='chords') dawOn('p'+i,chordTones(c.root,'triad').map(m=>m+12*T.oct),92,e);
+  else if(T.kind==='drums') dawOn('p'+i,[drumNote(c.id)],Math.round((c.v||0.9)*120),e,9); }
+const dawNames=()=>DAW.dests==null?'Checking…':DAW.dests.length?DAW.dests.join(', '):'Nothing yet';
+function dawRowHTML(){ return `<div class="ti-daw s2-g" id="tiDaw"><div class="ti-dawr"><label class="nx-chk"><input type="checkbox" id="tiDawOn" ${DAW.on?'checked':''}> <span>Send to computer${s2Inf('Your DAW (Ableton, Logic, FL Studio…) records what you play here, like a keyboard. Set up shows how to connect.')}</span></label><button class="nx-ghost ti-dawset" id="tiDawSet" type="button">Set up</button></div>
+    <label class="nx-chk" id="tiDawHereL"${DAW.on?'':' hidden'}><input type="checkbox" id="tiDawHere" ${DAW.here?'checked':''}> <span>Sound on the phone${s2Inf('Off: only your DAW plays the notes, so you don’t hear them twice.')}</span></label></div>`; }
+function dawRowWire(){ const on=$('tiDawOn'), here=$('tiDawHere'); if(!on) return;
+  on.onchange=()=>{ DAW.on=on.checked; try{ localStorage.setItem('noodle.daw',DAW.on?'1':'0'); }catch(e){} $('tiDawHereL').hidden=!DAW.on; if(!DAW.on) dawAllOff(); else native({type:'midiState'}); track('daw',DAW.on?'on':'off'); };
+  here.onchange=()=>{ DAW.here=here.checked; try{ localStorage.setItem('noodle.dawHere',DAW.here?'1':'0'); }catch(e){} track('daw',DAW.here?'phone sound on':'phone sound off'); };
+  $('tiDaw').onclick=e=>{ const ib=e.target.closest('[data-info]'); if(ib){ e.preventDefault(); infoPop(ib); } };
+  $('tiDawSet').onclick=()=>dawSetup(); }
+function dawMsText(){ return DAW.n?`Delay on this phone: ${Math.round(DAW.med)} ms (at worst ${Math.round(DAW.worst)} ms)`:'Play a few notes to see the delay on this phone.'; }
+/* how to connect: by cable (Mac), by Bluetooth, and a timing test */
+function dawSetup(){ native({type:'midiState'}); track('daw','setup');
+  nxSheet(`<h2>Connect to a computer</h2><p class="sub">Connected to: <b id="dawStat">${nxEsc(dawNames())}</b></p>
+    <h3>By cable (Mac)</h3><ol class="daw-steps"><li>Plug the iPhone into the Mac with a USB cable.</li><li>On the Mac, open Audio MIDI Setup. Window → Show MIDI Studio. Click the iPhone, then Enable.</li><li>In your DAW, turn on the iPhone as a MIDI input and arm a MIDI track. Ableton: Settings → Link, Tempo &amp; MIDI → Track.</li></ol>
+    <h3>By Bluetooth</h3><button class="nx-ghost" id="dawBt" type="button">Show Noodle over Bluetooth</button><p class="daw-steps">Then on the Mac: Audio MIDI Setup → MIDI Studio → the Bluetooth button → Connect next to this iPhone.</p>
+    <h3>Timing test${s2Inf('Noodle sends 4 bars of 16th notes at 120 BPM. Record them in your DAW, then zoom in: each note should start on the grid.')}</h3><button class="nx-ghost" id="dawTest" type="button">Play a timing test</button>
+    <p class="sub" id="dawMs">${dawMsText()}</p>`);
+  $('nxSheet').onclick=e=>{ const ib=e.target.closest('[data-info]'); if(ib){ e.preventDefault(); infoPop(ib); return; }
+    if(e.target.closest('#dawBt')){ native({type:'midiBluetooth'}); track('daw','bluetooth'); }
+    if(e.target.closest('#dawTest')){ native({type:'midiTest', bpm:120, bars:4, note:60}); track('daw','timing test'); toast('Sending 4 bars of 16ths at 120 BPM'); } }; }
+/* from the app: what the phone is connected to, and the recent touch-to-send delay */
+window.noodleMidi=st=>{ try{ DAW.dests=Array.isArray(st.dests)?st.dests.map(String):[]; DAW.med=+st.med||0; DAW.worst=+st.worst||0; DAW.n=+st.n||0;
+  const a=$('dawStat'); if(a) a.textContent=dawNames(); const b=$('dawMs'); if(b) b.textContent=dawMsText();
+  if(!DAW.linked&&DAW.dests.some(n=>!/^Network Session/i.test(n))){ DAW.linked=true; track('daw',DAW.dests.some(n=>/IDAM/i.test(n))?'connected cable':'connected other',DAW.dests.length); }
+  if(DAW.wantMs&&DAW.n){ DAW.wantMs=false; track('daw','delay ms',Math.round(DAW.med)); track('daw','delay ms worst',Math.round(DAW.worst)); } }catch(e){} };
 function tapKeyName(K){ return NOTE_NAMES[K.tonic]+' '+(K.set.includes(3)&&!K.set.includes(4)?'minor':'major'); }
 /* the pad screen for one track (laneId): kind is how it records (drums, chords, notes, rhythm, xy) */
 async function tapOpen(kind, laneId){ if(tapIn) tapClose(); const L=s2Lane(laneId); if(!L) return; ensureCtx(); pvEnd(true); flushSave(); if(playing) await togglePlay();
@@ -336,9 +380,11 @@ async function tapOpen(kind, laneId){ if(tapIn) tapClose(); const L=s2Lane(laneI
     <div class="s2-edt"><b>${nxEsc(s2Name(L))}</b><small>${TAP_NAMES[kind]} · ${kind==='drums'?S.bpm+' BPM':tapKeyName(T.K)} · from bar ${T.P+1}</small></div>
     <button class="s2-ib" id="tiPlay" aria-label="Play the take" hidden></button></div>
     <div class="ti-body">${kind==='xy'?'<div class="ti-xy" id="tiXY" role="application" aria-label="Play pad: across for notes, up for a brighter sound"><canvas></canvas></div>':kind!=='rhythm'?`<div class="ti-pads"${kind==='notes'?` style="grid-template-columns:repeat(${T.pads.cols},1fr)"`:''}>${T.pads.map((c,i)=>`<button class="ti-pad" data-i="${i}"${c.row?` style="grid-row:${c.row};grid-column:${c.col}"`:''} aria-label="${nxEsc(c.name)}${kind==='chords'?' chord':''}">${nxEsc(c.name)}</button>`).join('')}</div>`:'<button class="ti-pad ti-one" id="tiOne" aria-label="Tap pad">Tap</button>'}</div>
-    <div class="s2-edh s2-g" id="tiHint"></div><div class="ti-bar s2-g" id="tiBar"></div>`;
+    ${dawOk()&&kind!=='rhythm'?dawRowHTML():''}<div class="s2-edh s2-g" id="tiHint"></div><div class="ti-bar s2-g" id="tiBar"></div>`;
   el.hidden=false;
-  el.querySelectorAll('.ti-pad').forEach(b=>b.addEventListener('pointerdown',e=>{ e.preventDefault(); tapHit(b,e); }));
+  el.querySelectorAll('.ti-pad').forEach(b=>{ b.addEventListener('pointerdown',e=>{ e.preventDefault(); tapHit(b,e); });
+    const up=e=>dawOff('p'+b.dataset.i,e); b.addEventListener('pointerup',up); b.addEventListener('pointercancel',up); b.addEventListener('pointerleave',up); });
+  dawRowWire(); if(dawOk()&&DAW.on) native({type:'midiState'}); DAW.sent=0;
   if(kind==='xy') xyMount(T);
   $('tiBack').onclick=()=>tapClose();
   $('tiPlay').onclick=()=>{ if(T.playing) tapStopPlay(); else tapPlay(); };
@@ -365,7 +411,7 @@ function tapSound(c){ ensureCtx(); const T=tapIn, now=ctx.currentTime+0.005;
     const dur=T.state==='take'?Math.min(2,4*60/S.bpm):0.7; try{ chordTones(c.root,'triad').forEach(m=>voice(ctx,out,T.sound,now,dur,m+12*T.oct,0.7,0.5)); }catch(e){} finally{ VOICE_INST=null; } return; }
   const o=ctx.createOscillator(), g=ctx.createGain(); o.frequency.value=1800; g.gain.setValueAtTime(0,now); g.gain.linearRampToValueAtTime(0.18,now+0.002); g.gain.exponentialRampToValueAtTime(0.001,now+0.04); o.connect(g); g.connect(liveIn()); o.start(now); o.stop(now+0.05); }
 function tapHit(b,e){ const T=tapIn; if(!T) return; b.classList.remove('hit'); void b.offsetWidth; b.classList.add('hit');
-  const c=T.kind==='rhythm'?null:T.pads[+b.dataset.i]; tapSound(c);
+  const c=T.kind==='rhythm'?null:T.pads[+b.dataset.i]; if(!dawQuiet()) tapSound(c); dawPad(T,c,+b.dataset.i,e);
   if(T.state!=='take'&&T.state!=='count'||!T.start) return;
   const late=Math.min(0.1,Math.max(0,(performance.now()-(e&&e.timeStamp||performance.now()))/1000));   /* how long ago the finger landed */
   const at=ctx.currentTime-late-T.lat; if(at<T.start-0.15||at>=T.end) return;
@@ -428,7 +474,8 @@ async function tapOther(){ const T=tapIn; if(!T||!T.tr||T.kind!=='rhythm') retur
 function tapDrop(){ const T=tapIn; if(!T||!T.tr) return; const i=S.tracks.indexOf(T.tr); if(i>=0) S.tracks.splice(i,1); try{ disposeTrack(T.tr); }catch(e){} T.tr=null; keyCache=null; }
 function tapKeep(){ const T=tapIn; if(!T||!T.tr) return; tapStopPlay(); const tr=T.tr; delete tr._tapTemp; T.tr=null; T.kept=true; S.activeId=tr.id; s2.selId=tr.id; keyCache=null; save(); haptic('light');
   tapClose(); toast(`Added a part to ${s2Name(T.L)}. Undo takes it out.`,3500); }
-function tapClose(){ const T=tapIn; if(!T) return; tapClear(); xyOff(T); if(T.state==='count'||T.state==='take'||T.playing){ T.playing=false; tapHalt(); } tapDrop();
+function tapClose(){ const T=tapIn; if(!T) return; tapClear(); xyOff(T); dawAllOff();
+  if(DAW.sent){ track('daw','notes '+T.kind,DAW.sent); DAW.sent=0; DAW.wantMs=true; native({type:'midiState'}); } if(T.state==='count'||T.state==='take'||T.playing){ T.playing=false; tapHalt(); } tapDrop();
   if(!T.kept){ S.bars=T.bars0; S.key=T.key0[0]; S.scale=T.key0[1]; keyCache=null; scaleCache=null; }
   s2.sec=T.sec0; tapIn=null; const el=$('tapIn'); if(el){ el.hidden=true; el.innerHTML=''; } renderTracks(); scheduleRender(); }
 /* Record on an instrument track: the first time, how to record into it (Mic or pads); afterwards straight in. Record with in the track's sheet changes it. */

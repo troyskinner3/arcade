@@ -294,7 +294,7 @@ function nxSheetSwipe(){ const sh=$('nxSheet'); let y0=null, dy=0;
   sh.addEventListener('touchend',end); sh.addEventListener('touchcancel',end); }
 /* In the Studio's timeline a sheet stops above the transport, so Play, rewind, loop and the metronome keep working while you try sounds (changes are heard as you make them) */
 function sheetAboveTransport(){ const sc=$('nxScrim'), tr=document.querySelector('.s2-tr'); let b=0;
-  try{ if(s2On() && $('s2Ed').hidden && tr && tr.offsetParent){ b=Math.max(0,window.innerHeight-tr.getBoundingClientRect().top); } }catch(e){}
+  try{ if(s2On() && $('s2Ed').hidden && !($('tapIn')&&!$('tapIn').hidden) && tr && tr.offsetParent){ b=Math.max(0,window.innerHeight-tr.getBoundingClientRect().top); } }catch(e){}
   sc.style.bottom=b?b+'px':''; document.body.classList.toggle('s2-sheet',!!b); }
 function nxClose(){ try{ pvEnd(); }catch(e){} if(typeof s2!=='undefined'){ s2.more=false; s2.subs=null; }   /* More settings (and its sections) start closed every time (owner, 26 Nov) */ $('nxScrim').hidden=true; $('nxScrim').style.bottom=''; document.body.classList.remove('s2-sheet'); $('nxSheet').onclick=null; $('nxSheet').oninput=null; $('nxSheet').onchange=null; }
 async function nxMenu(id){ const p=(await projList()).find(x=>x.id===id); if(!p) return; const name=p.title||'Untitled';

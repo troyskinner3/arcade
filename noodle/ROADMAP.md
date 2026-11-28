@@ -211,5 +211,11 @@ Draft copy is in `noodle-ios/APP_STORE_LISTING.md`.
 - [ ] Play pad settings: range, snap off and an arpeggio mode. Pro (owner, 25 Nov): the default pad stays free, changing it needs Pro
   (shown with the Pro preview, like Mix effects).
 
+## Send to computer (phone as a MIDI controller for a DAW; plan in `DAW.md`)
+- [x] Prototype in the app (28 Nov): pads send MIDI by cable or Bluetooth, setup sheet, timing test, delay readout, usage events.
+- [ ] Owner: test on the MacBook with Ableton (cable, then Bluetooth) and report (see `DAW.md` → Prototype).
+- [ ] Owner: Free or Pro; then gate it to match `PRO.md`.
+- [ ] Owner: deploy the takes service so the new `daw` usage event is counted (see `noodle-api/README.md`).
+
 ## After launch (not blocking)
 Ideas in `noodle/IDEAS.md` (beat pads, strumming, face tracking and more).

@@ -10,6 +10,8 @@ Status words: **agreed** (owner confirmed), **proposed** (waiting on the owner),
 - Cable is fine for now, and maybe for good. Wireless is a nice-to-have, never at the cost of quality or lag.
 - Wants it **at launch** if possible: it fits Noodle's ethos (quick, novel, organic ways to get ideas into a DAW instead of drawing MIDI).
 - This session builds it end to end, including the Swift in `noodle-ios/` (tell the app session before touching its files).
+- 28 Nov, second answers: build the prototype now and put it **fully on in TestFlight** (the owner is the only tester; no hidden switch).
+  More analytics is better. "Live MIDI out" was Claude's name for the idea; in the app it's **Send to computer**.
 
 ## Is it feasible? Yes for MIDI on a Mac by cable, with no desktop app
 - **Cable, Mac: built in.** Plug the iPhone into the Mac with a data cable, open Audio MIDI Setup → MIDI Studio, click
@@ -56,28 +58,40 @@ disconnects or failing to connect). Noodle's edge: no bridge app for the cable r
 5. **Later:** live voice → MIDI (D); Windows (rtpMIDI guide or companion, F).
 Launch rule: v1 ships only if it's solid. If it slips, launch without it and make it the first big update (press story).
 
-## Prototype (proposed, ~2–4 h Claude + ~30 min owner)
-- Claude: a small Swift MIDI bridge in `NativeBridge` (send note on/off and CC; lists what it's connected to), a hidden test switch on
-  the Play Pad, and a **timing test**: Noodle sends 16th notes at 120 BPM two ways (timed by the page, and scheduled ahead in Swift).
-- Owner: build from Xcode on the MacBook, plug in, Enable in Audio MIDI Setup, record into Ableton. Report: (1) did it appear,
-  (2) how playing the Play Pad feels, (3) a screenshot of the recorded 16ths zoomed in (the spread of note starts shows the jitter),
-  (4) optional: does the iPhone show up as an audio input too, and is the phone's speaker quiet.
+## Prototype (built 28 Nov, in the app for everyone; details in `eval/README.md`, DAW round 1)
+- Where: an instrument track → Record → Note pads, Chord pads, Drum pads or Play pad → **Send to computer** (and **Set up**).
+- What it sends: notes and chords on channel 1, drums on channel 10 (General MIDI, same as the MIDI export), Play pad up = CC 74.
+- Set up sheet: what the phone is connected to, cable and Bluetooth steps, a timing test (4 bars of 16ths at 120 BPM), and the delay on
+  the phone (finger down → MIDI sent, median and worst of recent notes).
+- Not compiled yet (no Xcode in Claude's sessions): the owner's next archive is the first build. If Xcode shows errors, paste them.
+- Owner's test, cable: archive to TestFlight, install; plug the iPhone into the MacBook, Audio MIDI Setup → Window → Show MIDI Studio →
+  iPhone → Enable; Ableton → Settings → Link, Tempo & MIDI → Track on for the iPhone; arm a MIDI track with an instrument. In Noodle open
+  the Play pad, turn on Send to computer, play. Then Set up → Play a timing test while Ableton records.
+- Then Bluetooth: Set up → Show Noodle over Bluetooth; on the Mac, Audio MIDI Setup → MIDI Studio → Bluetooth button → Connect. Same checks.
+- Report: (1) did Ableton see it (cable / Bluetooth), (2) how playing feels, (3) the delay numbers in Set up, (4) a zoomed-in screenshot of
+  the recorded 16ths, (5) optional: does the iPhone also show up as an audio input in Ableton over the cable.
 - Pass: shows up without a bridge app; playing feels immediate; 16ths land within a few ms of each other.
+- Note: the owner's phones are left out of the usage dashboard's numbers, so the owner's own test won't show there; the delay readout in
+  Set up is the place to look.
 
-## Free vs Pro (proposed, waiting on the owner; mirrored in `PRO.md`)
+## Free vs Pro (proposed, waiting on the owner; mirrored in `PRO.md`; not gated in the prototype)
 - Claude's suggestion: **live MIDI out is Pro**, like the DAW pack (it's for producers, who pay; Dubler shows they pay a lot more),
   with the usual Pro try so people can feel it first. Alternative: free, as a hook for producers and press. Owner to decide.
 
-## Analytics (proposed; built with v1, privacy files updated in the same piece of work)
-- `midi_out_on` (label: cable / bluetooth), `midi_connected` (label: cable / bluetooth), `midi_session` (label: pad kind; value: minutes,
-  rounded), `midi_setup_help` (opened the setup guide). No device names, no notes played.
-- Nothing about the user's computer or DAW is sent. Existing "Product Interaction, not linked" category covers it; the three privacy files
-  get the new event names. Bluetooth (v1.1) adds a permission prompt text, not data sent.
+## Analytics (agreed 28 Nov: "the more the merrier"; built with the prototype)
+- One event, `daw`, with a label: `on` / `off`, `setup`, `bluetooth`, `timing test`, `connected cable` / `connected other` (value: how
+  many destinations), `notes <pad kind>` (value: notes sent while the pad screen was open), `delay ms` / `delay ms worst`,
+  `phone sound on` / `off`. No device or computer names, no notes played.
+- Counted only after the takes service is deployed with `daw` in `EVENTS` (owner, by hand). Privacy page and App Store privacy text
+  updated; Product Interaction is already declared. Bluetooth adds a permission prompt text, not data sent.
 
 ## Action items
-- [ ] Owner: answer the open questions (Free vs Pro; OK to build the prototype).
-- [ ] Claude: build the prototype on the working branch; tell the app session before editing `noodle-ios/` and `noodle/js/beats.js`.
-- [ ] Owner: run the prototype test on the MacBook + Ableton and report the four results.
+- [x] Owner: OK to build the prototype, fully on in TestFlight (28 Nov).
+- [x] Claude: build the prototype (28 Nov).
+- [ ] Owner: archive a TestFlight build; paste any Xcode errors.
+- [ ] Owner: run the prototype test (cable, then Bluetooth) and report the five results.
+- [ ] Owner: Free or Pro.
+- [ ] Owner: deploy the takes service so `daw` events count.
 - [ ] Claude: check the LinkKit licence text before phase C.
 - [ ] Claude: add v1 to `ROADMAP.md` once the prototype passes.
 

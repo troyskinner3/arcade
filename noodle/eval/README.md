@@ -1057,3 +1057,20 @@ the note editor's Today / Tap notes button flips one take between them. The fing
   sound-effect parts; all three now share `foldTail`. Sounds that skip the gate (metronome, count-in arpeggio) were never affected. (2) After Pause, tapping notes or keys made no
   sound until Play: Pause closes the output gate (to cut the reverb) and only Play opened it. Sounds made on the spot (note and key taps,
   drum hits, pads, beat previews) now open it (`liveIn`). `tailcut_test.js` (new) fails on the old code for both and passes now.
+
+## DAW round 1, Send to computer (28 Nov; plan in `DAW.md`)
+- In the iPhone app, the pad screen (Note pads, Chord pads, Drum pads, Play pad) has **Send to computer** (ⓘ) and **Set up**. On: each pad
+  sends MIDI as you play (note on at the touch, off on release; chords as 3 notes; drums on channel 10 with the MIDI export's General MIDI
+  notes; the Play pad's up as CC 74, sliding releases the old note). The pads are quiet on the phone unless **Sound on the phone** is on.
+  Closing the pad screen sends every note off. Recording in Noodle still works at the same time.
+- Swift (`MidiOut` in `NoodleWebApp.swift`): CoreMIDI client, sends to every destination the phone sees (the Mac over the cable once Enabled
+  in Audio MIDI Setup, a Bluetooth connection) plus a virtual source "Noodle"; Apple's Bluetooth MIDI screen; a timing test (4 bars of 16ths
+  at 120 BPM from a high-priority queue); touch-to-send delay of recent notes (page clock vs app clock + time since the finger landed).
+  Bluetooth permission text added (Info.plist). Not compiled here (no Xcode): the owner's build is the first compile.
+- Set up sheet: what the phone is connected to, cable and Bluetooth steps, timing test, delay readout. The sheet no longer leaves room for
+  the transport while the pad screen covers it (`sheetAboveTransport`).
+- Usage event `daw` (label: on/off, setup, bluetooth, timing test, connected cable/other with the count, notes <pad kind> with the count,
+  delay ms and delay ms worst, phone sound on/off). No device names. Added to `EVENTS` in `noodle-api` (needs its hand deploy) and its test;
+  privacy page and App Store privacy text updated (Product Interaction, already declared in PrivacyInfo.xcprivacy).
+- Tests: `daw_test.js` (new): browser shows no row; notes, chords, drums, Play pad messages; quiet vs Sound on the phone; all off on close;
+  setup sheet; events with no names; off sends nothing.
