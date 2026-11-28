@@ -95,6 +95,7 @@ Status: **confirmed** (owner agreed) or **proposed** (waiting on the owner).
 | Wavetable sounds: Glass, Chip, Theremin, Vowel pad, Digital pad, Growl | proposed |
 | Coded sounds: Acid, Wobble, String pluck, Chorus pad, Pump pad | proposed |
 | MIDI export, stems (each part as its own file), video without the mark or end card | proposed |
+| Send to computer: play Noodle's pads into a DAW (Ableton, Logic…) by cable or Bluetooth (see `DAW.md`). Built 28 Nov, **not gated yet** (open to everyone in the app while the owner tests); Claude suggests Pro with a Pro try, free is the alternative | proposed |
 | Copy a part to another song (Paste part in Add track) | confirmed |
 | Chords from your melody in the Pulse and Arp styles | proposed |
 | Effects on one track: Echo, Chorus, Drive (in the track's sheet) | proposed |
