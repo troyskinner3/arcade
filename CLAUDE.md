@@ -6,6 +6,10 @@
 - **Free vs Pro:** `noodle/PRO.md` is the list of what is free and what Noodle Pro unlocks. Every time a feature is added or changed, add it
   there and suggest to the owner whether it should be free or Pro (ask when unsure); mark it "proposed" until the owner confirms.
   The code that enforces it (`PRO_SOUNDS`, `MFX[...].free`, `isPro()` checks) must match the list.
+- **Document everything in the repo** (owner's standing rule): findings, research (with sources and dates), decisions, the owner's answers
+  and open questions go into the repo as the work happens, not only into chat, so any session can pick them up. Each topic has its own
+  file (e.g. `noodle/DAW.md` for using the phone as a DAW controller, `GROWTH.md` for marketing), with an **Action items** list marking
+  what is the owner's; the evaluation log (`noodle/eval/README.md`) records every round of code changes. New topic: new file, linked here.
 - **Launch roadmap:** `noodle/ROADMAP.md` is the running pre-launch list. Tick items off and add new ones as work lands.
 - **Growth and marketing:** `noodle/GROWTH.md` is the launch and growth plan (phases, channels, funnel tracking, results log). Read it
   before any marketing, launch or growth work; log results there.
